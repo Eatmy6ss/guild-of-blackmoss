@@ -1,0 +1,170 @@
+:root {
+  color-scheme: dark;
+  font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #14161c;
+  color: #d5d9e0;
+  font-size: 14px;
+}
+
+#root { padding: 16px; max-width: 1240px; margin: 0 auto; }
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.app-header h1 { font-size: 18px; color: #e8c67a; }
+.app-header .slice-tag { color: #7a8191; font-size: 12px; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: #1b1e27;
+  border: 1px solid #2a2e3b;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.panel h2 {
+  font-size: 13px;
+  color: #9aa3b5;
+  text-transform: none;
+  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+}
+
+.member-card {
+  border: 1px solid #2a2e3b;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: #20242f;
+}
+.member-card .name { font-weight: 600; color: #e8c67a; }
+.member-card .job { color: #8fa3d9; margin-left: 6px; font-size: 12px; }
+.member-card .row { color: #8b93a5; font-size: 12px; margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
+/* 紧凑卡头：名字/职业/血量一行（D14 观感：整卡高度减半，公会页不再滚动 1.6 屏） */
+.member-card .mc-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.member-card .mc-head .hp { color: #8b93a5; font-size: 12px; margin-left: auto; }
+.member-card .mc-head .hp.dead { color: #d48f8f; }
+.member-card .mc-slots { display: flex; gap: 6px; margin-top: 6px; }
+.member-card .mc-slots .slot-select { min-width: 0; flex: 1 1 0; font-size: 11px; padding: 3px 4px; }
+
+.enc-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+select, button {
+  background: #262b38;
+  color: #d5d9e0;
+  border: 1px solid #3a4152;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+button:hover { background: #303748; }
+button:disabled { opacity: 0.4; cursor: default; }
+
+.result-banner {
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+}
+.result-banner.win { background: #1f3324; color: #7fd48f; }
+.result-banner.wipe { background: #3a1f1f; color: #d48f8f; }
+
+.log-box {
+  margin-top: 12px;
+  height: 240px;
+  overflow-y: auto;
+  background: #14161c;
+  border: 1px solid #2a2e3b;
+  border-radius: 6px;
+  padding: 8px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.log-guild { color: #9fc48f; }
+.log-enemy { color: #d98f8f; }
+.log-system { color: #7a8191; }
+.log-result { color: #e8c67a; font-weight: 600; }
+.log-tick { color: #4a5164; margin-right: 6px; }
+
+.tick-info { color: #7a8191; font-size: 12px; margin-left: auto; }
+
+.stage {
+  height: 300px;
+  border: 1px solid #2a2e3b;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #14161c;
+  margin-bottom: 10px;
+}
+.stage canvas { display: block; max-width: 100%; height: auto; }
+
+.branch-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 8px;
+}
+
+.end-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+.cmd-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.cmd-bar .cmd-label { color: #7a8191; font-size: 12px; }
+.cmd-bar button.active {
+  background: #2c4630;
+  border-color: #6b9b6b;
+  color: #a8d8a8;
+}
+.cmd-bar .focus-tag { color: #ff9b9b; border-color: #7a4a4a; }
+.hint { color: #6a7183; font-size: 12px; margin-top: 6px; }
+
+.slot-row { align-items: center; }
+.slot-select {
+  flex: 1;
+  font-size: 12px;
+  padding: 3px 6px;
+  background: #262b38;
+  color: #d5d9e0;
+  border: 1px solid #3a4152;
+  border-radius: 4px;
+}
+.inv-panel { margin-top: 12px; border-top: 1px solid #2a2e3b; padding-top: 8px; }
+.inv-item {
+  font-size: 12px;
+  color: #b8c0d0;
+  padding: 4px 6px;
+  border-left: 2px solid #e8c67a;
+  margin-bottom: 4px;
+  background: #20242f;
+  border-radius: 0 4px 4px 0;
+}

@@ -1,0 +1,605 @@
+import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js'
+import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
+import { TICK_MS } from '../../sim/combat'
+
+// 演出层（D5-6）：模拟是唯一事实源，这里只消费 BattleState + BattleEvent 播动画。
+// 素材是色块占位（Q9：目标像素风，M1 统一换皮），但动画结构（突进/弹道/飘字/倒地）
+// 就是最终结构，换皮只换 body 的绘制。
+
+const W = 760
+const H = 300
+
+const COL = {
+  guildTank: 0x5a8fd4,
+  guildHealer: 0xd9d9d9,
+  guildDps: 0x6dbf6d,
+  enemy: 0xc05a5a,
+  hpGuild: 0x4f9d5d,
+  hpEnemy: 0xb05252,
+  dmgNormal: 0xf1f1f1,
+  dmgCrit: 0xffa94d,
+  heal: 0x7fd48f,
+  projectileGuild: 0x9fc48f,
+  projectileEnemy: 0xd98f8f,
+}
+
+interface Slot {
+  x: number
+  y: number
+}
+
+interface Effect {
+  update(dtMs: number): boolean
+}
+
+/** 重要性分级（game-feel：juice 与事件重要性成比例） */
+type JuiceTier = 'small' | 'medium' | 'large'
+
+const TRAUMA_BY_TIER: Record<JuiceTier, number> = {
+  small: 0, // 普通打击：飘字+形变足够，不震
+  medium: 0.25, // 暴击
+  large: 0.45, // 死亡（boss 机制 D8-9 用更大档）
+}
+
+function unitColor(c: Combatant): number {
+  if (c.team === 'enemy') return COL.enemy
+  if (c.role === 'tank') return COL.guildTank
+  if (c.role === 'healer') return COL.guildHealer
+  return COL.guildDps
+}
+
+class UnitView {
+  container = new Container()
+  slot: Slot
+  baseScale: number
+  /** 动画占用计数（突进/形变/倒地可叠加，全部结束才恢复回位插值） */
+  lockCount = 0
+  body: Graphics
+  nameText: Text
+  /** 单位被点击（指挥台：点击敌人 = 集火） */
+  onClick?: (c: Combatant) => void
+  private hpFill: Graphics
+  private hpColor: number
+
+  constructor(public combatant: Combatant, x: number, y: number) {
+    this.slot = { x, y }
+    const color = unitColor(combatant)
+    this.hpColor = combatant.team === 'guild' ? COL.hpGuild : COL.hpEnemy
+    this.baseScale = combatant.boss ? 1.5 : 1
+
+    const body = new Graphics()
+    body.roundRect(-6, -26, 12, 10, 2).fill(color) // 头
+    body.roundRect(-8, -16, 16, 13, 2).fill(color) // 躯干
+    body.roundRect(-6, -3, 5, 8, 1).fill(color) // 左腿
+    body.roundRect(1, -3, 5, 8, 1).fill(color) // 右腿
+    if (combatant.role === 'tank') {
+      body.roundRect(-11, -14, 4, 11, 1).fill(0x8fb7e8) // 盾
+    }
+    this.body = body
+    const hpBg = new Graphics()
+    hpBg.roundRect(-16, -34, 32, 4, 2).fill(0x262b38)
+    this.hpFill = new Graphics()
+    const nameText = new Text({
+      text: combatant.name,
+      style: { fontFamily: 'sans-serif', fontSize: 9, fill: 0x9aa3b5 },
+    })
+    nameText.anchor.set(0.5)
+    nameText.position.set(0, -42)
+    this.nameText = nameText
+
+    this.container.addChild(body, hpBg, this.hpFill, nameText)
+    this.container.position.set(x, y)
+    this.container.scale.set(this.baseScale)
+    this.updateHp(1)
+    // 点击集火（D8-9 指挥台）：显式命中区覆盖整个人形，
+    // 不依赖 Graphics 几何（腿间空隙会让原点点击落空）
+    this.container.eventMode = 'static'
+    this.container.cursor = combatant.team === 'enemy' ? 'pointer' : 'default'
+    this.container.hitArea = new Rectangle(-18, -46, 36, 52)
+    this.container.on('pointerdown', () => this.onClick?.(this.combatant))
+  }
+
+  updateHp(pct: number): void {
+    this.hpFill.clear()
+    if (pct > 0) {
+      this.hpFill.roundRect(-15, -33, Math.max(2, 30 * pct), 2, 1).fill(this.hpColor)
+    }
+  }
+}
+
+export class BattleRenderer {
+  private app: Application | null = null
+  private root = new Container()
+  private units = new Map<string, UnitView>()
+  private effects: Effect[] = []
+  private battle: BattleState | null = null
+  private pendingEvents: BattleEvent[] = []
+  private disposed = false
+  // trauma 震动（game-feel）：值随事件叠加、按秒衰减，shake = trauma²
+  private trauma = 0
+  private traumaT = 0
+  /** 最近一次渲染帧时间戳：模拟层用它感知渲染停摆（遮挡/最小化时 rAF 停） */
+  lastTickAt = performance.now()
+  /** 效果队列上限：超出即强制结算最旧的（遮挡恢复后的淤积保险） */
+  private static MAX_EFFECTS = 150
+  /** 指挥台回调：点击场上单位 */
+  onUnitClick?: (c: Combatant) => void
+  private focusMarker: Text | null = null
+  /** 阵型变化横幅（D14 反馈：阵型切换要有直观感受）——追踪上一帧阵型 */
+  private lastStance: string | null = null
+
+  private static STANCE_BANNER: Record<string, { text: string; color: number }> = {
+    advance: { text: '推进阵型 · 输出↑ 防御↓', color: 0xe8a04d },
+    standard: { text: '标准阵型', color: 0x9aa3b5 },
+    tighten: { text: '收缩阵型 · 防御↑', color: 0x6b9bd9 },
+    spread: { text: '分散阵型 · AOE 大幅减伤', color: 0x7fd48f },
+  }
+
+  async mount(container: HTMLElement): Promise<void> {
+    const app = new Application()
+    await app.init({
+      width: W,
+      height: H,
+      background: 0x14161c,
+      antialias: true,
+      resolution: window.devicePixelRatio || 1,
+      autoDensity: true,
+    })
+    if (this.disposed) {
+      app.destroy(
+        { removeView: true, releaseGlobalResources: true },
+        { children: true },
+      )
+      return
+    }
+    this.app = app
+    container.appendChild(app.canvas)
+    app.stage.addChild(this.root)
+    this.drawBackdrop()
+    app.ticker.add((t) => this.tick(t.deltaMS))
+    if (this.battle) {
+      this.syncUnits(this.battle)
+      this.play(this.pendingEvents.splice(0))
+    }
+  }
+
+  /** 每次模拟推进后调用：battle 引用变化（新一战）时自动重建场景 */
+  setBattle(b: BattleState, events: BattleEvent[]): void {
+    if (this.battle !== b) {
+      this.clearUnits()
+      this.battle = b
+      // 新战斗：阵型重置为标准，不播横幅（换场不等于换阵）
+      this.lastStance = b.commands?.stance ?? null
+    }
+    if (!this.app) {
+      this.pendingEvents.push(...events)
+      return
+    }
+    this.syncUnits(b)
+    this.play(events)
+    // 阵型切换横幅：切阵即所见（D14 反馈）
+    const stance = b.commands?.stance
+    if (stance && stance !== this.lastStance) {
+      this.lastStance = stance
+      this.spawnStanceBanner(stance)
+    }
+  }
+
+  reset(): void {
+    this.battle = null
+    this.clearUnits()
+  }
+
+  destroy(): void {
+    this.disposed = true
+    // releaseGlobalResources：React 严格模式会 挂载→销毁→再挂载，
+    // 不释放全局池会导致重建后闪烁/纹理残留（pixijs-application 技能标注的坑）
+    this.app?.destroy(
+      { removeView: true, releaseGlobalResources: true },
+      { children: true },
+    )
+    this.app = null
+  }
+
+  // ---- 场景 ----
+
+  private drawBackdrop(): void {
+    const g = new Graphics()
+    g.rect(0, 0, W, H).fill(0x14161c)
+    g.rect(W * 0.5 - 1, 0, 2, H).fill(0x22262f) // 中轴线
+    g.rect(0, H * 0.86, W, 1).fill(0x22262f) // 地平线
+    this.root.addChild(g)
+  }
+
+  private clearUnits(): void {
+    this.root.removeChildren().forEach((ch) => ch.destroy({ children: true }))
+    this.units.clear()
+    this.effects = []
+    // 集火标记随场景销毁——引用必须一并清空，否则下一场战斗
+    // syncUnits 会操作已销毁的 Pixi 对象（position 已为 null → 每帧 TypeError，UI 冻结）
+    this.focusMarker = null
+    this.drawBackdrop()
+  }
+
+  /** 按 阵营×站位 分组布阵：前排贴中轴，后排靠边 */
+  private syncUnits(b: BattleState): void {
+    const groups: Record<string, Combatant[]> = {
+      'guild-front': [],
+      'guild-back': [],
+      'enemy-front': [],
+      'enemy-back': [],
+    }
+    for (const c of b.combatants) {
+      groups[`${c.team}-${c.position}`].push(c)
+    }
+    const colX: Record<string, number> = {
+      'guild-front': W * 0.36,
+      'guild-back': W * 0.18,
+      'enemy-front': W * 0.64,
+      'enemy-back': W * 0.82,
+    }
+    for (const [key, list] of Object.entries(groups)) {
+      list.forEach((c, i) => {
+        let u = this.units.get(c.id)
+        if (!u) {
+          u = new UnitView(c, colX[key], H * ((i + 1) / (list.length + 1)))
+          u.onClick = (combatant) => this.onUnitClick?.(combatant)
+          this.units.set(c.id, u)
+          this.root.addChild(u.container)
+        }
+        u.slot = { x: colX[key], y: H * ((i + 1) / (list.length + 1)) }
+        u.updateHp(c.hp / c.maxHp)
+      })
+    }
+    // 集火标记（D8-9 指挥台）；destroyed 防御：任何路径漏清引用也不得复用销毁对象
+    const fid = b.commands?.focusId
+    const focusUnit = fid ? this.units.get(fid) : undefined
+    if (this.focusMarker?.destroyed) this.focusMarker = null
+    if (focusUnit) {
+      if (!this.focusMarker) {
+        this.focusMarker = new Text({
+          text: '▼ 集火',
+          style: { fontFamily: 'sans-serif', fontSize: 11, fill: 0xff6b6b, fontWeight: 'bold' },
+        })
+        this.focusMarker.anchor.set(0.5)
+        this.root.addChild(this.focusMarker)
+      }
+      this.focusMarker.visible = true
+      this.focusMarker.position.set(
+        focusUnit.container.x,
+        focusUnit.container.y - 56 * focusUnit.baseScale,
+      )
+    } else if (this.focusMarker) {
+      this.focusMarker.visible = false
+    }
+  }
+
+  // ---- 事件 → 动画 ----
+
+  play(events: BattleEvent[]): void {
+    if (!this.app) return
+    // 队列淤积保险：渲染停摆期间模拟可能灌入大量事件，恢复后强制结算最旧的
+    if (this.effects.length > BattleRenderer.MAX_EFFECTS) {
+      const doomed = this.effects.splice(0, this.effects.length - 100)
+      for (const e of doomed) e.update(1e9)
+    }
+    for (const ev of events) {
+      const target = this.units.get(ev.targetId)
+      if (!target) continue
+      if (ev.type === 'death') {
+        this.spawnFall(target)
+        this.addTrauma(TRAUMA_BY_TIER.large)
+        continue
+      }
+      if (ev.type === 'telegraph') {
+        this.spawnTelegraph(target, ev.amount ?? 30)
+        this.spawnFloat(target, '⚠ 蓄力', 0xd93a3a, 14)
+        continue
+      }
+      if (ev.type === 'casting') {
+        this.spawnFloat(target, '咏唱中…', 0xb08fd9, 12)
+        continue
+      }
+      if (ev.type === 'interrupted') {
+        this.spawnFloat(target, '打断!', 0xe8c67a, 14)
+        this.addTrauma(0.2)
+        continue
+      }
+      if (ev.type === 'bound') {
+        this.spawnFloat(target, '束缚!', 0x6b9bd9, 14)
+        continue
+      }
+      if (ev.type === 'enraged') {
+        target.body.tint = 0xff5a5a
+        this.spawnFloat(target, '狂暴!!', 0xff5a5a, 18)
+        this.addTrauma(0.5)
+        continue
+      }
+      if (ev.type === 'summoned') {
+        this.spawnFloat(target, '增援出现!', 0xd98f8f, 13)
+        continue
+      }
+      if (ev.type === 'fury') {
+        this.spawnFloat(target, '爆发!', 0xe8c67a, 14)
+        continue
+      }
+      const attacker = ev.attackerId ? this.units.get(ev.attackerId) : undefined
+      if (ev.type === 'heal') {
+        this.spawnFloat(target, `+${ev.amount}`, COL.heal, 12)
+        continue
+      }
+      const text = `${ev.amount}${ev.crit ? '!' : ''}`
+      const color = ev.crit ? COL.dmgCrit : COL.dmgNormal
+      const size = ev.crit ? 16 : 12
+      const tier: JuiceTier = ev.crit ? 'medium' : 'small'
+      if (ev.ranged && attacker) {
+        this.spawnProjectile(attacker, target, () => {
+          this.spawnFloat(target, text, color, size)
+          this.spawnPunch(target)
+          this.spawnFlash(target)
+        })
+      } else {
+        if (attacker) this.spawnLunge(attacker, target)
+        this.spawnFloat(target, text, color, size)
+        this.spawnPunch(target)
+        this.spawnFlash(target)
+      }
+      this.addTrauma(TRAUMA_BY_TIER[tier])
+    }
+  }
+
+  private spawnLunge(attacker: UnitView, target: UnitView): void {
+    const sx = attacker.container.x
+    const sy = attacker.container.y
+    attacker.lockCount++
+    let t = 0
+    const dur = 220
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        const k = Math.sin(p * Math.PI) * 0.35
+        attacker.container.x = sx + (target.container.x - sx) * k
+        attacker.container.y = sy + (target.container.y - sy) * k
+        if (p >= 1) {
+          attacker.lockCount--
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  private spawnProjectile(from: UnitView, to: UnitView, onHit: () => void): void {
+    const g = new Graphics()
+    g.roundRect(-5, -1.5, 10, 3, 1).fill(
+      from.combatant.team === 'guild' ? COL.projectileGuild : COL.projectileEnemy,
+    )
+    const sx = from.container.x + 10
+    const sy = from.container.y - 12
+    const tx = to.container.x
+    const ty = to.container.y - 12
+    g.position.set(sx, sy)
+    g.rotation = Math.atan2(ty - sy, tx - sx)
+    this.root.addChild(g)
+    let t = 0
+    const dur = 160
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        g.position.set(sx + (tx - sx) * p, sy + (ty - sy) * p)
+        if (p >= 1) {
+          // v8 的 destroy() 不会把节点从父容器摘除，必须显式移除
+          g.removeFromParent()
+          g.destroy()
+          onHit()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  private spawnFloat(u: UnitView, text: string, color: number, size: number): void {
+    const x = u.container.x + (Math.random() * 16 - 8)
+    // y 也抖动：同帧多个飘字错开，避免叠成一坨读不了（D13 修复）
+    const y = u.container.y - 40 - Math.random() * 14
+    const label = new Text({
+      text,
+      style: { fontFamily: 'sans-serif', fontSize: size, fill: color, fontWeight: 'bold' },
+    })
+    label.anchor.set(0.5)
+    label.position.set(x, y)
+    this.root.addChild(label)
+    let t = 0
+    const dur = 650
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        label.position.set(x, y - p * 26)
+        label.alpha = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3
+        if (p >= 1) {
+          // v8 的 destroy() 不会把节点从父容器摘除，必须显式移除
+          label.removeFromParent()
+          label.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  /** 阵型切换横幅：舞台中央大字，上浮渐隐（切换即所见） */
+  private spawnStanceBanner(stance: string): void {
+    const info = BattleRenderer.STANCE_BANNER[stance]
+    if (!info) return
+    const label = new Text({
+      text: info.text,
+      style: {
+        fontFamily: 'sans-serif',
+        fontSize: 20,
+        fill: info.color,
+        fontWeight: 'bold',
+      },
+    })
+    label.anchor.set(0.5)
+    label.position.set(W / 2, H * 0.32)
+    this.root.addChild(label)
+    let t = 0
+    const dur = 1000
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        label.position.set(W / 2, H * 0.32 - p * 14)
+        label.alpha = p < 0.6 ? 1 : 1 - (p - 0.6) / 0.4
+        if (p >= 1) {
+          label.removeFromParent()
+          label.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  /** boss 蓄力预警：脚下红圈脉动，持续到机制结算 */  private spawnTelegraph(u: UnitView, durTicks: number): void {
+    const g = new Graphics()
+    g.ellipse(0, 8, 40 * u.baseScale, 15 * u.baseScale)
+      .fill({ color: 0xd93a3a, alpha: 0.3 })
+      .stroke({ width: 2, color: 0xd93a3a, alpha: 0.7 })
+    g.position.set(u.container.x, u.container.y)
+    this.root.addChild(g)
+    let t = 0
+    const dur = durTicks * TICK_MS
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        g.alpha = 0.7 + 0.3 * Math.sin(t / 80)
+        if (p >= 1) {
+          g.removeFromParent()
+          g.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  /** 挤压拉伸：保体积形变 + 阻尼弹簧回弹（game-feel：优于均匀缩放） */
+  private spawnPunch(u: UnitView): void {
+    u.lockCount++
+    let t = 0
+    const dur = 240
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        // 阻尼振动：初始横向压扁纵向拉长，指数衰减回 1
+        const damp = Math.exp(-p * 6) * Math.cos(p * Math.PI * 2.5)
+        const sx = u.baseScale * (1 - 0.22 * damp)
+        const sy = u.baseScale * (1 + 0.22 * damp)
+        u.container.scale.set(sx, sy)
+        if (p >= 1) {
+          u.container.scale.set(u.baseScale, u.baseScale)
+          u.lockCount--
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  /** 受击白闪：挂在单位容器上跟随移动，90ms 熄灭 */
+  private spawnFlash(u: UnitView): void {
+    const g = new Graphics()
+    g.roundRect(-9, -28, 18, 34, 3).fill({ color: 0xffffff, alpha: 0.55 })
+    u.container.addChild(g)
+    let t = 0
+    const dur = 90
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        g.alpha = 1 - p
+        if (p >= 1) {
+          g.removeFromParent()
+          g.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  private spawnFall(u: UnitView): void {
+    u.lockCount++
+    // 遗骸样式：变暗变灰 + 名字淡出——清晰读作尸体，不是白色残影
+    u.body.tint = 0x6e6e6e
+    u.nameText.alpha = 0.4
+    const sy = u.container.y
+    const dir = u.combatant.team === 'enemy' ? -1 : 1
+    let t = 0
+    const dur = 400
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        u.container.rotation = (p * Math.PI) / 2 * dir
+        u.container.alpha = 1 - p * 0.65
+        u.container.y = sy + p * 6
+        if (p >= 1) {
+          u.lockCount--
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  private addTrauma(amount: number): void {
+    if (amount <= 0) return
+    this.trauma = Math.min(1, this.trauma + amount)
+  }
+
+  // ---- 帧循环 ----
+
+  private tick(dtMs: number): void {
+    // 钳制单帧 dt：rAF 恢复后的追赶帧不允许一步跳完动画
+    const dt = Math.min(dtMs, 100)
+    this.lastTickAt = performance.now()
+    const k = 1 - Math.exp(-dt / 80)
+    for (const u of this.units.values()) {
+      // 死亡单位永久退出回位插值：尸体留在倒下的地方，绝不拖拽滑动
+      if (u.lockCount > 0 || !u.combatant.alive) continue
+      u.container.x += (u.slot.x - u.container.x) * k
+      u.container.y += (u.slot.y - u.container.y) * k
+    }
+    // 手动循环而非 filter：弹道命中的 onHit 会在迭代期间向 this.effects
+    // 推入新效果——filter 按初始长度迭代，会把它们遗弃在旧数组里永不更新
+    // （表现为永久冻结的飘字与锁泄漏）
+    // 先换新数组再迭代：帧内新推入的效果落进新数组，旧数组安全遍历后丢弃
+    const current = this.effects
+    this.effects = []
+    const survivors: Effect[] = []
+    for (const e of current) {
+      if (e.update(dt)) survivors.push(e)
+    }
+    this.effects = survivors.concat(this.effects)
+
+    // 镜头震动：作用于 root（全部子节点的视觉偏移），不碰单位逻辑坐标
+    if (this.trauma > 0) {
+      this.trauma = Math.max(0, this.trauma - (dtMs / 1000) * 1.2)
+      this.traumaT += (dtMs / 1000) * 30
+      const shake = this.trauma * this.trauma
+      this.root.x = 10 * shake * Math.sin(this.traumaT * 1.7)
+      this.root.y = 7 * shake * Math.sin(this.traumaT * 2.3)
+    } else if (this.root.x !== 0 || this.root.y !== 0) {
+      this.root.x = 0
+      this.root.y = 0
+    }
+  }
+}

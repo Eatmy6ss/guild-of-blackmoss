@@ -1,0 +1,673 @@
+// 冒烟测试：跑 200 轮 × 全部遭遇战
+// 硬门槛：① 所有战斗必然终结（无死循环）② 杂兵战不允许团灭（玩家不该死在垃圾怪手上）
+// 说明：boss 压迫感依赖 D8-9 机制引擎（狂暴/束缚等），纯数值阶段 boss 偏弱是预期，
+//       最终平衡在 D13-14 统一调。
+// 运行：npx esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=scripts/smoke.mjs && node scripts/smoke.mjs
+import { generateMember } from '../src/sim/gen'
+import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit } from '../src/sim/combat'
+import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loot'
+import { AFFIXES } from '../src/data/affixes'
+import { BLACKMOSS } from '../src/data/dungeons'
+import { createRun, advanceRun, startStep, markPermadeath } from '../src/sim/run'
+import type { Member } from '../src/sim/types'
+
+const JOBS = ['guard', 'priest', 'ranger'] as const
+const MAX_TICK = 10000
+const ROUNDS = 200
+
+let total = 0
+const winByEnc: Record<string, number> = {}
+const wipeByEnc: Record<string, number> = {}
+const ticksByEnc: Record<string, number> = {}
+const failures: string[] = []
+
+for (let i = 0; i < ROUNDS; i++) {
+  const squad = JOBS.map((job, j) => generateMember(job, 5, i * 1000 + j * 7 + 1))
+  for (const enc of BLACKMOSS.encounters) {
+    const battle = createBattle(squad, BLACKMOSS, enc.id, i * 131 + 5)
+    while (battle.status === 'running' && battle.tick < MAX_TICK) stepBattle(battle)
+    total++
+    winByEnc[enc.id] = (winByEnc[enc.id] ?? 0) + (battle.status === 'guild-win' ? 1 : 0)
+    wipeByEnc[enc.id] = (wipeByEnc[enc.id] ?? 0) + (battle.status === 'guild-wipe' ? 1 : 0)
+    ticksByEnc[enc.id] = (ticksByEnc[enc.id] ?? 0) + battle.tick
+    if (battle.status === 'running') {
+      failures.push(`i=${i} enc=${enc.id} 在 ${MAX_TICK} tick 内未分胜负`)
+    }
+    if (enc.kind === 'wave' && battle.status === 'guild-wipe') {
+      failures.push(`i=${i} enc=${enc.id} 杂兵战团灭（违反门槛②）`)
+    }
+  }
+}
+
+console.log(`战斗总数: ${total}`)
+for (const enc of BLACKMOSS.encounters) {
+  const w = winByEnc[enc.id] ?? 0
+  const l = wipeByEnc[enc.id] ?? 0
+  const avgSec = ((ticksByEnc[enc.id] ?? 0) / ROUNDS) / 10
+  console.log(`  ${enc.name.padEnd(14, '　')} 胜率 ${(w / ROUNDS * 100).toFixed(1)}%（全灭 ${l}）平均 ${avgSec.toFixed(1)}s`)
+}
+if (failures.length > 0) {
+  console.log('✗ 未通过:', failures.slice(0, 5))
+  process.exit(1)
+}
+console.log('✓ 冒烟通过：战斗必然终结，杂兵战安全；boss 威胁待 D8-9 机制实装')
+
+// ============================================================
+// 行为验证：威胁表 / 站位 / 轻协同（引擎正确性，不只是不崩溃）
+// ============================================================
+
+function runBattleLog(squad: Member[], encId: string, seed: number, onCreated?: (b: ReturnType<typeof createBattle>) => void) {
+  const b = createBattle(squad, BLACKMOSS, encId, seed)
+  onCreated?.(b)
+  while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
+  return b
+}
+
+const enemyNames = ['沼泽蛙人', '蛙人萨满', '腐化狼']
+
+// ① 近战敌人只能打前排坦克（站位规则）；远程萨满按威胁优先打坦克
+// D15：守卫可能阵亡——前排清空后近战打后排是合法规则，故只统计守卫存活到终局的战斗
+let meleeOnGuard = 0
+let meleeTotal = 0
+let shamanOnGuard = 0
+let shamanTotal = 0
+let guardSurvivedBattles = 0
+for (let i = 0; i < 50; i++) {
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 500000 + i * 100 + j))
+  const guardName = squad[0].name
+  const b = runBattleLog(squad, 'enc-frogs', i * 311 + 1)
+  const guardAliveAtEnd = b.combatants.find((c) => c.memberId === squad[0].id)?.alive ?? false
+  if (!guardAliveAtEnd) continue
+  guardSurvivedBattles++
+  for (const e of b.log) {
+    if (e.kind !== 'enemy') continue
+    if (!enemyNames.some((n) => e.text.startsWith(n))) continue
+    const isMelee = e.text.startsWith('沼泽蛙人') || e.text.startsWith('腐化狼')
+    if (e.text.includes('攻击')) {
+      if (isMelee) { meleeTotal++; if (e.text.includes(guardName)) meleeOnGuard++ }
+      else { shamanTotal++; if (e.text.includes(guardName)) shamanOnGuard++ }
+    }
+  }
+}
+console.log(`① 站位+威胁：近战打坦克 ${meleeOnGuard}/${meleeTotal}；萨满(远程)打坦克 ${shamanOnGuard}/${shamanTotal}（守卫存活战斗 ${guardSurvivedBattles}/50）`)
+if (meleeOnGuard !== meleeTotal) {
+  console.log('✗ 近战敌人打到了非前排目标——站位规则失效')
+  process.exit(1)
+}
+if (shamanOnGuard / shamanTotal < 0.7) {
+  console.log('✗ 远程敌人很少打坦克——威胁表疑似失效')
+  process.exit(1)
+}
+
+// ② 坦克倒下 = 灾难（以塔尔玛为试炼石：杂兵战治疗可兜底，boss 战不可）
+// 注：牧师/游侠谁先死由仇恨细节决定（当前版本输出仇恨≈治疗仇恨），不设硬门槛，D13-14 再定调。
+let priestTargeted = 0
+let rangerTargeted = 0
+let wipesAfterTankDeath = 0
+for (let i = 0; i < 50; i++) {
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 600000 + i * 100 + j))
+  const b = runBattleLog(squad, 'enc-talma', i * 977 + 3, (battle) => {
+    battle.commands.protectRetreat = false // 搏命场景：关闭撤退保护
+    const guard = battle.combatants.find((c) => c.memberId === squad[0].id)!
+    guard.alive = false
+    guard.hp = 0
+  })
+  if (b.status === 'guild-wipe') wipesAfterTankDeath++
+  for (const e of b.log) {
+    if (e.kind !== 'enemy' || !e.text.includes('攻击')) continue
+    if (e.text.includes(squad[1].name)) priestTargeted++
+    else if (e.text.includes(squad[2].name)) rangerTargeted++
+  }
+}
+console.log(`② 坦克阵亡后：团灭 ${wipesAfterTankDeath}/50（火力 牧师${priestTargeted}/游侠${rangerTargeted}）`)
+if (wipesAfterTankDeath < 20) {
+  console.log('✗ 失去坦克后团灭率不足 40%——坦克的石柱地位不成立')
+  process.exit(1)
+}
+
+// ③ 轻协同：盾墙掩护（坦克存活 → 游侠伤害 +15%）
+//    用 grush 战（唯一敌人、防御固定）对比坦克生/死时游侠普攻均值
+function rangerAvgHit(guardAlive: boolean): number {
+  let sum = 0
+  let n = 0
+  for (let i = 0; i < 40; i++) {
+    const squad = JOBS.filter((j) => j !== 'priest').map((job, j) =>
+      generateMember(job, 5, 700000 + i * 100 + j),
+    )
+    const b = runBattleLog(squad, 'enc-grush', i * 419 + 7, (battle) => {
+      if (!guardAlive) {
+        const guard = battle.combatants.find((c) => c.memberId === squad[0].id)!
+        guard.alive = false
+        guard.hp = 0
+      }
+    })
+    const rangerName = squad[1].name
+    for (const e of b.log) {
+      // 只取普攻（1.0 倍率），排除瞄准射击（1.8）
+      if (e.text.startsWith(rangerName) && e.text.includes(' 攻击')) {
+        const m = e.text.match(/造成 (\d+)/)
+        if (m) { sum += Number(m[1]); n++ }
+      }
+    }
+  }
+  return sum / n
+}
+const withGuard = rangerAvgHit(true)
+const noGuard = rangerAvgHit(false)
+const ratio = withGuard / noGuard
+console.log(`③ 盾墙协同：有坦克均值 ${withGuard.toFixed(1)} / 无坦克均值 ${noGuard.toFixed(1)} = ${ratio.toFixed(3)}`)
+if (Math.abs(ratio - 1.15) > 0.06) {
+  console.log('✗ 协同倍率偏离 1.15 超容差')
+  process.exit(1)
+}
+
+console.log('✓ 行为验证通过：站位/威胁/治疗仇恨/轻协同全部按设计生效')
+
+// ============================================================
+// ④ 远征状态机：岔路路由 / 终态可达 / 血量合法 / 两条路线都可行
+// D11：撤退保护默认开启，濒危自动撤离——"活着回来"也算路线可行
+// ============================================================
+const runFailures: string[] = []
+let victoryRisky = 0
+let victorySafe = 0
+let survivedRisky = 0
+let survivedSafe = 0
+let hpViolations = 0
+let carriedBelowFull = 0 // 血量延续断言：后续战斗必须带伤进场（D13 修复的回归锁）
+const RUNS_PER_BRANCH = 60
+
+for (let i = 0; i < RUNS_PER_BRANCH * 2; i++) {
+  const risky = i % 2 === 0
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 800000 + i * 100 + j))
+  const branchId = risky ? 'shortcut' : 'safepath'
+  const run = createRun(squad, BLACKMOSS, branchId, i * 313 + 11)
+  const expectedSteps = risky ? 5 : 4 // D15:新增水蛭缓冲场(险路全打,稳路跳过最后一场杂兵)
+  if (run.steps.length !== expectedSteps) {
+    runFailures.push(`分支 ${branchId} 步数 ${run.steps.length} ≠ ${expectedSteps}`)
+  }
+  let guard = 0
+  while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && guard++ < 50) {
+    const b = run.battle!
+    while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
+    advanceRun(run)
+    markPermadeath(run)
+    for (const m of squad) if (m.hp < 0) hpViolations++
+    if (run.phase === 'rest') {
+      startStep(run, i * 991 + guard * 17)
+      for (const c of run.battle!.combatants) {
+        if (c.team !== 'guild') continue
+        if (c.hp > c.maxHp) hpViolations++
+        if (c.hp < c.maxHp) carriedBelowFull++
+      }
+    }
+  }
+  if (run.phase === 'victory') {
+    if (risky) victoryRisky++
+    else victorySafe++
+  } else if (run.phase === 'defeat') {
+    // 团灭：不算生还
+  } else if (run.phase === 'retreated') {
+    if (risky) survivedRisky++
+    else survivedSafe++
+  } else {
+    runFailures.push(`i=${i} 远征卡在 phase=${run.phase}`)
+  }
+  // 永久死亡一致性：阵亡者（hp=0）必须已从花名册划去
+  for (const m of squad) {
+    if (!m.alive && m.hp > 0) hpViolations++
+  }
+}
+const rateRisky = (victoryRisky / RUNS_PER_BRANCH) * 100
+const rateSafe = (victorySafe / RUNS_PER_BRANCH) * 100
+const aliveRisky = ((victoryRisky + survivedRisky) / RUNS_PER_BRANCH) * 100
+const aliveSafe = ((victorySafe + survivedSafe) / RUNS_PER_BRANCH) * 100
+console.log(
+  `④ 远征：险路 通关${rateRisky.toFixed(1)}%/生还${aliveRisky.toFixed(1)}%，稳路 通关${rateSafe.toFixed(1)}%/生还${aliveSafe.toFixed(1)}%，血量非法 ${hpViolations}，带伤进场样本 ${carriedBelowFull}`,
+)
+if (runFailures.length > 0 || hpViolations > 0) {
+  console.log('✗ 远征状态机未通过:', runFailures.slice(0, 5))
+  process.exit(1)
+}
+if (carriedBelowFull === 0) {
+  console.log('✗ 血量延续失效：后续战斗全部满血进场——远征内的消耗经济不存在')
+  process.exit(1)
+}
+if (aliveRisky < 50 || aliveSafe < 50) {
+  console.log('✗ 存在过半远征无人生还的路线——难度失衡')
+  process.exit(1)
+}
+console.log('✓ 远征验证通过：岔路/结算/永久死亡/生还判定按设计工作')
+
+// ============================================================
+// ⑤ boss 机制与指挥台（D8-9）
+// ============================================================
+const mechFailures: string[] = []
+
+// 5a: 格鲁什——震地蓄力与召唤
+let slams = 0
+let summons = 0
+for (let i = 0; i < 30; i++) {
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 900000 + i * 100 + j))
+  const b = createBattle(squad, BLACKMOSS, 'enc-grush', i * 77 + 2)
+  while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
+  if (b.log.some((e) => e.text.includes('蓄力'))) slams++
+  if (b.log.some((e) => e.text.includes('增援'))) summons++
+}
+console.log(`5a 格鲁什：震地 ${slams}/30，召唤 ${summons}/30`)
+if (slams < 15 || summons < 25) mechFailures.push(`5a 触发率过低（震地${slams} 召唤${summons}）`)
+
+// 5b: 塔尔玛——集火打断 vs 无指挥；束缚与狂暴
+let focusInt = 0
+let plainInt = 0
+let binds = 0
+let enrages = 0
+for (let i = 0; i < 40; i++) {
+  const withFocus = i % 2 === 0
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 910000 + i * 100 + j))
+  const b = createBattle(squad, BLACKMOSS, 'enc-talma', i * 93 + 4)
+  while (b.status === 'running' && b.tick < MAX_TICK) {
+    if (withFocus && b.tick % 5 === 0) {
+      const boss = b.combatants.find((c) => c.boss && c.alive)
+      if (boss) setFocus(b, boss.id)
+    }
+    stepBattle(b)
+  }
+  const ints = b.log.filter((e) => e.text.includes('打断')).length
+  if (withFocus) focusInt += ints
+  else plainInt += ints
+  if (b.log.some((e) => e.text.includes('束缚'))) binds++
+  if (b.log.some((e) => e.text.includes('狂暴'))) enrages++
+}
+console.log(`5b 塔尔玛：集火打断 ${focusInt} 次 vs 无指挥打断 ${plainInt} 次；束缚 ${binds}/40，狂暴 ${enrages}/40`)
+if (focusInt <= plainInt) mechFailures.push('5b 集火没有提升打断率')
+if (binds < 12) mechFailures.push(`5b 束缚触发过少 ${binds}`)
+if (enrages < 8) mechFailures.push(`5b 狂暴触发过少 ${enrages}`)
+
+// 5c: 分散阵型显著降低震地伤害
+let aoeStd = 0
+let aoeSpread = 0
+for (let i = 0; i < 20; i++) {
+  for (const mode of ['std', 'spread'] as const) {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 920000 + i * 100 + j))
+    const b = createBattle(squad, BLACKMOSS, 'enc-grush', i * 61 + 9)
+    if (mode === 'spread') setStance(b, 'spread')
+    while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
+    for (const e of b.log) {
+      if (!e.text.includes('震地猛击命中')) continue
+      const m = e.text.match(/造成 (\d+)/)
+      if (m) {
+        if (mode === 'std') aoeStd += Number(m[1])
+        else aoeSpread += Number(m[1])
+      }
+    }
+  }
+}
+console.log(`5c 分散减伤：标准阵型 AOE 总伤 ${aoeStd} vs 分散 ${aoeSpread}`)
+if (aoeSpread >= aoeStd) mechFailures.push('5c 分散阵型没有降低 AOE 伤害')
+
+// 5d: 治疗药与撤退令
+{
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 930001 + j))
+  const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 424242)
+  // 先打到有人掉血
+  while (b.status === 'running' && b.tick < 200) {
+    stepBattle(b)
+    if (b.combatants.some((c) => c.team === 'guild' && c.alive && c.hp < c.maxHp * 0.7)) break
+  }
+  const hurt = b.combatants.find((c) => c.team === 'guild' && c.alive)!
+  const hpBefore = hurt.hp
+  const healed = useHealPotion(b)
+  const healedUp = hurt.hp > hpBefore || b.combatants.every((c) => c.hp === c.maxHp)
+  if (!healed || b.commands.healStock !== 2 || !healedUp) {
+    mechFailures.push('5d 治疗药未按预期工作')
+  }
+  // 撤退令
+  const retreated = orderRetreat(b)
+  while (b.status === 'running' && b.tick < 2000) stepBattle(b)
+  if (!retreated || b.status !== 'retreated') mechFailures.push('5d 撤退令未生效')
+}
+console.log(`5d 指令：治疗药/撤退令工作正常`)
+
+if (mechFailures.length > 0) {
+  console.log('✗ 机制验证未通过:', mechFailures)
+  process.exit(1)
+}
+console.log('✓ 机制验证通过：震地/召唤/咏唱打断/束缚/狂暴/阵型/道具/撤退全部生效')
+
+// ============================================================
+// ⑥ 掉落与配装（D10）
+// ============================================================
+const lootFailures: string[] = []
+
+// 6a: boss 固定掉落表概率（grush 每场期望 0.7 件）
+let dropTotal = 0
+for (let i = 0; i < 100; i++) {
+  dropTotal += rollBossDrops(BLACKMOSS.bosses['grush'].dropTable, i * 77 + 1).length
+}
+console.log(`6a 掉落表：100 场 grush 掉落 ${dropTotal} 件（期望 ~70）`)
+if (dropTotal < 50 || dropTotal > 90) lootFailures.push(`6a 掉落率偏离 ${dropTotal}`)
+
+// 6b: 词条 roll 合法性（条数区间 + 数值区间）
+for (let i = 0; i < 60; i++) {
+  const item = rollBossDrops([{ baseId: 'wpn-t2-bow', chance: 1 }], i * 31 + 7)[0]
+  if (item.rolls.length < 2 || item.rolls.length > 3) {
+    lootFailures.push(`6b 词条条数越界 ${item.rolls.length}`)
+    break
+  }
+  for (const r of item.rolls) {
+    const aff = AFFIXES[r.affixId]
+    if (r.value < aff.range[0] - 0.01 || r.value > aff.range[1] + 0.01) {
+      lootFailures.push(`6b 词条 ${aff.id} 数值越界 ${r.value}`)
+    }
+  }
+  if (!describeItem(item).includes('猎风长弓')) lootFailures.push('6b 描述缺失')
+  if (!itemStats(item).attack) lootFailures.push('6b 属性聚合缺失')
+}
+
+// 6c: 装备提升战力
+{
+  const m = generateMember('ranger', 5, 4242)
+  const weak = toCombatant(m)
+  const item = rollBossDrops([{ baseId: 'wpn-t2-bow', chance: 1 }], 99)[0]
+  m.equipment.weapon = item
+  const strong = toCombatant(m)
+  console.log(`6c 配装：游侠攻击 ${weak.attack} → ${strong.attack}（装备 ${item.rolls.length} 词条）`)
+  if (strong.attack <= weak.attack) lootFailures.push('6c 装备没有提升攻击')
+}
+
+// 6d: 吸血词条回血
+{
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 5150 + j))
+  squad[2].equipment.trinket = { id: 't1', baseId: 'trk-t2-totem', rolls: [{ affixId: 'aff-steal', value: 0.5 }] }
+  const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 555)
+  const ranger = b.combatants.find((c) => c.memberId === squad[2].id)!
+  const foe = b.combatants.find((c) => c.team === 'enemy')!
+  ranger.hp = 50
+  const before = ranger.hp
+  applyHit(b, ranger, foe, 100, '测试')
+  const healed = ranger.hp - before
+  console.log(`6d 吸血：造成 100 伤害回复 ${healed}（期望 ~50）`)
+  if (healed < 40 || healed > 60) lootFailures.push('6d 吸血数值异常')
+}
+
+// 6e: 首杀保底（D14）——pity 模式下空手率为 0
+{
+  let empties = 0
+  for (const bossId of ['grush', 'talma']) {
+    for (let i = 0; i < 40; i++) {
+      const drops = rollBossDrops(BLACKMOSS.bosses[bossId].dropTable, i * 97 + 13, { pity: true })
+      if (drops.length === 0) empties++
+    }
+  }
+  console.log(`6e 首杀保底：80 次 pity roll 空手 ${empties} 次`)
+  if (empties > 0) lootFailures.push('6e pity 模式仍可能空手——首杀保底失效')
+}
+
+if (lootFailures.length > 0) {
+  console.log('✗ 掉落验证未通过:', lootFailures)
+  process.exit(1)
+}
+console.log('✓ 掉落验证通过：掉落表/词条/配装/吸血按设计工作')
+
+// ============================================================
+// ⑦ 公会层（D11）：永久死亡 / 纪念堂光环 / 战术手册 / 撤退保护
+// ============================================================
+const guildFailures: string[] = []
+
+// 7a: 永久死亡登记——团灭后全队进入纪念堂，花名册划名
+{
+  let checked = 0
+  for (let i = 0; i < 60 && checked < 10; i++) {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 940000 + i * 100 + j))
+    const run = createRun(squad, BLACKMOSS, 'shortcut', i * 317 + 5)
+    let guard = 0
+    while (run.phase !== 'defeat' && run.phase !== 'victory' && run.phase !== 'retreated' && guard++ < 40) {
+      const bt = run.battle!
+      bt.commands.protectRetreat = false // 搏命场景：制造团灭样本
+      while (bt.status === "running" && bt.tick < MAX_TICK) stepBattle(bt)
+      advanceRun(run)
+      const dead = markPermadeath(run)
+      if (run.phase === 'defeat' && dead.length > 0) {
+        for (const d of dead) {
+          if (!d.cause.includes('黑苔沼泽')) guildFailures.push(`7a 死因缺失: ${d.name}`)
+        }
+        const member = squad.find((m) => m.id === dead[0].id)
+        if (!member || member.alive) guildFailures.push(`7a ${dead[0].name} 未从花名册划去`)
+        checked++
+      }
+      if (run.phase === 'rest') startStep(run, i * 719 + guard * 13)
+    }
+  }
+  console.log(`7a 永久死亡：核验 ${checked} 次阵亡登记`)
+  if (checked < 5) guildFailures.push('7a 团灭样本不足（机制没有制造足够死亡）')
+}
+
+// 7b: 纪念堂光环 + 战术手册：同样种子下伤害提升
+function guildDamageSum(aura: number, manual: number): number {
+  let sum = 0
+  for (let i = 0; i < 40; i++) {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 950000 + i * 100 + j))
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', i * 419 + 3, aura, manual)
+    while (b.status === "running" && b.tick < 60) stepBattle(b)
+    for (const e of b.log) {
+      if (e.kind === 'guild' && e.text.includes('造成')) {
+        const m = e.text.match(/造成 (\d+)/)
+        if (m) sum += Number(m[1])
+      }
+    }
+  }
+  return sum
+}
+const plainDmg = guildDamageSum(0, 0)
+const legacyDmg = guildDamageSum(0.06, 0.05)
+console.log(`7b 传承：基础总伤 ${plainDmg} vs 光环+手册 ${legacyDmg}（期望 ~+10%）`)
+if (legacyDmg <= plainDmg * 1.05) guildFailures.push('7b 传承加成未生效或过弱')
+
+// 7c: 撤退保护——濒危自动撤离；关闭后不触发
+{
+  const squadOn = JOBS.map((job, j) => generateMember(job, 5, 960001 + j))
+  const bOn = createBattle(squadOn, BLACKMOSS, 'enc-grush', 31337)
+  bOn.commands.protectRetreat = true
+  const guardC = bOn.combatants.find((c) => c.team === 'guild')!
+  guardC.hp = Math.round(guardC.maxHp * 0.1)
+  let ticks = 0
+  while (bOn.status === 'running' && bOn.commands.extractingUntil === undefined && ticks++ < 20) stepBattle(bOn)
+  const onTriggered = bOn.commands.extractingUntil !== undefined
+  while (bOn.status === 'running' && ticks++ < 200) stepBattle(bOn)
+  const onRetreated = bOn.status === 'retreated'
+
+  const squadOff = JOBS.map((job, j) => generateMember(job, 5, 970001 + j))
+  const bOff = createBattle(squadOff, BLACKMOSS, 'enc-grush', 31337)
+  bOff.commands.protectRetreat = false
+  const guardOff = bOff.combatants.find((c) => c.team === 'guild')!
+  guardOff.hp = Math.round(guardOff.maxHp * 0.1)
+  let offTriggered = false
+  ticks = 0
+  while (bOff.status === 'running' && ticks++ < 60) {
+    stepBattle(bOff)
+    if (bOff.commands.extractingUntil !== undefined) offTriggered = true
+  }
+  console.log(`7c 撤退保护：开启→自动撤离 ${onTriggered && onRetreated}；关闭→未触发 ${!offTriggered}`)
+  if (!onTriggered || !onRetreated) guildFailures.push('7c 保护开启却未自动撤离')
+  if (offTriggered) guildFailures.push('7c 保护关闭仍自动撤离')
+}
+
+if (guildFailures.length > 0) {
+  console.log('✗ 公会层验证未通过:', guildFailures)
+  process.exit(1)
+}
+console.log('✓ 公会层验证通过：永久死亡/纪念堂光环/战术手册/撤退保护按设计工作')
+
+// ============================================================
+// ⑧ 挂机 AI（D12）：队长性格代打
+// ============================================================
+const aiFailures: string[] = []
+import { setFocus as aiSetFocus } from '../src/sim/combat'
+void aiSetFocus
+
+// 8a: 谨慎队长挂机打 grush——有阵型命令、会交药、能打完
+{
+  let stanceCmds = 0
+  let potions = 0
+  let completed = 0
+  for (let i = 0; i < 20; i++) {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 980000 + i * 100 + j))
+    squad[0].personality = { bravery: 20, caution: 90, greed: 30, loyalty: 60 } // 谨慎队长
+    const b = createBattle(squad, BLACKMOSS, 'enc-grush', i * 89 + 6)
+    b.commands.autoMode = true
+    b.commands.protectRetreat = false // 纯性格代打（保护会抢先撤离）
+    while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
+    if (b.status !== 'running') completed++
+    stanceCmds += b.log.filter((e) => e.text.includes('团长命令')).length
+    potions += b.log.filter((e) => e.text.includes('治疗药')).length
+  }
+  console.log(`8a 谨慎队长挂机 grush：完成 ${completed}/20，阵型命令 ${stanceCmds}，交药 ${potions}`)
+  if (completed < 18) aiFailures.push('8a 挂机战斗未正常打完')
+  if (stanceCmds < 40) aiFailures.push('8a AI 没有下达阵型命令')
+}
+
+// 8b: 性格决定命运——勇猛队长 vs 谨慎队长在塔尔玛的不同结局
+{
+  let braveAdvance = 0
+  let braveDefensive = 0
+  let braveRetreats = 0
+  let cautiousAdvance = 0
+  let cautiousDefensive = 0
+  let cautiousRetreats = 0
+  let braveTaken = 0
+  let cautiousTaken = 0
+  for (let i = 0; i < 30; i++) {
+    for (const kind of ['brave', 'cautious'] as const) {
+      const squad = JOBS.map((job, j) => generateMember(job, 5, 990000 + i * 100 + j))
+      squad[0].personality =
+        kind === 'brave'
+          ? { bravery: 95, caution: 5, greed: 50, loyalty: 50 }
+          : { bravery: 5, caution: 95, greed: 50, loyalty: 50 }
+      const b = createBattle(squad, BLACKMOSS, 'enc-talma', i * 61 + kind.length)
+      b.commands.autoMode = true
+      b.commands.protectRetreat = false
+      while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
+      if (kind === 'brave') {
+        braveAdvance += b.log.filter((e) => e.text.includes('团长命令：推进')).length
+        braveDefensive += b.log.filter((e) => e.text.includes('收缩') || e.text.includes('分散')).length
+        braveRetreats += b.log.filter((e) => e.text.includes('兄弟们，撤')).length
+      } else {
+        cautiousAdvance += b.log.filter((e) => e.text.includes('团长命令：推进')).length
+        cautiousDefensive += b.log.filter((e) => e.text.includes('收缩') || e.text.includes('分散')).length
+        cautiousRetreats += b.log.filter((e) => e.text.includes('兄弟们，撤')).length
+      }
+    }
+  }
+  console.log(
+    `8b 性格代打：勇猛[推进${braveAdvance}/防御${braveDefensive}/撤${braveRetreats}] 谨慎[推进${cautiousAdvance}/防御${cautiousDefensive}/撤${cautiousRetreats}]`,
+  )
+  if (braveAdvance <= cautiousAdvance) {
+    aiFailures.push('8b 勇猛队长推进命令不多于谨慎队长——性格未传导')
+  }
+  if (cautiousDefensive <= braveDefensive) {
+    aiFailures.push('8b 谨慎队长防御命令不多于勇猛队长——性格未传导')
+  }
+  if (cautiousRetreats < 10) {
+    aiFailures.push('8b 谨慎队长撤得不够多——性格没有传导到决策')
+  }
+}
+
+// 8c: 谨慎 AI 会集火打断咏唱
+{
+  let interrupts = 0
+  for (let i = 0; i < 20; i++) {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 995000 + i * 100 + j))
+    squad[0].personality = { bravery: 20, caution: 90, greed: 30, loyalty: 60 }
+    const b = createBattle(squad, BLACKMOSS, 'enc-talma', i * 47 + 8)
+    b.commands.autoMode = true
+    b.commands.protectRetreat = false
+    while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
+    interrupts += b.log.filter((e) => e.text.includes('打断')).length
+  }
+  console.log(`8c 谨慎 AI 打断咏唱 ${interrupts} 次/20 场`)
+  if (interrupts < 10) aiFailures.push('8c AI 集火打断过少')
+}
+
+if (aiFailures.length > 0) {
+  console.log('✗ 挂机 AI 验证未通过:', aiFailures)
+  process.exit(1)
+}
+console.log('✓ 挂机 AI 验证通过：性格代打/阵型/道具/集火/撤退全部生效')
+
+// ============================================================
+// ⑨ 平衡曲线（D13）：指挥机器人在四档操作水平下的胜率窗口
+//    档位：零指挥(只靠撤退保护) / 平庸(只交药) / 中位(集火+交药) / 会玩(全套指挥)
+//    设计契约：杂兵绝对安全；格鲁什有牙齿但不墙人；塔尔玛墙住"不参与"，
+//    中位操作有约七成胜率；会玩稳赢。任何一侧越界 = 平衡回归。
+// ============================================================
+{
+  const N = 80
+  const midAddSeen = new WeakMap<object, number>()
+  const tier = {
+    none: { protect: true, act: (_b: ReturnType<typeof createBattle>, _encId: string) => {} },
+    meh: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const lowest = b.combatants.filter((c) => c.alive && c.team === 'guild').reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)); if (lowest.hp / lowest.maxHp < 0.3) useHealPotion(b) } },
+    mid: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (adds.length > 0) { if (!midAddSeen.has(b)) midAddSeen.set(b, b.tick); if (b.tick - (midAddSeen.get(b) ?? b.tick) >= 12) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); } else { midAddSeen.delete(b); if (boss) setFocus(b, boss.id); } if (boss?.mech?.['enrage']?.fired === 1) useFuryPotion(b); const lowest = b.combatants.filter((c) => c.alive && c.team === 'guild').reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)); if (lowest.hp / lowest.maxHp < 0.35) useHealPotion(b) } },
+    good: { protect: false, act: (b: ReturnType<typeof createBattle>, encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const casting = boss?.mech?.['cast-buff'] !== undefined && boss!.mech!['cast-buff'].until !== undefined; const telegraphing = boss?.mech?.['telegraph-aoe'] !== undefined && boss!.mech!['telegraph-aoe'].until !== undefined; const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (telegraphing) setStance(b, 'spread'); else if (b.commands.stance === 'spread') setStance(b, 'standard'); if (casting && boss) setFocus(b, boss.id); else if (adds.length > 0) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); const lowest = b.combatants.filter((c) => c.alive && c.team === 'guild').reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)); if (lowest.hp / lowest.maxHp < 0.55) useHealPotion(b); if (boss && (boss.mech?.['enrage']?.fired === 1 || (encId === 'enc-grush' && boss.hp / boss.maxHp < 0.45))) useFuryPotion(b) } },
+  } as const
+  type Tier = keyof typeof tier
+
+  function winRate(encId: string, t: Tier, geared = false): number {
+    let wins = 0
+    for (let i = 0; i < N; i++) {
+      const squad = JOBS.map((job, j) => generateMember(job, 5, 300000 + i * 100 + j))
+      if (geared) {
+        const drops = rollBossDrops([
+          { baseId: 'wpn-t2-bow', chance: 1 }, { baseId: 'arm-t2-plate', chance: 1 }, { baseId: 'trk-t2-totem', chance: 1 },
+        ], 4000 + i)
+        squad[2].equipment.weapon = drops[0]
+        squad[0].equipment.armor = drops[1]
+        squad[0].equipment.trinket = drops[2]
+      }
+      const b = createBattle(squad, BLACKMOSS, encId, 500000 + i * 13 + 1)
+      b.commands.protectRetreat = tier[t].protect
+      while (b.status === 'running' && b.tick < MAX_TICK) {
+        tier[t].act(b, encId)
+        stepBattle(b)
+      }
+      if (b.status === 'guild-win') wins++
+    }
+    return (wins / N) * 100
+  }
+
+  const balFailures: string[] = []
+  const rates: Record<string, number> = {}
+  const measure = (key: string, encId: string, t: Tier, geared = false) => {
+    rates[key] = winRate(encId, t, geared)
+  }
+  measure('wave-none', 'enc-frogs', 'none')
+  measure('grush-none', 'enc-grush', 'none')
+  measure('grush-mid', 'enc-grush', 'mid')
+  measure('grush-good', 'enc-grush', 'good')
+  measure('talma-none', 'enc-talma', 'none')
+  measure('talma-meh', 'enc-talma', 'meh')
+  measure('talma-mid', 'enc-talma', 'mid')
+  measure('talma-good', 'enc-talma', 'good')
+  measure('talma-geared', 'enc-talma', 'good', true)
+
+  console.log(
+    `⑨ 平衡：杂兵${rates['wave-none'].toFixed(0)}% │ 格鲁什 零指挥${rates['grush-none'].toFixed(0)}/中位${rates['grush-mid'].toFixed(0)}/会玩${rates['grush-good'].toFixed(0)}% │ ` +
+    `塔尔玛 零指挥${rates['talma-none'].toFixed(0)}/平庸${rates['talma-meh'].toFixed(0)}/中位${rates['talma-mid'].toFixed(0)}/会玩${rates['talma-good'].toFixed(0)}/会玩+T2${rates['talma-geared'].toFixed(0)}%`,
+  )
+  const expect = (key: string, lo: number, hi: number) => {
+    if (rates[key] < lo || rates[key] > hi) balFailures.push(`${key}=${rates[key].toFixed(0)}% 越界 [${lo},${hi}]`)
+  }
+  expect('wave-none', 100, 100) // 杂兵战零指挥也必须全胜（门槛②的平衡面）
+  expect('grush-none', 65, 100) // 有牙齿：不交药会掉进保护线，但不应墙死挂机
+  expect('grush-mid', 60, 100) // D15:格鲁什=教程 boss(时长 28s+增援),考试是塔尔玛
+  expect('grush-good', 95, 100)
+  expect('talma-none', 0, 12) // 不参与指挥 = 打不过（指挥台存在的意义）
+  expect('talma-meh', 0, 25) // 上限放宽：60-80 场样本的二项噪声约 ±9%，硬契约在"别太高"
+  expect('talma-mid', 55, 90) // 只会点怪的新手也应有约七成机会
+  expect('talma-good', 95, 100)
+  expect('talma-geared', 95, 100) // T2 装备后稳赢（循环引力）
+  if (balFailures.length > 0) {
+    console.log('✗ 平衡曲线未通过:', balFailures)
+    process.exit(1)
+  }
+  console.log('✓ 平衡曲线通过：技能曲线(零指挥→平庸→中位→会玩)与装备成长符合设计契约')
+}
