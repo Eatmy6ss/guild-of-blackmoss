@@ -120,6 +120,10 @@ export interface Member {
   hp: number
   equipment: Partial<Record<Slot, ItemInstance>>
   alive: boolean
+  /** M1 P0:经验与升到下一级所需——成长路线的数值半边 */
+  exp: number
+  /** M1 P0:与其他英雄的默契(共同远征次数),羁绊半边;死者 bonds 随之消逝 */
+  bonds: Record<string, number>
 }
 
 // ===== 战斗实体（战斗内的临时投影，战斗结束即弃）=====
@@ -310,4 +314,6 @@ export interface BattleState {
   auraBonus?: number
   /** 战术手册：已研习该 boss，全队对其伤害 +5%（D11） */
   manualBonus?: number
+  /** 默契加成：按我方战斗实体 id 存伤害倍率（同队默契星数 ×3%/星，M1 P0） */
+  bondMults?: Record<string, number>
 }

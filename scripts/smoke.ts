@@ -8,7 +8,7 @@ import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPo
 import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS } from '../src/data/dungeons'
-import { createRun, advanceRun, startStep, markPermadeath } from '../src/sim/run'
+import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
 
 const JOBS = ['guard', 'priest', 'ranger'] as const
@@ -593,6 +593,92 @@ if (aiFailures.length > 0) {
   process.exit(1)
 }
 console.log('✓ 挂机 AI 验证通过：性格代打/阵型/道具/集火/撤退全部生效')
+
+// ============================================================
+// ⑧·五 成长系统（M1 P0）：经验升级 / 默契 / 战斗加成
+// ============================================================
+const growthFailures: string[] = []
+{
+  // 10a:会玩机器人打险路 → 通关后幸存者升到 Lv6、两两默契 ≥1
+  let runs = 0
+  let leveled = 0
+  let bonded = 0
+  for (let i = 0; i < 25; i++) {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 200000 + i * 100 + j))
+    const run = createRun(squad, BLACKMOSS, 'shortcut', i * 419 + 3)
+    let g2 = 0
+    while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && g2++ < 40) {
+      const bt = run.battle!
+      while (bt.status === 'running' && bt.tick < MAX_TICK) {
+        if (bt.tick % 5 === 0) {
+          const boss = bt.combatants.find((c) => c.alive && c.bossMechanics)
+          const adds = bt.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics)
+          const casting = boss?.mech?.['cast-buff'] !== undefined && boss!.mech!['cast-buff'].until !== undefined
+          const telegraphing = boss?.mech?.['telegraph-aoe'] !== undefined && boss!.mech!['telegraph-aoe'].until !== undefined
+          if (telegraphing) setStance(bt, 'spread')
+          else if (bt.commands.stance === 'spread') setStance(bt, 'standard')
+          if (casting && boss) setFocus(bt, boss.id)
+          else if (adds.length > 0) setFocus(bt, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id)
+          else if (boss) setFocus(bt, boss.id)
+          const lowest = bt.combatants
+            .filter((c) => c.alive && c.team === 'guild')
+            .reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c))
+          if (lowest.hp / lowest.maxHp < 0.55) useHealPotion(bt)
+          if (boss && boss.mech?.['enrage']?.fired === 1) useFuryPotion(bt)
+        }
+        stepBattle(bt)
+      }
+      advanceRun(run)
+      markPermadeath(run)
+      settleGrowth(run)
+      if (run.phase === 'rest') startStep(run, i * 733 + g2 * 19)
+    }
+    if (run.phase === 'victory') {
+      runs++
+      const survivors = run.members.filter((m) => m.alive)
+      if (survivors.some((m) => m.level > 5)) leveled++
+      const allBonded =
+        survivors.length >= 2 &&
+        survivors.every((m) =>
+          survivors.filter((o) => o.id !== m.id).some((o) => (m.bonds[o.id] ?? 0) >= 1),
+        )
+      if (allBonded) bonded++
+    }
+  }
+  console.log(`⑩ 成长：会玩通关 ${runs}/25，幸存者升级 ${leveled}/${runs || '-'}，两两默契 ${bonded}/${runs || '-'}`)
+  if (runs < 10) growthFailures.push(`⑩ 通关样本不足 ${runs}`)
+  if (leveled < runs * 0.8) growthFailures.push('⑩ 通关未稳定升级——经验曲线失衡')
+  if (bonded !== runs) growthFailures.push('⑩ 通关未建立两两默契')
+
+  // 10b:默契战斗加成——同一批种子,有默契的队伍伤害更高
+  const dmg = (withBond: boolean) => {
+    let sum = 0
+    for (let i = 0; i < 30; i++) {
+      const squad = JOBS.map((job, j) => generateMember(job, 5, 250000 + i * 100 + j))
+      if (withBond) {
+        for (const m of squad) for (const o of squad) if (o.id !== m.id) m.bonds[o.id] = 10 // 4 星
+      }
+      const b = createBattle(squad, BLACKMOSS, 'enc-frogs', i * 419 + 3)
+      while (b.status === 'running' && b.tick < 60) stepBattle(b)
+      for (const e of b.log) {
+        if (e.kind === 'guild' && e.text.includes('造成')) {
+          const m = e.text.match(/造成 (\d+)/)
+          if (m) sum += Number(m[1])
+        }
+      }
+    }
+    return sum
+  }
+  const plain = dmg(false)
+  const bondedDmg = dmg(true)
+  console.log(`⑩ 默契加成：基础 ${plain} vs 四星默契 ${bondedDmg}（期望 ≥ +8%）`)
+  if (bondedDmg <= plain * 1.05) growthFailures.push('⑩ 默契战斗加成未生效')
+  if (growthFailures.length > 0) {
+    console.log('✗ 成长系统未通过:', growthFailures)
+    process.exit(1)
+  }
+  console.log('✓ 成长系统验证通过：经验升级/默契建立/战斗加成按设计工作')
+}
 
 // ============================================================
 // ⑨ 平衡曲线（D13）：指挥机器人在四档操作水平下的胜率窗口

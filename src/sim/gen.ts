@@ -104,6 +104,37 @@ export function levelTo(member: Member, targetLevel: number): void {
   member.hp = maxHpOf(member)
 }
 
+// ===== M1 P0 成长系统 =====
+
+/** 升到下一级所需经验(设计:一整轮险路通关 ≈ 升 1 级) */
+export function xpNeeded(level: number): number {
+  return 200 + level * 60
+}
+
+/** 获得经验,跨阈值自动升级(调用 levelTo,受天性上限约束);返回是否升级 */
+export function grantExp(member: Member, amount: number): boolean {
+  member.exp += amount
+  let leveled = false
+  while (member.level < LEVEL_CAP && member.exp >= xpNeeded(member.level)) {
+    member.exp -= xpNeeded(member.level)
+    levelTo(member, member.level + 1)
+    leveled = true
+  }
+  return leveled
+}
+
+export const LEVEL_CAP = 10
+
+/** 默契星数阈值:共同远征 1/3/6/10 次 = ★~★★★★ */
+export const BOND_STAR_STEPS = [1, 3, 6, 10]
+
+export function bondStars(count: number): number {
+  return BOND_STAR_STEPS.filter((s) => count >= s).length
+}
+
+/** 每颗默契星的伤害加成 */
+export const BOND_MULT_PER_STAR = 0.03
+
 export function maxHpOf(member: Member): number {
   const job = JOBS[member.job]
   const eq = equipmentStats(member.equipment)
@@ -129,6 +160,8 @@ export function generateMember(job: JobId, level: number, seed: number = Date.no
     hp: 0,
     equipment: {},
     alive: true,
+    exp: 0,
+    bonds: {},
   }
   member.attrs = { ...member.nature.base }
   member.hp = maxHpOf(member)

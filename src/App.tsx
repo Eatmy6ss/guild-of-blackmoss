@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { BattleState, DeadHero, ItemInstance, Member, Slot, Stance } from './sim/types'
-import { generateMember, maxHpOf } from './sim/gen'
+import { generateMember, maxHpOf, bondStars, xpNeeded } from './sim/gen'
 import {
   TICK_MS,
   stepBattle,
@@ -18,9 +18,12 @@ import {
   retreatRun,
   resetAfterRun,
   markPermadeath,
+  settleGrowth,
   REST_HEAL_PCT,
   type DungeonRun,
 } from './sim/run'
+import { powerScore } from './sim/combat'
+
 import { rollBossDrops, describeItem, slotsOf } from './sim/loot'
 import { reserveNames } from './sim/gen'
 import { loadGuildSave, saveGuild, clearGuildSave } from './state/save'
@@ -93,6 +96,7 @@ export default function App() {
   const seedRef = useRef((Date.now() % 100000) + 1) // 每次会话不同种子（读档后不复刻上局随机序列）
   const logBoxRef = useRef<HTMLDivElement | null>(null)
   const logPinnedRef = useRef(true) // 战报钉底：用户上滚阅读即放手，滚回底部自动恢复跟随
+  const growthSnapshotRef = useRef<Map<string, { level: number; power: number; bondTotal: number }>>(new Map())
   const eventCursorRef = useRef(0)
   const lastBattleRef = useRef<BattleState | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
@@ -221,6 +225,8 @@ export default function App() {
     advanceRun(r)
     const dead = markPermadeath(r)
     if (dead.length > 0) setMemorial((m) => [...m, ...dead])
+    // M1 P0 成长:经验 + 默契的发放下沉在 sim 层(可被 smoke 直接验证)
+    settleGrowth(r)
   }
 
   const equip = (m: Member, slot: Slot, itemId: string) => {
@@ -268,6 +274,10 @@ export default function App() {
 
   const startExpedition = (branchId: string) => {
     if (expedition.length < 3) return
+    // M1 P0 成长快照:结算页要展示"这把你变强了什么"
+    growthSnapshotRef.current = new Map(
+      expedition.map((m) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s, n) => s + bondStars(n), 0) }]),
+    )
     runRef.current = createRun(
       expedition,
       BLACKMOSS,
@@ -388,6 +398,8 @@ export default function App() {
         <div className="row">
           <span>{attrsLine(m)}</span>
           <span>{personalityLine(m)}</span>
+          <span>战力 {powerScore(m)}</span>
+          <span>经验 {m.exp}/{xpNeeded(m.level)}</span>
         </div>
         <div className="mc-slots">
           {SLOTS.map((slot) => {
@@ -715,6 +727,46 @@ export default function App() {
                     ? '✝ 远征失败——阵亡的英雄已入纪念堂，愿他们安息'
                     : '🏳 已撤退回城'}
               </div>
+              {/* M1 P0 成长结算:这把你变强了什么(出击前快照 vs 现在) */}
+              {(() => {
+                const rows = run!.members.map((m) => {
+                  const snap = growthSnapshotRef.current.get(m.id)
+                  if (!snap) return null
+                  return { m, snap, power: powerScore(m) }
+                })
+                const survivors = run!.members.filter((m) => m.alive)
+                const pairs: { a: string; b: string; stars: number }[] = []
+                for (let i = 0; i < survivors.length; i++) {
+                  for (let j = i + 1; j < survivors.length; j++) {
+                    const stars = bondStars(survivors[i].bonds[survivors[j].id] ?? 0)
+                    if (stars > 0) pairs.push({ a: survivors[i].name, b: survivors[j].name, stars })
+                  }
+                }
+                return (
+                  <div className="inv-panel">
+                    <h2>📈 成长结算</h2>
+                    {rows.map((r) =>
+                      r ? (
+                        <div key={r.m.id} className={`growth-row${r.m.alive ? '' : ' dead'}`}>
+                          <span className="g-name">{r.m.alive ? r.m.name : `⚰ ${r.m.name}`}</span>
+                          <span>Lv{r.snap.level}→{r.m.level}</span>
+                          <span>
+                            战力 {r.snap.power}→{r.power}
+                            {r.power > r.snap.power ? `（+${r.power - r.snap.power}）` : ''}
+                          </span>
+                          <span className="g-exp">经验 {r.m.exp}/{xpNeeded(r.m.level)}</span>
+                        </div>
+                      ) : null,
+                    )}
+                    {pairs.length > 0 && (
+                      <p className="hint">
+                        🤝 默契:{pairs.map((p) => `${p.a} ↔ ${p.b} ${'★'.repeat(p.stars)}`).join('，')}
+                        （同队时每 ★ 全员伤害 +3%）
+                      </p>
+                    )}
+                  </div>
+                )
+              })()}
               <div className="end-actions">
                 <button onClick={backToGuild}>← 返回公会</button>
               </div>

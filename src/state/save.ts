@@ -21,6 +21,8 @@ export function loadGuildSave(): GuildSave | null {
     if (!raw) return null
     const s = JSON.parse(raw) as GuildSave
     if (s?.v !== 1 || !Array.isArray(s.members) || s.members.length === 0) return null
+    // 迁移:M1 前的存档没有 exp/bonds 字段
+    s.members = s.members.map((m) => ({ ...m, exp: m.exp ?? 0, bonds: m.bonds ?? {} }))
     return s
   } catch {
     return null

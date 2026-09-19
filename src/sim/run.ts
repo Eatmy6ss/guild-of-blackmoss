@@ -1,5 +1,6 @@
 import type { BattleState, DeadHero, DungeonDef, Member } from './types'
 import { createBattle, toCombatant } from './combat'
+import { grantExp } from './gen'
 
 // 远征状态机（D7/D11）：岔路 → 逐场战斗 → 血量延续 → 战间歇整 → 通关/团灭/撤退。
 // D11：战斗死亡 = 永久死亡（markPermadeath），纪念堂接收亡者，休整不再复活亡者。
@@ -124,6 +125,35 @@ export function markPermadeath(run: DungeonRun): DeadHero[] {
     }
   }
   return dead
+}
+
+/**
+ * M1 P0 成长发放:胜场经验 + 终局默契。在 advanceRun/markPermadeath 之后调用
+ * (阵亡者被 markPermadeath 划去,天然不参与)。App 的 settleBattleEnd 调用,smoke 可直接测。
+ */
+export function settleGrowth(run: DungeonRun): void {
+  const b = run.battle
+  if (!b) return
+  if (b.status === 'guild-win') {
+    const enc = run.dungeon.encounters.find((e) => e.id === run.steps[run.stepIdx])
+    const exp = enc?.kind === 'boss' ? 170 : 65
+    for (const c of b.combatants) {
+      if (c.team !== 'guild' || !c.alive || !c.memberId) continue
+      const m = run.members.find((x) => x.id === c.memberId)
+      if (m?.alive) grantExp(m, exp)
+    }
+  }
+  if (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated') {
+    const survivors = run.members.filter((m) => m.alive)
+    for (let i = 0; i < survivors.length; i++) {
+      for (let j = i + 1; j < survivors.length; j++) {
+        const p = survivors[i]
+        const q = survivors[j]
+        p.bonds[q.id] = (p.bonds[q.id] ?? 0) + 1
+        q.bonds[p.id] = (q.bonds[p.id] ?? 0) + 1
+      }
+    }
+  }
 }
 
 /** 撤退（休整界面直接回城）：幸存者保留现状 */

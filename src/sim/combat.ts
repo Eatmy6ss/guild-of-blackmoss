@@ -13,6 +13,7 @@ import { JOBS } from '../data/jobs'
 import { processBossMechanics } from './mechanics'
 import { runAutoAI } from './ai'
 import { equipmentStats } from './loot'
+import { bondStars, BOND_MULT_PER_STAR } from './gen'
 
 // 战斗引擎 D8-9 版：威胁表、站位、轻协同、护甲模型 +
 // 团长指挥台（阵型/集火/道具/撤退令）与 boss 机制引擎对接。
@@ -51,6 +52,15 @@ export function pushLog(state: BattleState, kind: LogKind, text: string): void {
   state.log.push({ tick: state.tick, kind, text })
   if (state.log.length > 400) state.log.splice(0, state.log.length - 400)
 }
+
+/** 战力分:装备/等级/默契之外的统一成长读数(单调即可,不求精确) */
+export function powerScore(member: Member): number {
+  const c = toCombatant(member)
+  return Math.round(
+    c.attack * 3 + c.maxHp * 0.4 + c.defense * 4 + c.critChance * 200 + (60 / c.attackInterval) * 2,
+  )
+}
+
 
 export function initCommands(): BattleCommands {
   return {
@@ -169,6 +179,22 @@ export function createBattle(
     }
   }
 
+  // 默契倍率(M1 P0):每个我方成员与其同队成员的两两默契星数求和,每星 +3% 伤害
+  const memberById = new Map(members.map((m) => [m.id, m]))
+  const bondMults: Record<string, number> = {}
+  for (const a of guild) {
+    if (!a.memberId) continue
+    const ma = memberById.get(a.memberId)
+    if (!ma) continue
+    let stars = 0
+    for (const b2 of guild) {
+      if (b2.memberId && b2.memberId !== a.memberId) {
+        stars += bondStars(ma.bonds?.[b2.memberId] ?? 0)
+      }
+    }
+    bondMults[a.id] = 1 + stars * BOND_MULT_PER_STAR
+  }
+
   const state: BattleState = {
     tick: 0,
     combatants,
@@ -179,6 +205,7 @@ export function createBattle(
     commands: initCommands(),
     auraBonus,
     manualBonus,
+    bondMults,
   }
   // 公会层面的撤退保护开关（D13 修复：此前面板开关不生效）——战斗内仍可临时切换
   state.commands.protectRetreat = protectOn
@@ -219,9 +246,10 @@ function effectiveAttack(state: BattleState, c: Combatant): number {
   const fury = c.team === 'guild' && state.commands.furyUntil > state.tick ? FURY_MULT : 1
   const stance = c.team === 'guild' ? STANCE_DMG[state.commands.stance] : 1
   const buff = c.buffUntil && state.tick < c.buffUntil ? (c.buffAttack ?? 0) : 0
-  // 纪念堂光环 + 战术手册（D11）：死者的故事与公会的记忆化作力量
+  // 纪念堂光环 + 战术手册（D11）+ 默契（M1 P0）：死者的故事与公会的羁绊化作力量
   const legacy = c.team === 'guild' ? 1 + (state.auraBonus ?? 0) + (state.manualBonus ?? 0) : 1
-  return (c.attack + buff) * fury * stance * legacy
+  const bond = c.team === 'guild' ? (state.bondMults?.[c.id] ?? 1) : 1
+  return (c.attack + buff) * fury * stance * legacy * bond
 }
 
 function effectiveDefense(state: BattleState, target: Combatant): number {
