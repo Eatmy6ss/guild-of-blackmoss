@@ -6,7 +6,7 @@ import type { DeadHero, ItemInstance, Member } from '../sim/types'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 
 export interface GuildSave {
   version: number
@@ -19,6 +19,8 @@ export interface GuildSave {
   gold: number
   blessing: number
   recruitCooldown: number
+  /** v3:黑苔高塔最高纪录层数 */
+  towerBest: number
 }
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
@@ -30,8 +32,9 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
       exp: m.exp ?? 0,
       bonds: m.bonds ?? {},
     }))
-    return { ...d, members, gold: 150, blessing: 0, recruitCooldown: 0 }
+    return { ...d, members, gold: 150, blessing: 0, recruitCooldown: 0, towerBest: 0 }
   },
+  2: (d) => ({ ...d, towerBest: 0 }),
 }
 
 /** 纯函数迁移:供 loadGuildSave 与 smoke 直接验证 */
@@ -54,7 +57,8 @@ function validate(d: GuildSave): boolean {
     d.members.length > 0 &&
     typeof d.gold === 'number' &&
     typeof d.blessing === 'number' &&
-    typeof d.recruitCooldown === 'number'
+    typeof d.recruitCooldown === 'number' &&
+    typeof d.towerBest === 'number'
   )
 }
 

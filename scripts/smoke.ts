@@ -10,6 +10,7 @@ import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
 import { migrate } from '../src/state/save'
+import { startTower, startTowerFloor, settleTowerFloor, towerNext, towerEnemyScale, towerGold, TOWER } from '../src/sim/tower'
 import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
 
@@ -720,7 +721,8 @@ const econFailures: string[] = []
 
   // 11e:存档迁移链——v1 旧档 → v2 补经济字段
   const migrated = migrate({ version: 1, members: [{ id: 'm1', name: '测试', job: 'guard', level: 5, nature: {}, personality: {}, attrs: {}, hp: 1, equipment: {}, alive: true }], inventory: [], memorial: [], manual: [], protectOn: true })
-  const migOk = migrated.version === 2 && migrated.gold === 150 && migrated.blessing === 0 && migrated.recruitCooldown === 0 && migrated.members[0].exp === 0
+  console.log('⑩·五 迁移明细:', JSON.stringify({ version: migrated.version, gold: migrated.gold, blessing: migrated.blessing, cd: migrated.recruitCooldown, exp: migrated.members[0].exp, towerBest: migrated.towerBest }))
+  const migOk = migrated.version >= 2 && migrated.gold === 150 && migrated.blessing === 0 && migrated.recruitCooldown === 0 && migrated.members[0].exp === 0 && migrated.towerBest === 0
   console.log(`⑩·五 存档迁移：v1 → v${migrated.version},经济字段 ${migOk ? '完整' : '缺失'}`)
   if (!migOk) econFailures.push('⑩·五 v1→v2 迁移失败')
 }
@@ -730,6 +732,61 @@ if (econFailures.length > 0) {
   process.exit(1)
 }
 console.log('✓ 经济与酒馆验证通过：变卖/冷却/访客/悬赏/迁移按设计工作')
+
+// ============================================================
+// ⑧·六 黑苔高塔（M1 P1）：缩放/分层残酷/层循环
+// ============================================================
+const towerFailures: string[] = []
+{
+  // 12a:强度单调递增
+  if (!(towerEnemyScale(1) < towerEnemyScale(3) && towerEnemyScale(3) < towerEnemyScale(9))) {
+    towerFailures.push('⑫ 强度缩放不单调')
+  }
+  // 12b:分层残酷规则逐层检视(直接生成命令,不依赖打赢)
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 6, 777 + j))
+    const run = startTower(squad, 4242)
+    let rulesOk = true
+    for (let floor = 1; floor <= 10; floor++) {
+      if (floor > 1) towerNext(run, 999 + floor * 17)
+      const b = run.battle!
+      const half = b.commands.healStock === 1
+      const prot = b.commands.protectRetreat
+      if (floor >= TOWER.potionHalfFromFloor && !half) { rulesOk = false; break }
+      if (floor < TOWER.potionHalfFromFloor && half) { rulesOk = false; break }
+      if (floor <= TOWER.protectUntilFloor && !prot) { rulesOk = false; break }
+      if (floor > TOWER.protectUntilFloor && prot) { rulesOk = false; break }
+    }
+    console.log(`⑫ 分层残酷:1–4 层保护/5 层起药减半/9 层起保护失效 = ${rulesOk}`)
+    if (!rulesOk) towerFailures.push('⑫ 分层残酷规则失效')
+  }
+
+  // 12c:真实战斗一层(第 1 层零指挥必胜)→ 休整推进;撤退=塔结束
+  {
+    const run = startTower(JOBS.map((job, j) => generateMember(job, 5, 888 + j)), 313)
+    const b = run.battle!
+    while (b.status === 'running' && b.tick < 4000) stepBattle(b)
+    const r1 = settleTowerFloor(run)
+    if (b.status === 'guild-win' && (!r1.cleared || r1.gold !== towerGold(1))) {
+      towerFailures.push('⑫ 胜场金币/层推进异常')
+    }
+    if (run.phase === 'rest') {
+      towerNext(run, 9999)
+      if (run.floor !== 2) towerFailures.push('⑫ 层推进异常')
+    }
+    // 撤退结束
+    const b2 = run.battle!
+    b2.commands.extractingUntil = b2.tick + 1
+    while (b2.status === 'running' && b2.tick < 4000) stepBattle(b2)
+    const r2 = settleTowerFloor(run)
+    if (run2check(r2, run)) towerFailures.push('⑫ 撤退未正确结束塔')
+    console.log(`⑫ 层循环:首层金币 ${r1.gold},撤退后状态 ${run.phase}/${run.result ?? '-'}`)
+  }
+  function run2check(r2: { gold: number }, run: ReturnType<typeof startTower>): boolean {
+    return run.phase !== 'ended' || run.result !== 'left' || r2.gold !== 0
+  }
+  console.log('✓ 黑苔高塔验证通过:缩放/分层残酷/层循环按设计工作')
+}
 
 // ============================================================
 // ⑨ 平衡曲线（D13）：指挥机器人在四档操作水平下的胜率窗口

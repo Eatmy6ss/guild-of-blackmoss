@@ -17,6 +17,8 @@ export interface GuildSnapshot {
   inventory: ItemInstance[]
   manual: string[]
   expedition: Member[]
+  /** 黑苔高塔最高纪录层数(无塔进度则 0) */
+  towerBest?: number
 }
 
 export function guildGoals(s: GuildSnapshot): GuildGoal[] {

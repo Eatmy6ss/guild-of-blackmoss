@@ -30,6 +30,7 @@ import { loadGuildSave, saveGuild, clearGuildSave } from './state/save'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin } from './ui/audio'
 import { BLACKMOSS } from './data/dungeons'
+import { startTower, settleTowerFloor, towerRest, towerNext, towerMarkPermadeath, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { ECONOMY } from './data/economy'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded } from './sim/tavern'
 import { JOBS } from './data/jobs'
@@ -91,6 +92,8 @@ export default function App() {
   const [blessing, setBlessing] = useState(() => saved?.blessing ?? 0)
   const [recruitCooldown, setRecruitCooldown] = useState(() => saved?.recruitCooldown ?? 0)
   const [visitor, setVisitor] = useState<ReturnType<typeof rollVisitor> | null>(null)
+  const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
+  const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
 
   // 读档登记已用名字：新招募不与存档英雄/英灵重名
   useEffect(() => {
@@ -160,13 +163,41 @@ export default function App() {
     else setBattle(null)
   }
 
+  // 塔层结算(M1 P1):阵亡全款登记/金币入账/最高层记录/层推进。幂等:phase 守卫。
+  useEffect(() => {
+    const t = towerRunRef.current
+    const b = t?.battle
+    if (!t || !b || t.phase !== 'battle') return
+    if (b.status === 'running') return
+    const dead = towerMarkPermadeath(t, '黑苔高塔')
+    if (dead.length > 0) {
+      setMemorial((m) => [...m, ...dead])
+      setBlessing((b2) => b2 + dead.length * ECONOMY.blessingPerDeath)
+      setMembers([...membersRef.current])
+    }
+    const { gold } = settleTowerFloor(t)
+    if (gold > 0) setGold((g) => g + gold)
+    const endPhase = t.phase as TowerRun['phase']
+    if (endPhase === 'rest') {
+      setTowerBest((best) => Math.max(best, t.floor))
+      setTowerRunning(false)
+      setTowerRun({ ...t })
+    } else {
+      setTowerRunning(false)
+      setTowerRun({ ...t })
+    }
+    drainAndSync(b)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [towerRun?.battle?.status])
+
   // 公会阶段自动落盘;远征进行中(战斗/休整)跳过。
   // 结算页(victory/defeat/retreated)是安全边界:成长必须在结算时落盘,
   // 否则玩家在结算页关页会丢掉这把的成长(save-systems:安全边界自动存档)。
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, run])
+    if (towerRun && towerRun.phase !== 'ended') return
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -423,6 +454,53 @@ export default function App() {
     setInventory((inv) => inv.filter((i) => i.id !== id))
   }
 
+  // ---- M1 P1 黑苔高塔 ----
+  const towerRunRef = useRef<TowerRun | null>(null)
+  const [towerRunning, setTowerRunning] = useState(false)
+
+  const enterTower = () => {
+    if (runRef.current || towerRunRef.current || expedition.length < 3) return
+    const t = startTower(expedition, ++seedRef.current * 9973)
+    towerRunRef.current = t
+    setTowerRun({ ...t })
+    setTowerRunning(true)
+    setBattle(null)
+    lastBattleRef.current = null
+    drainAndSync(t.battle!)
+  }
+
+  const cmdTower = (fn: (b: BattleState) => void, force = false) => {
+    const b = towerRunRef.current?.battle
+    if (!b) return
+    if (b.status === 'running') {
+      if (b.commands.autoMode && !force) return
+      fn(b)
+    }
+    drainAndSync(b)
+  }
+
+  const towerNextFloor = () => {
+    const t = towerRunRef.current
+    if (!t || t.phase !== 'rest') return
+    towerRest(t)
+    towerNext(t, ++seedRef.current * 9973)
+    setTowerRun({ ...t })
+    setTowerRunning(true)
+    setBattle(null)
+    lastBattleRef.current = null
+    drainAndSync(t.battle!)
+  }
+
+  const leaveTower = () => {
+    towerRunRef.current = null
+    setTowerRun(null)
+    setTowerRunning(false)
+    setBattle(null)
+    lastBattleRef.current = null
+    rendererRef.current?.reset()
+    setMembers([...membersRef.current])
+  }
+
   const stepTen = () => {
     const b = runRef.current?.battle
     if (!b || b.status !== 'running') return
@@ -450,6 +528,8 @@ export default function App() {
   // ---- 派生状态 ----
   // 紧急招募:人手不足时免冷却(防软锁)
   const effectiveCooldown = members.filter((m) => m.alive).length < 3 ? 0 : recruitCooldown
+  const towerUnlocked = manual.includes('talma')
+  const inTowerBattle = towerRun?.phase === 'battle' && towerRun.battle != null
   const inBattle = run?.phase === 'battle' && battle != null
   const battleOver = inBattle && battle!.status !== 'running'
   const finished = run != null && (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated')
@@ -551,7 +631,7 @@ export default function App() {
       </button>
       <div className="app-header">
         <h1>guild-game</h1>
-        <span className="slice-tag">M0 · D14 验收版 —— 会话存档 · 首杀保底 · 技能曲线已锁定</span>
+        <span className="slice-tag">M1 · 高塔版 —— 爬塔 / 招募三路径 / 成长 / 演出</span>
       </div>
       <div className="layout">
         <div className="panel">
@@ -723,7 +803,7 @@ export default function App() {
 
         <div className="panel">
           {/* 舞台常驻：渲染器挂载一次，非战斗阶段隐藏（避免 ref 为 null 导致挂载失败） */}
-          <div className="stage" ref={stageRef} style={{ display: inBattle ? undefined : 'none' }} />
+          <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }} />
 
           {!run && (
             <>
@@ -733,7 +813,7 @@ export default function App() {
                 <b style={{ color: '#d48f8f' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
               </p>
               {(() => {
-                const goals = guildGoals({ members, inventory, manual, expedition })
+                const goals = guildGoals({ members, inventory, manual, expedition, towerBest })
                 const currentIdx = goals.findIndex((g) => !g.done)
                 return (
                   <div className="inv-panel goals-panel">
@@ -764,6 +844,20 @@ export default function App() {
                     : ''}
                 </p>
               )}
+              <div className="inv-panel tower-entry">
+                <h2>🗼 黑苔高塔 —— 最高纪录 第 {towerBest} 层</h2>
+                <p className="hint">
+                  逐层深入，敌人逐层变强；每 3 层遭遇守塔 boss。第 5 层起药水减半，
+                  <b style={{ color: '#d48f8f' }}>第 9 层起撤退保护失效</b>。奖励逐层立即入账，随时可带着离开。
+                </p>
+                {towerUnlocked ? (
+                  <button className="branch-btn" disabled={!canExpedition} onClick={enterTower}>
+                    🗼 进入高塔（从第 1 层开始）
+                  </button>
+                ) : (
+                  <p className="hint">🔒 击败深渊祭司·塔尔玛后解锁</p>
+                )}
+              </div>
             </>
           )}
 
@@ -907,6 +1001,88 @@ export default function App() {
                   ))}
                 </div>
               )}
+            </>
+          )}
+
+          {towerRun?.phase === 'battle' && battle && (
+            <>
+              <h2>🗼 黑苔高塔 · 第 {towerRun.floor} 层{towerFloorIsBoss(towerRun.floor) ? '（守塔者）' : ''}</h2>
+              <div className="cmd-bar">
+                <button
+                  className={battle.commands.autoMode ? 'active' : ''}
+                  onClick={() => cmdTower((b) => { b.commands.autoMode = !b.commands.autoMode }, true)}
+                >
+                  🤖 挂机{battle.commands.autoMode ? '中（队长代打）' : ''}
+                </button>
+                <span className="cmd-label">│</span>
+                <span className="cmd-label">阵型</span>
+                {(Object.keys(STANCE_NAME) as Stance[]).map((st) => (
+                  <button
+                    key={st}
+                    className={battle.commands.stance === st ? 'active' : ''}
+                    disabled={battle.commands.autoMode}
+                    onClick={() => cmdTower((b) => setStance(b, st))}
+                  >
+                    {STANCE_NAME[st]}
+                  </button>
+                ))}
+                <span className="cmd-label">│</span>
+                <button
+                  onClick={() => cmdTower((b) => useHealPotion(b))}
+                  disabled={battle.commands.autoMode || battle.commands.healStock <= 0 || battle.commands.healCd > 0}
+                >
+                  💊 {battle.commands.healStock}
+                </button>
+                <button
+                  onClick={() => cmdTower((b) => useFuryPotion(b))}
+                  disabled={battle.commands.autoMode || battle.commands.furyStock <= 0 || battle.commands.furyCd > 0}
+                >
+                  ⚡ {battle.commands.furyStock}
+                </button>
+                <button className="focus-tag" onClick={() => cmdTower((b) => orderRetreat(b))}>🏳 撤退令</button>
+              </div>
+              <div className="enc-row">
+                <button onClick={() => setTowerRunning((r) => !r)} disabled={battle.status !== 'running'}>
+                  {towerRunning ? '⏸ 暂停' : '⏵ 继续'}
+                </button>
+                <span className="tick-info">tick {battle.tick}</span>
+                <span className="tick-info">· 塔内金币已入账 {towerRun.goldEarned}</span>
+              </div>
+              <div className="log-box">
+                {battle.log.map((entry, i) => (
+                  <div key={i} className={`log-${entry.kind}`}>
+                    <span className="log-tick">[{entry.tick}]</span>
+                    {entry.text}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {towerRun && towerRun.phase === 'rest' && (
+            <>
+              <h2>🗼 第 {towerRun.floor} 层突破</h2>
+              <div className="result-banner win">
+                幸存者回复 20% 生命。第 9 层起撤退保护失效——量力而行。
+              </div>
+              <div className="end-actions">
+                <button onClick={towerNextFloor}>⬆ 深入第 {towerRun.floor + 1} 层</button>
+                <button onClick={leaveTower}>🏰 带着奖励离开</button>
+              </div>
+            </>
+          )}
+
+          {towerRun && towerRun.phase === 'ended' && (
+            <>
+              <h2>塔内征程结束</h2>
+              <div className={`result-banner ${towerRun.result === 'defeated' ? 'wipe' : 'win'}`}>
+                {towerRun.result === 'defeated'
+                  ? '✝ 高塔吞没了远征队——已得奖励保留，阵亡者入纪念堂'
+                  : '🏰 你带着收获离开了高塔'}
+              </div>
+              <div className="end-actions">
+                <button onClick={leaveTower}>← 返回公会</button>
+              </div>
             </>
           )}
 
