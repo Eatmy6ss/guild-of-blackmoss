@@ -241,5 +241,6 @@ export const UNIT_SPRITES: Record<string, PixelDef> = {
 export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; name?: string }): string {
   if (c.boss) return c.name?.includes('塔尔玛') ? 'talma' : 'ogre'
   if (c.team === 'enemy') return c.name?.includes('狼') ? 'wolf' : 'frog'
-  return (c.role ?? 'ranger') as string
+  const ROLE_KEY: Record<string, string> = { tank: 'guard', healer: 'priest', dps: 'ranger' }
+  return ROLE_KEY[c.role ?? 'dps'] ?? 'ranger'
 }
