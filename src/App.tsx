@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames } from './sim/gen'
+import { guildGoals } from './sim/goals'
 import {
   TICK_MS,
   stepBattle,
@@ -731,6 +732,21 @@ export default function App() {
                 选择路线：险路战斗更多、收获机会更多；稳路少打一场杂兵。血量全程延续，
                 <b style={{ color: '#d48f8f' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
               </p>
+              {(() => {
+                const goals = guildGoals({ members, inventory, manual, expedition })
+                const currentIdx = goals.findIndex((g) => !g.done)
+                return (
+                  <div className="inv-panel goals-panel">
+                    <h2>📋 公会目标{currentIdx >= 0 ? ` —— 当前:${goals[currentIdx].text}` : ' —— 全部达成!'}</h2>
+                    {goals.map((g, i) => (
+                      <div key={g.id} className={`goal-row ${g.done ? 'done' : i === currentIdx ? 'current' : ''}`}>
+                        <span className="goal-mark">{g.done ? '✓' : i === currentIdx ? '▶' : '○'}</span>
+                        <span>{g.text}{g.progress ? `(${g.progress})` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
               {BLACKMOSS.branches.map((br) => (
                 <button
                   key={br.id}
