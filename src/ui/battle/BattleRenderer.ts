@@ -1,5 +1,6 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text } from 'pixi.js'
 import { pixelTexture, spriteKeyFor } from './pixelSprites'
+import { sfxHit, sfxCrit, sfxDeath } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
 
@@ -80,7 +81,7 @@ class UnitView {
     this.hpFill = new Graphics()
     const nameText = new Text({
       text: combatant.name,
-      style: { fontFamily: 'sans-serif', fontSize: 9, fill: 0x9aa3b5 },
+      style: { fontFamily: 'Fusion Pixel 12px Proportional SC', fontSize: 9, fill: 0x9aa3b5 },
     })
     nameText.anchor.set(0.5)
     nameText.position.set(0, -42)
@@ -286,6 +287,7 @@ export class BattleRenderer {
       const target = this.units.get(ev.targetId)
       if (!target) continue
       if (ev.type === 'death') {
+        sfxDeath()
         this.spawnFall(target)
         this.spawnDeathBurst(target)
         this.hitStop(110)
@@ -334,8 +336,11 @@ export class BattleRenderer {
       const size = ev.crit ? 18 : 12
       const tier: JuiceTier = ev.crit ? 'medium' : 'small'
       if (ev.crit) {
+        sfxCrit()
         this.spawnRing(target)
         this.hitStop(70)
+      } else {
+        sfxHit()
       }
       if (ev.ranged && attacker) {
         this.spawnProjectile(attacker, target, () => {

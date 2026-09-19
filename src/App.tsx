@@ -27,6 +27,7 @@ import { powerScore } from './sim/combat'
 import { rollBossDrops, describeItem, slotsOf } from './sim/loot'
 import { loadGuildSave, saveGuild, clearGuildSave } from './state/save'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
+import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin } from './ui/audio'
 import { BLACKMOSS } from './data/dungeons'
 import { ECONOMY } from './data/economy'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded } from './sim/tavern'
@@ -83,6 +84,8 @@ export default function App() {
   const [manual, setManual] = useState<string[]>(() => saved?.manual ?? [])
   const [protectOn, setProtectOn] = useState(() => saved?.protectOn ?? true)
   const [candidates, setCandidates] = useState<Member[]>([])
+  const [screen, setScreen] = useState<'title' | 'game'>('title')
+  const [muted, setMuted] = useState(isMuted())
   const [gold, setGold] = useState(() => saved?.gold ?? 150)
   const [blessing, setBlessing] = useState(() => saved?.blessing ?? 0)
   const [recruitCooldown, setRecruitCooldown] = useState(() => saved?.recruitCooldown ?? 0)
@@ -242,7 +245,8 @@ export default function App() {
       setGold((g) => g + (enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave))
     }
     const endPhase = r.phase as DungeonRun['phase']
-    if (endPhase === 'victory') setGold((g) => g + ECONOMY.clearBonus)
+    if (endPhase === 'victory') { setGold((g) => g + ECONOMY.clearBonus); sfxVictory() }
+    if (endPhase === 'defeat') sfxDefeat()
     if (dead.length > 0) setBlessing((b2) => b2 + dead.length * ECONOMY.blessingPerDeath)
     setRecruitCooldown((c) => Math.max(0, c - 1))
   }
@@ -391,7 +395,7 @@ export default function App() {
   const sellItem = (id: string) => {
     const item = inventory.find((i) => i.id === id)
     if (!item) return
-    setGold((g) => g + sellValue(item))
+    setGold((g) => g + sellValue(item)); sfxCoin()
     setInventory((inv) => inv.filter((i) => i.id !== id))
   }
 
@@ -482,6 +486,38 @@ export default function App() {
 
   return (
     <div>
+      {screen === 'title' && (
+        <div className="title-overlay">
+          <div className="title-logo">黑苔公会</div>
+          <div className="title-sub">GUILD OF BLACKMOSS</div>
+          <div className="title-tagline">英雄会死，故事不会。</div>
+          <div className="title-actions">
+            <button onClick={() => { initAudio(); setScreen('game') }}>
+              {saved ? '▶ 继续旅程' : '▶ 开始新公会'}
+            </button>
+            {saved && (
+              <button
+                onClick={() => {
+                  if (!window.confirm('重新开始将清空当前进度，确定？')) return
+                  initAudio()
+                  clearGuildSave()
+                  restartGuild()
+                  setScreen('game')
+                }}
+              >
+                ✦ 开始新公会
+              </button>
+            )}
+          </div>
+          <div className="title-foot">M1 · 内部构建 · 暂定名《黑苔公会》</div>
+        </div>
+      )}
+      <button
+        className="mute-btn"
+        onClick={() => { initAudio(); setMuted(toggleMute()) }}
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
       <div className="app-header">
         <h1>guild-game</h1>
         <span className="slice-tag">M0 · D14 验收版 —— 会话存档 · 首杀保底 · 技能曲线已锁定</span>
