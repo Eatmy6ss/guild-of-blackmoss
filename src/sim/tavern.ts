@@ -16,9 +16,10 @@ export function sellValue(item: ItemInstance): number {
   return ECONOMY.sell.perTier * tier + item.rolls.length * ECONOMY.sell.perRoll
 }
 
-/** 招募冷却:招募一位后需完成的远征次数;存活不足时减半(防软锁) */
+/** 招募冷却:招募一位后需完成的远征次数。人手不足(<3,凑不齐远征队)时为 0——
+ * 紧急招募免冷却,否则 2 人+冷却=永久卡死(实测抓到的软锁) */
 export function cooldownNeeded(aliveCount: number): number {
-  return aliveCount < 3 ? ECONOMY.cooldownRunsWhenShorthanded : ECONOMY.cooldownRuns
+  return aliveCount < 3 ? 0 : ECONOMY.cooldownRuns
 }
 
 /** 平均远征等级(候选等级的锚点) */

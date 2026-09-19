@@ -694,7 +694,7 @@ const econFailures: string[] = []
   if (sellValue(pricey) <= sellValue(cheap)) econFailures.push('⑪ 变卖价未随品质单调')
 
   // 11b:冷却防软锁——存活充足 2 场,人手不足减半 1 场
-  if (cooldownNeeded(4) !== 2 || cooldownNeeded(2) !== 1) econFailures.push('⑪ 冷却规则失效')
+  if (cooldownNeeded(4) !== 2 || cooldownNeeded(2) !== 0) econFailures.push('⑪ 冷却规则失效(人手不足必须免冷却防软锁)')
 
   // 11c:访客生成 30 次——合法职业/等级/故事非空
   let badVisitor = 0

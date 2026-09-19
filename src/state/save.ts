@@ -72,6 +72,8 @@ export function loadGuildSave(): GuildSave | null {
 
 export function saveGuild(s: Omit<GuildSave, 'version'>): void {
   try {
+    const prev = localStorage.getItem(KEY)
+    if (prev) localStorage.setItem(KEY + '.bak', prev) // 上一份好存档做备份,写坏可回退
     localStorage.setItem(KEY, JSON.stringify({ ...s, version: SAVE_VERSION }))
   } catch {
     // 隐私模式等存储不可用:静默降级为无存档

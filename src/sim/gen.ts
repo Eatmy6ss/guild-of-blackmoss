@@ -41,6 +41,16 @@ export function reserveNames(names: string[]): void {
   for (const n of names) if (n) usedNames.add(n)
 }
 
+/** 读档后重置成员 ID 计数器:存档里的 m1 与新招募的 m1 会撞号(血量写回/默契/战斗关联全串位) */
+export function seedMemberSeq(members: Member[]): void {
+  let max = 0
+  for (const m of members) {
+    const n = Number(m.id.replace(/^m/, ''))
+    if (Number.isFinite(n) && n > max) max = n
+  }
+  memberSeq = Math.max(memberSeq, max)
+}
+
 function hashStr(s: string): number {
   let h = 0
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0

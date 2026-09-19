@@ -1,4 +1,5 @@
-import { Application, Container, Graphics, Rectangle, Text } from 'pixi.js'
+import { Application, Container, Graphics, Rectangle, Sprite, Text } from 'pixi.js'
+import { pixelTexture, spriteKeyFor } from './pixelSprites'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
 
@@ -54,7 +55,8 @@ class UnitView {
   baseScale: number
   /** 动画占用计数（突进/形变/倒地可叠加，全部结束才恢复回位插值） */
   lockCount = 0
-  body: Graphics
+  body: Sprite
+  bobPhase: number
   nameText: Text
   /** 单位被点击（指挥台：点击敌人 = 集火） */
   onClick?: (c: Combatant) => void
@@ -63,19 +65,16 @@ class UnitView {
 
   constructor(public combatant: Combatant, x: number, y: number) {
     this.slot = { x, y }
-    const color = unitColor(combatant)
     this.hpColor = combatant.team === 'guild' ? COL.hpGuild : COL.hpEnemy
     this.baseScale = combatant.boss ? 1.5 : 1
 
-    const body = new Graphics()
-    body.roundRect(-6, -26, 12, 10, 2).fill(color) // 头
-    body.roundRect(-8, -16, 16, 13, 2).fill(color) // 躯干
-    body.roundRect(-6, -3, 5, 8, 1).fill(color) // 左腿
-    body.roundRect(1, -3, 5, 8, 1).fill(color) // 右腿
-    if (combatant.role === 'tank') {
-      body.roundRect(-11, -14, 4, 11, 1).fill(0x8fb7e8) // 盾
-    }
+    // M1 演出验证:像素精灵(换皮只换 pixelSprites.ts 的像素图与调色板)
+    const body = new Sprite(pixelTexture(spriteKeyFor(combatant)))
+    body.anchor.set(0.5, 1)
+    body.scale.set(2)
+    body.position.set(0, 6)
     this.body = body
+    this.bobPhase = Math.random() * Math.PI * 2
     const hpBg = new Graphics()
     hpBg.roundRect(-16, -34, 32, 4, 2).fill(0x262b38)
     this.hpFill = new Graphics()
@@ -288,6 +287,8 @@ export class BattleRenderer {
       if (!target) continue
       if (ev.type === 'death') {
         this.spawnFall(target)
+        this.spawnDeathBurst(target)
+        this.hitStop(110)
         this.addTrauma(TRAUMA_BY_TIER.large)
         continue
       }
@@ -330,8 +331,12 @@ export class BattleRenderer {
       }
       const text = `${ev.amount}${ev.crit ? '!' : ''}`
       const color = ev.crit ? COL.dmgCrit : COL.dmgNormal
-      const size = ev.crit ? 16 : 12
+      const size = ev.crit ? 18 : 12
       const tier: JuiceTier = ev.crit ? 'medium' : 'small'
+      if (ev.crit) {
+        this.spawnRing(target)
+        this.hitStop(70)
+      }
       if (ev.ranged && attacker) {
         this.spawnProjectile(attacker, target, () => {
           this.spawnFloat(target, text, color, size)
@@ -340,6 +345,7 @@ export class BattleRenderer {
         })
       } else {
         if (attacker) this.spawnLunge(attacker, target)
+        if (attacker) this.spawnSlash(target, attacker)
         this.spawnFloat(target, text, color, size)
         this.spawnPunch(target)
         this.spawnFlash(target)
@@ -465,6 +471,88 @@ export class BattleRenderer {
     })
   }
 
+  /** 近战挥砍弧光:朝向攻击者的弧线扫过并消散 */
+  private spawnSlash(target: UnitView, attacker: UnitView): void {
+    const g = new Graphics()
+    g.position.set(target.container.x, target.container.y - 12)
+    const base = Math.atan2(attacker.container.y - target.container.y, attacker.container.x - target.container.x)
+    const color = attacker.combatant.team === 'guild' ? COL.projectileGuild : COL.projectileEnemy
+    this.root.addChild(g)
+    let t = 0
+    const dur = 130
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        g.clear()
+        g.arc(0, 0, 14 + p * 6, base - 0.8, base - 0.8 + 1.6 * (0.3 + p * 0.7))
+          .stroke({ width: 3, color, alpha: 0.85 * (1 - p) })
+        if (p >= 1) {
+          g.removeFromParent()
+          g.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  /** 死亡粒子:单位颜色的像素碎片向上抛洒,受重力坠落 */
+  private spawnDeathBurst(u: UnitView): void {
+    const color = unitColor(u.combatant)
+    for (let i = 0; i < 10; i++) {
+      const g = new Graphics()
+      g.rect(-1.5, -1.5, 3, 3).fill(color)
+      g.position.set(u.container.x + (Math.random() * 10 - 5), u.container.y - 14)
+      this.root.addChild(g)
+      const vx = Math.random() * 240 - 120
+      const vy = -(60 + Math.random() * 140)
+      let t = 0
+      const dur = 520
+      this.effects.push({
+        update: (dt) => {
+          t += dt
+          const s = t / 1000
+          g.position.set(
+            g.position.x + vx * (dt / 1000),
+            g.position.y + vy * (dt / 1000) + 420 * s * (dt / 1000),
+          )
+          g.alpha = 1 - t / dur
+          g.rotation += dt / 100
+          if (t >= dur) {
+            g.removeFromParent()
+            g.destroy()
+            return false
+          }
+          return true
+        },
+      })
+    }
+  }
+
+  /** 暴击冲击环:扩张圆环快闪 */
+  private spawnRing(u: UnitView): void {
+    const g = new Graphics()
+    g.position.set(u.container.x, u.container.y - 14)
+    this.root.addChild(g)
+    let t = 0
+    const dur = 240
+    this.effects.push({
+      update: (dt) => {
+        t += dt
+        const p = Math.min(t / dur, 1)
+        g.clear()
+        g.circle(0, 0, 8 + p * 26).stroke({ width: 3 * (1 - p) + 1, color: 0xffa94d, alpha: 0.9 * (1 - p) })
+        if (p >= 1) {
+          g.removeFromParent()
+          g.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
   /** boss 蓄力预警：脚下红圈脉动，持续到机制结算 */  private spawnTelegraph(u: UnitView, durTicks: number): void {
     const g = new Graphics()
     g.ellipse(0, 8, 40 * u.baseScale, 15 * u.baseScale)
@@ -567,16 +655,26 @@ export class BattleRenderer {
 
   // ---- 帧循环 ----
 
+  /** 命中停顿(game-feel:真实时间恢复,只放慢演出,永不触碰模拟层) */
+  private hitStopUntil = 0
+  private hitStop(ms: number): void {
+    this.hitStopUntil = Math.max(this.hitStopUntil, performance.now() + ms)
+  }
+
   private tick(dtMs: number): void {
-    // 钳制单帧 dt：rAF 恢复后的追赶帧不允许一步跳完动画
-    const dt = Math.min(dtMs, 100)
+    // 钳制单帧 dt：rAF 恢复后的追赶帧不允许一步跳完动画;hit-stop 期间演出放慢 94%
+    let dt = Math.min(dtMs, 100)
+    if (performance.now() < this.hitStopUntil) dt *= 0.06
     this.lastTickAt = performance.now()
     const k = 1 - Math.exp(-dt / 80)
+    const nowT = performance.now()
     for (const u of this.units.values()) {
       // 死亡单位永久退出回位插值：尸体留在倒下的地方，绝不拖拽滑动
       if (u.lockCount > 0 || !u.combatant.alive) continue
       u.container.x += (u.slot.x - u.container.x) * k
       u.container.y += (u.slot.y - u.container.y) * k
+      // 待机呼吸:像素小人轻轻起伏(活着才有生命)
+      u.body.y = 6 + Math.sin(nowT / 320 + u.bobPhase) * 1.2
     }
     // 手动循环而非 filter：弹道命中的 onHit 会在迭代期间向 this.effects
     // 推入新效果——filter 按初始长度迭代，会把它们遗弃在旧数组里永不更新
