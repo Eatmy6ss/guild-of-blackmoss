@@ -211,11 +211,34 @@ export default function App() {
   }, [battle?.status])
 
   // 远征队 = 花名册前三名幸存者（D11：亡者由招募补位）
-  const expedition = members.filter((m) => m.alive).slice(0, 3)
-  const expeditionRef = useRef(expedition)
+  // M1 P0:出征队编组——显式编入/替补,不再固定'花名册前三个'
+  const [expeditionIds, setExpeditionIds] = useState<string[]>([])
+  const expedition = (() => {
+    const byId = new Map(members.map((m) => [m.id, m]))
+    return expeditionIds.map((id) => byId.get(id)).filter((m): m is Member => !!m && m.alive)
+  })()
   useEffect(() => {
-    expeditionRef.current = expedition
+    // 初次加载/远征减员后:自动补齐到 3 人(花名册顺序),保证随时可以出击
+    setExpeditionIds((ids) => {
+      const aliveIds = members.filter((m) => m.alive).map((m) => m.id)
+      const kept = ids.filter((id) => aliveIds.includes(id))
+      if (kept.length >= 3) return kept
+      return [...kept, ...aliveIds.filter((id) => !kept.includes(id))].slice(0, 3)
+    })
   }, [members])
+  const enterExpedition = (id: string) => {
+    if (runRef.current) return
+    setExpeditionIds((ids) => {
+      const aliveIds = members.filter((m) => m.alive).map((m) => m.id)
+      const kept = ids.filter((x) => x !== id && aliveIds.includes(x))
+      if (kept.length >= 3) return [...kept.slice(0, 2), id] // 满员时编入=换下最后一位
+      return [...kept, id]
+    })
+  }
+  const leaveExpedition = (id: string) => {
+    if (runRef.current) return
+    setExpeditionIds((ids) => ids.filter((x) => x !== id))
+  }
 
   // 战斗终局结算：boss 击杀 roll 掉落 + 手册研习 + 永久死亡登记 + 推进远征。
   // 幂等：phase === 'battle' 表示尚未结算（D13 修复——×10 步进跳过终态时不再软锁）。
@@ -435,7 +458,7 @@ export default function App() {
     const c = battle?.combatants.find((x) => x.memberId === m.id)
     const hp = c ? c.hp : m.hp
     const max = c ? c.maxHp : maxHpOf(m)
-    const onExpedition = run != null && run.members.includes(m)
+    const onExpedition = run != null ? run.members.includes(m) : expedition.includes(m)
     return (
       <div key={m.id} className="member-card">
         <div className="mc-head">
@@ -454,6 +477,13 @@ export default function App() {
           <span>{personalityLine(m)}</span>
           <span>战力 {powerScore(m)}</span>
           <span>经验 {m.exp}/{xpNeeded(m.level)}</span>
+          {!run && m.alive && (
+            expeditionIds.includes(m.id) ? (
+              <button className="mini-btn" onClick={() => leaveExpedition(m.id)}>▼ 替补</button>
+            ) : (
+              <button className="mini-btn" onClick={() => enterExpedition(m.id)}>▲ 编入</button>
+            )
+          )}
         </div>
         <div className="mc-slots">
           {SLOTS.map((slot) => {
@@ -528,7 +558,8 @@ export default function App() {
             公会花名册（{members.filter((m) => m.alive).length} 人存活）
             {run ? ' · 远征中' : ''}
           </h2>
-          {expedition.map(memberCard)}
+          {/* 全部存活成员可见:出征队带 ⚔ 标记,替补可编入(M1 P0 编组) */}
+          {members.filter((m) => m.alive).map(memberCard)}
           <div className="end-actions">
             <button onClick={restartGuild}>☠ 重开公会</button>
           </div>

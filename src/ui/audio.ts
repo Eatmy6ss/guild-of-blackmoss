@@ -22,10 +22,10 @@ export function initAudio(): void {
   master.gain.value = muted ? 0 : 0.5
   master.connect(ctx.destination)
   musicBus = ctx.createGain()
-  musicBus.gain.value = 0.3
+  musicBus.gain.value = 0.16
   musicBus.connect(master)
   sfxBus = ctx.createGain()
-  sfxBus.gain.value = 0.5
+  sfxBus.gain.value = 0.62
   sfxBus.connect(master)
   // 噪声缓冲(SFX 共用)
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate)
@@ -147,6 +147,8 @@ function startBgm(): void {
     if (!ctx || !musicBus) return
     // lookahead 调度:每次排进 0.3s 的音符(audio-design:按音频时钟排,不按帧)
     while (nextTime < ctx.currentTime + 0.3) {
+      // 掉队钳制:标签页节流/挂起后直接跳到当前,不追帧(追帧 = 积压音符齐响,像两首 BGM 叠放)
+      if (nextTime < ctx.currentTime - 0.02) nextTime = ctx.currentTime + 0.02
       const m = MELODY[bgmStep % MELODY.length]
       const b = BASS[bgmStep % BASS.length]
       if (m) {
@@ -154,7 +156,7 @@ function startBgm(): void {
         const g = ctx.createGain()
         osc.type = 'square'
         osc.frequency.value = m
-        g.gain.setValueAtTime(0.045, nextTime)
+        g.gain.setValueAtTime(0.035, nextTime)
         g.gain.exponentialRampToValueAtTime(0.001, nextTime + stepDur * 0.9)
         osc.connect(g).connect(musicBus)
         osc.start(nextTime)
@@ -165,7 +167,7 @@ function startBgm(): void {
         const g = ctx.createGain()
         osc.type = 'triangle'
         osc.frequency.value = b
-        g.gain.setValueAtTime(0.09, nextTime)
+        g.gain.setValueAtTime(0.06, nextTime)
         g.gain.exponentialRampToValueAtTime(0.001, nextTime + stepDur * 1.8)
         osc.connect(g).connect(musicBus)
         osc.start(nextTime)

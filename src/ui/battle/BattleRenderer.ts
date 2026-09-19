@@ -344,6 +344,7 @@ export class BattleRenderer {
       }
       if (ev.ranged && attacker) {
         this.spawnProjectile(attacker, target, () => {
+          sfxHit()
           this.spawnFloat(target, text, color, size)
           this.spawnPunch(target)
           this.spawnFlash(target)
