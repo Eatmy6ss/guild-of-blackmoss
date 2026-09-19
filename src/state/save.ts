@@ -6,7 +6,7 @@ import type { DeadHero, ItemInstance, Member } from '../sim/types'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 
 export interface GuildSave {
   version: number
@@ -21,6 +21,8 @@ export interface GuildSave {
   recruitCooldown: number
   /** v3:黑苔高塔最高纪录层数 */
   towerBest: number
+  /** v4:上次存档时间戳(离线累积用) */
+  lastSeen: number
 }
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
@@ -58,7 +60,8 @@ function validate(d: GuildSave): boolean {
     typeof d.gold === 'number' &&
     typeof d.blessing === 'number' &&
     typeof d.recruitCooldown === 'number' &&
-    typeof d.towerBest === 'number'
+    typeof d.towerBest === 'number' &&
+    typeof d.lastSeen === 'number'
   )
 }
 
@@ -74,13 +77,29 @@ export function loadGuildSave(): GuildSave | null {
   }
 }
 
-export function saveGuild(s: Omit<GuildSave, 'version'>): void {
+export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): void {
   try {
     const prev = localStorage.getItem(KEY)
     if (prev) localStorage.setItem(KEY + '.bak', prev) // 上一份好存档做备份,写坏可回退
-    localStorage.setItem(KEY, JSON.stringify({ ...s, version: SAVE_VERSION }))
+    localStorage.setItem(KEY, JSON.stringify({ ...s, version: SAVE_VERSION, lastSeen: Date.now() }))
   } catch {
     // 隐私模式等存储不可用:静默降级为无存档
+  }
+}
+
+/** 导出存档为可复制的文本码(unicode 安全) */
+export function exportSave(s: GuildSave): string {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(s))))
+}
+
+/** 导入文本码:解析 → 迁移 → 校验,失败返回 null(不落盘,由调用方决定) */
+export function importSave(text: string): GuildSave | null {
+  try {
+    const json = decodeURIComponent(escape(atob(text.trim())))
+    const migrated = migrate(JSON.parse(json) as Record<string, unknown>)
+    return validate(migrated) ? migrated : null
+  } catch {
+    return null
   }
 }
 

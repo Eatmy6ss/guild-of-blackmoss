@@ -26,13 +26,13 @@ import {
 import { powerScore } from './sim/combat'
 
 import { rollBossDrops, describeItem, slotsOf } from './sim/loot'
-import { loadGuildSave, saveGuild, clearGuildSave } from './state/save'
+import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave } from './state/save'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin } from './ui/audio'
 import { BLACKMOSS } from './data/dungeons'
 import { startTower, settleTowerFloor, towerRest, towerNext, towerMarkPermadeath, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { ECONOMY } from './data/economy'
-import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded } from './sim/tavern'
+import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
 import { JOBS } from './data/jobs'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
@@ -92,6 +92,7 @@ export default function App() {
   const [blessing, setBlessing] = useState(() => saved?.blessing ?? 0)
   const [recruitCooldown, setRecruitCooldown] = useState(() => saved?.recruitCooldown ?? 0)
   const [visitor, setVisitor] = useState<ReturnType<typeof rollVisitor> | null>(null)
+  const [offlineNote, setOfflineNote] = useState<string | null>(null)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
 
@@ -100,6 +101,12 @@ export default function App() {
     if (saved) {
       seedMemberSeq(saved.members) // 防新招募与存档成员撞 ID(血量写回会串位)
       reserveNames([...saved.members.map((m) => m.name), ...saved.memorial.map((h) => h.name)])
+      // M1 P1 离线累积:离开的时间里,存活英雄们接零工
+      const { hours, gold } = offlineGain(saved.members, saved.lastSeen, Date.now())
+      if (gold > 0) {
+        setGold((g) => g + gold)
+        setOfflineNote(`🕯 离开的 ${hours} 小时里,队员们接了些零工,赚了 ${gold} 金。`)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -602,6 +609,7 @@ export default function App() {
           <div className="title-logo">黑苔公会</div>
           <div className="title-sub">GUILD OF BLACKMOSS</div>
           <div className="title-tagline">英雄会死，故事不会。</div>
+          {offlineNote && <div className="title-offline">{offlineNote}</div>}
           <div className="title-actions">
             <button onClick={() => { initAudio(); setScreen('game') }}>
               {saved ? '▶ 继续旅程' : '▶ 开始新公会'}
@@ -620,7 +628,24 @@ export default function App() {
               </button>
             )}
           </div>
-          <div className="title-foot">M1 · 内部构建 · 暂定名《黑苔公会》</div>
+          <div className="title-foot">
+            M1 · 内部构建 · 暂定名《黑苔公会》
+            <span className="title-saveops">
+              <button className="mini-btn" onClick={() => {
+                const code = exportSave(loadGuildSave()!)
+                void navigator.clipboard?.writeText(code).catch(() => {})
+                window.prompt('已导出当前存档,复制这段代码备份:', code)
+              }}>📤 导出存档</button>
+              <button className="mini-btn" onClick={() => {
+                const code = window.prompt('粘贴要导入的存档代码(将覆盖当前进度):')
+                if (!code) return
+                const imported = importSave(code)
+                if (!imported) { window.alert('存档代码无效'); return }
+                saveGuild({ ...imported, members: imported.members })
+                window.location.reload()
+              }}>📥 导入存档</button>
+            </span>
+          </div>
         </div>
       )}
       <button

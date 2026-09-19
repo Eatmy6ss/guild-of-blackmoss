@@ -267,3 +267,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 .goals-panel .goal-row.done .goal-mark { color: var(--accent); }
 .goals-panel .goal-row.current { color: var(--gold); }
 .goals-panel .goal-mark { width: 16px; }
+
+.title-offline { color: var(--accent); font-size: 13px; }
+.title-saveops { display: inline-flex; gap: 8px; margin-left: 16px; }
+.title-saveops .mini-btn { margin-left: 0; }

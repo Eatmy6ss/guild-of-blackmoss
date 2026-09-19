@@ -21,6 +21,8 @@ export const ECONOMY = {
   visitorChance: 0.55,
   /** 上门候选等级 = 远征队平均等级 + 偏移区间 */
   visitorLevel: { base: -1, spread: 2 },
+  /** 离线累积:存活英雄每人每小时接零工的金币;上限与起算门槛 */
+  offline: { perHeroPerHour: 8, capHours: 24, minHours: 0.5 },
   /** 传闻候选等级 = 平均远征等级 + 1 */
   taleLevelBonus: 1,
 } as const

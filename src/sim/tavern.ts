@@ -63,4 +63,19 @@ export function taleCandidates(rng: Rng, members: Member[], count = 3): Member[]
   })
 }
 
+/** 离线累积:离开的时间里,存活英雄们接零工赚金币(有上限——世界不替你玩) */
+export function offlineGain(
+  members: Member[],
+  lastSeen: number,
+  now: number,
+): { hours: number; gold: number } {
+  const alive = members.filter((m) => m.alive).length
+  if (lastSeen <= 0 || alive === 0 || now <= lastSeen) return { hours: 0, gold: 0 }
+  const rawHours = (now - lastSeen) / 3600000
+  if (rawHours < ECONOMY.offline.minHours) return { hours: 0, gold: 0 }
+  const hours = Math.min(ECONOMY.offline.capHours, rawHours)
+  const gold = Math.floor(alive * ECONOMY.offline.perHeroPerHour * hours)
+  return { hours: Math.round(hours * 10) / 10, gold }
+}
+
 export { ECONOMY }

@@ -9,7 +9,8 @@ import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loo
 import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
-import { migrate } from '../src/state/save'
+import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
+import { offlineGain } from '../src/sim/tavern'
 import { startTower, startTowerFloor, settleTowerFloor, towerNext, towerEnemyScale, towerGold, TOWER } from '../src/sim/tower'
 import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
@@ -786,6 +787,44 @@ const towerFailures: string[] = []
     return run.phase !== 'ended' || run.result !== 'left' || r2.gold !== 0
   }
   console.log('✓ 黑苔高塔验证通过:缩放/分层残酷/层循环按设计工作')
+}
+
+// ============================================================
+// ⑧·七 离线累积与存档导出/导入（M1 P1）
+// ============================================================
+{
+  const fail13: string[] = []
+  // 13a:离线数学——3 人 2 小时 = 48 金;24h 上限;短时不给
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 100 + j))
+  const now = 1000000000000
+  const two = offlineGain(squad, now - 2 * 3600000, now)
+  if (two.gold !== 48 || two.hours !== 2) fail13.push(`⑬ 3 人 2 小时应得 48 金,得 ${two.gold}`)
+  const capped = offlineGain(squad, now - 48 * 3600000, now)
+  if (capped.hours !== 24) fail13.push('⑬ 离线 48 小时未按 24 小时封顶')
+  if (capped.gold !== 576) fail13.push(`⑬ 24 小时应得 576 金,得 ${capped.gold}`)
+  const short = offlineGain(squad, now - 5 * 60000, now)
+  if (short.gold !== 0) fail13.push('⑬ 短于门槛不应给钱')
+  console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
+
+  // 13b:导出/导入回环——字段完整还原
+  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now }
+  const code = exportSave(saveObj)
+  const back = importSave(code)
+  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6
+  console.log(`⑬ 导出导入:回环 ${roundOk},码长 ${code.length}`)
+  if (!roundOk) fail13.push('⑬ 导出导入回环失败')
+  if (importSave('垃圾输入!!!') !== null) fail13.push('⑬ 无效码未被拒绝')
+
+  // 13c:v3 → v4 迁移补 lastSeen
+  const v4 = migrate({ ...saveObj, version: 3, towerBest: 6 })
+  if (typeof v4.lastSeen !== 'number' || v4.version !== SAVE_VERSION) fail13.push('⑬ v3→v4 迁移失败')
+  console.log(`⑬ 迁移:v3 → v${v4.version},lastSeen 已补`)
+
+  if (fail13.length > 0) {
+    console.log('✗ 离线/存档未通过:', fail13)
+    process.exit(1)
+  }
+  console.log('✓ 离线累积与存档导出/导入验证通过')
 }
 
 // ============================================================
