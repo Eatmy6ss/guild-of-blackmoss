@@ -8,6 +8,8 @@ import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPo
 import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS } from '../src/data/dungeons'
+import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
+import { migrate } from '../src/state/save'
 import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
 
@@ -679,6 +681,55 @@ const growthFailures: string[] = []
   }
   console.log('✓ 成长系统验证通过：经验升级/默契建立/战斗加成按设计工作')
 }
+
+// ============================================================
+// ⑩·五 经济与酒馆（M1 P0 切片 2）：变卖/冷却/访客/悬赏/传闻/存档迁移
+// ============================================================
+const econFailures: string[] = []
+{
+  // 11a:变卖价随 tier/词条单调
+  const cheap = { id: 'x1', baseId: 'wpn-t1-sword', rolls: [{ affixId: 'aff-atk', value: 2 }] }
+  const pricey = { id: 'x2', baseId: 'wpn-t2-bow', rolls: [{ affixId: 'aff-atk', value: 2 }, { affixId: 'aff-hp', value: 10 }, { affixId: 'aff-def', value: 2 }] }
+  console.log(`⑪ 变卖价：T1 单词条 ${sellValue(cheap)} / T2 三词条 ${sellValue(pricey)}`)
+  if (sellValue(pricey) <= sellValue(cheap)) econFailures.push('⑪ 变卖价未随品质单调')
+
+  // 11b:冷却防软锁——存活充足 2 场,人手不足减半 1 场
+  if (cooldownNeeded(4) !== 2 || cooldownNeeded(2) !== 1) econFailures.push('⑪ 冷却规则失效')
+
+  // 11c:访客生成 30 次——合法职业/等级/故事非空
+  let badVisitor = 0
+  for (let i = 0; i < 30; i++) {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 300000 + i * 50 + j))
+    const v = rollVisitor(() => 0.5, squad)
+    const jobsOk = ['guard', 'priest', 'ranger'].includes(v.member.job)
+    if (!jobsOk || v.member.level < 1 || v.story.length === 0) badVisitor++
+  }
+  console.log(`⑩·五 访客：30 次生成,非法 ${badVisitor}`)
+  if (badVisitor > 0) econFailures.push('⑩·五 访客生成非法')
+
+  // 11d:悬赏指定职业——3 职业各 roll 5 次全部命中
+  let wrongJob = 0
+  for (const job of ['guard', 'priest', 'ranger'] as const) {
+    for (let i = 0; i < 5; i++) {
+      const squad = JOBS.map((job2, j) => generateMember(job2, 5, 310000 + i * 50 + j))
+      if (bountyCandidate(() => 0.5, squad, job).job !== job) wrongJob++
+    }
+  }
+  console.log(`⑩·五 悬赏：定向 15 次,职业错配 ${wrongJob}`)
+  if (wrongJob > 0) econFailures.push('⑩·五 悬赏职业错配')
+
+  // 11e:存档迁移链——v1 旧档 → v2 补经济字段
+  const migrated = migrate({ version: 1, members: [{ id: 'm1', name: '测试', job: 'guard', level: 5, nature: {}, personality: {}, attrs: {}, hp: 1, equipment: {}, alive: true }], inventory: [], memorial: [], manual: [], protectOn: true })
+  const migOk = migrated.version === 2 && migrated.gold === 150 && migrated.blessing === 0 && migrated.recruitCooldown === 0 && migrated.members[0].exp === 0
+  console.log(`⑩·五 存档迁移：v1 → v${migrated.version},经济字段 ${migOk ? '完整' : '缺失'}`)
+  if (!migOk) econFailures.push('⑩·五 v1→v2 迁移失败')
+}
+
+if (econFailures.length > 0) {
+  console.log('✗ 经济与酒馆未通过:', econFailures)
+  process.exit(1)
+}
+console.log('✓ 经济与酒馆验证通过：变卖/冷却/访客/悬赏/迁移按设计工作')
 
 // ============================================================
 // ⑨ 平衡曲线（D13）：指挥机器人在四档操作水平下的胜率窗口

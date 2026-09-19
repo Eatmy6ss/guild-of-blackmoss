@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { BattleState, DeadHero, ItemInstance, Member, Slot, Stance } from './sim/types'
+import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, xpNeeded } from './sim/gen'
 import {
   TICK_MS,
@@ -29,6 +29,8 @@ import { reserveNames } from './sim/gen'
 import { loadGuildSave, saveGuild, clearGuildSave } from './state/save'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { BLACKMOSS } from './data/dungeons'
+import { ECONOMY } from './data/economy'
+import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded } from './sim/tavern'
 import { JOBS } from './data/jobs'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
@@ -82,6 +84,10 @@ export default function App() {
   const [manual, setManual] = useState<string[]>(() => saved?.manual ?? [])
   const [protectOn, setProtectOn] = useState(() => saved?.protectOn ?? true)
   const [candidates, setCandidates] = useState<Member[]>([])
+  const [gold, setGold] = useState(() => saved?.gold ?? 150)
+  const [blessing, setBlessing] = useState(() => saved?.blessing ?? 0)
+  const [recruitCooldown, setRecruitCooldown] = useState(() => saved?.recruitCooldown ?? 0)
+  const [visitor, setVisitor] = useState<ReturnType<typeof rollVisitor> | null>(null)
 
   // 读档登记已用名字：新招募不与存档英雄/英灵重名
   useEffect(() => {
@@ -148,11 +154,13 @@ export default function App() {
     else setBattle(null)
   }
 
-  // 公会阶段自动落盘；远征中跳过（远征结束回到公会才写）
+  // 公会阶段自动落盘;远征进行中(战斗/休整)跳过。
+  // 结算页(victory/defeat/retreated)是安全边界:成长必须在结算时落盘,
+  // 否则玩家在结算页关页会丢掉这把的成长(save-systems:安全边界自动存档)。
   useEffect(() => {
-    if (run) return
-    saveGuild({ members, inventory, memorial, manual, protectOn })
-  }, [members, inventory, memorial, manual, protectOn, run])
+    if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, run])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -227,6 +235,14 @@ export default function App() {
     if (dead.length > 0) setMemorial((m) => [...m, ...dead])
     // M1 P0 成长:经验 + 默契的发放下沉在 sim 层(可被 smoke 直接验证)
     settleGrowth(r)
+    // M1 P0 经济:胜场金币 / 通关奖励 / 阵亡祝福 / 招募冷却递减
+    if (b.status === 'guild-win') {
+      setGold((g) => g + (enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave))
+    }
+    const endPhase = r.phase as DungeonRun['phase']
+    if (endPhase === 'victory') setGold((g) => g + ECONOMY.clearBonus)
+    if (dead.length > 0) setBlessing((b2) => b2 + dead.length * ECONOMY.blessingPerDeath)
+    setRecruitCooldown((c) => Math.max(0, c - 1))
   }
 
   const equip = (m: Member, slot: Slot, itemId: string) => {
@@ -311,6 +327,10 @@ export default function App() {
     lastBattleRef.current = null
     rendererRef.current?.reset()
     setMembers([...membersRef.current])
+    // M1 P0:回城 roll 上门事件(涌现叙事入口;缘分不排队,不受冷却)
+    if (Math.random() < ECONOMY.visitorChance && membersRef.current.filter((m) => m.alive).length < ROSTER_CAP) {
+      setVisitor(rollVisitor(Math.random, membersRef.current))
+    }
   }
 
   const restartGuild = () => {
@@ -328,23 +348,49 @@ export default function App() {
     setMemorial([])
     setManual([])
     setCandidates([])
+    setVisitor(null)
+    setGold(150)
+    setBlessing(0)
+    setRecruitCooldown(0)
     setMembers(newRoster())
   }
 
-  const recruit3 = () => {
-    const alive = membersRef.current.filter((m) => m.alive).length
-    if (alive >= ROSTER_CAP) return
-    const jobs = [...START_JOBS].sort(() => Math.random() - 0.5)
-    setCandidates(
-      jobs.slice(0, 3).map((job, i) =>
-        generateMember(job, 4 + ((Math.floor(Math.random() * 3) + i) % 3), Date.now() + i * 9973),
-      ),
-    )
+  // ---- M1 P0 招募三路径(宪法红线 6:上门缘分不排队;悬赏/传闻受冷却;冷却防软锁减半)----
+  const aliveCount = () => membersRef.current.filter((m) => m.alive).length
+
+  const signVisitor = () => {
+    if (!visitor || runRef.current || aliveCount() >= ROSTER_CAP) return
+    setMembers((roster) => [...roster, visitor.member])
+    setVisitor(null)
+  }
+
+  const hireBounty = (job: JobId) => {
+    if (runRef.current || recruitCooldown > 0 || gold < ECONOMY.bountyCost || aliveCount() >= ROSTER_CAP) return
+    setGold((g) => g - ECONOMY.bountyCost)
+    const m = bountyCandidate(Math.random, membersRef.current, job)
+    setMembers((roster) => [...roster, m])
+    setRecruitCooldown(cooldownNeeded(aliveCount()))
+  }
+
+  const rollTale = () => {
+    if (runRef.current || recruitCooldown > 0 || aliveCount() >= ROSTER_CAP) return
+    if (gold < ECONOMY.taleCost.gold || blessing < ECONOMY.taleCost.blessing) return
+    setGold((g) => g - ECONOMY.taleCost.gold)
+    setBlessing((b) => b - ECONOMY.taleCost.blessing)
+    setCandidates(taleCandidates(Math.random, membersRef.current))
+    setRecruitCooldown(cooldownNeeded(aliveCount()))
   }
 
   const hire = (m: Member) => {
     setMembers((roster) => [...roster, m])
     setCandidates([])
+  }
+
+  const sellItem = (id: string) => {
+    const item = inventory.find((i) => i.id === id)
+    if (!item) return
+    setGold((g) => g + sellValue(item))
+    setInventory((inv) => inv.filter((i) => i.id !== id))
   }
 
   const stepTen = () => {
@@ -444,10 +490,82 @@ export default function App() {
           </h2>
           {expedition.map(memberCard)}
           <div className="end-actions">
-            <button onClick={recruit3} disabled={!!run || members.filter((m) => m.alive).length >= ROSTER_CAP}>
-              🏛 酒馆招募（三选一）
-            </button>
             <button onClick={restartGuild}>☠ 重开公会</button>
+          </div>
+          <div className="inv-panel tavern-panel">
+            <h2>
+              🍺 酒馆 —— 💰 {gold} · 🕯 祝福 {blessing} · 招募位 {members.filter((m) => m.alive).length}/{ROSTER_CAP}
+            </h2>
+            <p className="hint">
+              {recruitCooldown > 0
+                ? `招募冷却：完成 ${recruitCooldown} 次远征后解除（上门访客不受影响）`
+                : '可招募'}
+              {members.filter((m) => m.alive).length < 3 ? '（人手不足：冷却已减半，访客优先）' : ''}
+            </p>
+            {visitor ? (
+              <div className="member-card candidate">
+                <div className="mc-head">
+                  <span className="name">🚪 {visitor.member.name}</span>
+                  <span className="job">
+                    {JOBS[visitor.member.job].name} Lv{visitor.member.level} · {ROLE_NAME[JOBS[visitor.member.job].role]}
+                  </span>
+                  <span className="hp">战力 {powerScore(visitor.member)}</span>
+                </div>
+                <div className="row">
+                  <span>{attrsLine(visitor.member)}</span>
+                  <span>{personalityLine(visitor.member)}</span>
+                </div>
+                <p className="hint">“{visitor.story}”</p>
+                <button onClick={signVisitor} disabled={!!run || members.filter((m) => m.alive).length >= ROSTER_CAP}>
+                  ✋ 免费签下（缘分不排队）
+                </button>
+              </div>
+            ) : (
+              <p className="hint">🚪 暂时没有访客——每次回城都有概率有人上门。</p>
+            )}
+            <div className="tavern-row">
+              <span className="cmd-label">定向悬赏：</span>
+              {START_JOBS.map((job) => (
+                <button
+                  key={job}
+                  disabled={!!run || recruitCooldown > 0 || gold < ECONOMY.bountyCost || members.filter((m) => m.alive).length >= ROSTER_CAP}
+                  onClick={() => hireBounty(job)}
+                >
+                  {JOBS[job].name} {ECONOMY.bountyCost} 金
+                </button>
+              ))}
+            </div>
+            <div className="tavern-row">
+              <button
+                disabled={!!run || recruitCooldown > 0 || gold < ECONOMY.taleCost.gold || blessing < ECONOMY.taleCost.blessing || members.filter((m) => m.alive).length >= ROSTER_CAP}
+                onClick={rollTale}
+              >
+                🎲 酒馆传闻：{ECONOMY.taleCost.gold} 金 + {ECONOMY.taleCost.blessing} 祝福，三选一（品质更高）
+              </button>
+            </div>
+            {candidates.length > 0 && (
+              <div>
+                <h2>来应征的冒险者（选一位入职）</h2>
+                {candidates.map((m) => (
+                  <div key={m.id} className="member-card candidate">
+                    <div className="mc-head">
+                      <span className="name">{m.name}</span>
+                      <span className="job">
+                        {JOBS[m.job].name} Lv{m.level} · {ROLE_NAME[JOBS[m.job].role]}
+                      </span>
+                      <span className="hp">战力 {powerScore(m)}</span>
+                    </div>
+                    <div className="row">
+                      <span>{attrsLine(m)} · {natureLine(m)}</span>
+                    </div>
+                    <div className="row">
+                      <span>{personalityLine(m)}</span>
+                    </div>
+                    <button onClick={() => hire(m)}>✋ 招募入职</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {candidates.length > 0 && (
             <div className="inv-panel">
@@ -479,6 +597,9 @@ export default function App() {
               inventory.map((i) => (
                 <div key={i.id} className="inv-item">
                   {describeItem(i)}
+                  <button className="sell-btn" onClick={() => sellItem(i.id)}>
+                    变卖 +{sellValue(i)} 金
+                  </button>
                 </div>
               ))
             )}
