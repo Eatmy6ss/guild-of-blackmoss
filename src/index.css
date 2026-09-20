@@ -178,6 +178,8 @@ button:disabled { opacity: 0.4; cursor: default; }
   50% { box-shadow: 0 0 10px 2px rgba(217, 160, 58, 0.55); }
 }
 .hint { color: #6a7183; font-size: 12px; margin-top: 6px; }
+.dungeon-picker { display: flex; gap: 6px; margin-bottom: 8px; }
+.dungeon-picker button.active { background: #2c4630; border-color: #6b9b6b; color: #a8d8a8; }
 
 .slot-row { align-items: center; }
 .slot-select {

@@ -32,7 +32,7 @@ import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave } from
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
 import { bossIntents } from './sim/mechanics'
-import { BLACKMOSS } from './data/dungeons'
+import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, settleTowerFloor, towerRest, towerNext, towerMarkPermadeath, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
@@ -91,6 +91,9 @@ export default function App() {
 
   const [inventory, setInventory] = useState<ItemInstance[]>(() => saved?.inventory ?? [])
   const [lastDrops, setLastDrops] = useState<ItemInstance[]>([])
+  // 副本选择(节奏改版:多副本)——仅决定下一次出征打哪张图,不入存档
+  const [dungeonId, setDungeonId] = useState('blackmoss')
+  const activeDungeon = DUNGEONS.find((d) => d.id === dungeonId) ?? BLACKMOSS
   const [memorial, setMemorial] = useState<DeadHero[]>(() => saved?.memorial ?? [])
   const [manual, setManual] = useState<string[]>(() => saved?.manual ?? [])
   const [protectOn, setProtectOn] = useState(() => saved?.protectOn ?? true)
@@ -418,7 +421,7 @@ export default function App() {
     )
     runRef.current = createRun(
       expedition,
-      BLACKMOSS,
+      activeDungeon,
       branchId,
       ++seedRef.current * SEED_BASE,
       memorial.length * MEMORIAL_AURA,
@@ -1003,7 +1006,7 @@ export default function App() {
           <div className="inv-panel">
             <h2>📖 战术手册（已研习 boss 伤害 +5%）</h2>
             <p className="hint">
-              {manual.length === 0 ? '尚未研习任何 boss。' : `已研习：${manual.map((id) => BLACKMOSS.bosses[id]?.name ?? id).join('、')}`}
+              {manual.length === 0 ? '尚未研习任何 boss。' : `已研习：${manual.map((id) => DUNGEONS.map((d) => d.bosses[id]?.name).find(Boolean) ?? id).join('、')}`}
             </p>
             <button
               className={protectOn ? 'active' : ''}
@@ -1040,7 +1043,19 @@ export default function App() {
                   </div>
                 )
               })()}
-              {BLACKMOSS.branches.map((br) => (
+              <div className="dungeon-picker">
+                {DUNGEONS.map((d) => (
+                  <button
+                    key={d.id}
+                    className={d.id === dungeonId ? 'active' : ''}
+                    disabled={!!run}
+                    onClick={() => setDungeonId(d.id)}
+                  >
+                    🗺 {d.name}
+                  </button>
+                ))}
+              </div>
+              {activeDungeon.branches.map((br) => (
                 <button
                   key={br.id}
                   className="branch-btn"

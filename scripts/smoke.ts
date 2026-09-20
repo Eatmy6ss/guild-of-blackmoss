@@ -7,7 +7,7 @@ import { generateMember } from '../src/sim/gen'
 import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit } from '../src/sim/combat'
 import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
-import { BLACKMOSS } from '../src/data/dungeons'
+import { BLACKMOSS, RUSTMINE, DUNGEONS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
@@ -1110,6 +1110,80 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 战斗节奏带验证通过:杂兵/boss 时长符合温和放慢设计')
+}
+
+// ============================================================
+// ⑲ 副本注册表完整性 + 新副本节奏带(副本扩量的验收模板:新图照此补断言)
+// ============================================================
+{
+  const fail19: string[] = []
+  for (const d of DUNGEONS) {
+    // 引用完整性:encounter → group/boss 必须存在,组必须非空
+    const groupIds = new Set(Object.keys(d.enemyGroups))
+    for (const enc of d.encounters) {
+      if (enc.kind === 'wave') {
+        if (enc.enemyGroupIds.length === 0) fail19.push(`⑲ ${d.id}/${enc.id} wave 无怪组`)
+        for (const gid of enc.enemyGroupIds) {
+          if (!groupIds.has(gid)) fail19.push(`⑲ ${d.id}/${enc.id} 怪组缺失 ${gid}`)
+          for (const e of d.enemyGroups[gid] ?? []) {
+            if (!e.id || e.maxHp <= 0) fail19.push(`⑲ ${d.id} 怪组 ${gid} 含非法敌人`)
+            if (e.archetype === undefined && e.maxHp > 600) fail19.push(`⑲ ${d.id}/${gid} 大血量怪未标原型`)
+          }
+        }
+      }
+      if (enc.kind === 'boss' && !d.bosses[enc.bossId ?? '']) fail19.push(`⑲ ${d.id}/${enc.id} boss 缺失`)
+    }
+    // 机制引用完整性:summon 的 groupId 必须存在
+    for (const boss of Object.values(d.bosses)) {
+      for (const m of boss.mechanics) {
+        if (m.kind === 'summon' && !groupIds.has(String(m.params.groupId))) {
+          fail19.push(`⑲ ${d.id}/${boss.id} 召唤怪组缺失 ${m.params.groupId}`)
+        }
+      }
+    }
+  }
+  // 新副本节奏带:锈坑矿道杂兵/boss 用同一「像样指挥」机器人落带
+  const probe = (encId: string, seed: number): number => {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 980000 + seed * 100 + j))
+    const b = createBattle(squad, RUSTMINE, encId, seed * 31 + 7, 0, 0, false)
+    while (b.status === 'running' && b.tick < MAX_TICK) {
+      if (b.tick % 5 === 0) {
+        const intents = bossIntents(b)
+        setStance(b, intents.telegraphing ? 'spread' : 'standard')
+        const boss = b.combatants.find((c) => c.boss && c.alive)
+        if (boss) setFocus(b, boss.id)
+      }
+      stepBattle(b)
+    }
+    return b.status === 'guild-win' ? b.tick / 10 : -1
+  }
+  {
+    const ds: number[] = []
+    for (let i = 0; i < 6; i++)
+      for (const enc of ['enc-miners', 'enc-bats', 'enc-spiders']) {
+        const d = probe(enc, i)
+        if (d > 0) ds.push(d)
+      }
+    const ok = ds.length >= 15
+    const med = ok ? [...ds].sort((a, b) => a - b)[Math.floor(ds.length / 2)] : 0
+    console.log(`⑲ 锈坑杂兵:中位 ${med.toFixed(1)}s 胜 ${ds.length}/18`)
+    if (!ok || med < 13 || med > 23) fail19.push(`⑲ 锈坑杂兵节奏越带 ${med.toFixed(1)}s`)
+  }
+  {
+    const ds: number[] = []
+    for (let i = 0; i < 8; i++) {
+      const d = probe('enc-delveanchor', i)
+      if (d > 0) ds.push(d)
+    }
+    const med = ds.length ? [...ds].sort((a, b) => a - b)[Math.floor(ds.length / 2)] : 0
+    console.log(`⑲ 掘锚:中位 ${med.toFixed(1)}s 胜 ${ds.length}/8`)
+    if (ds.length < 6 || med < 30 || med > 50) fail19.push(`⑲ 掘锚节奏越带 ${med.toFixed(1)}s`)
+  }
+  if (fail19.length > 0) {
+    console.log('✗ 副本注册表未通过:', fail19)
+    process.exit(1)
+  }
+  console.log(`✓ 副本注册表完整性 + 锈坑矿道节奏带验证通过(${DUNGEONS.length} 张图)`)
 }
 
 // ============================================================

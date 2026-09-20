@@ -133,3 +133,95 @@ export const BLACKMOSS: DungeonDef = {
     { id: 'enc-talma', name: '深渊祭司·塔尔玛', kind: 'boss', enemyGroupIds: [], bossId: 'talma' },
   ],
 }
+
+// 副本 #2(节奏改版后开工):锈坑矿道——废弃矿坑,尸化矿工与穴居生物
+// boss 掘锚的机制组合(蓄力+召唤+定时狂暴)与黑苔双 boss(蓄力+召唤 / 咏唱+束缚+狂暴)刻意错开
+export const RUSTMINE: DungeonDef = {
+  id: 'rustmine',
+  name: '锈坑矿道',
+  size: 3,
+  branches: [
+    {
+      id: 'cartline',
+      name: '矿车轨道',
+      risk: 3,
+      reward: 3,
+      desc: '直下主矿脉：穴蝠盘踞，但矿脉深处遗物更多',
+    },
+    {
+      id: 'airshaft',
+      name: '通风巷道',
+      risk: 1,
+      reward: 1,
+      desc: '绕行风道：路远,但几乎不会遇到埋伏',
+    },
+  ],
+  enemyGroups: {
+    miners: [
+      { id: 'miner-a', name: '尸化矿工', maxHp: 460, attack: 9, defense: 5, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'miner-b', name: '尸化矿工', maxHp: 460, attack: 9, defense: 5, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'lampkeeper', name: '矿灯术士', maxHp: 340, attack: 11, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+    ],
+    bats: [
+      { id: 'bat-a', name: '锈穴蝠', maxHp: 420, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'bat-b', name: '锈穴蝠', maxHp: 420, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'bat-c', name: '锈穴蝠', maxHp: 340, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+    spiders: [
+      { id: 'spider-a', name: '岩蛛', maxHp: 500, attack: 12, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'spider-b', name: '岩蛛', maxHp: 500, attack: 12, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'spider-queen', name: '毒蛛后', maxHp: 360, attack: 13, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+    ],
+    'bats-frail': [
+      { id: 'bat-add-a', name: '锈穴蝠', maxHp: 300, attack: 10, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'bat-add-b', name: '锈穴蝠', maxHp: 300, attack: 10, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+  },
+  bosses: {
+    delveanchor: {
+      id: 'delveanchor',
+      name: '矿脉吞噬者·掘锚',
+      // 节奏带:35-45s。慢速重锤(6 速=每 1s 一击),坑道坍塌逼走位,65% 呼蝠群,200tick 过载狂暴
+      maxHp: 2600,
+      attack: 16,
+      defense: 7,
+      speed: 6,
+      position: 'front',
+      range: 'melee',
+      mechanics: [
+        {
+          id: 'delve-collapse',
+          kind: 'telegraph-aoe',
+          name: '坑道坍塌',
+          params: { telegraphTicks: 36, damage: 32, everyTicks: 110 },
+        },
+        {
+          id: 'delve-call',
+          kind: 'summon',
+          name: '唤出蝠群',
+          params: { atHpPct: 0.65, count: 2, groupId: 'bats-frail' },
+        },
+        {
+          id: 'delve-overload',
+          kind: 'enrage',
+          name: '过载运转',
+          params: { atTick: 200, attackMult: 1.7 },
+        },
+      ],
+      dropTable: [
+        { baseId: 'arm-t2-plate', chance: 0.4 },
+        { baseId: 'trk-t2-totem', chance: 0.25 },
+        { baseId: 'wpn-t2-bow', chance: 0.2 },
+      ],
+    },
+  },
+  encounters: [
+    { id: 'enc-miners', name: '尸化矿工队', kind: 'wave', enemyGroupIds: ['miners'] },
+    { id: 'enc-bats', name: '锈穴蝠群', kind: 'wave', enemyGroupIds: ['bats'] },
+    { id: 'enc-spiders', name: '岩蛛巢室', kind: 'wave', enemyGroupIds: ['spiders'] },
+    { id: 'enc-delveanchor', name: '矿脉吞噬者·掘锚', kind: 'boss', enemyGroupIds: [], bossId: 'delveanchor' },
+  ],
+}
+
+/** 副本注册表(UI 选择/完整性校验用)——新副本在这里登记 */
+export const DUNGEONS: DungeonDef[] = [BLACKMOSS, RUSTMINE]
