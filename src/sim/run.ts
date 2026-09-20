@@ -131,7 +131,7 @@ export function markPermadeath(run: DungeonRun): DeadHero[] {
  * M1 P0 成长发放:胜场经验 + 终局默契。在 advanceRun/markPermadeath 之后调用
  * (阵亡者被 markPermadeath 划去,天然不参与)。App 的 settleBattleEnd 调用,smoke 可直接测。
  */
-export function settleGrowth(run: DungeonRun): void {
+export function settleGrowth(run: DungeonRun, expMult = 1): void {
   const b = run.battle
   if (!b) return
   if (b.status === 'guild-win') {
@@ -140,7 +140,7 @@ export function settleGrowth(run: DungeonRun): void {
     for (const c of b.combatants) {
       if (c.team !== 'guild' || !c.alive || !c.memberId) continue
       const m = run.members.find((x) => x.id === c.memberId)
-      if (m?.alive) grantExp(m, exp)
+      if (m?.alive) grantExp(m, Math.round(exp * expMult))
     }
   }
   if (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated') {

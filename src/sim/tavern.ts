@@ -11,9 +11,9 @@ import { ECONOMY, VISITOR_STORIES } from '../data/economy'
 export type Rng = () => number
 
 /** 装备变卖价:tier 基础 + 词条加值(T2 > T1,词条越多越值钱) */
-export function sellValue(item: ItemInstance): number {
+export function sellValue(item: ItemInstance, mult = 1): number {
   const tier = item.baseId.includes('-t2-') ? 2 : 1
-  return ECONOMY.sell.perTier * tier + item.rolls.length * ECONOMY.sell.perRoll
+  return Math.round((ECONOMY.sell.perTier * tier + item.rolls.length * ECONOMY.sell.perRoll) * mult)
 }
 
 /** 招募冷却:招募一位后需完成的远征次数。人手不足(<3,凑不齐远征队)时为 0——
@@ -35,10 +35,11 @@ export interface Visitor {
 }
 
 /** 路径一:随机上门事件——一位带着故事的冒险者(免费签,缘分不排队) */
-export function rollVisitor(rng: Rng, members: Member[]): Visitor {
+export function rollVisitor(rng: Rng, members: Member[], tavernLevel = 0): Visitor {
+  const levelBonus = tavernLevel >= 2 ? 1 : 0
   const level = Math.max(
     1,
-    avgLevel(members) + ECONOMY.visitorLevel.base + Math.floor(rng() * (ECONOMY.visitorLevel.spread + 1)),
+    avgLevel(members) + ECONOMY.visitorLevel.base + levelBonus + Math.floor(rng() * (ECONOMY.visitorLevel.spread + 1)),
   )
   const jobs: JobId[] = ['guard', 'priest', 'ranger']
   const job = jobs[Math.floor(rng() * jobs.length)]

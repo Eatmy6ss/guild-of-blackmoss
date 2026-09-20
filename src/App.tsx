@@ -3,7 +3,7 @@ import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance }
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames } from './sim/gen'
 import { guildGoals } from './sim/goals'
 import { applyDeathShock, applyFeast, applyVictory, applyRestMorale, refusesToMarch } from './sim/morale'
-import { chronicleHeroFall, chronicleFirstKill, chronicleFeast, chronicleTowerRecord, chronicleBattleVictory, chronicleRefusal, chronicleRecruit, chronicleLevelUp, chronicleBondStar, moraleReadout, seedChronicle, type ChronicleEntry } from './sim/chronicle'
+import { chronicleHeroFall, chronicleFirstKill, chronicleFeast, chronicleTowerRecord, chronicleBattleVictory, chronicleRefusal, chronicleRecruit, chronicleLevelUp, chronicleBondStar, chronicleBuilding, moraleReadout, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import {
   TICK_MS,
   stepBattle,
@@ -34,6 +34,7 @@ import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin } from '
 import { BLACKMOSS } from './data/dungeons'
 import { startTower, settleTowerFloor, towerRest, towerNext, towerMarkPermadeath, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { ECONOMY } from './data/economy'
+import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
 import { JOBS } from './data/jobs'
 
@@ -96,6 +97,7 @@ export default function App() {
   const [visitor, setVisitor] = useState<ReturnType<typeof rollVisitor> | null>(null)
   const [offlineNote, setOfflineNote] = useState<string | null>(null)
   const [chronicle, setChronicle] = useState<ChronicleEntry[]>(() => saved?.chronicle ?? [])
+  const [buildings, setBuildings] = useState<Record<string, number>>(() => saved?.buildings ?? {})
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
@@ -184,7 +186,7 @@ export default function App() {
     const dead = towerMarkPermadeath(t, '黑苔高塔')
     if (dead.length > 0) {
       setMemorial((m) => [...m, ...dead])
-      setBlessing((b2) => b2 + dead.length * ECONOMY.blessingPerDeath)
+      setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
       setMembers([...membersRef.current])
     }
     const { gold } = settleTowerFloor(t)
@@ -209,8 +211,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, run, towerRun])
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -319,7 +321,7 @@ export default function App() {
     }
     if (dead.length > 0) setMemorial((m) => [...m, ...dead])
     // M1 P0 成长:经验 + 默契的发放下沉在 sim 层(可被 smoke 直接验证)
-    settleGrowth(r)
+    settleGrowth(r, fx.expMult)
     // M1 P2 编年史:升级与默契升星(出击前快照对比)
     for (const m of r.members) {
       const snap = growthSnapshotRef.current.get(m.id)
@@ -346,7 +348,7 @@ export default function App() {
     const endPhase = r.phase as DungeonRun['phase']
     if (endPhase === 'victory') { setGold((g) => g + ECONOMY.clearBonus); sfxVictory() }
     if (endPhase === 'defeat') sfxDefeat()
-    if (dead.length > 0) setBlessing((b2) => b2 + dead.length * ECONOMY.blessingPerDeath)
+    if (dead.length > 0) setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
     setRecruitCooldown((c) => Math.max(0, c - 1))
   }
 
@@ -441,8 +443,8 @@ export default function App() {
     rendererRef.current?.reset()
     setMembers([...membersRef.current])
     // M1 P0:回城 roll 上门事件(涌现叙事入口;缘分不排队,不受冷却)
-    if (Math.random() < ECONOMY.visitorChance && membersRef.current.filter((m) => m.alive).length < ROSTER_CAP) {
-      setVisitor(rollVisitor(Math.random, membersRef.current))
+    if (Math.random() < fx.visitorChance && membersRef.current.filter((m) => m.alive).length < ROSTER_CAP) {
+      setVisitor(rollVisitor(Math.random, membersRef.current, buildings.tavern ?? 0))
     }
   }
 
@@ -507,7 +509,7 @@ export default function App() {
   const sellItem = (id: string) => {
     const item = inventory.find((i) => i.id === id)
     if (!item) return
-    setGold((g) => g + sellValue(item)); sfxCoin()
+    setGold((g) => g + sellValue(item, fx.sellMult)); sfxCoin()
     setInventory((inv) => inv.filter((i) => i.id !== id))
   }
 
@@ -583,6 +585,20 @@ export default function App() {
   }
 
   // ---- 派生状态 ----
+  const fx = baseEffects(buildings)
+  const upgradeBuilding = (id: string) => {
+    const def = BUILDINGS.find((b) => b.id === id)
+    if (!def) return
+    const lv = buildings[id] ?? 0
+    if (lv >= def.maxLevel) return
+    const cost = def.costs[lv]
+    if (gold < cost.gold || blessing < (cost.blessing ?? 0)) return
+    setGold((g) => g - cost.gold)
+    if (cost.blessing) setBlessing((b) => b - cost.blessing!)
+    setBuildings((bs) => ({ ...bs, [id]: lv + 1 }))
+    logChronicle(chronicleBuilding(day, def.name, lv + 1))
+    sfxCoin()
+  }
   // 紧急招募:人手不足时免冷却(防软锁)
   const effectiveCooldown = members.filter((m) => m.alive).length < 3 ? 0 : recruitCooldown
   const towerUnlocked = manual.includes('talma')
@@ -844,7 +860,7 @@ export default function App() {
                 <div key={i.id} className="inv-item">
                   {describeItem(i)}
                   <button className="sell-btn" onClick={() => sellItem(i.id)}>
-                    变卖 +{sellValue(i)} 金
+                    变卖 +{sellValue(i, fx.sellMult)} 金
                   </button>
                 </div>
               ))
@@ -854,6 +870,33 @@ export default function App() {
                 本次远征共获得 {lastDrops.length} 件装备
               </p>
             )}
+          </div>
+          <div className="inv-panel">
+            <h2>🏰 公会基地（第 {day} 日）</h2>
+            <div className="base-grid">
+              {BUILDINGS.map((def) => {
+                const lv = buildings[def.id] ?? 0
+                const maxed = lv >= def.maxLevel
+                const cost = maxed ? null : def.costs[lv]
+                const affordable = cost != null && gold >= cost.gold && blessing >= (cost.blessing ?? 0)
+                return (
+                  <div key={def.id} className={`base-card${lv > 0 ? ' owned' : ''}`}>
+                    <div className="base-head">
+                      <span className="base-name">{def.icon} {def.name}</span>
+                      <span className="base-lv">{lv > 0 ? 'Lv' + lv : '未建'}</span>
+                    </div>
+                    <p className="hint">{def.desc}</p>
+                    {maxed ? (
+                      <button disabled>已满级</button>
+                    ) : (
+                      <button disabled={!!run || !affordable} onClick={() => upgradeBuilding(def.id)}>
+                        升到 Lv{lv + 1}：{cost!.gold} 金{cost!.blessing ? ` + ${cost!.blessing} 祝福` : ''}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
           <div className="inv-panel">
             <h2>📜 编年史（第 {day} 日 · {chronicle.length} 则）</h2>

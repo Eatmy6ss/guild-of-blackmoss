@@ -7,7 +7,7 @@ import type { ChronicleEntry } from '../sim/chronicle'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 5
+export const SAVE_VERSION = 6
 
 export interface GuildSave {
   version: number
@@ -27,6 +27,8 @@ export interface GuildSave {
   /** v5:编年史(灵魂层)与公会日 */
   chronicle: ChronicleEntry[]
   day: number
+  /** v6:公会基地建筑等级 */
+  buildings: Record<string, number>
 }
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
@@ -41,6 +43,12 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
     return { ...d, members, gold: 150, blessing: 0, recruitCooldown: 0, towerBest: 0 }
   },
   2: (d) => ({ ...d, towerBest: 0 }),
+  // v3 → v4:补离线累积时间戳
+  3: (d) => ({ ...d, lastSeen: Date.now() }),
+  // v4 → v5:补编年史与公会日
+  4: (d) => ({ ...d, chronicle: [], day: 1 }),
+  // v5 → v6:补公会基地建筑
+  5: (d) => ({ ...d, buildings: {} }),
 }
 
 /** 纯函数迁移:供 loadGuildSave 与 smoke 直接验证 */
@@ -67,7 +75,8 @@ function validate(d: GuildSave): boolean {
     typeof d.towerBest === 'number' &&
     typeof d.lastSeen === 'number' &&
     Array.isArray(d.chronicle) &&
-    typeof d.day === 'number'
+    typeof d.day === 'number' &&
+    d.buildings !== undefined
   )
 }
 

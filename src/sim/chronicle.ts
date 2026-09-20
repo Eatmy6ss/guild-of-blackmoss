@@ -71,6 +71,10 @@ export function chronicleRefusal(day: number, refusers: Member[]): ChronicleEntr
   return make(day, `出击的清晨,${names} 没有出现在集合点。士气需要一场胜利或一场宴会来修复。`)
 }
 
+export function chronicleBuilding(day: number, name: string, level: number): ChronicleEntry {
+  return make(day, `公会的${name}升到了 ${level} 级——炉火与锤声整夜未熄。`)
+}
+
 export function chronicleTowerRecord(day: number, floor: number): ChronicleEntry {
   return make(day, `远征队踏入了黑苔高塔第 ${floor} 层——公会的最高纪录被刷新。`)
 }

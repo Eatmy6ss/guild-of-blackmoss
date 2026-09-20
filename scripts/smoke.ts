@@ -10,7 +10,8 @@ import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
-import { offlineGain } from '../src/sim/tavern'
+import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
+import { BUILDINGS, baseEffects } from '../src/data/base'
 import { refusesToMarch, applyDeathShock, applyFeast, MORALE, clamp } from '../src/sim/morale'
 import { chronicleRefusal } from '../src/sim/chronicle'
 import { seedMemberSeq } from '../src/sim/gen'
@@ -810,7 +811,7 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
-  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2 }
+  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 } }
   const code = exportSave(saveObj)
   const back = importSave(code)
   const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6
@@ -867,6 +868,63 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 灵魂层验证通过:士气/关系/编年史按设计工作')
+}
+
+// ============================================================
+// ⑧·九 公会基地（M1 P2）：建筑效果接线与迁移
+// ============================================================
+{
+  const fail15: string[] = []
+  // 15a:效果汇总——建筑等级单调提升各加成
+  const fx0 = baseEffects({})
+  const fx3 = baseEffects({ training: 3, tavern: 3, smithy: 3, shrine: 3, infirmary: 3 })
+  console.log(`⑮ 基地效果:经验 x${fx0.expMult}→x${fx3.expMult},访客率 ${(fx0.visitorChance * 100).toFixed(0)}%→${(fx3.visitorChance * 100).toFixed(0)}%,变卖 x${fx0.sellMult}→x${fx3.sellMult},祝福/亡 ${fx0.blessingPerDeath}→${fx3.blessingPerDeath}`)
+  if (fx3.expMult <= fx0.expMult || fx3.visitorChance <= fx0.visitorChance || fx3.sellMult <= fx0.sellMult || fx3.blessingPerDeath <= fx0.blessingPerDeath || fx3.towerRestHealPct <= fx0.towerRestHealPct) {
+    fail15.push('⑮ 建筑加成未单调提升')
+  }
+  if (fx0.visitorLevelBonus !== 0 || fx3.visitorLevelBonus !== 1) fail15.push('⑮ 酒馆 2 级候选加成逻辑错误')
+  // 15b:变卖价加成
+  const cheap = { id: 'x', baseId: 'wpn-t1-sword', rolls: [{ affixId: 'aff-atk', value: 2 }] }
+  const base57 = sellValueFn(cheap)
+  if (sellValueFn(cheap, 1.45) !== Math.round(base57 * 1.45)) fail15.push('⑮ 变卖加成计算错误')
+  // 15c:建筑表完整性——costs 长度 = maxLevel,id 唯一
+  const ids = new Set<string>()
+  for (const def of BUILDINGS) {
+    if (ids.has(def.id)) fail15.push(`⑮ 建筑 id 重复: ${def.id}`)
+    ids.add(def.id)
+    if (def.costs.length !== def.maxLevel) fail15.push(`⑮ ${def.name} costs 长度不等于 maxLevel`)
+    for (const c of def.costs) if (c.gold <= 0) fail15.push(`⑮ ${def.name} 有非正金币成本`)
+  }
+  // 15d:经验加成接线——settleGrowth 乘数
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 4321 + j))
+    const run1 = createRun(squad, BLACKMOSS, 'shortcut', 1)
+    const b1 = run1.battle!
+    while (b1.status === 'running' && b1.tick < 2000) stepBattle(b1)
+    advanceRun(run1)
+    markPermadeath(run1)
+    settleGrowth(run1, 1)
+    const exp1 = squad[0].exp
+    const squad2 = JOBS.map((job, j) => generateMember(job, 5, 5321 + j))
+    const run2 = createRun(squad2, BLACKMOSS, 'shortcut', 1)
+    const b2 = run2.battle!
+    while (b2.status === 'running' && b2.tick < 2000) stepBattle(b2)
+    advanceRun(run2)
+    markPermadeath(run2)
+    settleGrowth(run2, 1.3)
+    const exp2 = squad2[0].exp
+    console.log(`⑮ 训练场:基准经验 ${exp1} vs x1.3 → ${exp2}`)
+    if (exp2 <= exp1) fail15.push('⑮ 训练场经验加成未生效')
+  }
+  // 15e:v5 → v6 迁移补 buildings
+  const v6 = migrate({ version: 5, members: [], inventory: [], memorial: [], manual: [], protectOn: true, gold: 0, blessing: 0, recruitCooldown: 0, towerBest: 0, lastSeen: 0, chronicle: [], day: 1 })
+  if (v6.buildings === undefined || v6.version < 6) fail15.push('⑮ v5→v6 迁移失败')
+  console.log(`⑮ 迁移:v5 → v${v6.version},buildings 已补`)
+  if (fail15.length > 0) {
+    console.log('✗ 公会基地未通过:', fail15)
+    process.exit(1)
+  }
+  console.log('✓ 公会基地验证通过:效果接线/成本表/经验加成/迁移按设计工作')
 }
 
 // ============================================================
