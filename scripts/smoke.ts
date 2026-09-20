@@ -11,7 +11,7 @@ import { BLACKMOSS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
 import { offlineGain } from '../src/sim/tavern'
-import { refusesToMarch, applyDeathShock, applyFeast, MORALE } from '../src/sim/morale'
+import { refusesToMarch, applyDeathShock, applyFeast, MORALE, clamp } from '../src/sim/morale'
 import { chronicleRefusal } from '../src/sim/chronicle'
 import { seedMemberSeq } from '../src/sim/gen'
 import { startTower, startTowerFloor, settleTowerFloor, towerNext, towerEnemyScale, towerGold, TOWER } from '../src/sim/tower'
@@ -838,14 +838,16 @@ const towerFailures: string[] = []
   const squad = JOBS.map((job, j) => generateMember(job, 5, 555 + j))
   seedMemberSeq(squad)
 
-  // 14a:队友阵亡 → 目击者士气受创 + 默契深化
+  // 14a:队友阵亡 → 目击者士气受创 + 默契深化(性格加权:勇猛扛得住,忠诚羁绊深)
   const before = squad[0].morale ?? 60
   const bondsBefore = squad[0].bonds[squad[1].id] ?? 0
   applyDeathShock(squad[1].id, squad)
   const afterDeath = squad[0].morale ?? 60
-  console.log(`⑭ 阵亡冲击:士气 ${before} → ${afterDeath},默契 +${(squad[0].bonds[squad[1].id] ?? 0) - bondsBefore}`)
+  const braveLoss = clamp(before) - clamp(before - MORALE.deathShock * (1 - (squad[0].personality.bravery / 100) * 0.5))
+  console.log(`⑭ 阵亡冲击:士气 ${before} → ${afterDeath}(性格加权期望 -${braveLoss.toFixed(1)}),默契 +${(squad[0].bonds[squad[1].id] ?? 0) - bondsBefore}`)
   if (afterDeath >= before) fail14.push('⑭ 阵亡冲击未生效')
-  if ((squad[0].bonds[squad[1].id] ?? 0) <= bondsBefore) fail14.push('⑭ 患难默契未深化')
+  if (Math.abs((before - afterDeath) - braveLoss) > 0.01) fail14.push('⑭ 阵亡冲击未按勇猛性格加权')
+  if ((squad[0].bonds[squad[1].id] ?? 0) < 2) fail14.push('⑭ 患难默契未深化')
 
   // 14b:庆功宴回升
   applyFeast(squad)

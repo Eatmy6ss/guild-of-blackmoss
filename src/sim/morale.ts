@@ -24,15 +24,21 @@ export const MORALE = {
   grudgeBreak: 3,
 } as const
 
-/** 队友阵亡:目击者士气受创 + 与倒下者默契深化(患难见真情) */
+/**
+ * 队友阵亡:目击者士气受创 + 与倒下者默契深化(患难见真情)。
+ * M1 P2 性格倾斜:勇猛者扛得住死讯(冲击减半),忠诚者与逝者的羁绊更深。
+ */
 export function applyDeathShock(
   deadId: string,
   witnesses: Member[],
 ): void {
   for (const m of witnesses) {
-    m.morale = clamp((m.morale ?? 60) - MORALE.deathShock)
+    const brave = m.personality.bravery / 100
+    const loss = MORALE.deathShock * (1 - brave * 0.5)
+    m.morale = clamp((m.morale ?? 60) - loss)
     if (m.id !== deadId) {
-      m.bonds[deadId] = (m.bonds[deadId] ?? 0) + MORALE.witnessBond
+      const loyal = m.personality.loyalty / 100
+      m.bonds[deadId] = (m.bonds[deadId] ?? 0) + MORALE.witnessBond + Math.round(loyal * 2)
     }
   }
 }

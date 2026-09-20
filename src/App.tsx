@@ -3,7 +3,7 @@ import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance }
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames } from './sim/gen'
 import { guildGoals } from './sim/goals'
 import { applyDeathShock, applyFeast, applyVictory, applyRestMorale, refusesToMarch } from './sim/morale'
-import { chronicleHeroFall, chronicleFirstKill, chronicleFeast, chronicleTowerRecord, chronicleBattleVictory, chronicleRefusal, moraleReadout, seedChronicle, type ChronicleEntry } from './sim/chronicle'
+import { chronicleHeroFall, chronicleFirstKill, chronicleFeast, chronicleTowerRecord, chronicleBattleVictory, chronicleRefusal, chronicleRecruit, chronicleLevelUp, chronicleBondStar, moraleReadout, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import {
   TICK_MS,
   stepBattle,
@@ -123,7 +123,7 @@ export default function App() {
   const seedRef = useRef((Date.now() % 100000) + 1) // 每次会话不同种子（读档后不复刻上局随机序列）
   const logBoxRef = useRef<HTMLDivElement | null>(null)
   const logPinnedRef = useRef(true) // 战报钉底：用户上滚阅读即放手，滚回底部自动恢复跟随
-  const growthSnapshotRef = useRef<Map<string, { level: number; power: number; bondTotal: number }>>(new Map())
+  const growthSnapshotRef = useRef<Map<string, { level: number; power: number; bondTotal: number; bonds: Record<string, number> }>>(new Map())
   const eventCursorRef = useRef(0)
   const lastBattleRef = useRef<BattleState | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
@@ -320,6 +320,25 @@ export default function App() {
     if (dead.length > 0) setMemorial((m) => [...m, ...dead])
     // M1 P0 成长:经验 + 默契的发放下沉在 sim 层(可被 smoke 直接验证)
     settleGrowth(r)
+    // M1 P2 编年史:升级与默契升星(出击前快照对比)
+    for (const m of r.members) {
+      const snap = growthSnapshotRef.current.get(m.id)
+      if (snap && m.level > snap.level) logChronicle(chronicleLevelUp(day, m, m.level))
+    }
+    {
+      const surv = r.members.filter((m) => m.alive)
+      for (let i = 0; i < surv.length; i++) {
+        for (let j = i + 1; j < surv.length; j++) {
+          const a = surv[i]
+          const b2 = surv[j]
+          const beforeStars = bondStars(growthSnapshotRef.current.get(a.id)?.bonds?.[b2.id] ?? 0)
+          const afterStars = bondStars(a.bonds[b2.id] ?? 0)
+          if (afterStars > beforeStars && afterStars >= 1) {
+            logChronicle(chronicleBondStar(day, a, b2, afterStars))
+          }
+        }
+      }
+    }
     // M1 P0 经济:胜场金币 / 通关奖励 / 阵亡祝福 / 招募冷却递减
     if (b.status === 'guild-win') {
       setGold((g) => g + (enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave))
@@ -385,7 +404,7 @@ export default function App() {
     if (expedition.length < 3) return
     // M1 P0 成长快照:结算页要展示"这把你变强了什么"
     growthSnapshotRef.current = new Map(
-      expedition.map((m) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s, n) => s + bondStars(n), 0) }]),
+      expedition.map((m) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s, n) => s + bondStars(n), 0), bonds: { ...m.bonds } }]),
     )
     runRef.current = createRun(
       expedition,
@@ -457,6 +476,7 @@ export default function App() {
   const signVisitor = () => {
     if (!visitor || runRef.current || aliveCount() >= ROSTER_CAP) return
     setMembers((roster) => [...roster, visitor.member])
+    logChronicle(chronicleRecruit(day, visitor.member, '上门投奔'))
     setVisitor(null)
   }
 
@@ -465,6 +485,7 @@ export default function App() {
     setGold((g) => g - ECONOMY.bountyCost)
     const m = bountyCandidate(Math.random, membersRef.current, job)
     setMembers((roster) => [...roster, m])
+    logChronicle(chronicleRecruit(day, m, '定向悬赏'))
     setRecruitCooldown(cooldownNeeded(aliveCount()))
   }
 
@@ -479,6 +500,7 @@ export default function App() {
 
   const hire = (m: Member) => {
     setMembers((roster) => [...roster, m])
+    logChronicle(chronicleRecruit(day, m, '酒馆传闻'))
     setCandidates([])
   }
 
