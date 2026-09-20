@@ -30,12 +30,17 @@ import { powerScore } from './sim/combat'
 import { rollBossDrops, describeItem, slotsOf } from './sim/loot'
 import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave } from './state/save'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
-import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin } from './ui/audio'
+import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor } from './ui/audio'
 import { BLACKMOSS } from './data/dungeons'
 import { startTower, settleTowerFloor, towerRest, towerNext, towerMarkPermadeath, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
+import { rollGuildEvent, pickOutcome } from './sim/guild-events'
+import { applyMoraleDelta } from './sim/morale'
+import { rollDrop } from './sim/loot'
+import { chronicleRaw } from './sim/chronicle'
+import { grantExp } from './sim/gen'
 import { JOBS } from './data/jobs'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
@@ -95,6 +100,8 @@ export default function App() {
   const [blessing, setBlessing] = useState(() => saved?.blessing ?? 0)
   const [recruitCooldown, setRecruitCooldown] = useState(() => saved?.recruitCooldown ?? 0)
   const [visitor, setVisitor] = useState<ReturnType<typeof rollVisitor> | null>(null)
+  const [pendingEvent, setPendingEvent] = useState<ReturnType<typeof rollGuildEvent> | null>(null)
+  const [eventResult, setEventResult] = useState<string | null>(null)
   const [offlineNote, setOfflineNote] = useState<string | null>(null)
   const [chronicle, setChronicle] = useState<ChronicleEntry[]>(() => saved?.chronicle ?? [])
   const [buildings, setBuildings] = useState<Record<string, number>>(() => saved?.buildings ?? {})
@@ -442,9 +449,13 @@ export default function App() {
     lastBattleRef.current = null
     rendererRef.current?.reset()
     setMembers([...membersRef.current])
-    // M1 P0:回城 roll 上门事件(涌现叙事入口;缘分不排队,不受冷却)
-    if (Math.random() < fx.visitorChance && membersRef.current.filter((m) => m.alive).length < ROSTER_CAP) {
+    // M1 P0:回城 roll 上门事件与大事事件(涌现叙事双井;缘分不排队,不受冷却)
+    const roll = Math.random()
+    if (roll < fx.visitorChance && membersRef.current.filter((m) => m.alive).length < ROSTER_CAP) {
       setVisitor(rollVisitor(Math.random, membersRef.current, buildings.tavern ?? 0))
+    } else if (roll < fx.visitorChance + 0.35 && !pendingEvent) {
+      const ev = rollGuildEvent(Math.random)
+      if (ev) { setPendingEvent(ev); setEventResult(null); sfxVisitor() }
     }
   }
 
@@ -504,6 +515,42 @@ export default function App() {
     setMembers((roster) => [...roster, m])
     logChronicle(chronicleRecruit(day, m, '酒馆传闻'))
     setCandidates([])
+  }
+
+  // 大事事件:按权重结算选择并应用效果(效果声明在 data/guild-events.ts)
+  const resolveEvent = (choiceIdx: number) => {
+    const ev = pendingEvent
+    if (!ev) return
+    const outcome = pickOutcome(ev, choiceIdx, Math.random())
+    const fx = outcome.effects ?? {}
+    const gold2 = fx.gold
+    if (gold2) setGold((g) => Math.max(0, g + gold2))
+    const blessing2 = fx.blessing
+    if (blessing2) setBlessing((b) => Math.max(0, b + blessing2))
+    if (fx.moraleAll) applyMoraleDelta(membersRef.current.filter((m) => m.alive), fx.moraleAll)
+    if (fx.moraleRandom) {
+      const alive = membersRef.current.filter((m) => m.alive)
+      if (alive.length > 0) applyMoraleDelta([alive[Math.floor(Math.random() * alive.length)]], fx.moraleRandom)
+    }
+    if (fx.expAll) for (const m of membersRef.current) if (m.alive) grantExp(m, fx.expAll)
+    if (fx.item) setInventory((inv) => [...inv, rollDrop(fx.item!, Math.random)])
+    if (fx.recruit) setVisitor(rollVisitor(Math.random, membersRef.current))
+    if (fx.injure) {
+      const alive = membersRef.current.filter((m) => m.alive)
+      if (alive.length > 0) {
+        const hurt = alive[Math.floor(Math.random() * alive.length)]
+        hurt.hp = Math.max(1, Math.floor(hurt.hp / 2))
+        setMembers([...membersRef.current])
+      }
+    }
+    logChronicle(chronicleRaw(day, ev.title + ':' + outcome.text))
+    setEventResult(outcome.text)
+    setMembers([...membersRef.current])
+  }
+
+  const dismissEvent = () => {
+    setPendingEvent(null)
+    setEventResult(null)
   }
 
   const sellItem = (id: string) => {
@@ -736,6 +783,28 @@ export default function App() {
             <button onClick={restartGuild}>☠ 重开公会</button>
           </div>
           <div className="inv-panel tavern-panel">
+            {pendingEvent && (
+              <div className="event-panel">
+                <h2>⚖ {pendingEvent.title}</h2>
+                {eventResult ? (
+                  <>
+                    <p className="event-result">{eventResult}</p>
+                    <button onClick={dismissEvent}>知道了</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="event-text">{pendingEvent.text}</p>
+                    <div className="event-choices">
+                      {pendingEvent.choices.map((c, i) => (
+                        <button key={i} disabled={!!run} onClick={() => resolveEvent(i)}>
+                          {c.text}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <h2>
               🍺 酒馆 —— 💰 {gold} · 🕯 祝福 {blessing} · 招募位 {members.filter((m) => m.alive).length}/{ROSTER_CAP}
             </h2>

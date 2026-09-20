@@ -16,6 +16,11 @@ import { refusesToMarch, applyDeathShock, applyFeast, MORALE, clamp } from '../s
 import { chronicleRefusal } from '../src/sim/chronicle'
 import { seedMemberSeq } from '../src/sim/gen'
 import { startTower, startTowerFloor, settleTowerFloor, towerNext, towerEnemyScale, towerGold, TOWER } from '../src/sim/tower'
+import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
+import { pickOutcome, rollGuildEvent } from '../src/sim/guild-events'
+import { applyMoraleDelta } from '../src/sim/morale'
+import { chronicleRaw } from '../src/sim/chronicle'
+import { rollDrop } from '../src/sim/loot'
 import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
 
@@ -925,6 +930,52 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 公会基地验证通过:效果接线/成本表/经验加成/迁移按设计工作')
+}
+
+// ============================================================
+// ⑧·十 大事事件池（M1 P2）：完整性/权重解析/效果应用
+// ============================================================
+{
+  const fail16: string[] = []
+  // 16a:事件池完整性——id 唯一、每事件 ≥2 选项、每选项权重和 ≥1、文本非空
+  const ids = new Set<string>()
+  for (const ev of GUILD_EVENTS) {
+    if (ids.has(ev.id)) fail16.push(`⑯ 事件 id 重复: ${ev.id}`)
+    ids.add(ev.id)
+    if (!ev.title || !ev.text) fail16.push(`⑯ ${ev.id} 标题/引文为空`)
+    if (ev.choices.length < 2) fail16.push(`⑯ ${ev.id} 选项不足 2 个`)
+    for (const c of ev.choices) {
+      if (!c.text) fail16.push(`⑯ ${ev.id} 有空选项文本`)
+      const sum = c.outcomes.reduce((s2, o) => s2 + o.weight, 0)
+      if (sum < 1) fail16.push(`⑯ ${ev.id} 有选项权重和 < 1`)
+      for (const o of c.outcomes) if (!o.text) fail16.push(`⑯ ${ev.id} 有空结果文本`)
+    }
+  }
+  console.log(`⑯ 事件池:${GUILD_EVENTS.length} 个事件,触发率 ${(EVENT_CHANCE * 100).toFixed(0)}%`)
+  if (GUILD_EVENTS.length < 8) fail16.push('⑯ 事件池不足 8 个')
+  // 16b:权重解析——rng=0.99 应命中最后一个(最高累计权重)分支;rng=0.01 应命中首个
+  const ev0 = GUILD_EVENTS[0]
+  const first = pickOutcome(ev0, 0, 0.01)
+  const last = pickOutcome(ev0, 0, 0.999)
+  if (first === last && ev0.choices[0].outcomes.length > 1) fail16.push('⑯ 权重解析不区分分支')
+  // 16c:rollGuildEvent——高 rng 必中事件,低 rng 必空
+  if (rollGuildEvent(() => 0.44) === null) fail16.push('⑯ 低于触发率应触发事件')
+  if (rollGuildEvent(() => 0.99) !== null) fail16.push('⑯ 高于触发率不应触发事件')
+  // 16d:效果应用——士气 delta 与金币真实落账
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 700 + j))
+    const before = squad[0].morale ?? 60
+    applyMoraleDelta([squad[0]], -20)
+    if ((squad[0].morale ?? 0) !== before - 20) fail16.push('⑯ 士气 delta 应用失败')
+    const item = rollDrop('wpn-t2-bow', () => 0.99)
+    if (item.baseId !== 'wpn-t2-bow' || item.rolls.length === 0) fail16.push('⑯ 事件装备 roll 异常')
+    chronicleRaw(1, '⑯ 测试条目')
+  }
+  if (fail16.length > 0) {
+    console.log('✗ 大事事件池未通过:', fail16)
+    process.exit(1)
+  }
+  console.log('✓ 大事事件池验证通过:完整性/权重解析/效果应用按设计工作')
 }
 
 // ============================================================

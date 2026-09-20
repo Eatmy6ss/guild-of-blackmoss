@@ -30,6 +30,11 @@ function make(day: number, text: string): ChronicleEntry {
   return { seq: seqCounter, day, text }
 }
 
+/** 事件结果直接入史(通用包装) */
+export function chronicleRaw(day: number, text: string): ChronicleEntry {
+  return make(day, text)
+}
+
 // ---- 事件生成器(状态 → 故事文本)----
 
 export function chronicleBattleVictory(day: number, floor: string, survivors: Member[]): ChronicleEntry {

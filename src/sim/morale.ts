@@ -93,3 +93,11 @@ export function moraleLabel(m: Member): string {
   if (v >= MORALE.refuseThreshold) return '消沉'
   return '心碎'
 }
+
+/** 事件用:士气增减(正负皆可,clamp 0-100) */
+export function applyMoraleDelta(members: Member[], delta: number): void {
+  for (const m of members) {
+    if (!m.alive) continue
+    m.morale = clamp((m.morale ?? 60) + delta)
+  }
+}
