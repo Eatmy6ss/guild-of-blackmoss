@@ -11,6 +11,9 @@ import { BLACKMOSS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
 import { offlineGain } from '../src/sim/tavern'
+import { refusesToMarch, applyDeathShock, applyFeast, MORALE } from '../src/sim/morale'
+import { chronicleRefusal } from '../src/sim/chronicle'
+import { seedMemberSeq } from '../src/sim/gen'
 import { startTower, startTowerFloor, settleTowerFloor, towerNext, towerEnemyScale, towerGold, TOWER } from '../src/sim/tower'
 import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
@@ -807,7 +810,7 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
-  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now }
+  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2 }
   const code = exportSave(saveObj)
   const back = importSave(code)
   const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6
@@ -825,6 +828,43 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 离线累积与存档导出/导入验证通过')
+}
+
+// ============================================================
+// ⑧·八 灵魂层（M1 P2）：士气/关系/编年史
+// ============================================================
+{
+  const fail14: string[] = []
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 555 + j))
+  seedMemberSeq(squad)
+
+  // 14a:队友阵亡 → 目击者士气受创 + 默契深化
+  const before = squad[0].morale ?? 60
+  const bondsBefore = squad[0].bonds[squad[1].id] ?? 0
+  applyDeathShock(squad[1].id, squad)
+  const afterDeath = squad[0].morale ?? 60
+  console.log(`⑭ 阵亡冲击:士气 ${before} → ${afterDeath},默契 +${(squad[0].bonds[squad[1].id] ?? 0) - bondsBefore}`)
+  if (afterDeath >= before) fail14.push('⑭ 阵亡冲击未生效')
+  if ((squad[0].bonds[squad[1].id] ?? 0) <= bondsBefore) fail14.push('⑭ 患难默契未深化')
+
+  // 14b:庆功宴回升
+  applyFeast(squad)
+  const afterFeast = squad[0].morale ?? 60
+  console.log(`⑭ 庆功宴:士气 → ${afterFeast}`)
+  if (afterFeast <= afterDeath) fail14.push('⑭ 庆功宴未生效')
+
+  // 14c:低士气拒绝出击 + 编年史
+  squad[2].morale = MORALE.refuseThreshold - 1
+  if (!refusesToMarch(squad[2])) fail14.push('⑭ 心碎英雄未拒绝出击')
+  const c1 = chronicleRefusal(3, [squad[2]])
+  if (!c1.text.includes(squad[2].name)) fail14.push('⑭ 拒绝编年史缺名')
+  console.log(`⑭ 拒绝:士气 ${squad[2].morale} 拒绝出击,编年史“${c1.text}”`)
+
+  if (fail14.length > 0) {
+    console.log('✗ 灵魂层未通过:', fail14)
+    process.exit(1)
+  }
+  console.log('✓ 灵魂层验证通过:士气/关系/编年史按设计工作')
 }
 
 // ============================================================

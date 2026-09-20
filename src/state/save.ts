@@ -1,4 +1,5 @@
 import type { DeadHero, ItemInstance, Member } from '../sim/types'
+import type { ChronicleEntry } from '../sim/chronicle'
 
 // 公会存档(save-systems:版本号 + 迁移链 + 防御式加载)
 // 只在公会阶段落盘(远征中不写):刷新/关闭浏览器后恢复公会资产,
@@ -6,7 +7,7 @@ import type { DeadHero, ItemInstance, Member } from '../sim/types'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5
 
 export interface GuildSave {
   version: number
@@ -23,6 +24,9 @@ export interface GuildSave {
   towerBest: number
   /** v4:上次存档时间戳(离线累积用) */
   lastSeen: number
+  /** v5:编年史(灵魂层)与公会日 */
+  chronicle: ChronicleEntry[]
+  day: number
 }
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
@@ -61,7 +65,9 @@ function validate(d: GuildSave): boolean {
     typeof d.blessing === 'number' &&
     typeof d.recruitCooldown === 'number' &&
     typeof d.towerBest === 'number' &&
-    typeof d.lastSeen === 'number'
+    typeof d.lastSeen === 'number' &&
+    Array.isArray(d.chronicle) &&
+    typeof d.day === 'number'
   )
 }
 

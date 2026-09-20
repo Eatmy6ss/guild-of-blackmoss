@@ -124,6 +124,9 @@ export interface Member {
   exp: number
   /** M1 P0:与其他英雄的默契(共同远征次数),羁绊半边;死者 bonds 随之消逝 */
   bonds: Record<string, number>
+  /** M1 P2 灵魂层:士气(0-100,低士气拒绝出击);grudges=被遗弃的信任裂痕(负关系偏移) */
+  morale?: number
+  grudges?: number
 }
 
 // ===== 战斗实体（战斗内的临时投影，战斗结束即弃）=====

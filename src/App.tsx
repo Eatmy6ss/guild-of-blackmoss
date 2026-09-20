@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames } from './sim/gen'
 import { guildGoals } from './sim/goals'
+import { applyDeathShock, applyFeast, applyVictory, applyRestMorale, refusesToMarch } from './sim/morale'
+import { chronicleHeroFall, chronicleFirstKill, chronicleFeast, chronicleTowerRecord, chronicleBattleVictory, chronicleRefusal, moraleReadout, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import {
   TICK_MS,
   stepBattle,
@@ -93,6 +95,8 @@ export default function App() {
   const [recruitCooldown, setRecruitCooldown] = useState(() => saved?.recruitCooldown ?? 0)
   const [visitor, setVisitor] = useState<ReturnType<typeof rollVisitor> | null>(null)
   const [offlineNote, setOfflineNote] = useState<string | null>(null)
+  const [chronicle, setChronicle] = useState<ChronicleEntry[]>(() => saved?.chronicle ?? [])
+  const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
 
@@ -101,6 +105,7 @@ export default function App() {
     if (saved) {
       seedMemberSeq(saved.members) // 防新招募与存档成员撞 ID(血量写回会串位)
       reserveNames([...saved.members.map((m) => m.name), ...saved.memorial.map((h) => h.name)])
+      seedChronicle(saved.chronicle ?? [])
       // M1 P1 离线累积:离开的时间里,存活英雄们接零工
       const { hours, gold } = offlineGain(saved.members, saved.lastSeen, Date.now())
       if (gold > 0) {
@@ -186,6 +191,7 @@ export default function App() {
     if (gold > 0) setGold((g) => g + gold)
     const endPhase = t.phase as TowerRun['phase']
     if (endPhase === 'rest') {
+      if (t.floor > towerBest) logChronicle(chronicleTowerRecord(day, t.floor))
       setTowerBest((best) => Math.max(best, t.floor))
       setTowerRunning(false)
       setTowerRun({ ...t })
@@ -203,8 +209,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, run, towerRun])
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -296,9 +302,21 @@ export default function App() {
         setLastDrops((d) => [...d, ...drops])
       }
       setManual((m) => (m.includes(bossId) ? m : [...m, bossId]))
+      if (!manual.includes(bossId)) {
+        logChronicle(chronicleFirstKill(day, r.dungeon.bosses[bossId].name, r.members.find((m) => m.alive) ?? r.members[0]))
+      }
     }
     advanceRun(r)
     const dead = markPermadeath(r)
+    if (dead.length > 0) {
+      const witnesses = r.members.filter((m) => m.alive)
+      applyDeathShock(dead[0].id, witnesses)
+      for (const d of dead) logChronicle(chronicleHeroFall(day, d.name, JOBS[d.job].name, r.dungeon.name))
+    }
+    if (b.status === 'guild-win') {
+      applyVictory(r.members.filter((m) => m.alive))
+      logChronicle(chronicleBattleVictory(day, r.dungeon.name, r.members.filter((m) => m.alive)))
+    }
     if (dead.length > 0) setMemorial((m) => [...m, ...dead])
     // M1 P0 成长:经验 + 默契的发放下沉在 sim 层(可被 smoke 直接验证)
     settleGrowth(r)
@@ -357,6 +375,13 @@ export default function App() {
   }
 
   const startExpedition = (branchId: string) => {
+    const refusers = expedition.filter((m) => refusesToMarch(m))
+    if (refusers.length > 0) {
+      logChronicle(chronicleRefusal(day, refusers))
+      setMembers([...membersRef.current])
+      return
+    }
+    setDay((d) => d + 1)
     if (expedition.length < 3) return
     // M1 P0 成长快照:结算页要展示"这把你变强了什么"
     growthSnapshotRef.current = new Map(
@@ -378,6 +403,7 @@ export default function App() {
   const continueDeep = () => {
     const r = runRef.current
     if (!r || r.phase !== 'rest') return
+    applyRestMorale(r.members.filter((m) => m.alive))
     const enc = r.dungeon.encounters.find((e) => e.id === r.steps[r.stepIdx])
     const manualBonus = enc?.bossId && manual.includes(enc.bossId) ? MANUAL_BONUS : 0
     startStep(r, ++seedRef.current * SEED_BASE, manualBonus)
@@ -422,6 +448,8 @@ export default function App() {
     setRecruitCooldown(0)
     setMembers(newRoster())
   }
+
+  const logChronicle = (e: ChronicleEntry) => setChronicle((c) => [...c, e])
 
   // ---- M1 P0 招募三路径(宪法红线 6:上门缘分不排队;悬赏/传闻受冷却;冷却防软锁减半)----
   const aliveCount = () => membersRef.current.filter((m) => m.alive).length
@@ -564,7 +592,7 @@ export default function App() {
           <span>{attrsLine(m)}</span>
           <span>{personalityLine(m)}</span>
           <span>战力 {powerScore(m)}</span>
-          <span>经验 {m.exp}/{xpNeeded(m.level)}</span>
+          <span>{moraleReadout(m)}</span>
           {!run && m.alive && (
             expeditionIds.includes(m.id) ? (
               <button className="mini-btn" onClick={() => leaveExpedition(m.id)}>▼ 替补</button>
@@ -712,6 +740,14 @@ export default function App() {
               <p className="hint">🚪 暂时没有访客——每次回城都有概率有人上门。</p>
             )}
             <div className="tavern-row">
+              <button
+                disabled={!!run || gold < 60}
+                onClick={() => { setGold((g) => g - 60); applyFeast(membersRef.current); setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
+              >
+                🍻 庆功宴（60 金）：全员士气 +30
+              </button>
+            </div>
+            <div className="tavern-row">
               <span className="cmd-label">定向悬赏：</span>
               {START_JOBS.map((job) => (
                 <button
@@ -796,6 +832,21 @@ export default function App() {
                 本次远征共获得 {lastDrops.length} 件装备
               </p>
             )}
+          </div>
+          <div className="inv-panel">
+            <h2>📜 编年史（第 {day} 日 · {chronicle.length} 则）</h2>
+            <div className="chronicle-box">
+              {chronicle.length === 0 ? (
+                <p className="hint">还没有故事发生。故事从第一次出击开始。</p>
+              ) : (
+                chronicle.slice(-40).map((e) => (
+                  <div key={e.seq} className="chronicle-row">
+                    <span className="chronicle-day">第{e.day}日</span>
+                    <span>{e.text}</span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
           <div className="inv-panel">
             <h2>
