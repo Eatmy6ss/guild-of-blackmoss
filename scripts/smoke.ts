@@ -18,6 +18,7 @@ import { seedMemberSeq } from '../src/sim/gen'
 import { startTower, startTowerFloor, settleTowerFloor, towerNext, towerEnemyScale, towerGold, TOWER } from '../src/sim/tower'
 import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
 import { pickOutcome, rollGuildEvent } from '../src/sim/guild-events'
+import { bossIntents } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
@@ -976,6 +977,79 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 大事事件池验证通过:完整性/权重解析/效果应用按设计工作')
+}
+
+// ============================================================
+// ⑰ 指挥有感（体验感优化 P0）：payoff 事件 / boss 意图窗口 / 施法条数据
+// ============================================================
+{
+  const fail17: string[] = []
+  // 17a:震地 payoff 事件——slam 必须发出且 mitigated 与阵型一致(「我的指令救了全队」要可见)
+  {
+    const b = createBattle(JOBS.map((job, j) => generateMember(job, 5, 930000 + j)), BLACKMOSS, 'enc-grush', 1777)
+    while (b.status === 'running' && b.tick < MAX_TICK) {
+      if (b.tick % 5 === 0) setStance(b, 'spread')
+      stepBattle(b)
+    }
+    const slams = b.events.filter((e) => e.type === 'slam')
+    if (slams.length === 0) fail17.push('⑰ 分散局 slam 事件未发出')
+    if (!slams.every((e) => e.mitigated === true)) fail17.push('⑰ 分散阵型下 mitigated 应恒为 true')
+    const b2 = createBattle(JOBS.map((job, j) => generateMember(job, 5, 933000 + j)), BLACKMOSS, 'enc-grush', 2777)
+    while (b2.status === 'running' && b2.tick < MAX_TICK) stepBattle(b2)
+    const slams2 = b2.events.filter((e) => e.type === 'slam')
+    if (slams2.length === 0) fail17.push('⑰ 无指挥局 slam 事件未发出')
+    if (!slams2.every((e) => e.mitigated === false)) fail17.push('⑰ 默认阵型下 mitigated 应恒为 false')
+    console.log(`⑰ slam payoff:分散局 ${slams.length} 次(全减伤) / 无指挥局 ${slams2.length} 次(全量命中)`)
+  }
+  // 17b:bossIntents——蓄力/咏唱窗口必须能被指挥台查到(按钮脉冲的地基)
+  {
+    const b = createBattle(JOBS.map((job, j) => generateMember(job, 5, 940000 + j)), BLACKMOSS, 'enc-grush', 3777)
+    let sawTelegraph = false
+    let sawCalm = false
+    while (b.status === 'running' && b.tick < MAX_TICK) {
+      stepBattle(b)
+      const it = bossIntents(b)
+      if (it.telegraphing) {
+        sawTelegraph = true
+        const armed = b.combatants.some(
+          (c) => c.boss && c.alive && c.mech?.['telegraph-aoe']?.until !== undefined,
+        )
+        if (!armed) fail17.push('⑰ telegraphing=true 但未查到蓄力中的 boss')
+      } else if (b.tick > 200) {
+        sawCalm = true
+      }
+    }
+    if (!sawTelegraph) fail17.push('⑰ 全程未观察到蓄力窗口(bossIntents 失明)')
+    if (!sawCalm) fail17.push('⑰ bossIntents 永远为 true(窗口判定失效)')
+    console.log(`⑰ 意图窗口:蓄力期可见=${sawTelegraph} 静默期归零=${sawCalm}`)
+  }
+  // 17c:casting 事件带时长(施法条演出需要),集火打断链路完整(打断是概率事件→多种子统计)
+  {
+    let castCount = 0
+    let intBattles = 0
+    for (let i = 0; i < 10; i++) {
+      const b = createBattle(JOBS.map((job, j) => generateMember(job, 5, 950000 + i * 100 + j)), BLACKMOSS, 'enc-talma', 4777 + i * 13)
+      while (b.status === 'running' && b.tick < MAX_TICK) {
+        if (b.tick % 5 === 0) {
+          const boss = b.combatants.find((c) => c.boss && c.alive)
+          if (boss) setFocus(b, boss.id)
+        }
+        stepBattle(b)
+      }
+      const casts = b.events.filter((e) => e.type === 'casting')
+      castCount += casts.length
+      if (!casts.every((e) => (e.amount ?? 0) > 0)) fail17.push('⑰ casting 事件缺时长(施法条画不出来)')
+      if (b.events.some((e) => e.type === 'interrupted')) intBattles++
+    }
+    if (castCount === 0) fail17.push('⑰ casting 事件未发出')
+    if (intBattles < 3) fail17.push(`⑰ 集火打断战局过少 ${intBattles}/10(打断链路疑似失效)`)
+    console.log(`⑰ 施法条:咏唱 ${castCount} 次均带时长,集火打断 ${intBattles}/10 局`)
+  }
+  if (fail17.length > 0) {
+    console.log('✗ 指挥有感未通过:', fail17)
+    process.exit(1)
+  }
+  console.log('✓ 指挥有感验证通过:payoff 事件/意图窗口/施法条数据按设计工作')
 }
 
 // ============================================================

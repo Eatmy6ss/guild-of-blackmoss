@@ -126,6 +126,43 @@ export function sfxVisitor(): void {
   blip(659, 659, 0.12, 'triangle', 0.12, 0.09)
 }
 
+// ---- 指挥有感 SFX:boss 前摇预警与指令 payoff(game-feel:指令也要有反馈分层)----
+
+export function sfxTelegraph(): void {
+  // 蓄力开始:低鸣号角感,音高下坠 = 危险逼近
+  blip(220, 110, 0.22, 'triangle', 0.16)
+  noise(0.12, 0.06, 300)
+}
+
+export function sfxInterrupt(): void {
+  // 打断:金属铿锵 + 高频噪声,指挥高光时刻,给 large 级音量
+  blip(wob(1180), wob(2350), 0.09, 'square', 0.2)
+  noise(0.1, 0.18, 1600)
+}
+
+export function sfxGuard(): void {
+  // 减伤成功:厚盾闷响
+  blip(150, 85, 0.12, 'triangle', 0.18)
+  noise(0.06, 0.09, 420)
+}
+
+export function sfxSlam(): void {
+  // 震地命中全队:低频重锤
+  blip(95, 32, 0.26, 'sawtooth', 0.22)
+  noise(0.16, 0.18, 220)
+}
+
+export function sfxEnrage(): void {
+  // 狂暴:下坠低吼
+  blip(110, 62, 0.32, 'sawtooth', 0.18)
+  noise(0.2, 0.07, 260)
+}
+
+export function sfxCmd(): void {
+  // 指令确认:短促上扬,与金币音区分(金币是双音高叠)
+  blip(520, 780, 0.06, 'square', 0.08)
+}
+
 // ---- BGM:A 小调五声,chiptune 双声部,32 步循环(audio-design:别单曲平铺,先用 A/A' 两段)----
 
 const MELODY: (number | 0)[] = [

@@ -30,7 +30,8 @@ import { powerScore } from './sim/combat'
 import { rollBossDrops, describeItem, slotsOf } from './sim/loot'
 import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave } from './state/save'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
-import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor } from './ui/audio'
+import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
+import { bossIntents } from './sim/mechanics'
 import { BLACKMOSS } from './data/dungeons'
 import { startTower, settleTowerFloor, towerRest, towerNext, towerMarkPermadeath, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { ECONOMY } from './data/economy'
@@ -652,6 +653,8 @@ export default function App() {
   const inTowerBattle = towerRun?.phase === 'battle' && towerRun.battle != null
   const inBattle = run?.phase === 'battle' && battle != null
   const battleOver = inBattle && battle!.status !== 'running'
+  // 指挥有感:boss 意图实时推导——蓄力中「分散」脉冲,咏唱中亮「打断咏唱」按钮(决策窗口可见)
+  const intents = inBattle && battle!.status === 'running' ? bossIntents(battle!) : null
   const finished = run != null && (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated')
   const canExpedition = !run && expedition.length >= 3
 
@@ -1097,16 +1100,25 @@ export default function App() {
                   {(Object.keys(STANCE_NAME) as Stance[]).map((s) => (
                     <button
                       key={s}
-                      className={battle.commands.stance === s ? 'active' : ''}
+                      className={
+                        (battle.commands.stance === s ? 'active' : '') +
+                        (intents?.telegraphing && s === 'spread' ? ' urgent' : '')
+                      }
                       disabled={battle.commands.autoMode}
-                      onClick={() => cmd((b) => setStance(b, s))}
+                      onClick={() => {
+                        sfxCmd()
+                        cmd((b) => setStance(b, s))
+                      }}
                     >
                       {STANCE_NAME[s]}
                     </button>
                   ))}
                   <span className="cmd-label">│</span>
                   <button
-                    onClick={() => cmd(useHealPotion)}
+                    onClick={() => {
+                      sfxCmd()
+                      cmd(useHealPotion)
+                    }}
                     disabled={
                       battle.commands.autoMode ||
                       battle.commands.healStock <= 0 ||
@@ -1117,7 +1129,10 @@ export default function App() {
                     {battle.commands.healCd > 0 ? `（${Math.ceil(battle.commands.healCd / 10)}s）` : ''}
                   </button>
                   <button
-                    onClick={() => cmd(useFuryPotion)}
+                    onClick={() => {
+                      sfxCmd()
+                      cmd(useFuryPotion)
+                    }}
                     disabled={
                       battle.commands.autoMode ||
                       battle.commands.furyStock <= 0 ||
@@ -1139,6 +1154,18 @@ export default function App() {
                   >
                     🛡 保护{battle.commands.protectRetreat ? '开' : '关'}
                   </button>
+                  {intents?.casting && intents.casterId && !battle.commands.autoMode && (
+                    <button
+                      className="urgent"
+                      onClick={() => {
+                        if (!intents?.casterId) return
+                        sfxCmd()
+                        cmd((b) => setFocus(b, intents.casterId))
+                      }}
+                    >
+                      ⚔ 打断咏唱！
+                    </button>
+                  )}
                   {battle.commands.focusId && (
                     <button
                       className="focus-tag"
@@ -1153,7 +1180,13 @@ export default function App() {
                       🏳 撤离中…{Math.max(0, Math.ceil((battle.commands.extractingUntil - battle.tick) / 10))}s
                     </button>
                   ) : (
-                    <button onClick={() => retreat()} disabled={battle.commands.autoMode}>
+                    <button
+                      onClick={() => {
+                        sfxCmd()
+                        retreat()
+                      }}
+                      disabled={battle.commands.autoMode}
+                    >
                       🏳 撤退令
                     </button>
                   )}
@@ -1173,8 +1206,8 @@ export default function App() {
               </div>
               {battle && !battleOver && (
                 <p className="hint">
-                  点击场上敌人 = 集火 · boss 红圈蓄力 = 切「分散」 · 咏唱 = 集火打断 · 狂暴前 = 爆发药或撤退令 ·
-                  倒下即永久牺牲
+                  点击场上敌人 = 集火 · boss 蓄力出现红条倒计时 = 切「分散」减伤 · boss 出现紫条咏唱 = 点「打断咏唱！」 ·
+                  狂暴前 = 爆发药或撤退令 · 倒下即永久牺牲
                 </p>
               )}
               {battleOver && (
@@ -1229,27 +1262,59 @@ export default function App() {
                 {(Object.keys(STANCE_NAME) as Stance[]).map((st) => (
                   <button
                     key={st}
-                    className={battle.commands.stance === st ? 'active' : ''}
+                    className={
+                      (battle.commands.stance === st ? 'active' : '') +
+                      (intents?.telegraphing && st === 'spread' ? ' urgent' : '')
+                    }
                     disabled={battle.commands.autoMode}
-                    onClick={() => cmdTower((b) => setStance(b, st))}
+                    onClick={() => {
+                      sfxCmd()
+                      cmdTower((b) => setStance(b, st))
+                    }}
                   >
                     {STANCE_NAME[st]}
                   </button>
                 ))}
                 <span className="cmd-label">│</span>
                 <button
-                  onClick={() => cmdTower((b) => useHealPotion(b))}
+                  onClick={() => {
+                    sfxCmd()
+                    cmdTower((b) => useHealPotion(b))
+                  }}
                   disabled={battle.commands.autoMode || battle.commands.healStock <= 0 || battle.commands.healCd > 0}
                 >
                   💊 {battle.commands.healStock}
                 </button>
                 <button
-                  onClick={() => cmdTower((b) => useFuryPotion(b))}
+                  onClick={() => {
+                    sfxCmd()
+                    cmdTower((b) => useFuryPotion(b))
+                  }}
                   disabled={battle.commands.autoMode || battle.commands.furyStock <= 0 || battle.commands.furyCd > 0}
                 >
                   ⚡ {battle.commands.furyStock}
                 </button>
-                <button className="focus-tag" onClick={() => cmdTower((b) => orderRetreat(b))}>🏳 撤退令</button>
+                {intents?.casting && intents.casterId && !battle.commands.autoMode && (
+                  <button
+                    className="urgent"
+                    onClick={() => {
+                      if (!intents?.casterId) return
+                      sfxCmd()
+                      cmdTower((b) => setFocus(b, intents.casterId))
+                    }}
+                  >
+                    ⚔ 打断咏唱！
+                  </button>
+                )}
+                <button
+                  className="focus-tag"
+                  onClick={() => {
+                    sfxCmd()
+                    cmdTower((b) => orderRetreat(b))
+                  }}
+                >
+                  🏳 撤退令
+                </button>
               </div>
               <div className="enc-row">
                 <button onClick={() => setTowerRunning((r) => !r)} disabled={battle.status !== 'running'}>

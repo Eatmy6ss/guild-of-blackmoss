@@ -292,6 +292,7 @@ export type BattleEventType =
   | 'enraged'
   | 'summoned'
   | 'fury'
+  | 'slam'
 
 export interface BattleEvent {
   tick: number
@@ -301,6 +302,8 @@ export interface BattleEvent {
   amount?: number
   crit?: boolean
   ranged?: boolean
+  /** slam 专用:分散阵型是否减了伤(指挥有感的 payoff 事件,演出层据此分叉表现) */
+  mitigated?: boolean
 }
 
 export interface BattleState {

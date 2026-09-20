@@ -81,7 +81,8 @@ export const BLACKMOSS: DungeonDef = {
       id: 'talma',
       name: '深渊祭司·塔尔玛',
       // D15 反馈:压迫感应强于格鲁什——全面加压(试玩反馈 #4)
-      maxHp: 2000,
+      // 指挥有感补偿:打断变可达后中位胜率 86→98 越界,加血+狂暴提前把压力买回来
+      maxHp: 2400,
       attack: 14,
       defense: 5,
       speed: 9,
@@ -98,7 +99,9 @@ export const BLACKMOSS: DungeonDef = {
           id: 'talma-void',
           kind: 'cast-buff',
           name: '虚空咏唱',
-          params: { castTicks: 25, attackBuff: 10, durationTicks: 120, everyTicks: 240, breakDamage: 180 },
+          // 指挥有感修正:实测 5 级小队 25tick 内仅能打出 65-80 伤害,180 门槛让打断形同虚设
+          // (打断是指令映射的核心 payoff,门槛必须可达)——窗口 3s 供人反应,门槛压到小队可及
+          params: { castTicks: 30, attackBuff: 10, durationTicks: 120, everyTicks: 240, breakDamage: 110 },
         },
         {
           id: 'talma-bind',
@@ -110,7 +113,7 @@ export const BLACKMOSS: DungeonDef = {
           id: 'talma-enrage',
           kind: 'enrage',
           name: '狂暴软墙',
-          params: { atTick: 160, attackMult: 1.6 },
+          params: { atTick: 140, attackMult: 1.8 },
         },
       ],
       dropTable: [

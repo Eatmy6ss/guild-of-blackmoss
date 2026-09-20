@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text } from 'pixi.js'
 import { pixelTexture, spriteKeyFor } from './pixelSprites'
-import { sfxHit, sfxCrit, sfxDeath } from '../audio'
+import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
 
@@ -127,6 +127,8 @@ export class BattleRenderer {
   private focusMarker: Text | null = null
   /** 阵型变化横幅（D14 反馈：阵型切换要有直观感受）——追踪上一帧阵型 */
   private lastStance: string | null = null
+  /** boss 咏唱条（bossId → 条对象）：打断时找条做「碎裂」演出 */
+  private castBars = new Map<string, Graphics>()
 
   private static STANCE_BANNER: Record<string, { text: string; color: number }> = {
     advance: { text: '推进阵型 · 输出↑ 防御↓', color: 0xe8a04d },
@@ -218,6 +220,7 @@ export class BattleRenderer {
     // 集火标记随场景销毁——引用必须一并清空，否则下一场战斗
     // syncUnits 会操作已销毁的 Pixi 对象（position 已为 null → 每帧 TypeError，UI 冻结）
     this.focusMarker = null
+    this.castBars.clear()
     this.drawBackdrop()
   }
 
@@ -295,17 +298,38 @@ export class BattleRenderer {
         continue
       }
       if (ev.type === 'telegraph') {
+        sfxTelegraph()
         this.spawnTelegraph(target, ev.amount ?? 30)
         this.spawnFloat(target, '⚠ 蓄力', 0xd93a3a, 14)
         continue
       }
       if (ev.type === 'casting') {
-        this.spawnFloat(target, '咏唱中…', 0xb08fd9, 12)
+        this.spawnCastBar(target, ev.amount ?? 25)
         continue
       }
       if (ev.type === 'interrupted') {
-        this.spawnFloat(target, '打断!', 0xe8c67a, 14)
-        this.addTrauma(0.2)
+        // 指挥高光时刻(game-feel large 级):打断 = 玩家指令的直接胜利,值得全套反馈
+        sfxInterrupt()
+        this.shatterCastBar(target)
+        this.spawnFlash(target)
+        this.spawnRing(target)
+        this.hitStop(120)
+        this.addTrauma(0.5)
+        this.spawnFloat(target, '打断!!', 0xe8c67a, 20)
+        continue
+      }
+      if (ev.type === 'slam') {
+        // 震地 payoff:减伤成功/失败必须演得不一样,否则玩家感觉指令没用
+        if (ev.mitigated) {
+          sfxGuard()
+          this.addTrauma(0.18)
+          this.spawnFloat(target, '分散减伤!', 0x7fd48f, 18)
+        } else {
+          sfxSlam()
+          this.hitStop(90)
+          this.addTrauma(0.7)
+          this.spawnFloat(target, '命中全队!!', 0xd93a3a, 20)
+        }
         continue
       }
       if (ev.type === 'bound') {
@@ -313,6 +337,7 @@ export class BattleRenderer {
         continue
       }
       if (ev.type === 'enraged') {
+        sfxEnrage()
         target.body.tint = 0xff5a5a
         this.spawnFloat(target, '狂暴!!', 0xff5a5a, 18)
         this.addTrauma(0.5)
@@ -559,23 +584,93 @@ export class BattleRenderer {
     })
   }
 
-  /** boss 蓄力预警：脚下红圈脉动，持续到机制结算 */  private spawnTelegraph(u: UnitView, durTicks: number): void {
+  /** boss 蓄力预警:脚下红圈脉动 + 头顶倒计时条(前摇必须可读——还剩多久落地) */  private spawnTelegraph(u: UnitView, durTicks: number): void {
     const g = new Graphics()
     g.ellipse(0, 8, 40 * u.baseScale, 15 * u.baseScale)
       .fill({ color: 0xd93a3a, alpha: 0.3 })
       .stroke({ width: 2, color: 0xd93a3a, alpha: 0.7 })
     g.position.set(u.container.x, u.container.y)
     this.root.addChild(g)
+    // 倒计时条:挂单位容器上跟随移动,红条缩到 0 = 蓄力落地;最后 1/3 急促闪烁
+    const bar = new Graphics()
+    const barY = -58 * u.baseScale
+    u.container.addChild(bar)
     let t = 0
     const dur = durTicks * TICK_MS
     this.effects.push({
       update: (dt) => {
+        if (bar.destroyed) return false
         t += dt
         const p = Math.min(t / dur, 1)
-        g.alpha = 0.7 + 0.3 * Math.sin(t / 80)
+        const urgent = p >= 0.66
+        g.alpha = urgent ? 0.5 + 0.5 * Math.sin(t / 28) : 0.7 + 0.3 * Math.sin(t / 80)
+        bar.clear()
+        bar.roundRect(-20 * u.baseScale, barY, 40 * u.baseScale, 4, 2).fill({ color: 0x262b38, alpha: 0.9 })
+        if (p < 1) {
+          bar.roundRect(-20 * u.baseScale, barY, 40 * u.baseScale * (1 - p), 4, 2)
+            .fill({ color: 0xd93a3a, alpha: urgent ? 1 : 0.85 })
+        }
         if (p >= 1) {
           g.removeFromParent()
           g.destroy()
+          bar.removeFromParent()
+          bar.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  /** boss 咏唱条:紫色计时条挂在 boss 头顶,被集火打断时由 shatterCastBar 接手演出 */
+  private spawnCastBar(u: UnitView, durTicks: number): void {
+    // 同一 boss 重复开咏唱前先清旧条(mechanics 保证不叠加,这里兜底)
+    const prev = this.castBars.get(u.combatant.id)
+    if (prev && !prev.destroyed) {
+      prev.removeFromParent()
+      prev.destroy()
+    }
+    const bar = new Graphics()
+    const barY = -64 * u.baseScale
+    u.container.addChild(bar)
+    this.castBars.set(u.combatant.id, bar)
+    let t = 0
+    const dur = durTicks * TICK_MS
+    this.effects.push({
+      update: (dt) => {
+        if (bar.destroyed) return false // 被打断演出接管/场景重建时静默退出
+        t += dt
+        const p = Math.min(t / dur, 1)
+        bar.clear()
+        bar.roundRect(-20 * u.baseScale, barY, 40 * u.baseScale, 4, 2).fill({ color: 0x262b38, alpha: 0.9 })
+        bar.roundRect(-20 * u.baseScale, barY, 40 * u.baseScale * (1 - p), 4, 2)
+          .fill({ color: 0xb08fd9, alpha: 0.95 })
+        if (p >= 1) {
+          bar.removeFromParent()
+          bar.destroy()
+          if (this.castBars.get(u.combatant.id) === bar) this.castBars.delete(u.combatant.id)
+        }
+        return true
+      },
+    })
+  }
+
+  /** 打断演出:咏唱条胀大淡出「碎裂」(interrupted 事件调用,配合白闪/hit-stop) */
+  private shatterCastBar(u: UnitView): void {
+    const bar = this.castBars.get(u.combatant.id)
+    if (!bar || bar.destroyed) return
+    this.castBars.delete(u.combatant.id)
+    let t = 0
+    this.effects.push({
+      update: (dt) => {
+        if (bar.destroyed) return false
+        t += dt
+        const p = Math.min(t / 160, 1)
+        bar.scale.set(1 + p * 0.6)
+        bar.alpha = 1 - p
+        if (p >= 1) {
+          bar.removeFromParent()
+          bar.destroy()
           return false
         }
         return true

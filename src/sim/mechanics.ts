@@ -60,9 +60,10 @@ export function processBossMechanics(state: BattleState): void {
               pushLog(state, 'guild', `集火奏效！${c.name} 的【${m.name}】被打断了！`)
             }
           } else if ((rt.next ?? 90) <= state.tick) {
-            rt.until = state.tick + num(m.params.castTicks, 25)
+            const castTicks = num(m.params.castTicks, 25)
+            rt.until = state.tick + castTicks
             rt.taken = 0
-            state.events.push({ tick: state.tick, type: 'casting', targetId: c.id })
+            state.events.push({ tick: state.tick, type: 'casting', targetId: c.id, amount: castTicks })
             pushLog(state, 'enemy', `${c.name} 开始咏唱【${m.name}】——集火可以打断！`)
           }
           break
@@ -134,9 +135,35 @@ function resolveSlam(state: BattleState, boss: Combatant, damage: number): void 
     const dmg = Math.max(1, Math.round(damage * (spread ? (i === tankIdx ? 0.5 : 0.1) : 1)))
     applyHit(state, boss, members[i], dmg, '震地猛击命中')
   }
+  // 指挥 payoff 事件:减伤与否必须让演出层看见——这是「我的指令救了全队」的可见回报
+  state.events.push({ tick: state.tick, type: 'slam', targetId: boss.id, amount: damage, mitigated: spread })
   pushLog(
     state,
     'enemy',
     spread ? '【震地猛击】落下——分散阵型大幅减伤！' : '【震地猛击】命中全队！',
   )
+}
+
+/** boss 意图查询(指挥台按钮「战况脉冲」用):蓄力中 → 该切分散;咏唱中 → 该集火打断 */
+export function bossIntents(state: BattleState): {
+  telegraphing: boolean
+  casting: boolean
+  casterId?: string
+} {
+  let telegraphing = false
+  let casting = false
+  let casterId: string | undefined
+  for (const c of state.combatants) {
+    if (!c.alive || !c.bossMechanics) continue
+    for (const m of c.bossMechanics) {
+      const rt = c.mech?.[m.kind]
+      if (rt?.until === undefined) continue
+      if (m.kind === 'telegraph-aoe') telegraphing = true
+      if (m.kind === 'cast-buff') {
+        casting = true
+        casterId = c.id
+      }
+    }
+  }
+  return { telegraphing, casting, casterId }
 }
