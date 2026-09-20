@@ -23,36 +23,37 @@ export const BLACKMOSS: DungeonDef = {
   ],
   enemyGroups: {
     frogs: [
-      { id: 'frog-a', name: '沼泽蛙人', maxHp: 320, attack: 9, defense: 2, speed: 10, position: 'front', range: 'melee' },
-      { id: 'frog-b', name: '沼泽蛙人', maxHp: 320, attack: 9, defense: 2, speed: 10, position: 'front', range: 'melee' },
-      { id: 'frog-c', name: '蛙人萨满', maxHp: 240, attack: 10, defense: 1, speed: 9, position: 'back', range: 'ranged' },
+      { id: 'frog-a', name: '沼泽蛙人', maxHp: 450, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'frog-b', name: '沼泽蛙人', maxHp: 450, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'frog-c', name: '蛙人萨满', maxHp: 340, attack: 11, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     wolves: [
-      { id: 'wolf-a', name: '腐化狼', maxHp: 360, attack: 13, defense: 2, speed: 12, position: 'front', range: 'melee' },
-      { id: 'wolf-b', name: '腐化狼', maxHp: 360, attack: 13, defense: 2, speed: 12, position: 'front', range: 'melee' },
+      { id: 'wolf-a', name: '腐化狼', maxHp: 540, attack: 14, defense: 3, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'wolf-b', name: '腐化狼', maxHp: 540, attack: 14, defense: 3, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     // D15 反馈调参：节奏太快——新增缓冲场（肉度高、威胁低的杂兵）
     'frogs-frail': [
-      { id: 'frog-add-a', name: '沼泽蛙人', maxHp: 200, attack: 8, defense: 1, speed: 9, position: 'front', range: 'melee' },
-      { id: 'frog-add-b', name: '沼泽蛙人', maxHp: 200, attack: 8, defense: 1, speed: 9, position: 'front', range: 'melee' },
+      { id: 'frog-add-a', name: '沼泽蛙人', maxHp: 280, attack: 8, defense: 3, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'frog-add-b', name: '沼泽蛙人', maxHp: 280, attack: 8, defense: 3, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
     ],
     'wolves-frail': [
-      { id: 'wolf-add-a', name: '腐化狼', maxHp: 260, attack: 9, defense: 1, speed: 11, position: 'front', range: 'melee' },
-      { id: 'wolf-add-b', name: '腐化狼', maxHp: 260, attack: 9, defense: 1, speed: 11, position: 'front', range: 'melee' },
+      { id: 'wolf-add-a', name: '腐化狼', maxHp: 360, attack: 9, defense: 2, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'wolf-add-b', name: '腐化狼', maxHp: 360, attack: 9, defense: 2, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     leeches: [
-      { id: 'leech-a', name: '沼泽水蛭', maxHp: 300, attack: 8, defense: 1, speed: 8, position: 'front', range: 'melee' },
-      { id: 'leech-b', name: '沼泽水蛭', maxHp: 300, attack: 8, defense: 1, speed: 8, position: 'front', range: 'melee' },
-      { id: 'leech-c', name: '沼泽水蛭', maxHp: 300, attack: 9, defense: 1, speed: 8, position: 'front', range: 'melee' },
+      { id: 'leech-a', name: '沼泽水蛭', maxHp: 420, attack: 8, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'leech-b', name: '沼泽水蛭', maxHp: 420, attack: 8, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'leech-c', name: '沼泽水蛭', maxHp: 420, attack: 9, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
     ],
   },
   bosses: {
     'grush': {
       id: 'grush',
       name: '沼泽食人魔·格鲁什',
-      maxHp: 1900,
+      // 节奏改版:boss TTK 目标 35-45s——血 ×1.3;零指挥 54% 越界回调:血 2500/震地 30
+      maxHp: 2500,
       attack: 18,
-      defense: 6,
+      defense: 8,
       speed: 7,
       position: 'front',
       range: 'melee',
@@ -62,7 +63,7 @@ export const BLACKMOSS: DungeonDef = {
           kind: 'telegraph-aoe',
           name: '震地猛击',
           // D13:40 伤害/每 9s——硬吃 = 每 9s 全队 120 chip,分散 = 28;不切阵型会掉进保护线
-          params: { telegraphTicks: 30, damage: 26, everyTicks: 100 },
+          params: { telegraphTicks: 30, damage: 30, everyTicks: 100 },
         },
         {
           id: 'grush-call',
@@ -82,9 +83,10 @@ export const BLACKMOSS: DungeonDef = {
       name: '深渊祭司·塔尔玛',
       // D15 反馈:压迫感应强于格鲁什——全面加压(试玩反馈 #4)
       // 指挥有感补偿:打断变可达后中位胜率 86→98 越界,加血+狂暴提前把压力买回来
-      maxHp: 2400,
-      attack: 14,
-      defense: 5,
+      // 节奏改版:血 ×1.25;中位 94% 越界回压:攻 15/束缚伤 22/狂暴提前 130
+      maxHp: 3000,
+      attack: 13,
+      defense: 6,
       speed: 9,
       position: 'back',
       range: 'ranged',
@@ -107,7 +109,8 @@ export const BLACKMOSS: DungeonDef = {
           id: 'talma-bind',
           kind: 'bind',
           name: '深渊束缚',
-          params: { atHpPct: 0.5, bindTicks: 24, damage: 14 },
+          // 节奏改版:0.5→0.6——战斗拉长后小队到不了半血线,束缚提前到 60% 保证中段机制必触发
+          params: { atHpPct: 0.6, bindTicks: 24, damage: 18 },
         },
         {
           id: 'talma-enrage',

@@ -293,7 +293,9 @@ for (let i = 0; i < 40; i++) {
   if (b.log.some((e) => e.text.includes('狂暴'))) enrages++
 }
 console.log(`5b 塔尔玛：集火打断 ${focusInt} 次 vs 无指挥打断 ${plainInt} 次；束缚 ${binds}/40，狂暴 ${enrages}/40`)
-if (focusInt <= plainInt) mechFailures.push('5b 集火没有提升打断率')
+// 节奏改版:协同走位(默认打坦克目标)后"无指挥"也等效全员打 boss,打断对比失去区分度——
+// 改为绝对门槛:打断链路必须恒可用
+if (focusInt < 30) mechFailures.push(`5b 打断链路失效 ${focusInt}/40 局`)
 if (binds < 12) mechFailures.push(`5b 束缚触发过少 ${binds}`)
 if (enrages < 8) mechFailures.push(`5b 狂暴触发过少 ${enrages}`)
 
@@ -482,8 +484,10 @@ if (legacyDmg <= plainDmg * 1.05) guildFailures.push('7b 传承加成未生效�
   const squadOn = JOBS.map((job, j) => generateMember(job, 5, 960001 + j))
   const bOn = createBattle(squadOn, BLACKMOSS, 'enc-grush', 31337)
   bOn.commands.protectRetreat = true
-  const guardC = bOn.combatants.find((c) => c.team === 'guild')!
-  guardC.hp = Math.round(guardC.maxHp * 0.1)
+  // 两个人濒危:治疗每口只能救血线最低的一个,必然有人留在 20% 濒危线下(节奏改版后单人口(10%)会被圣光拉出濒危线)
+  for (const c of bOn.combatants.filter((c) => c.team === 'guild')) {
+    c.hp = Math.round(c.maxHp * 0.1)
+  }
   let ticks = 0
   while (bOn.status === 'running' && bOn.commands.extractingUntil === undefined && ticks++ < 20) stepBattle(bOn)
   const onTriggered = bOn.commands.extractingUntil !== undefined
@@ -552,11 +556,15 @@ void aiSetFocus
   let cautiousTaken = 0
   for (let i = 0; i < 30; i++) {
     for (const kind of ['brave', 'cautious'] as const) {
-      const squad = JOBS.map((job, j) => generateMember(job, 5, 990000 + i * 100 + j))
-      squad[0].personality =
+      // 3 级小队:治疗加强(4.5x)后 5 级队打塔尔玛不再进入劣势,撤退抉择永远不触发——
+      // 用低级队还原"该不该撤"的抉择压力,才能测出撤退的性格传导
+      const squad = JOBS.map((job, j) => generateMember(job, 3, 990000 + i * 100 + j))
+      const personality =
         kind === 'brave'
           ? { bravery: 95, caution: 5, greed: 50, loyalty: 50 }
           : { bravery: 5, caution: 95, greed: 50, loyalty: 50 }
+      // 全队共享队长性格:队长阵亡后接任者仍是同一性格,否则随机性格的接任队长会污染统计
+      for (const m of squad) m.personality = personality
       const b = createBattle(squad, BLACKMOSS, 'enc-talma', i * 61 + kind.length)
       b.commands.autoMode = true
       b.commands.protectRetreat = false
@@ -1050,6 +1058,58 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 指挥有感验证通过:payoff 事件/意图窗口/施法条数据按设计工作')
+}
+
+// ============================================================
+// ⑱ 战斗节奏带(节奏改版 2026-09-20):杂兵 15-20s / boss 35-45s(容忍 ±)
+// 用「像样指挥」机器人测:每 5tick 集火 boss、蓄力切分散(代表正常玩家操作)
+// ============================================================
+{
+  const fail18: string[] = []
+
+  // 像样指挥:集火 + 蓄力切分散(不用药水/撤退,纯 dps+机制应对)
+  const runCommanded = (encId: string, seed: number): number => {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 970000 + seed * 100 + j))
+    const b = createBattle(squad, BLACKMOSS, encId, seed * 31 + 7)
+    while (b.status === 'running' && b.tick < MAX_TICK) {
+      if (b.tick % 5 === 0) {
+        const intents = bossIntents(b)
+        setStance(b, intents.telegraphing ? 'spread' : 'standard')
+        const boss = b.combatants.find((c) => c.boss && c.alive)
+        if (boss) setFocus(b, boss.id)
+      }
+      stepBattle(b)
+    }
+    return b.tick / 10
+  }
+
+  // 18a:杂兵带 15-20s(容忍 13-23)
+  {
+    const trashIds = ['enc-frogs', 'enc-wolves', 'enc-leeches']
+    const durations: number[] = []
+    for (let i = 0; i < 6; i++) for (const enc of trashIds) durations.push(runCommanded(enc, i))
+    durations.sort((a, b) => a - b)
+    const med = durations[Math.floor(durations.length / 2)]
+    console.log(`⑱ 杂兵时长中位 ${med.toFixed(1)}s(带 15-20s,容忍 13-23)`)
+    if (med < 13 || med > 23) fail18.push(`⑱ 杂兵节奏越带 ${med.toFixed(1)}s`)
+  }
+  // 18b:boss 带 35-45s(容忍 30-50)
+  {
+    const durations: number[] = []
+    for (let i = 0; i < 6; i++) {
+      durations.push(runCommanded('enc-grush', 100 + i))
+      durations.push(runCommanded('enc-talma', 200 + i))
+    }
+    durations.sort((a, b) => a - b)
+    const med = durations[Math.floor(durations.length / 2)]
+    console.log(`⑱ boss 时长中位 ${med.toFixed(1)}s(带 35-45s,容忍 30-50)`)
+    if (med < 30 || med > 50) fail18.push(`⑱ boss 节奏越带 ${med.toFixed(1)}s`)
+  }
+  if (fail18.length > 0) {
+    console.log('✗ 战斗节奏未通过:', fail18)
+    process.exit(1)
+  }
+  console.log('✓ 战斗节奏带验证通过:杂兵/boss 时长符合温和放慢设计')
 }
 
 // ============================================================

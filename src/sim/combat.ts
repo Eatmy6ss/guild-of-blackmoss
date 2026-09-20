@@ -375,12 +375,21 @@ function actWith(c: Combatant, state: BattleState): void {
     }
     if (!target) target = pickByThreat(state, pool, c)
   } else {
-    // 团长集火优先（指挥台 D8-9），否则残血优先
+    // 团长集火优先（指挥台 D8-9）
     if (state.commands.focusId) {
       target = pool.find((f) => f.id === state.commands.focusId)
     }
     if (!target) {
-      // 无集火时：优先击杀最弱目标（增援/残血怪），triage 式清理
+      // 协同走位（节奏改版修复）：默认打坦克正在打的目标，保持威胁一致性——
+      // 旧逻辑"残血优先"会让游侠全程单刷后排,把远程怪的仇恨从坦克身上拉走(威胁表 51% 失效)
+      const tank = aliveOf(state, 'guild').find((c) => c.role === 'tank')
+      if (tank) {
+        const best = pool.reduce((a, b) => ((a.threat[tank.id] ?? 0) >= (b.threat[tank.id] ?? 0) ? a : b))
+        if ((best.threat[tank.id] ?? 0) > 0) target = best
+      }
+    }
+    if (!target) {
+      // 兜底：坦克缺席/无威胁信息时回到残血优先
       target = pool.reduce((a, b) => (a.hp <= b.hp ? a : b))
     }
   }
@@ -404,8 +413,9 @@ function useSkill(
       const hurt = allies.filter((a) => a.hp / a.maxHp < 0.75)
       if (hurt.length === 0) return false
       const target = hurt.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
-      // 治疗吞吐须覆盖 boss 基础压力：D15 加压轮后 3.0 倍（~31/s）才撑得住机制尖峰
-      const amount = Math.round(c.attack * 3.0)
+      // 治疗吞吐须覆盖 boss 基础压力:D15 加压轮后 3.0 倍;节奏改版(血池×1.5/战斗拉长)后
+      // 牧师基础攻击 7.0 配 4.5 倍 ≈ 31/s,恢复 D15 校准的绝对吞吐,否则长战斗必崩盘
+      const amount = Math.round(c.attack * 4.5)
       target.hp = Math.min(target.maxHp, target.hp + amount)
       // 治疗仇恨：治疗量全额转化为威胁——坦克倒下后牧师是下一个目标
       for (const e of aliveOf(state, 'enemy')) {

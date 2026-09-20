@@ -189,6 +189,12 @@ export interface EnemyDef {
   speed: number
   position: Position
   range: AttackRange
+  /**
+   * 小怪原型（节奏改版:小怪差异化)——决定数值线的"职业":
+   * 'shield'  盾卫:高血高防低攻慢速,前排磨血   'striker' 弩手/施法者:后排高攻低血
+   * 'bruiser' 狂战:高速高攻中血,冲脸威胁       缺省 = 普通杂兵(均衡线)
+   */
+  archetype?: 'shield' | 'striker' | 'bruiser'
 }
 
 export type MechanicKind =
