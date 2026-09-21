@@ -5,7 +5,7 @@
 // 运行：npx esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=scripts/smoke.mjs && node scripts/smoke.mjs
 import { generateMember } from '../src/sim/gen'
 import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit } from '../src/sim/combat'
-import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loot'
+import { rollBossDrops, rollDrop, describeItem, itemStats, createLootRng } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
