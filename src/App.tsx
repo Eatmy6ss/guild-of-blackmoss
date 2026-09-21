@@ -42,7 +42,8 @@ import { applyMoraleDelta } from './sim/morale'
 import { rollDrop } from './sim/loot'
 import { chronicleRaw } from './sim/chronicle'
 import { grantExp } from './sim/gen'
-import { JOBS } from './data/jobs'
+import { JOBS, specOf } from './data/jobs'
+import { HYBRIDS, isHybrid } from './data/vocations'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
 // 花名册 = 全体成员（含亡者记录）；远征队 = 花名册前三名幸存者。
@@ -126,6 +127,8 @@ export default function App() {
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   // 药水库存(经济改造):出征携带/战斗消耗/回城退回,仓库补货
   const [potions, setPotions] = useState(() => saved?.potions ?? { ...ECONOMY.startingPotions })
+  // 已解锁混合职阶(宪法 v3,训练场一次性解锁)
+  const [unlockedHybrids, setUnlockedHybrids] = useState<string[]>(() => saved?.unlockedHybrids ?? [])
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
 
   // 读档登记已用名字：新招募不与存档英雄/英灵重名
@@ -237,8 +240,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, run, towerRun])
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -502,6 +505,7 @@ export default function App() {
     setBlessing(0)
     setRecruitCooldown(0)
     setPotions({ ...ECONOMY.startingPotions })
+    setUnlockedHybrids([])
     setMembers(newRoster())
   }
 
@@ -685,6 +689,35 @@ export default function App() {
     setPotions((p) => ({ ...p, [kind]: p[kind] + 1 }))
     sfxCoin()
   }
+
+  // 职阶切换(宪法 v3):基础专精间轻消耗;混合职阶需默契达标+公会一次性解锁(重消耗)
+  const bondTotalOf = (m: Member) => Object.values(m.bonds).reduce((s2, n) => s2 + bondStars(n), 0)
+  const changeVocation = (memberId: string, newSpecId: string) => {
+    if (runRef.current || towerRunRef.current) return
+    const m = membersRef.current.find((x) => x.id === memberId)
+    if (!m || m.spec === newSpecId) return
+    const isHy = isHybrid(newSpecId)
+    if (isHy) {
+      if (!unlockedHybrids.includes(newSpecId)) {
+        // 一次性解锁:钱+祝福,同时记录
+        const c = ECONOMY.vocation
+        if (gold < c.hybridUnlockGold || blessing < c.hybridUnlockBlessing) return
+        if (bondTotalOf(m) < ECONOMY.hybridBondRequirement) return
+        setGold((g) => g - c.hybridUnlockGold)
+        setBlessing((b) => b - c.hybridUnlockBlessing)
+        setUnlockedHybrids((hs) => [...hs, newSpecId])
+      }
+    } else {
+      const c = ECONOMY.vocation
+      if (gold < c.switchGold || blessing < c.switchBlessing) return
+      setGold((g) => g - c.switchGold)
+      setBlessing((b) => b - c.switchBlessing)
+    }
+    setMembers((ms) => ms.map((x) => (x.id === memberId ? { ...x, spec: newSpecId } : x)))
+    const label = isHy ? HYBRIDS[newSpecId].name : specOf(m.job, newSpecId).name
+    logChronicle(chronicleRaw(day, m.name + ' 在训练场改换行当,如今是' + label + '。'))
+    sfxCoin()
+  }
   // 紧急招募:人手不足时免冷却(防软锁)
   const effectiveCooldown = members.filter((m) => m.alive).length < 3 ? 0 : recruitCooldown
   const towerUnlocked = manual.includes('talma')
@@ -724,7 +757,7 @@ export default function App() {
         <div className="mc-head">
           <span className="name">{m.name}</span>
           <span className="job">
-            {JOBS[m.job].name} Lv{m.level} · {ROLE_NAME[JOBS[m.job].role]}
+            {isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
             {onExpedition ? ' · ⚔远征队' : ''}
           </span>
           <span className={`hp${c && !c.alive ? ' dead' : ''}`}>
@@ -994,8 +1027,11 @@ export default function App() {
                     <div className="mc-head">
                       <span className="name">{m.name}</span>
                       <span className="job">
-                        {JOBS[m.job].name} Lv{m.level} · {ROLE_NAME[JOBS[m.job].role]}
+                        {isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
                       </span>
+                      <div className="row">
+                        <span className="hint">{isHybrid(m.spec) ? HYBRIDS[m.spec!].identity : specOf(m.job, m.spec).identity}</span>
+                      </div>
                       <span className="hp">战力 {powerScore(m)}</span>
                     </div>
                     <div className="row">
@@ -1084,6 +1120,50 @@ export default function App() {
                         升到 Lv{lv + 1}：{cost!.gold} 金{cost!.blessing ? ` + ${cost!.blessing} 祝福` : ''}
                       </button>
                     )}
+                  </div>
+                )
+              })}
+            </div>
+            <div className="voc-panel">
+              <h2>⚔ 训练场 —— 行当更换</h2>
+              <p className="hint">
+                换行当:{ECONOMY.vocation.switchGold} 金 + {ECONOMY.vocation.switchBlessing} 祝福。
+                混合职阶首次解锁 {ECONOMY.vocation.hybridUnlockGold} 金 + {ECONOMY.vocation.hybridUnlockBlessing} 祝福,
+                且要求本人默契 ≥ {ECONOMY.hybridBondRequirement} 星(共同远征积累)。🔒 = 公会尚未解锁该混合行当。
+              </p>
+              {members.filter((m) => m.alive).map((m) => {
+                const cur = isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name
+                const sameLine = Object.values(JOBS[m.job].specs).filter((sp) => sp.id !== m.spec)
+                const bond = bondTotalOf(m)
+                const canSwitch = !run && gold >= ECONOMY.vocation.switchGold && blessing >= ECONOMY.vocation.switchBlessing
+                return (
+                  <div key={m.id} className="voc-row">
+                    <div className="voc-head">
+                      <b>{m.name}</b>
+                      <span className="hint">现为 {cur} · Lv{m.level} · 默契 {bond} 星</span>
+                    </div>
+                    <div className="voc-btns">
+                      {sameLine.map((sp) => (
+                        <button key={sp.id} disabled={!canSwitch} title={sp.identity} onClick={() => changeVocation(m.id, sp.id)}>
+                          {sp.name}
+                        </button>
+                      ))}
+                      {Object.values(HYBRIDS).map((hy) => {
+                        const unlocked = unlockedHybrids.includes(hy.id)
+                        const canBond = bond >= ECONOMY.hybridBondRequirement
+                        const canPay = gold >= ECONOMY.vocation.hybridUnlockGold && blessing >= ECONOMY.vocation.hybridUnlockBlessing
+                        return (
+                          <button
+                            key={hy.id}
+                            disabled={!canSwitch || m.spec === hy.id || !canBond || (!unlocked && !canPay)}
+                            title={hy.identity + (unlocked ? '' : '(首次解锁需额外花费)')}
+                            onClick={() => changeVocation(m.id, hy.id)}
+                          >
+                            {hy.name}{unlocked ? '' : ' 🔒'}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 )
               })}

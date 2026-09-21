@@ -25,6 +25,7 @@ import { rollDrop } from '../src/sim/loot'
 import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE } from '../src/data/jobs'
+import { HYBRIDS } from '../src/data/vocations'
 
 const JOBS = ['guard', 'priest', 'ranger'] as const
 const MAX_TICK = 10000
@@ -826,10 +827,10 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
-  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 } }
+  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [] }
   const code = exportSave(saveObj)
   const back = importSave(code)
-  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1
+  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids)
   console.log(`⑬ 导出导入:回环 ${roundOk},码长 ${code.length}`)
   if (!roundOk) fail13.push('⑬ 导出导入回环失败')
   if (importSave('垃圾输入!!!') !== null) fail13.push('⑬ 无效码未被拒绝')
@@ -1609,4 +1610,64 @@ const towerFailures: string[] = []
   console.log(`㉔ 性格面板:勇猛攻 ${toCombatant(brave).attack}/${toCombatant(timid).attack} 谨慎防 ${toCombatant(cautious).defense}/${toCombatant(reckless).defense} 贪婪暴 ${(toCombatant(greedy).critChance * 100).toFixed(1)}/${(toCombatant(ascetic).critChance * 100).toFixed(1)}%`)
   if (fail24.length > 0) { console.log('✗ 性格面板未通过:', fail24); process.exit(1) }
   console.log('✓ 性格→面板通过:勇猛/谨慎/贪婪/忠诚四维真实影响战斗属性')
+}
+
+// ============================================================
+// ㉕ 混合职阶(宪法 v3 切片 2):数据完整性+投影+战斗可终结
+// ============================================================
+{
+  const fail25: string[] = []
+  // 25a:15 混合职阶数据完整性
+  if (Object.keys(HYBRIDS).length !== 15) fail25.push(`㉕ 混合职阶数量不是 15:${Object.keys(HYBRIDS).length}`)
+  for (const [key, hy] of Object.entries(HYBRIDS)) {
+    if (key !== hy.id) fail25.push(`㉕ 混合键名与 id 不一致:${key} vs ${hy.id}`)
+    if (!hy.identity) fail25.push(`㉕ ${hy.id} 缺身份句`)
+    if (!['tank', 'healer', 'dps'].includes(hy.role)) fail25.push(`㉕ ${hy.id} 主职非法`)
+    for (const sk of hy.skills) {
+      if (!['heavy-strike', 'heal-lowest', 'taunt', 'group-heal', 'shield-ally', 'curse-mark', 'summon-pet', 'multishot', 'frost-nova', 'enchant-self', 'charge-strike', 'trap-bind'].includes(sk.effect)) {
+        fail25.push(`㉕ ${hy.id}/${sk.id} 未知效果 ${sk.effect}`)
+      }
+    }
+  }
+  // 配对完整性:每条线恰好与其他 5 条线各配一次
+  const pairCount: Record<string, number> = {}
+  for (const hy of Object.values(HYBRIDS)) {
+    for (const line of hy.lines) pairCount[line] = (pairCount[line] ?? 0) + 1
+  }
+  for (const [line, n] of Object.entries(pairCount)) {
+    if (n !== 5) fail25.push(`㉕ ${line} 线配对数 ${n} ≠ 5`)
+  }
+  console.log(`㉕ 混合职阶:${Object.keys(HYBRIDS).length} 个,配对覆盖 ${Object.keys(pairCount).length} 线`)
+
+  // 25b:投影——圣盾使应是前排坦克,带盾技能,数值走混合头不走守卫线
+  {
+    const m = generateMember('guard', 5, 991000)
+    m.spec = 'hy-saint'
+    seedMemberSeq([m])
+    const c = toCombatant(m)
+    if (c.role !== 'tank' || c.position !== 'front') fail25.push('㉕ 圣盾使主职/站位错误')
+    if (!c.skills.some((s) => s.def.effect === 'shield-ally')) fail25.push('㉕ 圣盾使缺移形圣盾')
+    if (c.maxHp !== Math.round(150 + 4 * 18 + m.attrs.str * 3)) fail25.push(`㉕ 圣盾使血量未走混合头:${c.maxHp}`)
+    console.log(`㉕ 圣盾使投影:HP ${c.maxHp} 攻 ${c.attack} 防 ${c.defense} 主职 ${c.role}`)
+  }
+
+  // 25c:含混合成员的战斗必然可终结(15 个混合各打一场杂兵)
+  {
+    const hybridIds = Object.keys(HYBRIDS)
+    let completed = 0
+    for (let i = 0; i < hybridIds.length; i++) {
+      const squad = JOBS.map((job, j) => generateMember(job, 5, 992000 + i * 131 + j))
+      squad[0].spec = hybridIds[i]
+      seedMemberSeq(squad)
+      const b = createBattle(squad, BLACKMOSS, 'enc-frogs', i * 41 + 7)
+      let guard = 0
+      while (b.status === 'running' && guard++ < MAX_TICK) stepBattle(b)
+      if (b.status !== 'running') completed++
+    }
+    if (completed < 15) fail25.push(`㉕ 混合成员战斗可终结性 ${completed}/15`)
+    console.log(`㉕ 15 混合职阶各打一场:终结 ${completed}/15`)
+  }
+
+  if (fail25.length > 0) { console.log('✗ 混合职阶未通过:', fail25); process.exit(1) }
+  console.log('✓ 混合职阶通过:15 全配对数据完整,投影与战斗终结性成立')
 }

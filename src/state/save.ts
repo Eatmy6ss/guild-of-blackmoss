@@ -7,7 +7,7 @@ import type { ChronicleEntry } from '../sim/chronicle'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 7
+export const SAVE_VERSION = 8
 
 export interface GuildSave {
   version: number
@@ -31,6 +31,8 @@ export interface GuildSave {
   buildings: Record<string, number>
   /** v7:药水库存(出征携带/战斗消耗/回城退回) */
   potions: { heal: number; fury: number }
+  /** v8:已解锁的混合职阶(公会级,训练场一次性解锁) */
+  unlockedHybrids: string[]
 }
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
@@ -53,6 +55,8 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   5: (d) => ({ ...d, buildings: {} }),
   // v6 → v7:补药水库存(经济改造前每场白送,迁移给一份初始量)
   6: (d) => ({ ...d, potions: { heal: 3, fury: 3 } }),
+  // v7 → v8:混合职阶解锁记录
+  7: (d) => ({ ...d, unlockedHybrids: [] }),
 }
 
 /** 纯函数迁移:供 loadGuildSave 与 smoke 直接验证 */
@@ -83,7 +87,8 @@ function validate(d: GuildSave): boolean {
     d.buildings !== undefined &&
     d.potions !== undefined &&
     typeof d.potions.heal === 'number' &&
-    typeof d.potions.fury === 'number'
+    typeof d.potions.fury === 'number' &&
+    Array.isArray(d.unlockedHybrids)
   )
 }
 

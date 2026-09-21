@@ -10,6 +10,8 @@ import type {
   BattleCommands,
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
+import { HYBRIDS, isHybrid } from '../data/vocations'
+import type { SpecDef } from './types'
 import { processBossMechanics } from './mechanics'
 import { runAutoAI } from './ai'
 import { equipmentStats } from './loot'
@@ -76,12 +78,15 @@ export function initCommands(potions?: { heal: number; fury: number }): BattleCo
   }
 }
 
-/** 成员 → 战斗实体投影。装备加算（D10），数值公式占位，D13-14 平衡轮统一调 */
+/** 成员 → 战斗实体投影。装备加算（D10）；混合职阶自带头部整体替换基础线 */
 export function toCombatant(member: Member): Combatant {
   const job = JOBS[member.job]
-  const spec = specOf(member.job, member.spec)
   const eq = equipmentStats(member.equipment)
-  const mods = spec.statMods ?? {}
+  // 混合职阶(宪法 v3):自带头部/站位/主职,不走基础职业线;普通专精 = 线 base + 专精修正
+  const hy = isHybrid(member.spec) ? HYBRIDS[member.spec!] : undefined
+  const baseSpec = hy ? hy : specOf(member.job, member.spec)
+  const base = hy ? hy.base : job.base
+  const mods = hy ? {} : (baseSpec as SpecDef).statMods ?? {}
   // 属性改革(切片 A):性格四维进面板——勇猛给伤害/谨慎给防御/贪婪给暴击/忠诚给受疗,
   // 以 50 为中性 ±6%~9%(幅度经 ⑱ 节奏带校准:乘法方差会抬高期望伤害),招募看性格不再只是看 AI 打法,也是看苗子的身体
   const p = member.personality ?? { bravery: 50, caution: 50, greed: 50, loyalty: 50 }
@@ -90,7 +95,7 @@ export function toCombatant(member: Member): Combatant {
   const greedCrit = (p.greed - 50) * 0.0005
   const loyaltyHeal = (p.loyalty - 50) * 0.0012
   const maxHp = Math.round(
-    Math.max(1, job.base.maxHp + (mods.maxHp ?? 0)) +
+    Math.max(1, base.maxHp + (mods.maxHp ?? 0)) +
       (member.level - 1) * job.growth.maxHp +
       member.attrs.str * 3 +
       (eq.maxHp ?? 0),
@@ -103,33 +108,33 @@ export function toCombatant(member: Member): Combatant {
     // D13 修复：血量延续——带上成员当前血量进场（远征内的消耗才成立）
     hp: Math.max(1, Math.min(member.hp > 0 ? member.hp : maxHp, maxHp)),
     attack: Math.round(
-      ((Math.max(1, job.base.attack + (mods.attack ?? 0)) + (member.level - 1) * job.growth.attack) *
+      ((Math.max(1, base.attack + (mods.attack ?? 0)) + (member.level - 1) * job.growth.attack) *
         (1 + member.attrs[job.attackAttr] * 0.05) +
         (eq.attack ?? 0)) *
         braveryAtkMult,
     ),
     defense: Math.round(
-      Math.max(0, job.base.defense + (mods.defense ?? 0)) *
+      Math.max(0, base.defense + (mods.defense ?? 0)) *
         cautionDefMult +
         (member.level - 1) * job.growth.defense +
         (eq.defense ?? 0),
     ),
-    critChance: job.base.critChance + (mods.critChance ?? 0) + greedCrit + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
+    critChance: base.critChance + (mods.critChance ?? 0) + greedCrit + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
     attackInterval: Math.max(
       6,
-      Math.round(60 / (job.base.speed + (mods.speed ?? 0) + (eq.speed ?? 0))),
+      Math.round(60 / (base.speed + (mods.speed ?? 0) + (eq.speed ?? 0))),
     ),
     cooldownLeft: 0,
     alive: true,
     memberId: member.id,
-    skills: spec.skills.map((def) => ({ def, cooldownLeft: 0 })),
-    specId: spec.id,
-    counterMult: spec.passive === 'counter' ? 0.3 : undefined,
+    skills: baseSpec.skills.map((def) => ({ def, cooldownLeft: 0 })),
+    specId: baseSpec.id,
+    counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
     healReceived: loyaltyHeal,
     tauntedTicks: 0,
-    position: job.position,
-    range: job.range,
-    role: job.role,
+    position: hy ? hy.position : job.position,
+    range: hy ? hy.range : job.range,
+    role: hy ? hy.role : job.role,
     synergyIds: job.synergy,
     threat: {},
     lifesteal: eq.lifesteal,

@@ -28,6 +28,10 @@ export const ECONOMY = {
   /** 药水经济(2026-09 改造):药水入公会库存,出征携带/战斗消耗/回城退回剩余,仓库金币补货 */
   potionCost: { heal: 45, fury: 70 },
   startingPotions: { heal: 3, fury: 3 },
+  // 职阶切换(宪法 v3):解锁容易(基础专精间轻消耗),混合职阶另花一次性解锁;回练过的专精不打折
+  vocation: { switchGold: 120, switchBlessing: 2, hybridUnlockGold: 200, hybridUnlockBlessing: 5 },
+  /** 混合职阶的默契门槛:成员默契星总和(共同远征积累) */
+  hybridBondRequirement: 8,
 } as const
 
 /** 上门访客的背景一句话(涌现叙事入口:每个人带着故事进门) */
