@@ -151,7 +151,7 @@ export function toCombatant(member: Member): Combatant {
     })(),
     specId: baseSpec.id,
     counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
-    healReceived: loyaltyHeal + raceHeal,
+    healReceived: loyaltyHeal + raceHeal + (eq.healReceived ?? 0),
     tauntedTicks: 0,
     position: hy ? hy.position : job.position,
     range: hy ? hy.range : job.range,

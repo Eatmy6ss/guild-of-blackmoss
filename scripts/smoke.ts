@@ -7,6 +7,7 @@ import { generateMember } from '../src/sim/gen'
 import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit } from '../src/sim/combat'
 import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
+import { ITEM_BASES } from '../src/data/items'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
@@ -378,8 +379,10 @@ for (let i = 0; i < 60; i++) {
   }
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
-    if (r.value < aff.range[0] - 0.01 || r.value > aff.range[1] + 0.01) {
-      lootFailures.push(`6b 词条 ${aff.id} 数值越界 ${r.value}`)
+    // 装备扩容:T2 词条区间 ×1.5(rollAffixes tierScale)
+    const hi = aff.range[1] * 1.5 + 0.01
+    if (r.value < aff.range[0] - 0.01 || r.value > hi) {
+      lootFailures.push(`6b 词条 ${aff.id} 数值越界 ${r.value}(上界 ${hi.toFixed(2)})`)
     }
   }
   if (!describeItem(item).includes('猎风长弓')) lootFailures.push('6b 描述缺失')
@@ -1789,4 +1792,54 @@ const towerFailures: string[] = []
   }
   if (fail27.length > 0) { console.log('✗ 精进/通用战技未通过:', fail27); process.exit(1) }
   console.log('✓ 精进+通用战技通过:36 精进技能二选一,通用被动跨专精携带')
+}
+
+// ============================================================
+// ㉘ 装备扩容(词条 16/T2 缩放/基底 20/六线武器入掉落)
+// ============================================================
+{
+  const fail28: string[] = []
+  // 28a:基底完整性——id/键一致,槽位合法,T2 掉落表引用存在
+  const baseCount = Object.keys(ITEM_BASES).length
+  if (baseCount < 20) fail28.push(`㉘ 基底数量 ${baseCount} < 20`)
+  for (const [k, b] of Object.entries(ITEM_BASES)) {
+    if (k !== b.id) fail28.push(`㉘ 基底键名不一致:${k}`)
+    if (!['weapon', 'armor', 'trinket'].includes(b.slot)) fail28.push(`㉘ ${b.id} 槽位非法`)
+  }
+  for (const d of DUNGEONS) {
+    for (const boss of Object.values(d.bosses)) {
+      for (const drop of boss.dropTable) {
+        if (!ITEM_BASES[drop.baseId]) fail28.push(`㉘ ${d.id}/${boss.id} 掉落引用缺失:${drop.baseId}`)
+      }
+    }
+  }
+  console.log(`㉘ 基底 ${baseCount} 件,掉落表引用完整`)
+  // 28b:T2 词条缩放——同词条同种子,T2 数值应是 T1 的 1.5 倍
+  {
+    let checked = 0
+    for (let seed = 0; seed < 60 && checked < 5; seed++) {
+      const t1 = rollDrop('wpn-t1-sword', createLootRng(seed))
+      const t2 = rollDrop('wpn-t2-crossbow', createLootRng(seed))
+      const r1 = t1.rolls.find((x) => x.affixId === 'aff-atk')
+      const r2 = t2.rolls.find((x) => x.affixId === 'aff-atk')
+      if (!r1 || !r2) continue
+      checked++
+      if (Math.abs(r2.value - r1.value * 1.5) > 0.01) {
+        fail28.push(`㉘ T2 缩放异常:T1 ${r1.value} → T2 ${r2.value}(应 ×1.5)`)
+      }
+      console.log(`㉘ 词条缩放对:${checked} 锋利 T1 ${r1.value} → T2 ${r2.value}`)
+    }
+    if (checked === 0) fail28.push('㉘ 缩放校验未抽到样本')
+  }
+  // 28c:受疗词条进面板
+  {
+    const m = generateMember('guard', 5, 998000)
+    m.equipment.trinket = rollDrop('trk-t2-medic', () => 0.4)
+    seedMemberSeq([m])
+    const c = toCombatant(m)
+    if ((c.healReceived ?? 0) <= 0.05) fail28.push(`㉘ 受疗词条未进面板:${c.healReceived}`)
+    console.log(`㉘ 受疗:面板 healReceived=${c.healReceived?.toFixed(2)}`)
+  }
+  if (fail28.length > 0) { console.log('✗ 装备扩容未通过:', fail28); process.exit(1) }
+  console.log('✓ 装备扩容通过:基底/词条/缩放/掉落/受疗全链路成立')
 }

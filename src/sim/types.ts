@@ -109,6 +109,7 @@ export type StatKey =
   | 'speed'
   | 'critChance'
   | 'lifesteal'
+  | 'healReceived'
 
 export interface AffixDef {
   id: string

@@ -18,14 +18,18 @@ function rollAffixes(rng: () => number, base: ItemBaseDef): ItemInstance['rolls'
   const pool = Object.values(AFFIXES)
   const used = new Set<string>()
   const rolls: ItemInstance['rolls'] = []
+  // 装备扩容:T2 词条区间 ×1.5(上限拉高一档,T2 更有感)
+  const tierScale = base.tier >= 2 ? 1.5 : 1
   for (let i = 0; i < count; i++) {
     const candidates = pool.filter((a) => !used.has(a.id))
     if (candidates.length === 0) break
     const aff = candidates[Math.floor(rng() * candidates.length)]
     used.add(aff.id)
+    const lo = aff.range[0] * tierScale
+    const hi = aff.range[1] * tierScale
     rolls.push({
       affixId: aff.id,
-      value: round2(aff.range[0] + rng() * (aff.range[1] - aff.range[0])),
+      value: round2(lo + rng() * (hi - lo)),
     })
   }
   return rolls
@@ -114,7 +118,7 @@ export const STAT_NAME: Record<StatKey, string> = {
   defense: '防御',
   speed: '攻速',
   critChance: '暴击',
-  lifesteal: '吸血',
+  lifesteal: '吸血', healReceived: '受疗',
 }
 
 export function slotsOf(item: ItemInstance): Slot {

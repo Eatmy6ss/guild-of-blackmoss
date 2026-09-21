@@ -21,6 +21,7 @@ const rng = () => {
 }
 
 // 满配档:经典专精+人类(与门禁标准条件一致);Lv10 可自行精进
+const members = COMP.map((job, i) => {
   const m = generateMember(job as keyof typeof JOBS, 10, 990000 + i * 17)
   levelTo(m, 10)
   m.hp = -1 // 约定:进场按满血处理(toCombatant 的 hp<=0 分支)
