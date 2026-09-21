@@ -54,6 +54,7 @@ const save: GuildSave = {
   chronicle: [],
   day: 20,
   buildings,
+  potions: { heal: 9, fury: 9 },
 }
 
 // ---- 自检:不通过就拒发码 ----

@@ -33,6 +33,8 @@ export interface TowerRun {
   /** 引用公会花名册的远征队成员(死亡=永久,与副本一致) */
   members: Member[]
   goldEarned: number
+  /** 携带药水(药水经济):进塔时从公会库存带出,逐层延续,离开时退回剩余 */
+  potions: { heal: number; fury: number }
   result?: 'left' | 'defeated'
 }
 
@@ -92,6 +94,12 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
         : { id: 'tower-wave', name: `高塔徘徊者(第 ${floor} 层)`, kind: 'wave', enemyGroupIds: ['tower'] },
     ],
   }
+  // 药水经济:本层从携带库存中支取;5 层起每场可用减半(深层药力稀薄,残酷分层)
+  const alloc = {
+    heal: floor >= TOWER.potionHalfFromFloor ? Math.min(run.potions.heal, Math.max(1, Math.floor(run.potions.heal / 2))) : run.potions.heal,
+    fury: floor >= TOWER.potionHalfFromFloor ? Math.min(run.potions.fury, Math.max(1, Math.floor(run.potions.fury / 2))) : run.potions.fury,
+  }
+  run.potions = { heal: run.potions.heal - alloc.heal, fury: run.potions.fury - alloc.fury }
   run.battle = createBattle(
     run.members.filter((m) => m.alive),
     dungeon,
@@ -101,13 +109,8 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
     0,
     // 分层残酷:9 层起保护失效
     floor <= TOWER.protectUntilFloor,
+    alloc,
   )
-  // 5 层起药水减半
-  if (floor >= TOWER.potionHalfFromFloor) {
-    const b = run.battle!
-    b.commands.healStock = Math.ceil(POTION_STOCK / 2) - 1
-    b.commands.furyStock = Math.ceil(POTION_STOCK / 2) - 1
-  }
   run.phase = 'battle'
 }
 
@@ -118,13 +121,14 @@ const FLOOR_POOL: EnemyDef[][] = [
   BLACKMOSS.enemyGroups.leeches,
 ]
 
-export function startTower(members: Member[], seed: number): TowerRun {
+export function startTower(members: Member[], seed: number, potions = { heal: POTION_STOCK, fury: POTION_STOCK }): TowerRun {
   const run: TowerRun = {
     floor: 1,
     phase: 'battle',
     battle: null,
     members: members.filter((m) => m.alive).slice(0, 3),
     goldEarned: 0,
+    potions,
   }
   startTowerFloor(run, seed)
   return run
@@ -141,6 +145,8 @@ export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolea
   if (!b || b.status === 'running') return { gold: 0, cleared: false }
   const gold = b.status === 'guild-win' ? towerGold(run.floor) : 0
   run.goldEarned += gold
+  // 未用完的药水退回携带量(团灭也一样:没喝掉的还在袋子里)
+  run.potions = { heal: run.potions.heal + b.commands.healStock, fury: run.potions.fury + b.commands.furyStock }
   if (b.status === 'guild-win') {
     run.phase = 'rest'
     return { gold, cleared: true }

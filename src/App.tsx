@@ -124,6 +124,8 @@ export default function App() {
   const [buildings, setBuildings] = useState<Record<string, number>>(() => saved?.buildings ?? {})
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
+  // 药水库存(经济改造):出征携带/战斗消耗/回城退回,仓库补货
+  const [potions, setPotions] = useState(() => saved?.potions ?? { ...ECONOMY.startingPotions })
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
 
   // 读档登记已用名字：新招募不与存档英雄/英灵重名
@@ -235,8 +237,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, run, towerRun])
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -439,6 +441,7 @@ export default function App() {
       ++seedRef.current * SEED_BASE,
       memorial.length * MEMORIAL_AURA,
       protectOn,
+      potions,
     )
     setLastDrops([])
     setRunning(true)
@@ -459,6 +462,8 @@ export default function App() {
   const backToGuild = () => {
     const r = runRef.current
     if (r) resetAfterRun(membersRef.current)
+    // 药水经济:未用完的药水退回公会库存
+    if (r) setPotions({ ...r.potions })
     runRef.current = null
     setRunning(false)
     setRun(null)
@@ -495,6 +500,7 @@ export default function App() {
     setGold(150)
     setBlessing(0)
     setRecruitCooldown(0)
+    setPotions({ ...ECONOMY.startingPotions })
     setMembers(newRoster())
   }
 
@@ -583,7 +589,7 @@ export default function App() {
 
   const enterTower = () => {
     if (runRef.current || towerRunRef.current || expedition.length < 3) return
-    const t = startTower(expedition, ++seedRef.current * 9973)
+    const t = startTower(expedition, ++seedRef.current * 9973, potions)
     towerRunRef.current = t
     setTowerRun({ ...t })
     setTowerRunning(true)
@@ -615,6 +621,9 @@ export default function App() {
   }
 
   const leaveTower = () => {
+    const t = towerRunRef.current
+    // 药水经济:离开高塔,未用完的药水退回公会库存(settleTowerFloor 已逐层回写)
+    if (t) setPotions({ ...t.potions })
     towerRunRef.current = null
     setTowerRun(null)
     setTowerRunning(false)
@@ -661,6 +670,15 @@ export default function App() {
     if (cost.blessing) setBlessing((b) => b - cost.blessing!)
     setBuildings((bs) => ({ ...bs, [id]: lv + 1 }))
     logChronicle(chronicleBuilding(day, def.name, lv + 1))
+    sfxCoin()
+  }
+
+  // 药水经济:仓库金币补货(远征中不卖货)
+  const buyPotion = (kind: 'heal' | 'fury') => {
+    const cost = ECONOMY.potionCost[kind]
+    if (run || gold < cost) return
+    setGold((g) => g - cost)
+    setPotions((p) => ({ ...p, [kind]: p[kind] + 1 }))
     sfxCoin()
   }
   // 紧急招募:人手不足时免冷却(防软锁)
@@ -816,6 +834,8 @@ export default function App() {
             <span>💰 {gold}</span>
             <span>🕯 {blessing}</span>
             <span>👥 {members.filter((m) => m.alive).length}/{ROSTER_CAP}</span>
+            <span>🧪 {potions.heal}</span>
+            <span>⚡ {potions.fury}</span>
           </div>
           <h2>公会大厅</h2>
           <div className="hub-dock">
@@ -997,6 +1017,19 @@ export default function App() {
                   </div>
           <div className="inv-panel">
             <h2>公会仓库（{inventory.length}）</h2>
+            <div className="potion-supply">
+              <span className="hint">
+                🧪 治疗药 ×{potions.heal} · ⚡ 爆发药 ×{potions.fury} —— 出征携带,战斗消耗,回城退回
+              </span>
+              <div className="tavern-row">
+                <button disabled={!!run || gold < ECONOMY.potionCost.heal} onClick={() => buyPotion('heal')}>
+                  🧪 补充治疗药（{ECONOMY.potionCost.heal} 金）
+                </button>
+                <button disabled={!!run || gold < ECONOMY.potionCost.fury} onClick={() => buyPotion('fury')}>
+                  ⚡ 补充爆发药（{ECONOMY.potionCost.fury} 金）
+                </button>
+              </div>
+            </div>
             {inventory.length === 0 ? (
               <p className="hint">击败 boss 掉落装备（首次击杀保底一件）。从成员卡的下拉框穿戴。</p>
             ) : (

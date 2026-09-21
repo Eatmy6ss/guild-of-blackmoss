@@ -825,18 +825,19 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
-  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 } }
+  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 } }
   const code = exportSave(saveObj)
   const back = importSave(code)
-  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6
+  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1
   console.log(`⑬ 导出导入:回环 ${roundOk},码长 ${code.length}`)
   if (!roundOk) fail13.push('⑬ 导出导入回环失败')
   if (importSave('垃圾输入!!!') !== null) fail13.push('⑬ 无效码未被拒绝')
 
-  // 13c:v3 → v4 迁移补 lastSeen
+  // 13c:v3 → v7 迁移逐级补字段(lastSeen/buildings/potions)
   const v4 = migrate({ ...saveObj, version: 3, towerBest: 6 })
   if (typeof v4.lastSeen !== 'number' || v4.version !== SAVE_VERSION) fail13.push('⑬ v3→v4 迁移失败')
-  console.log(`⑬ 迁移:v3 → v${v4.version},lastSeen 已补`)
+  if (v4.potions?.heal !== 3 || v4.potions?.fury !== 3) fail13.push('⑬ v6→v7 迁移未补药水库存')
+  console.log(`⑬ 迁移:v3 → v${v4.version},lastSeen/buildings/potions 已补`)
 
   if (fail13.length > 0) {
     console.log('✗ 离线/存档未通过:', fail13)
@@ -1272,4 +1273,65 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 平衡曲线通过：技能曲线(零指挥→平庸→中位→会玩)与装备成长符合设计契约')
+}
+
+// ============================================================
+// ⑳ 药水经济（2026-09 改造）：携带/消耗/退回/塔减半
+// ============================================================
+{
+  const fail20: string[] = []
+  const squad = JOBS.map((job, j) => generateMember(job, 5, 777 + j))
+  seedMemberSeq(squad)
+  const runToEnd = (b: { status: string }, guardMax = 20000) => {
+    let guard = 0
+    while ((b as { status: string }).status === 'running' && guard++ < guardMax) stepBattle(b as never)
+    return guard < guardMax
+  }
+
+  // 20a:出征携带 → 战斗消耗逐场延续 → 回城退回剩余
+  const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true, { heal: 2, fury: 1 })
+  const b1 = run.battle!
+  runToEnd(b1)
+  advanceRun(run)
+  const after1 = { ...run.potions }
+  if (run.phase !== 'battle' && run.phase !== 'victory' && run.potions.heal !== b1.commands.healStock) {
+    fail20.push('⑳ 战斗结算未回写携带药水')
+  }
+  // 第二场继承第一场的余量(不再是每场白送 3+3)
+  if (run.phase === 'battle') {
+    startStep(run, 991)
+    const b2 = run.battle!
+    if (b2.commands.healStock !== after1.heal || b2.commands.furyStock !== after1.fury) {
+      fail20.push(`⑳ 第二场未继承携带量(期望 ${after1.heal}/${after1.fury},实际 ${b2.commands.healStock}/${b2.commands.furyStock})`)
+    }
+    if (b2.commands.healStock > 0 && !useHealPotion(b2)) fail20.push('⑳ 有存量却喝不了药')
+    const healAfterDrink = b2.commands.healStock
+    runToEnd(b2)
+    advanceRun(run)
+    if (run.potions.heal !== healAfterDrink) fail20.push('⑳ 喝掉的药水未从携带量扣除')
+  }
+  console.log(`⑳ 远征携带:第一场后 ${after1.heal}/${after1.fury},回城时 ${run.potions.heal}/${run.potions.fury}`)
+
+  // 20b:高塔——携带制 + 5 层起每场可用减半
+  const t = startTower(squad, 20260921, { heal: 4, fury: 4 })
+  if (t.battle!.commands.healStock !== 4) fail20.push('⑳ 塔 1 层应可用全部携带量')
+  runToEnd(t.battle!)
+  settleTowerFloor(t)
+  const carryAfter1 = t.potions.heal
+  if (carryAfter1 !== 4) fail20.push(`⑳ 塔 1 层未耗药时携带量应保持 4,得 ${carryAfter1}`)
+  t.floor = 5
+  startTowerFloor(t, 555)
+  const deepStock = t.battle!.commands.healStock
+  if (deepStock !== 2) fail20.push(`⑳ 塔 5 层每场可用应减半为 2,得 ${deepStock}`)
+  if (t.potions.heal !== carryAfter1 - deepStock) fail20.push('⑳ 塔支取未从携带量扣除')
+  runToEnd(t.battle!)
+  settleTowerFloor(t)
+  if (t.potions.heal !== carryAfter1 - deepStock + t.battle!.commands.healStock) fail20.push('⑳ 塔结算未退回未用药水')
+  console.log(`⑳ 高塔:1 层带 4 → 5 层每场可用 ${deepStock},结算后携带 ${t.potions.heal}`)
+
+  if (fail20.length > 0) {
+    console.log('✗ 药水经济未通过:', fail20)
+    process.exit(1)
+  }
+  console.log('✓ 药水经济通过:携带/逐场延续/消耗/退回/塔减半全链路成立')
 }

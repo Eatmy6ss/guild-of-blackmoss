@@ -62,11 +62,12 @@ export function powerScore(member: Member): number {
 }
 
 
-export function initCommands(): BattleCommands {
+export function initCommands(potions?: { heal: number; fury: number }): BattleCommands {
   return {
     stance: 'standard',
-    healStock: POTION_STOCK,
-    furyStock: POTION_STOCK,
+    // 药水经济:正式入口(远征/高塔)显式传入公会携带量;不传 = 测试/机器人默认带满
+    healStock: potions?.heal ?? POTION_STOCK,
+    furyStock: potions?.fury ?? POTION_STOCK,
     healCd: 0,
     furyCd: 0,
     furyUntil: 0,
@@ -150,6 +151,7 @@ export function createBattle(
   auraBonus = 0,
   manualBonus = 0,
   protectOn = true,
+  potions?: { heal: number; fury: number },
 ): BattleState {
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
@@ -202,7 +204,7 @@ export function createBattle(
     status: 'running',
     rngState: seed | 0,
     events: [],
-    commands: initCommands(),
+    commands: initCommands(potions),
     auraBonus,
     manualBonus,
     bondMults,

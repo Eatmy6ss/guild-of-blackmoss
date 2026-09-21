@@ -1,5 +1,5 @@
 import type { BattleState, DeadHero, DungeonDef, Member } from './types'
-import { createBattle, toCombatant } from './combat'
+import { createBattle, POTION_STOCK, toCombatant } from './combat'
 import { grantExp } from './gen'
 
 // 远征状态机（D7/D11）：岔路 → 逐场战斗 → 血量延续 → 战间歇整 → 通关/团灭/撤退。
@@ -24,6 +24,8 @@ export interface DungeonRun {
   auraBonus: number
   /** 公会层面的撤退保护开关（D13 修复接线：每场战斗以此初始化） */
   protectOn: boolean
+  /** 携带药水（药水经济）：出征时从公会库存带出，逐场延续，回城退回剩余 */
+  potions: { heal: number; fury: number }
 }
 
 /** 岔路映射：险路打满全部遭遇（更多战斗=更多收获机会）；稳路跳过最后一段杂兵 */
@@ -43,6 +45,7 @@ export function createRun(
   seed: number,
   auraBonus = 0,
   protectOn = true,
+  potions = { heal: POTION_STOCK, fury: POTION_STOCK },
 ): DungeonRun {
   const run: DungeonRun = {
     dungeon,
@@ -53,6 +56,7 @@ export function createRun(
     members: members.filter((m) => m.alive).slice(0, 3),
     auraBonus,
     protectOn,
+    potions,
   }
   startStep(run, seed)
   return run
@@ -67,14 +71,16 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     run.auraBonus,
     manualBonus,
     run.protectOn,
+    run.potions,
   )
   run.phase = 'battle'
 }
 
-/** 战斗结算：血量写回成员（倒地记 0，永久死亡由 markPermadeath 登记） */
+/** 战斗结算：血量写回成员（倒地记 0，永久死亡由 markPermadeath 登记）；未用完的药水退回携带量 */
 export function advanceRun(run: DungeonRun): void {
   const b = run.battle
   if (!b || b.status === 'running') return
+  run.potions = { heal: b.commands.healStock, fury: b.commands.furyStock }
   for (const c of b.combatants) {
     if (!c.memberId) continue
     const m = run.members.find((x) => x.id === c.memberId)
