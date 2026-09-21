@@ -1,8 +1,10 @@
 import type { ItemInstance, Member } from './types'
 import { powerScore } from './combat'
+import { DUNGEONS } from '../data/dungeons'
 
 // 公会目标链(M1 P0 成长可视化二阶段):从公会状态推导,完成的打勾。
 // 原则:目标必须可从现有状态计算,不引入新存档字段;按成长顺序排列,第一个未完成项 = 当前目标。
+// boss 首杀目标按 DUNGEONS 注册表动态生成——新图登记进注册表,目标链自动跟上。
 
 export interface GuildGoal {
   id: string
@@ -32,17 +34,17 @@ export function guildGoals(s: GuildSnapshot): GuildGoal[] {
       ? s.expedition.reduce((sum, m) => sum + m.level, 0) / s.expedition.length
       : 5
 
+  // boss 首杀目标:按副本注册表顺序动态生成(战术手册记录了已研习/击杀的 boss id)
+  const bossGoals: GuildGoal[] = DUNGEONS.flatMap((d) =>
+    Object.values(d.bosses).map((b) => ({
+      id: `kill-${b.id}`,
+      text: `首杀${b.name}(${d.name})`,
+      done: s.manual.includes(b.id),
+    })),
+  )
+
   return [
-    {
-      id: 'kill-grush',
-      text: '首杀沼泽食人魔·格鲁什',
-      done: s.manual.includes('grush'),
-    },
-    {
-      id: 'kill-talma',
-      text: '击败深渊祭司·塔尔玛',
-      done: s.manual.includes('talma'),
-    },
+    ...bossGoals,
     {
       id: 'power-700',
       text: '远征队总战力达到 700',

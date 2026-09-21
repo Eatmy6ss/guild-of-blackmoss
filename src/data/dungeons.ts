@@ -223,5 +223,94 @@ export const RUSTMINE: DungeonDef = {
   ],
 }
 
+// 副本 #3:灰烬旧战场——一代王朝的葬身之地,骸骨仍在列队
+// boss 摩尔德雷克首个「双指令 boss」:葬仪横扫逼分散 + 亡者号角逼打断 + 唤怨灵逼转火,
+// 三条指挥线同时在手,难度阶梯压在 #4/#5 之前
+export const ASHFIELD: DungeonDef = {
+  id: 'ashfield',
+  name: '灰烬旧战场',
+  size: 3,
+  branches: [
+    {
+      id: 'boneroad',
+      name: '白骨大道',
+      risk: 3,
+      reward: 3,
+      desc: '直取王帐废墟：骸骨列队守路，但军械库的遗物就在深处',
+    },
+    {
+      id: 'riverwash',
+      name: '河滩绕行',
+      risk: 1,
+      reward: 1,
+      desc: '沿灰河绕行：路远泥泞，但亡者不喜水声',
+    },
+  ],
+  enemyGroups: {
+    skeletons: [
+      { id: 'skeleton-a', name: '骸骨盾兵', maxHp: 460, attack: 9, defense: 5, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'skeleton-b', name: '骸骨盾兵', maxHp: 460, attack: 9, defense: 5, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'wraith-caster', name: '怨灵术士', maxHp: 340, attack: 11, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+    ],
+    wraiths: [
+      { id: 'wraith-a', name: '战场怨灵', maxHp: 400, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'wraith-b', name: '战场怨灵', maxHp: 400, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'wraith-c', name: '战场怨灵', maxHp: 360, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+    knights: [
+      { id: 'tombknight-a', name: '墓骑', maxHp: 520, attack: 12, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'tombknight-b', name: '墓骑', maxHp: 520, attack: 12, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'elegist', name: '挽歌者', maxHp: 360, attack: 13, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+    ],
+    'wraiths-frail': [
+      { id: 'wraith-add-a', name: '战场怨灵', maxHp: 300, attack: 10, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'wraith-add-b', name: '战场怨灵', maxHp: 300, attack: 10, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+  },
+  bosses: {
+    moldreke: {
+      id: 'moldreke',
+      name: '破誓大公·摩尔德雷克',
+      // 节奏带 35-45s:横扫(分散)/号角(打断)/怨灵(转火)三线指挥,参数沿用已校准线
+      maxHp: 2600,
+      attack: 15,
+      defense: 7,
+      speed: 7,
+      position: 'front',
+      range: 'melee',
+      mechanics: [
+        {
+          id: 'mold-sweep',
+          kind: 'telegraph-aoe',
+          name: '葬仪横扫',
+          params: { telegraphTicks: 36, damage: 30, everyTicks: 105 },
+        },
+        {
+          id: 'mold-horn',
+          kind: 'cast-buff',
+          name: '亡者号角',
+          params: { castTicks: 30, attackBuff: 9, durationTicks: 120, everyTicks: 240, breakDamage: 110 },
+        },
+        {
+          id: 'mold-call',
+          kind: 'summon',
+          name: '唤起怨灵',
+          params: { atHpPct: 0.6, count: 2, groupId: 'wraiths-frail' },
+        },
+      ],
+      dropTable: [
+        { baseId: 'wpn-t2-bow', chance: 0.4 },
+        { baseId: 'arm-t2-plate', chance: 0.25 },
+      ],
+    },
+  },
+  encounters: [
+    { id: 'enc-skeletons', name: '骸骨列队', kind: 'wave', enemyGroupIds: ['skeletons'] },
+    { id: 'enc-wraiths', name: '怨灵游荡', kind: 'wave', enemyGroupIds: ['wraiths'] },
+    { id: 'enc-knights', name: '墓骑巡境', kind: 'wave', enemyGroupIds: ['knights'] },
+    { id: 'enc-moldreke', name: '破誓大公·摩尔德雷克', kind: 'boss', enemyGroupIds: [], bossId: 'moldreke' },
+  ],
+}
+
 /** 副本注册表(UI 选择/完整性校验用)——新副本在这里登记 */
-export const DUNGEONS: DungeonDef[] = [BLACKMOSS, RUSTMINE]
+export const DUNGEONS: DungeonDef[] = [BLACKMOSS, RUSTMINE, ASHFIELD]
