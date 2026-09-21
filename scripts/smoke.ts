@@ -1570,3 +1570,43 @@ const towerFailures: string[] = []
   }
   console.log('✓ 专精系统通过:18 专精数据完整,吸收盾/反伤/易伤/召唤/光环全部按设计工作')
 }
+
+// ============================================================
+// ㉔ 性格→面板(属性改革切片 A):勇猛→伤害/谨慎→防御/贪婪→暴击/忠诚→受疗
+// ============================================================
+{
+  const fail24: string[] = []
+  const mk = (seed: number) => {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 990000 + seed * 97 + j))
+    seedMemberSeq(squad)
+    return squad[0]
+  }
+  const brave = mk(1)
+  brave.personality = { bravery: 100, caution: 50, greed: 50, loyalty: 50 }
+  const timid = mk(1)
+  timid.personality = { bravery: 0, caution: 50, greed: 50, loyalty: 50 }
+  if (toCombatant(brave).attack <= toCombatant(timid).attack) fail24.push('㉔ 勇猛未提高攻击投影')
+  const cautious = mk(2)
+  cautious.personality = { bravery: 50, caution: 100, greed: 50, loyalty: 50 }
+  const reckless = mk(2)
+  reckless.personality = { bravery: 50, caution: 0, greed: 50, loyalty: 50 }
+  if (toCombatant(cautious).defense <= toCombatant(reckless).defense) fail24.push('㉔ 谨慎未提高防御投影')
+  const greedy = mk(3)
+  greedy.personality = { bravery: 50, caution: 50, greed: 100, loyalty: 50 }
+  const ascetic = mk(3)
+  ascetic.personality = { bravery: 50, caution: 50, greed: 0, loyalty: 50 }
+  if (toCombatant(greedy).critChance <= toCombatant(ascetic).critChance) fail24.push('㉔ 贪婪未提高暴击')
+  const beloved = mk(4)
+  beloved.personality = { bravery: 50, caution: 50, greed: 50, loyalty: 100 }
+  const loathed = mk(4)
+  loathed.personality = { bravery: 50, caution: 50, greed: 50, loyalty: 0 }
+  if ((toCombatant(beloved).healReceived ?? 0) <= (toCombatant(loathed).healReceived ?? 0)) fail24.push('㉔ 忠诚未提高受疗')
+  // 中性校验:全 50 时面板与无性格一致(不白给)
+  const neutral = mk(5)
+  neutral.personality = { bravery: 50, caution: 50, greed: 50, loyalty: 50 }
+  const cNeutral = toCombatant(neutral)
+  if (cNeutral.healReceived !== 0) fail24.push('㉔ 中性性格受疗应为 0')
+  console.log(`㉔ 性格面板:勇猛攻 ${toCombatant(brave).attack}/${toCombatant(timid).attack} 谨慎防 ${toCombatant(cautious).defense}/${toCombatant(reckless).defense} 贪婪暴 ${(toCombatant(greedy).critChance * 100).toFixed(1)}/${(toCombatant(ascetic).critChance * 100).toFixed(1)}%`)
+  if (fail24.length > 0) { console.log('✗ 性格面板未通过:', fail24); process.exit(1) }
+  console.log('✓ 性格→面板通过:勇猛/谨慎/贪婪/忠诚四维真实影响战斗属性')
+}

@@ -217,6 +217,8 @@ export interface Combatant {
   auraMult?: number
   /** 召唤物归属(兽王狼/恶魔小鬼/契灵):无 memberId,阵亡不进纪念堂 */
   petOf?: string
+  /** 受疗加成(忠诚性格/血精灵/受疗词条):治疗量 ×(1+healReceived) */
+  healReceived?: number
   specId?: string
   /** 性格（仅我方，挂机 AI 代打用） */
   personality?: Personality

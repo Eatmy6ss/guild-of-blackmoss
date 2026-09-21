@@ -68,22 +68,23 @@ function rollNature(rng: Rng, job: JobId): Nature {
     warlock: { str: 2, agi: 2, int: 6 },
   }
   const t = tilt[job]
+  // 属性改革(制作人 2026-09-22):方差 2-5 → 0-7(均值 3.5 不变,⑱ 校准),苗子差异拉开——同职业不同人真正不同
   const base: Attributes = {
-    str: int(rng, 2, 5) + t.str,
-    agi: int(rng, 2, 5) + t.agi,
-    int: int(rng, 2, 5) + t.int,
+    str: int(rng, 0, 7) + t.str,
+    agi: int(rng, 0, 7) + t.agi,
+    int: int(rng, 0, 7) + t.int,
   }
   return {
     base,
     growth: {
-      str: int(rng, 20, 60) / 100,
-      agi: int(rng, 20, 60) / 100,
-      int: int(rng, 10, 40) / 100,
+      str: int(rng, 10, 70) / 100,
+      agi: int(rng, 10, 70) / 100,
+      int: int(rng, 8, 52) / 100,
     },
     caps: {
-      str: base.str + int(rng, 4, 9),
-      agi: base.agi + int(rng, 4, 9),
-      int: base.int + int(rng, 4, 9),
+      str: base.str + int(rng, 3, 12),
+      agi: base.agi + int(rng, 3, 12),
+      int: base.int + int(rng, 3, 12),
     },
   }
 }

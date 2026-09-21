@@ -82,6 +82,13 @@ export function toCombatant(member: Member): Combatant {
   const spec = specOf(member.job, member.spec)
   const eq = equipmentStats(member.equipment)
   const mods = spec.statMods ?? {}
+  // 属性改革(切片 A):性格四维进面板——勇猛给伤害/谨慎给防御/贪婪给暴击/忠诚给受疗,
+  // 以 50 为中性 ±6%~9%(幅度经 ⑱ 节奏带校准:乘法方差会抬高期望伤害),招募看性格不再只是看 AI 打法,也是看苗子的身体
+  const p = member.personality ?? { bravery: 50, caution: 50, greed: 50, loyalty: 50 }
+  const braveryAtkMult = 1 + (p.bravery - 50) * 0.0012
+  const cautionDefMult = 1 + (p.caution - 50) * 0.0018
+  const greedCrit = (p.greed - 50) * 0.0005
+  const loyaltyHeal = (p.loyalty - 50) * 0.0012
   const maxHp = Math.round(
     Math.max(1, job.base.maxHp + (mods.maxHp ?? 0)) +
       (member.level - 1) * job.growth.maxHp +
@@ -98,14 +105,16 @@ export function toCombatant(member: Member): Combatant {
     attack: Math.round(
       ((Math.max(1, job.base.attack + (mods.attack ?? 0)) + (member.level - 1) * job.growth.attack) *
         (1 + member.attrs[job.attackAttr] * 0.05) +
-        (eq.attack ?? 0)),
+        (eq.attack ?? 0)) *
+        braveryAtkMult,
     ),
     defense: Math.round(
-      Math.max(0, job.base.defense + (mods.defense ?? 0)) +
+      Math.max(0, job.base.defense + (mods.defense ?? 0)) *
+        cautionDefMult +
         (member.level - 1) * job.growth.defense +
         (eq.defense ?? 0),
     ),
-    critChance: job.base.critChance + (mods.critChance ?? 0) + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
+    critChance: job.base.critChance + (mods.critChance ?? 0) + greedCrit + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
     attackInterval: Math.max(
       6,
       Math.round(60 / (job.base.speed + (mods.speed ?? 0) + (eq.speed ?? 0))),
@@ -116,6 +125,7 @@ export function toCombatant(member: Member): Combatant {
     skills: spec.skills.map((def) => ({ def, cooldownLeft: 0 })),
     specId: spec.id,
     counterMult: spec.passive === 'counter' ? 0.3 : undefined,
+    healReceived: loyaltyHeal,
     tauntedTicks: 0,
     position: job.position,
     range: job.range,
@@ -464,7 +474,7 @@ function useSkill(
       const target = hurt.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
       // 治疗吞吐须覆盖 boss 基础压力:D15 加压轮后 3.0 倍;节奏改版(血池×1.5/战斗拉长)后
       // 牧师基础攻击 7.0 配 4.5 倍 ≈ 31/s,恢复 D15 校准的绝对吞吐,否则长战斗必崩盘
-      const amount = Math.round(c.attack * 4.5)
+      const amount = Math.round(c.attack * 4.5 * (1 + (target.healReceived ?? 0)))
       target.hp = Math.min(target.maxHp, target.hp + amount)
       // 治疗仇恨：治疗量全额转化为威胁——坦克倒下后牧师是下一个目标
       for (const e of aliveOf(state, 'enemy')) {
@@ -718,7 +728,7 @@ export function useHealPotion(state: BattleState): boolean {
   cmd.healStock--
   cmd.healCd = POTION_CD_TICKS
   for (const m of members) {
-    const amount = Math.round(m.maxHp * HEAL_PCT)
+    const amount = Math.round(m.maxHp * HEAL_PCT * (1 + (m.healReceived ?? 0)))
     m.hp = Math.min(m.maxHp, m.hp + amount)
     state.events.push({
       tick: state.tick,
