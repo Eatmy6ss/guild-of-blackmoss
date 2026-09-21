@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>样张 B · 桌游冒险书风</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1440px; height:980px; overflow:hidden; }
+  body {
+    font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+    background:
+      radial-gradient(ellipse 1300px 700px at 50% 0%, rgba(255,230,180,.14) 0%, rgba(255,230,180,0) 55%),
+      repeating-linear-gradient(90deg, #8a6238 0 118px, #8f673c 118px 122px, #846036 122px 240px),
+      repeating-linear-gradient(0deg, rgba(60,38,18,.16) 0 2px, transparent 2px 46px),
+      #8a6238;
+    color:#4a3520;
+    padding:22px 36px 20px;
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+  body::after { content:''; position:absolute; inset:0; pointer-events:none; z-index:9;
+    background: radial-gradient(ellipse 1250px 840px at 50% 44%, transparent 58%, rgba(60,35,12,.34) 100%); }
+
+  /* ── 样式标头 ── */
+  .stylebar { display:flex; justify-content:space-between; align-items:center; z-index:2; margin-bottom:14px; }
+  .stylebar .tag { font-size:14px; font-weight:700; letter-spacing:.3em; color:#f4e8d0;
+    background:#5a3f22; border-radius:20px; padding:5px 18px; box-shadow:0 2px 0 rgba(0,0,0,.25); }
+  .stylebar h1 { font-size:28px; font-weight:800; letter-spacing:.14em; color:#fdf6e4;
+    text-shadow:0 2px 0 rgba(90,55,20,.55), 0 4px 12px rgba(0,0,0,.3); }
+  .stylebar .sub { font-size:13px; font-weight:600; color:#f0e2c4; letter-spacing:.12em;
+    text-shadow:0 1px 0 rgba(90,55,20,.5); }
+
+  /* ── 主区 ── */
+  .main { flex:1; min-height:0; display:flex; gap:22px; z-index:2; }
+
+  /* 公会大厅(冒险书摊开的画面) */
+  .frame { flex:1; position:relative; border-radius:16px; overflow:hidden;
+    background: linear-gradient(#cfe4ea 0%, #e8ecD2 46%, #dce8c8 100%);
+    border:4px solid #5a3f22; box-shadow:0 10px 26px rgba(40,22,6,.45), inset 0 0 0 3px rgba(255,252,240,.5);
+    display:flex; flex-direction:column; }
+  .sky-art { position:absolute; inset:0 0 auto 0; height:150px; pointer-events:none; }
+  .sky-art svg { width:100%; height:100%; display:block; }
+
+  .topbar { position:relative; display:flex; align-items:center; gap:22px; padding:12px 24px;
+    background: linear-gradient(rgba(90,63,34,.94), rgba(74,50,26,.94));
+    box-shadow:0 3px 8px rgba(40,22,6,.35); }
+  .topbar .brand { font-size:19px; font-weight:800; color:#ffe9b8; letter-spacing:.18em; }
+  .topbar .stat { font-size:14px; font-weight:700; color:#f4e8d0;
+    background:rgba(0,0,0,.18); border-radius:16px; padding:4px 14px; }
+  .topbar .stat b { color:#ffd978; }
+  .topbar .day { margin-left:auto; }
+
+  .hall { flex:1; padding:118px 28px 16px; display:flex; flex-direction:column; }
+  .hall-head { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+  .hall-head h2 { font-size:25px; font-weight:800; color:#3f5a2e; letter-spacing:.2em;
+    text-shadow:0 1px 0 rgba(255,255,255,.65); }
+  .hall-head .banner { font-size:12px; font-weight:700; color:#fff; letter-spacing:.1em;
+    background:#c05a3a; border-radius:14px; padding:3px 14px; box-shadow:0 2px 0 rgba(120,50,20,.5); }
+
+  .dock { display:flex; gap:13px; margin-bottom:18px; }
+  .dock-btn { flex:1; text-align:center; cursor:pointer; padding:13px 4px 11px; border-radius:14px;
+    background: linear-gradient(#fdf8ea, #f2e8d0);
+    border:3px solid #7a5a38; box-shadow:0 4px 0 #5a3f22, 0 7px 14px rgba(40,22,6,.3);
+    transition:transform .12s; }
+  .dock-btn:nth-child(1) .icon { background:#5a8a4a; }
+  .dock-btn:nth-child(2) .icon { background:#c07a3a; }
+  .dock-btn:nth-child(3) .icon { background:#8a6a9a; }
+  .dock-btn:nth-child(4) .icon { background:#4a7a9a; }
+  .dock-btn:nth-child(5) .icon { background:#b85a5a; }
+  .dock-btn:nth-child(6) .icon { background:#c8a03a; }
+  .dock-btn:nth-child(7) .icon { background:#6a8a6a; }
+  .dock-btn .icon { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px;
+    border-radius:50%; font-size:21px; border:3px solid rgba(255,255,255,.75);
+    box-shadow:0 3px 6px rgba(60,35,12,.3); margin-bottom:8px; }
+  .dock-btn .label { display:block; font-size:13.5px; font-weight:800; color:#4a3520; margin-bottom:5px; }
+  .dock-btn .key { display:inline-block; font-size:11px; font-weight:800; color:#fff;
+    background:#5a3f22; border-radius:8px; padding:1px 8px; box-shadow:0 2px 0 rgba(0,0,0,.3); }
+
+  .goal { display:flex; align-items:center; gap:12px; padding:12px 18px; margin-bottom:16px;
+    background:#fdf8ea; border:3px solid #7a5a38; border-radius:14px;
+    box-shadow:0 4px 0 #5a3f22, 0 6px 12px rgba(40,22,6,.25); font-size:14px; font-weight:600; }
+  .goal .g-icon { font-size:22px; }
+  .goal b { color:#b85a2a; }
+
+  .squad { margin-bottom:16px; }
+  .squad h4 { font-size:13px; font-weight:800; color:#5a3f22; letter-spacing:.3em; margin-bottom:9px; }
+  .squad-row { display:flex; gap:11px; }
+  .member { flex:1; padding:10px 12px 11px; border-radius:12px; background:#fdf8ea;
+    border:2.5px solid #b89a6a; box-shadow:0 3px 0 rgba(90,63,34,.4), 0 4px 8px rgba(40,22,6,.18); }
+  .member .m-head { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .member .portrait { width:36px; height:36px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    font-size:18px; background:#f2e8d0; border:2.5px solid #b89a6a; border-radius:50%; }
+  .member .m-name { font-size:13.5px; font-weight:800; color:#4a3520; }
+  .member .m-job { display:block; font-size:10.5px; font-weight:700; color:#9a805f; margin-top:2px; }
+  .hpbar { height:8px; background:#e8dcc0; border:2px solid #b89a6a; border-radius:6px; overflow:hidden; }
+  .hpbar i { display:block; height:100%; background:#5a9a4a; }
+  .hpbar i.low { background:#c04a3a; }
+  .member .m-hp { font-size:10px; font-weight:700; color:#9a805f; margin-top:5px; }
+
+  .tower { margin-top:auto; position:relative; padding:16px 20px 15px; border-radius:16px;
+    background: linear-gradient(#fdf8ea, #f4ecd6);
+    border:3px solid #7a5a38; box-shadow:0 5px 0 #5a3f22, 0 8px 16px rgba(40,22,6,.3);
+    display:flex; gap:18px; align-items:center; }
+  .hexmap { flex-shrink:0; }
+  .tower-body { flex:1; }
+  .tower h3 { font-size:17px; font-weight:800; color:#3f5a2e; letter-spacing:.08em; margin-bottom:6px; }
+  .tower p { font-size:12.5px; color:#6a5238; line-height:1.75; font-weight:500; margin-bottom:11px; }
+  .tower p b { color:#c04a3a; }
+  .tower-row { display:flex; align-items:center; gap:15px; }
+  .btn-enter { padding:10px 26px; font-family:inherit; font-size:14.5px; font-weight:800; letter-spacing:.16em;
+    cursor:pointer; color:#fff; background: linear-gradient(#e8933a, #d0742a);
+    border:3px solid #8a5522; border-radius:14px; box-shadow:0 4px 0 #8a5522, 0 6px 12px rgba(40,22,6,.3); }
+  .tower-row .rec { font-size:12.5px; font-weight:700; color:#6a5238; }
+  .tower-row .rec b { color:#3f7a3a; }
+
+  .keysline { margin-top:13px; font-size:11.5px; font-weight:600; color:#7a6248; letter-spacing:.08em; }
+
+  /* ── 右列:事件卡 + 路线卡 ── */
+  .sidecol { width:398px; display:flex; flex-direction:column; gap:18px; }
+
+  .event-card { flex:1; border-radius:18px; overflow:hidden; display:flex; flex-direction:column;
+    background:#fdfaf2;
+    border:3px solid #7a5a38; box-shadow:0 8px 0 #5a3f22, 0 14px 26px rgba(40,22,6,.4); }
+  .event-art { height:128px; position:relative; flex-shrink:0; }
+  .event-art svg { width:100%; height:100%; display:block; }
+  .event-body { flex:1; padding:16px 22px 18px; display:flex; flex-direction:column; }
+  .event-kicker { font-size:11px; font-weight:800; letter-spacing:.35em; color:#c07a3a; margin-bottom:6px; }
+  .event-card h3 { font-size:21px; font-weight:800; color:#4a3520; letter-spacing:.06em; margin-bottom:10px; }
+  .event-card .text { font-size:13.5px; line-height:1.95; color:#6a5238; font-weight:500; margin-bottom:14px; }
+  .choice { display:flex; align-items:center; gap:11px; width:100%; text-align:left; font-family:inherit;
+    cursor:pointer; padding:10px 13px; margin-bottom:9px; font-size:13.5px; font-weight:700; color:#4a3520;
+    background:#f6efdd; border:2.5px solid #b89a6a; border-radius:12px; }
+  .choice .c-icon { flex-shrink:0; width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+    border:2.5px solid rgba(255,255,255,.8); box-shadow:0 2px 4px rgba(60,35,12,.25); }
+  .choice.risk .c-icon { background:#c85a4a; }
+  .choice.safe .c-icon { background:#4a7a9a; }
+  .choice .c-icon { background:#7a9a4a; }
+  .choice small { display:block; margin-top:2px; font-size:11px; font-weight:600; color:#9a805f; }
+  .event-foot { margin-top:auto; padding-top:11px; font-size:11px; font-weight:700; color:#b89a6a; letter-spacing:.1em;
+    border-top:2px dashed #d8c8a0; }
+
+  .route-card { padding:14px 20px 13px; border-radius:16px;
+    background: linear-gradient(#fdf8ea, #f4ecd6);
+    border:3px solid #7a5a38; box-shadow:0 5px 0 #5a3f22, 0 8px 14px rgba(40,22,6,.3); }
+  .route-card h4 { font-size:14px; font-weight:800; color:#3f5a2e; letter-spacing:.2em; margin-bottom:10px; }
+  .route-row { display:flex; gap:12px; }
+  .route { flex:1; padding:9px 12px; border-radius:12px; background:#f6efdd; border:2.5px solid #b89a6a; }
+  .route .name { font-size:13.5px; font-weight:800; color:#4a3520; margin-bottom:3px; }
+  .route.danger .name { color:#c04a3a; }
+  .route .desc { font-size:11px; font-weight:600; color:#9a805f; line-height:1.6; }
+
+  /* ── 底部风格要点 ── */
+  .notes { z-index:2; margin-top:16px; padding:13px 24px 11px; border-radius:14px;
+    background: rgba(58,40,20,.82); box-shadow:0 4px 12px rgba(40,22,6,.35); }
+  .notes h5 { font-size:12px; font-weight:800; letter-spacing:.4em; color:#ffd978; margin-bottom:8px; }
+  .notes ul { list-style:none; display:flex; gap:30px; }
+  .notes li { font-size:12px; font-weight:600; color:#e8d8b8; line-height:1.7; }
+  .notes li b { color:#ffe9b8; }
+</style>
+</head>
+<body>
+  <div class="stylebar">
+    <span class="tag">样张 · B</span>
+    <h1>桌游冒险书风 —— 公会大厅概念</h1>
+    <span class="sub">For The King 式 · 明亮插画 · 木桌卡牌 · 温暖的残酷</span>
+  </div>
+
+  <div class="main">
+    <div class="frame">
+      <div class="sky-art">
+        <svg viewBox="0 0 960 150" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffe9a0"/><stop offset="1" stop-color="#ffd268"/>
+            </linearGradient>
+          </defs>
+          <circle cx="118" cy="52" r="34" fill="url(#sun)"/>
+          <g stroke="#ffd268" stroke-width="4" stroke-linecap="round" opacity=".7">
+            <line x1="118" y1="4" x2="118" y2="14"/><line x1="166" y1="52" x2="176" y2="52"/><line x1="70" y1="52" x2="60" y2="52"/>
+            <line x1="152" y1="18" x2="159" y2="11"/><line x1="84" y1="18" x2="77" y2="11"/>
+          </g>
+          <path d="M0 108 Q140 74 300 100 T620 96 T960 102 V150 H0 Z" fill="#b8d488" opacity=".9"/>
+          <path d="M0 124 Q200 96 420 118 T960 116 V150 H0 Z" fill="#93bd66"/>
+          <path d="M0 138 Q240 118 520 134 T960 130 V150 H0 Z" fill="#6fa050"/>
+          <g opacity=".92">
+            <rect x="700" y="76" width="8" height="34" fill="#6a4a2e"/>
+            <path d="M704 30 L734 44 L704 58 Z" fill="#c05a3a"/>
+            <path d="M704 30 L674 44 L704 58 Z" fill="#a8482c"/>
+          </g>
+          <g opacity=".85">
+            <ellipse cx="840" cy="64" rx="26" ry="9" fill="#fff" opacity=".8"/>
+            <ellipse cx="862" cy="58" rx="18" ry="7" fill="#fff" opacity=".8"/>
+            <ellipse cx="420" cy="42" rx="30" ry="10" fill="#fff" opacity=".7"/>
+            <ellipse cx="446" cy="36" rx="20" ry="8" fill="#fff" opacity=".7"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="topbar">
+        <span class="brand">黑苔公会</span>
+        <span class="stat">第 <b>14</b> 日</span>
+        <span class="stat">💰 <b>428</b></span>
+        <span class="stat">🕯 <b>12</b></span>
+        <span class="stat">👥 <b>5</b>/6</span>
+        <span class="stat day">🌍 黑苔荒野</span>
+      </div>
+
+      <div class="hall">
+        <div class="hall-head">
+          <h2>公会大厅</h2>
+          <span class="banner">佣兵之家 · 深渊纪 213 年</span>
+        </div>
+
+        <div class="dock">
+          <div class="dock-btn"><span class="icon">📜</span><span class="label">花名册</span><span class="key">C</span></div>
+          <div class="dock-btn"><span class="icon">🍺</span><span class="label">酒馆</span><span class="key">T</span></div>
+          <div class="dock-btn"><span class="icon">📦</span><span class="label">仓库</span><span class="key">B</span></div>
+          <div class="dock-btn"><span class="icon">⚒️</span><span class="label">基地</span><span class="key">N</span></div>
+          <div class="dock-btn"><span class="icon">📖</span><span class="label">大事记</span><span class="key">J</span></div>
+          <div class="dock-btn"><span class="icon">🏛️</span><span class="label">名人堂</span><span class="key">H</span></div>
+          <div class="dock-btn"><span class="icon">📕</span><span class="label">手册</span><span class="key">K</span></div>
+        </div>
+
+        <div class="goal"><span class="g-icon">🎯</span><span>当前任务:<b>首杀深渊祭司·塔尔玛</b>(黑苔沼泽)—— 传闻她会在重伤时缚住勇者的双脚</span></div>
+
+        <div class="squad">
+          <h4>远征小队 · 黑苔沼泽</h4>
+          <div class="squad-row">
+            <div class="member"><div class="m-head"><span class="portrait">🛡️</span><span><span class="m-name">罗 兰</span><span class="m-job">铁卫 · Lv4 · 沉稳</span></span></div><div class="hpbar"><i style="width:77%"></i></div><p class="m-hp">120 / 156</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">✨</span><span><span class="m-name">艾 拉</span><span class="m-job">牧师 · Lv3 · 仁慈</span></span></div><div class="hpbar"><i style="width:82%"></i></div><p class="m-hp">98 / 120</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">🏹</span><span><span class="m-name">凯 尔</span><span class="m-job">游侠 · Lv4 · 鲁莽</span></span></div><div class="hpbar"><i style="width:81%"></i></div><p class="m-hp">110 / 135</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">🗡️</span><span><span class="m-name">布 兰</span><span class="m-job">铁卫 · Lv2 · 新兵</span></span></div><div class="hpbar"><i class="low" style="width:30%"></i></div><p class="m-hp">45 / 150 · ⚠️ 重伤</p></div>
+          </div>
+        </div>
+
+        <div class="tower">
+          <svg class="hexmap" width="150" height="118" viewBox="0 0 150 118">
+            <path d="M28 88 Q52 62 75 52 Q98 42 118 34" stroke="#8a6a42" stroke-width="3" stroke-dasharray="7 6" fill="none"/>
+            <g>
+              <polygon points="28,66 48,77 48,99 28,110 8,99 8,77" fill="#7a9a4a" stroke="#5a3f22" stroke-width="3"/>
+              <text x="28" y="93" text-anchor="middle" font-size="16">⚔️</text>
+            </g>
+            <g>
+              <polygon points="75,30 95,41 95,63 75,74 55,63 55,41" fill="#c8a03a" stroke="#5a3f22" stroke-width="3"/>
+              <text x="75" y="58" text-anchor="middle" font-size="15">🍺</text>
+            </g>
+            <g>
+              <polygon points="122,12 142,23 142,45 122,56 102,45 102,23" fill="#e8933a" stroke="#5a3f22" stroke-width="3"/>
+              <text x="122" y="41" text-anchor="middle" font-size="15">🗼</text>
+            </g>
+          </svg>
+          <div class="tower-body">
+            <h3>黑苔高塔 · 最高纪录 第 7 层</h3>
+            <p>逐层深入,敌人逐层变强;每 3 层遭遇守塔 boss。<b>第 9 层起撤退保护失效</b>——塔中陨落的英雄,名字将刻入名人堂。奖励逐层立即入账,随时可带着离开。</p>
+            <div class="tower-row">
+              <button class="btn-enter">进入高塔 🗼</button>
+              <span class="rec">已探明 <b>7</b> 层 · 守塔 boss 已斩 <b>2</b></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="keysline">快捷键 —— C 花名册 · T 酒馆 · B 仓库 · N 基地 · J 大事记 · H 名人堂 · K 手册 · Esc 关闭</p>
+      </div>
+    </div>
+
+    <div class="sidecol">
+      <div class="event-card">
+        <div class="event-art">
+          <svg viewBox="0 0 352 128" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="swampsky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#cfe0d0"/><stop offset="1" stop-color="#a8c8a0"/>
+              </linearGradient>
+              <radialGradient id="wisp" cx=".5" cy=".5" r=".5">
+                <stop offset="0" stop-color="#f8fff0" stop-opacity=".95"/><stop offset="1" stop-color="#f8fff0" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <rect width="352" height="128" fill="url(#swampsky)"/>
+            <path d="M0 78 Q80 58 170 74 T352 70 V128 H0 Z" fill="#6a8a56"/>
+            <path d="M0 96 Q110 82 220 94 T352 90 V128 H0 Z" fill="#55704a"/>
+            <path d="M40 128 Q70 96 130 100 Q190 104 200 128 Z" fill="#3f5a44"/>
+            <path d="M40 128 Q70 96 130 100 Q190 104 200 128 Z" fill="#2f4638" opacity=".8"/>
+            <circle cx="122" cy="108" r="20" fill="url(#wisp)"/>
+            <circle cx="122" cy="107" r="5.5" fill="#f8fff0"/>
+            <g stroke="#3f5a44" stroke-width="3" stroke-linecap="round">
+              <path d="M250 120 Q252 100 248 88"/><path d="M262 122 Q266 98 274 86"/><path d="M276 122 Q280 104 290 96"/>
+            </g>
+            <g stroke="#55704a" stroke-width="2.5" stroke-linecap="round">
+              <path d="M40 118 Q36 100 42 88"/><path d="M52 120 Q50 102 56 92"/>
+            </g>
+            <circle cx="60" cy="30" r="14" fill="#fff" opacity=".55"/>
+            <circle cx="76" cy="26" r="10" fill="#fff" opacity=".55"/>
+          </svg>
+        </div>
+        <div class="event-body">
+          <p class="event-kicker">途 遭 事 件</p>
+          <h3>沼泽中的哭声</h3>
+          <p class="text">浓雾深处传来婴儿般的啼哭。向导说那是泥妖惯用的诱饵,可那哭声实在太像人声——队伍里已有人攥紧了剑柄。</p>
+          <button class="choice risk"><span class="c-icon">⚔️</span><span>循声而去<small>可能遭遇泥妖伏击 · 亦可能救下被困的旅人</small></span></button>
+          <button class="choice safe"><span class="c-icon">🛡️</span><span>绕道而行<small>消耗半日 · 平安,但向导的报酬要加倍</small></span></button>
+          <button class="choice"><span class="c-icon">🧭</span><span>先派游侠侦察<small>视侦察结果再定 · 需队中有游侠</small></span></button>
+          <p class="event-foot">⚖️ 此事件的抉择与后果,将记入《大事记》。</p>
+        </div>
+      </div>
+
+      <div class="route-card">
+        <h4>分歧路线</h4>
+        <div class="route-row">
+          <div class="route danger"><div class="name">🔥 险路 · 泥沼小径</div><div class="desc">多 1 场战斗与 1 个事件 · 报酬 +60%</div></div>
+          <div class="route"><div class="name">🌻 稳路 · 官道</div><div class="desc">平安但漫长 · 报酬正常</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h5>风 格 要 点</h5>
+    <ul>
+      <li><b>材质语言:</b>木桌、卡牌、彩色棋子-token、插画横幅;界面元素皆为"桌上的卡"</li>
+      <li><b>色彩:</b>暖木底 + 米白卡面;每个功能区一个棋子色,明亮但层级清晰</li>
+      <li><b>情绪:</b>温暖中带残酷——远征是"一局桌游",版图走格、事件是故事卡,死亡也刻入名人堂</li>
+      <li><b>演出方向:</b>事件如翻开一张冒险卡、远征地图如版图行进,轻演出重翻页感</li>
+    </ul>
+  </div>
+</body>
+</html>

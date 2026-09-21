@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>样张 A · 暗黑地牢风</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1440px; height:980px; overflow:hidden; }
+  body {
+    font-family:'Songti SC','STSong','SimSun',Georgia,serif;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -8%, #2e2233 0%, rgba(46,34,51,0) 62%),
+      radial-gradient(ellipse 1400px 900px at 50% 115%, #181020 0%, rgba(24,16,32,0) 55%),
+      linear-gradient(#130e18, #0a070f);
+    color:#cfc4a8;
+    padding:22px 36px 20px;
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+  body::before { content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.013) 0 2px, transparent 2px 5px),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.09) 0 3px, transparent 3px 8px);
+  }
+  body::after { content:''; position:absolute; inset:0; pointer-events:none; z-index:9;
+    background: radial-gradient(ellipse 1250px 830px at 50% 44%, transparent 52%, rgba(0,0,0,.58) 100%);
+  }
+
+  /* ── 样式标头 ── */
+  .stylebar { display:flex; justify-content:space-between; align-items:baseline; z-index:2; margin-bottom:14px; }
+  .stylebar .tag { font-size:15px; letter-spacing:.45em; color:#8a744a; }
+  .stylebar h1 { font-size:30px; font-weight:700; letter-spacing:.3em; color:#c8a86a;
+    text-shadow:0 0 18px rgba(200,140,60,.35); }
+  .stylebar .sub { font-size:13px; color:#6a5f4e; letter-spacing:.2em; }
+
+  /* ── 主区 ── */
+  .main { flex:1; min-height:0; display:flex; gap:22px; z-index:2; }
+
+  /* 公会大厅(游戏画面框) */
+  .frame { flex:1; position:relative;
+    background: linear-gradient(#1a1322, #120d19);
+    border:1px solid #4a3a2e; outline:3px solid #241b15; outline-offset:2px;
+    box-shadow: inset 0 0 60px rgba(0,0,0,.75), 0 0 40px rgba(0,0,0,.6);
+    padding:0; display:flex; flex-direction:column; }
+  .flourish { position:absolute; width:56px; height:56px; z-index:3; opacity:.9; }
+  .flourish svg { width:100%; height:100%; }
+  .fl-tl { top:-10px; left:-10px; }
+  .fl-tr { top:-10px; right:-10px; transform:scaleX(-1); }
+  .fl-bl { bottom:-10px; left:-10px; transform:scaleY(-1); }
+  .fl-br { bottom:-10px; right:-10px; transform:scale(-1); }
+
+  .topbar { display:flex; align-items:center; gap:26px; padding:13px 26px;
+    background: linear-gradient(#211830, #17101f);
+    border-bottom:1px solid #4a3a2e; box-shadow: inset 0 -8px 18px rgba(0,0,0,.45); }
+  .topbar .brand { font-size:20px; color:#c8a86a; letter-spacing:.24em; text-shadow:0 0 12px rgba(200,140,60,.4); }
+  .topbar .stat { font-size:14.5px; color:#a89a7c; letter-spacing:.08em; }
+  .topbar .stat b { color:#d8c896; font-weight:700; }
+  .topbar .candles { margin-left:auto; display:flex; gap:18px; align-items:center; }
+
+  .hall { flex:1; padding:22px 30px 18px; display:flex; flex-direction:column; position:relative; }
+  .crest { position:absolute; left:50%; top:56%; transform:translate(-50%,-50%); width:330px; height:330px;
+    pointer-events:none; opacity:.07; }
+  .crest svg { width:100%; height:100%; }
+  .hall-head { display:flex; align-items:baseline; gap:18px; margin-bottom:16px; }
+  .hall-head h2 { font-size:26px; letter-spacing:.5em; color:#c8a86a; font-weight:700;
+    text-shadow:0 0 14px rgba(200,140,60,.3); }
+  .hall-head .rule { flex:1; height:1px;
+    background: linear-gradient(90deg, #5a4a3a, transparent); }
+  .hall-head .sub { font-size:12.5px; color:#7a6f5c; letter-spacing:.25em; }
+
+  .dock { display:flex; gap:12px; margin-bottom:18px; }
+  .dock-btn { flex:1; padding:13px 6px 11px; text-align:center; cursor:pointer;
+    background: linear-gradient(#241b2e, #191223);
+    border:1px solid #4a3a2e; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset 0 -6px 12px rgba(0,0,0,.5); }
+  .dock-btn .icon { display:block; font-size:23px; margin-bottom:7px; filter:grayscale(.25) brightness(.9); }
+  .dock-btn .label { display:block; font-size:13.5px; color:#b8a888; letter-spacing:.2em; margin-bottom:5px; }
+  .dock-btn .key { display:inline-block; font-size:11px; color:#c86a5a; border:1px solid #6a4038; padding:1px 7px; letter-spacing:.1em; }
+
+  .goal { padding:12px 18px; margin-bottom:16px; font-size:14.5px; color:#b8a888; letter-spacing:.06em;
+    background: rgba(60,40,30,.18); border-left:3px solid #8a2a2a;
+    box-shadow: inset 0 0 22px rgba(0,0,0,.4); }
+  .goal b { color:#d8b08a; font-weight:700; }
+
+  .squad { margin-bottom:16px; }
+  .squad h4 { font-size:13px; color:#8a744a; letter-spacing:.35em; margin-bottom:9px; }
+  .squad-row { display:flex; gap:11px; }
+  .member { flex:1; padding:10px 12px 11px; background:#191223; border:1px solid #3e3026;
+    box-shadow: inset 0 0 16px rgba(0,0,0,.5); }
+  .member .m-head { display:flex; align-items:center; gap:9px; margin-bottom:7px; }
+  .member .portrait { width:34px; height:34px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    font-size:17px; background:#241b2e; border:1px solid #4a3a2e; }
+  .member .m-name { font-size:13.5px; color:#c8b890; letter-spacing:.06em; }
+  .member .m-job { display:block; font-size:10.5px; color:#7a6f5c; letter-spacing:.1em; margin-top:2px; }
+  .hpbar { height:5px; background:#0d0a12; border:1px solid #3e3026; }
+  .hpbar i { display:block; height:100%; background:#5a7a4a; }
+  .hpbar i.low { background:#a83a3a; }
+  .member .m-hp { font-size:10px; color:#6a5f4e; margin-top:4px; letter-spacing:.05em; }
+
+  .tower { margin-top:auto; padding:16px 20px 15px;
+    background: linear-gradient(#1e1526, #151020);
+    border:1px solid #4a3a2e; box-shadow: inset 0 0 30px rgba(0,0,0,.55); }
+  .tower h3 { font-size:17px; color:#c8a86a; letter-spacing:.22em; margin-bottom:8px; }
+  .tower p { font-size:12.5px; color:#8a7f6a; line-height:1.75; letter-spacing:.04em; margin-bottom:12px; }
+  .tower p b { color:#c86a5a; }
+  .tower-row { display:flex; align-items:center; gap:16px; }
+  .btn-enter { padding:9px 26px; font-family:inherit; font-size:14.5px; letter-spacing:.24em; cursor:pointer;
+    color:#e8d0a0; background: linear-gradient(#3a2028, #2a161e);
+    border:1px solid #8a3a3a; box-shadow: 0 0 14px rgba(180,60,60,.22), inset 0 1px 0 rgba(255,255,255,.08); }
+  .tower-row .rec { font-size:13px; color:#7a6f5c; letter-spacing:.12em; }
+  .tower-row .rec b { color:#c8a86a; }
+
+  .keysline { margin-top:13px; font-size:11.5px; color:#5f564a; letter-spacing:.14em; }
+
+  /* ── 右列:事件卡 + 路线卡 ── */
+  .sidecol { width:398px; display:flex; flex-direction:column; gap:18px; }
+
+  .event-card { position:relative; flex:1;
+    background: linear-gradient(#221a26, #171019);
+    border:1px solid #4a3a2e; outline:3px solid #241b15; outline-offset:2px;
+    box-shadow: inset 0 0 45px rgba(0,0,0,.7), 0 0 30px rgba(0,0,0,.55);
+    padding:24px 24px 20px; display:flex; flex-direction:column; }
+  .event-kicker { font-size:11.5px; letter-spacing:.5em; color:#8a2a2a; margin-bottom:9px; }
+  .event-card h3 { font-size:22px; color:#d8c896; letter-spacing:.16em; margin-bottom:13px;
+    text-shadow:0 0 12px rgba(200,140,60,.25); }
+  .event-card .rule { height:1px; margin-bottom:13px;
+    background: linear-gradient(90deg, transparent, #5a4a3a 18%, #5a4a3a 82%, transparent); }
+  .event-card .text { font-size:13.5px; line-height:2.05; color:#a89a7c; letter-spacing:.03em; margin-bottom:16px; }
+  .choice { display:block; width:100%; text-align:left; font-family:inherit; cursor:pointer;
+    padding:10px 14px 9px; margin-bottom:10px; font-size:13.5px; letter-spacing:.05em;
+    color:#b8a888; background: linear-gradient(#241b2e, #191223);
+    border:1px solid #3e3026; border-left:3px solid #8a2a2a; position:relative; }
+  .choice small { display:block; margin-top:3px; font-size:11px; color:#7a6a55; letter-spacing:.06em; }
+  .choice.risk { border-left-color:#a83a3a; }
+  .choice.risk small { color:#a86a5a; }
+  .choice.safe { border-left-color:#4a6a8a; }
+  .choice.safe small { color:#6a8aaa; }
+  .event-foot { margin-top:12px; padding-top:12px; font-size:11px; color:#6a5a48; letter-spacing:.14em;
+    border-top:1px solid #33281f; }
+  .event-quote { margin-top:auto; padding-top:14px; font-size:12.5px; color:#8a7a60; font-style:italic;
+    letter-spacing:.05em; line-height:1.8; }
+  .event-quote span { display:block; margin-top:4px; font-size:10.5px; color:#5f564a; font-style:normal; }
+  .seal { position:absolute; top:14px; right:16px; width:52px; height:52px; border-radius:50%;
+    background: radial-gradient(circle at 36% 32%, #a84040, #6a2020 68%, #4a1616);
+    box-shadow: 0 3px 9px rgba(0,0,0,.6), inset 0 2px 4px rgba(255,255,255,.18);
+    display:flex; align-items:center; justify-content:center;
+    color:#3a0e0e; font-size:21px; transform:rotate(12deg); opacity:.95; }
+
+  .route-card { padding:15px 20px 13px;
+    background: linear-gradient(#1e1526, #151020);
+    border:1px solid #4a3a2e; box-shadow: inset 0 0 26px rgba(0,0,0,.55); }
+  .route-card h4 { font-size:14px; color:#c8a86a; letter-spacing:.3em; margin-bottom:10px; }
+  .route-row { display:flex; gap:12px; }
+  .route { flex:1; padding:9px 12px; border:1px solid #3e3026; background:#191223; }
+  .route .name { font-size:13.5px; color:#b8a888; letter-spacing:.15em; margin-bottom:3px; }
+  .route .desc { font-size:11px; color:#7a6f5c; line-height:1.6; }
+  .route.danger .name { color:#c86a5a; }
+
+  /* ── 底部风格要点 ── */
+  .notes { z-index:2; margin-top:16px; padding:13px 24px 11px;
+    border:1px solid #33281f; background: rgba(20,14,10,.5); }
+  .notes h5 { font-size:12px; letter-spacing:.4em; color:#8a744a; margin-bottom:8px; }
+  .notes ul { list-style:none; display:flex; gap:30px; }
+  .notes li { font-size:12px; color:#8a7f6a; line-height:1.7; letter-spacing:.03em; }
+  .notes li b { color:#b8a078; }
+</style>
+</head>
+<body>
+  <div class="stylebar">
+    <span class="tag">样张 · A</span>
+    <h1>暗黑地牢风 —— 公会大厅概念</h1>
+    <span class="sub">哥特暗色 · 石墙烛光 · 鎏金铭文 · 残酷与庄严</span>
+  </div>
+
+  <div class="main">
+    <div class="frame">
+      <div class="flourish fl-tl"><svg viewBox="0 0 56 56" fill="none"><path d="M4 52 C4 24 24 4 52 4 M4 52 C10 34 18 22 34 16 M4 52 C16 48 26 44 40 42" stroke="#8a744a" stroke-width="2" fill="none" opacity=".8"/><circle cx="52" cy="4" r="3" fill="#8a744a" opacity=".9"/></svg></div>
+      <div class="flourish fl-tr"><svg viewBox="0 0 56 56" fill="none"><path d="M4 52 C4 24 24 4 52 4 M4 52 C10 34 18 22 34 16 M4 52 C16 48 26 44 40 42" stroke="#8a744a" stroke-width="2" fill="none" opacity=".8"/><circle cx="52" cy="4" r="3" fill="#8a744a" opacity=".9"/></svg></div>
+      <div class="flourish fl-bl"><svg viewBox="0 0 56 56" fill="none"><path d="M4 52 C4 24 24 4 52 4 M4 52 C10 34 18 22 34 16 M4 52 C16 48 26 44 40 42" stroke="#8a744a" stroke-width="2" fill="none" opacity=".8"/><circle cx="52" cy="4" r="3" fill="#8a744a" opacity=".9"/></svg></div>
+      <div class="flourish fl-br"><svg viewBox="0 0 56 56" fill="none"><path d="M4 52 C4 24 24 4 52 4 M4 52 C10 34 18 22 34 16 M4 52 C16 48 26 44 40 42" stroke="#8a744a" stroke-width="2" fill="none" opacity=".8"/><circle cx="52" cy="4" r="3" fill="#8a744a" opacity=".9"/></svg></div>
+
+      <div class="topbar">
+        <span class="brand">黑 苔 公 会</span>
+        <span class="stat">第 <b>14</b> 日</span>
+        <span class="stat">💰 <b>428</b></span>
+        <span class="stat">🕯 祝福 <b>12</b></span>
+        <span class="stat">👥 <b>5</b>/6</span>
+        <span class="candles">
+          <svg width="16" height="30" viewBox="0 0 16 30"><ellipse cx="8" cy="6" rx="3.4" ry="5.4" fill="#e8a04a" opacity=".9"/><ellipse cx="8" cy="6" rx="1.6" ry="3" fill="#f8e0a0"/><rect x="5.6" y="12" width="4.8" height="14" fill="#6a5a48"/><rect x="3.6" y="26" width="8.8" height="2.6" fill="#4a3a2e"/></svg>
+          <svg width="16" height="30" viewBox="0 0 16 30"><ellipse cx="8" cy="6" rx="3.4" ry="5.4" fill="#e8a04a" opacity=".9"/><ellipse cx="8" cy="6" rx="1.6" ry="3" fill="#f8e0a0"/><rect x="5.6" y="12" width="4.8" height="14" fill="#6a5a48"/><rect x="3.6" y="26" width="8.8" height="2.6" fill="#4a3a2e"/></svg>
+        </span>
+      </div>
+
+      <div class="hall">
+        <div class="crest">
+          <svg viewBox="0 0 100 100" fill="none">
+            <path d="M50 6 L88 20 V48 C88 72 72 86 50 94 C28 86 12 72 12 48 V20 Z" stroke="#c8a86a" stroke-width="2.5"/>
+            <path d="M50 14 L80 25 V47 C80 67 67 79 50 86 C33 79 20 67 20 47 V25 Z" stroke="#c8a86a" stroke-width="1.2"/>
+            <path d="M32 32 L68 68 M68 32 L32 68" stroke="#c8a86a" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="50" cy="50" r="7" stroke="#c8a86a" stroke-width="2"/>
+            <path d="M50 26 V36 M50 64 V74 M26 50 H36 M64 50 H74" stroke="#c8a86a" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="hall-head">
+          <h2>公会大厅</h2>
+          <div class="rule"></div>
+          <span class="sub">佣兵之家 · 深渊纪 213 年</span>
+        </div>
+
+        <div class="dock">
+          <div class="dock-btn"><span class="icon">📜</span><span class="label">花名册</span><span class="key">C</span></div>
+          <div class="dock-btn"><span class="icon">🍺</span><span class="label">酒馆</span><span class="key">T</span></div>
+          <div class="dock-btn"><span class="icon">📦</span><span class="label">仓库</span><span class="key">B</span></div>
+          <div class="dock-btn"><span class="icon">⚒</span><span class="label">基地</span><span class="key">N</span></div>
+          <div class="dock-btn"><span class="icon">📖</span><span class="label">大事记</span><span class="key">J</span></div>
+          <div class="dock-btn"><span class="icon">🏛</span><span class="label">名人堂</span><span class="key">H</span></div>
+          <div class="dock-btn"><span class="icon">📕</span><span class="label">手册</span><span class="key">K</span></div>
+        </div>
+
+        <div class="goal">📋 当前目标:<b>首杀深渊祭司·塔尔玛</b>(黑苔沼泽)—— 传闻她会在重伤时缚住勇者的双脚</div>
+
+        <div class="squad">
+          <h4>远 征 小 队 · 黑 苔 沼 泽</h4>
+          <div class="squad-row">
+            <div class="member"><div class="m-head"><span class="portrait">🛡</span><span><span class="m-name">罗 兰</span><span class="m-job">铁卫 · Lv4 · 沉稳</span></span></div><div class="hpbar"><i style="width:77%"></i></div><p class="m-hp">120 / 156</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">✚</span><span><span class="m-name">艾 拉</span><span class="m-job">牧师 · Lv3 · 仁慈</span></span></div><div class="hpbar"><i style="width:82%"></i></div><p class="m-hp">98 / 120</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">🏹</span><span><span class="m-name">凯 尔</span><span class="m-job">游侠 · Lv4 · 鲁莽</span></span></div><div class="hpbar"><i style="width:81%"></i></div><p class="m-hp">110 / 135</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">🗡</span><span><span class="m-name">布 兰</span><span class="m-job">铁卫 · Lv2 · 新兵</span></span></div><div class="hpbar"><i class="low" style="width:30%"></i></div><p class="m-hp">45 / 150 · ⚠ 重伤</p></div>
+          </div>
+        </div>
+
+        <div class="tower">
+          <h3>🗼 黑苔高塔 · 最高纪录 第七层</h3>
+          <p>逐层深入,敌人逐层变强;每三层遭遇守塔之主。<b>第九层起,撤退保护失效</b>——塔中陨落的英雄,名字将刻入名人堂。奖励逐层立即入账,随时可带着离开。</p>
+          <div class="tower-row">
+            <button class="btn-enter">进 入 高 塔</button>
+            <span class="rec">已探明 <b>7</b> 层 · 守塔之主已斩 <b>2</b></span>
+          </div>
+        </div>
+
+        <p class="keysline">快捷键 —— C 花名册 · T 酒馆 · B 仓库 · N 基地 · J 大事记 · H 名人堂 · K 手册 · Esc 关闭</p>
+      </div>
+    </div>
+
+    <div class="sidecol">
+      <div class="event-card">
+        <span class="seal">⚔</span>
+        <p class="event-kicker">途 遭 事 件</p>
+        <h3>沼泽中的哭声</h3>
+        <div class="rule"></div>
+        <p class="text">浓雾深处传来婴儿般的啼哭。向导说那是泥妖惯用的诱饵,可那哭声实在太像人声——队伍里已有人攥紧了剑柄。</p>
+        <button class="choice risk">循声而去<small>可能遭遇泥妖伏击 · 亦可能救下被困的旅人</small></button>
+        <button class="choice safe">绕道而行<small>消耗半日 · 平安,但向导的报酬要加倍</small></button>
+        <button class="choice">先派游侠侦察<small>视侦察结果再定 · 需队中有游侠</small></button>
+        <p class="event-quote">"别应声……在雾里,千万别应声。"<span>—— 向导压得极低的嗓音</span></p>
+        <p class="event-foot">⚖ 此事件的抉择与后果,将记入《大事记》。</p>
+      </div>
+
+      <div class="route-card">
+        <h4>分歧路线</h4>
+        <div class="route-row">
+          <div class="route danger"><div class="name">⸸ 险路 · 泥沼小径</div><div class="desc">多 1 场战斗与 1 个事件 · 报酬 +60%</div></div>
+          <div class="route"><div class="name">─ 稳路 · 官道</div><div class="desc">平安但漫长 · 报酬正常</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h5>风 格 要 点</h5>
+    <ul>
+      <li><b>材质语言:</b>石墙、铁艺、封蜡、鎏金铭文;面板皆有厚重描边与内阴影</li>
+      <li><b>色彩:</b>近黑底 + 骨白文字 + 烛金标题;血红仅用于危险与目标,信息层级靠光</li>
+      <li><b>情绪:</b>庄严压迫,死亡的重量被画在界面上——高塔提示"陨落者刻入名人堂"</li>
+      <li><b>演出方向:</b>事件如羊皮纸敕令、战斗结算如墓志铭,重氛围演出</li>
+    </ul>
+  </div>
+</body>
+</html>
