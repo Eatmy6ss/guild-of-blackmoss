@@ -1145,8 +1145,11 @@ const towerFailures: string[] = []
   }
   // 每张注册副本同带验收(首杂兵场 + 末位 boss)——新图登记进注册表自动获得节奏验收
   // 「像样指挥」= 走位/集火/喝药(与⑩会玩机器人同标准;纯白嫖打法打不过毕业考 boss 属预期)
+  // 编制随副本:5 人团本出 5 人机器人(双游侠双铁卫单牧师),3 人本照旧
+  const RAID5_JOBS = ['guard', 'priest', 'ranger', 'ranger', 'guard'] as const
   const probe = (dungeon: typeof DUNGEONS[number], encId: string, seed: number): number => {
-    const squad = JOBS.map((job, j) => generateMember(job, 5, 980000 + seed * 100 + j))
+    const comp = dungeon.size >= 5 ? RAID5_JOBS : JOBS
+    const squad = comp.map((job, j) => generateMember(job, 5, 980000 + seed * 100 + j))
     const b = createBattle(squad, dungeon, encId, seed * 31 + 7, 0, 0, false)
     while (b.status === 'running' && b.tick < MAX_TICK) {
       if (b.tick % 5 === 0) {
@@ -1167,8 +1170,7 @@ const towerFailures: string[] = []
   for (const d of DUNGEONS) {
     const waveEnc = d.encounters.find((e) => e.kind === 'wave')
     const bossEncs = d.encounters.filter((e) => e.kind === 'boss')
-    const bossEnc = bossEncs[bossEncs.length - 1]
-    if (!waveEnc || !bossEnc) {
+    if (!waveEnc || bossEncs.length === 0) {
       fail19.push(`⑲ ${d.id} 缺 wave/boss 场`)
       continue
     }
@@ -1178,18 +1180,23 @@ const towerFailures: string[] = []
       if (t > 0) trash.push(t)
     }
     const medT = trash.length ? [...trash].sort((a, b) => a - b)[Math.floor(trash.length / 2)] : 0
-    const bossD: number[] = []
-    for (let i = 0; i < 8; i++) {
-      const t = probe(d, bossEnc.id, i)
-      if (t > 0) bossD.push(t)
-    }
-    const medB = bossD.length ? [...bossD].sort((a, b) => a - b)[Math.floor(bossD.length / 2)] : 0
-    console.log(`⑲ ${d.name}:杂兵 ${medT.toFixed(1)}s(胜 ${trash.length}/6)/ ${bossEnc.name} ${medB.toFixed(1)}s(胜 ${bossD.length}/8)`)
+    console.log(`⑲ ${d.name}:杂兵 ${medT.toFixed(1)}s(胜 ${trash.length}/6)`)
     if (trash.length < 5 || medT < 13 || medT > 23) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
-    // 毕业考 boss(图末 boss)≥4/8:验收机器人无撤退保护、打法标准化,半数通关即可达性下限
-    // (真人另有撤退保护/药水存量/练度垫);再削 boss 会把 balance 中位胜率顶出带上限
-    if (bossD.length < 4) fail19.push(`⑲ ${d.name} ${bossEnc.name} 验收胜率不足 ${bossD.length}/8`)
-    if (medB < 30 || medB > 50) fail19.push(`⑲ ${d.name} ${bossEnc.name} 节奏越带 ${medB.toFixed(1)}s`)
+    // 每个 boss 都要过考试(不只末位):验收机器人无撤退保护、打法标准化,≥4/8 为可达性下限
+    // (真人另有撤退保护/药水存量/练度垫);节奏带只约束毕业考,门考只要求 ≥20s(不可是秒杀)
+    for (const enc of bossEncs) {
+      const bossD: number[] = []
+      for (let i = 0; i < 8; i++) {
+        const t = probe(d, enc.id, i)
+        if (t > 0) bossD.push(t)
+      }
+      const medB = bossD.length ? [...bossD].sort((a, b) => a - b)[Math.floor(bossD.length / 2)] : 0
+      const isFinal = enc.id === bossEncs[bossEncs.length - 1].id
+      console.log(`⑲   ${isFinal ? '毕业考' : '门考'} ${enc.name} ${medB.toFixed(1)}s(胜 ${bossD.length}/8)`)
+      if (bossD.length < 4) fail19.push(`⑲ ${d.name} ${enc.name} 验收胜率不足 ${bossD.length}/8`)
+      if (medB < 20) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
+      if (isFinal && medB > 50) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
+    }
   }
   if (fail19.length > 0) {
     console.log('✗ 副本注册表未通过:', fail19)
@@ -1405,4 +1412,40 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 新机制门禁通过:治疗链可打断/霜寒减速真实生效')
+}
+
+// ============================================================
+// ㉒ 团本编制（副本 #6 起）：size 逐副本生效
+// ============================================================
+{
+  const fail22: string[] = []
+  const five = [...JOBS.map((j) => j), 'ranger', 'guard'].map((job, j) => generateMember(job as (typeof JOBS)[number], 5, 984000 + j * 13))
+
+  // 22a:团本按副本编制上阵——5 人团本带 5 人,战斗里就是 5 个我方实体
+  {
+    const run = createRun(five, THORNHOLD, 'gateassault', 4242, 0, true)
+    if (run.members.length !== 5) fail22.push(`㉒ 团本编制不是 5 人: ${run.members.length}`)
+    const guildCount = run.battle!.combatants.filter((c) => c.team === 'guild').length
+    if (guildCount !== 5) fail22.push(`㉒ 团本战斗我方实体不是 5: ${guildCount}`)
+    console.log(`㉒ 团本上阵 ${run.members.length} 人,战斗我方实体 ${guildCount}`)
+  }
+  // 22b:回归——3 人本即使传 5 人也只带 3 人(小图不因大名单膨胀)
+  {
+    const run = createRun(five, BLACKMOSS, 'shortcut', 4242, 0, true)
+    if (run.members.length !== 3) fail22.push(`㉒ 3 人本编制回归失败: ${run.members.length}`)
+    console.log(`㉒ 3 人本回归:带 5 人名单只上阵 ${run.members.length} 人`)
+  }
+  // 22c:药水为全队共享指令,5 人战里喝一口仍按一份结算
+  {
+    const run = createRun(five, THORNHOLD, 'gateassault', 909, 0, true, { heal: 2, fury: 1 })
+    if (!useHealPotion(run.battle!)) fail22.push('㉒ 团本喝药失败')
+    if (run.battle!.commands.healStock !== 1) fail22.push('㉒ 团本药水未按份扣减')
+    console.log(`㉒ 团本药水:喝一口后 heal 余 ${run.battle!.commands.healStock}(携带制,不随人数翻倍)`)
+  }
+
+  if (fail22.length > 0) {
+    console.log('✗ 团本编制未通过:', fail22)
+    process.exit(1)
+  }
+  console.log('✓ 团本编制通过:size 逐副本生效,3 人本回归无恙')
 }

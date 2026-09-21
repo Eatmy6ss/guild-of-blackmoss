@@ -499,5 +499,136 @@ export const ABYSSALTAR: DungeonDef = {
   ],
 }
 
+// 副本 #6(2026-09 扩量,首个 5 人团本):荆棘要塞——割据佣兵团"荆棘团"的老巢
+// 首个人类敌人阵营(此前六图皆为亡灵/野兽):刀盾卫/弩手/重斧手,两段 boss 考试。
+// 5 人编制=更高 DPS 与双治疗,数值按 5/3 换算加压;⑲ 验收按 dungeon.size 出同编制机器人
+export const THORNHOLD: DungeonDef = {
+  id: 'thornhold',
+  name: '荆棘要塞',
+  size: 5,
+  branches: [
+    {
+      id: 'gateassault',
+      name: '正门强攻',
+      risk: 3,
+      reward: 3,
+      desc: '撞开正门直取内庭：佣兵团主力列阵以待，但团库就在门后',
+    },
+    {
+      id: 'sewerin',
+      name: '水道潜入',
+      risk: 1,
+      reward: 1,
+      desc: '从排水暗渠摸进内庭：路臭且窄，但守军不设防',
+    },
+  ],
+  enemyGroups: {
+    swords: [
+      { id: 'sword-a', name: '荆棘刀盾卫', maxHp: 560, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'sword-b', name: '荆棘刀盾卫', maxHp: 560, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'xbow-a', name: '荆棘弩手', maxHp: 420, attack: 13, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+      { id: 'xbow-b', name: '荆棘弩手', maxHp: 420, attack: 13, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+    ],
+    heavies: [
+      { id: 'heavy-a', name: '荆棘重斧手', maxHp: 640, attack: 14, defense: 4, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'heavy-b', name: '荆棘重斧手', maxHp: 640, attack: 14, defense: 4, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'heavy-c', name: '荆棘重斧手', maxHp: 640, attack: 14, defense: 4, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+    'honor-frail': [
+      { id: 'honor-add-a', name: '荆棘亲卫', maxHp: 380, attack: 10, defense: 3, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'honor-add-b', name: '荆棘亲卫', maxHp: 380, attack: 10, defense: 3, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+    'mercs-frail': [
+      { id: 'merc-add-a', name: '应征佣兵', maxHp: 340, attack: 10, defense: 2, speed: 9, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'merc-add-b', name: '应征佣兵', maxHp: 340, attack: 10, defense: 2, speed: 9, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+  },
+  bosses: {
+    colt: {
+      id: 'colt',
+      name: '掌旗官·科尔特',
+      // 门考试(5 人版掘锚):战鼓冲锋(分散)+ 亲卫旗召唤(转火)+ 战吼咏唱(打断)
+      maxHp: 4200,
+      attack: 15,
+      defense: 7,
+      speed: 7,
+      position: 'front',
+      range: 'melee',
+      mechanics: [
+        {
+          id: 'colt-drum',
+          kind: 'telegraph-aoe',
+          name: '战鼓冲锋',
+          params: { telegraphTicks: 36, damage: 30, everyTicks: 105 },
+        },
+        {
+          id: 'colt-banner',
+          kind: 'summon',
+          name: '亲卫旗',
+          params: { atHpPct: 0.65, count: 2, groupId: 'honor-frail' },
+        },
+        {
+          id: 'colt-warcry',
+          kind: 'cast-buff',
+          name: '破胆战吼',
+          params: { castTicks: 30, attackBuff: 9, durationTicks: 120, everyTicks: 260, breakDamage: 110 },
+        },
+      ],
+      dropTable: [
+        { baseId: 'arm-t2-plate', chance: 0.4 },
+        { baseId: 'wpn-t2-bow', chance: 0.25 },
+      ],
+    },
+    victor: {
+      id: 'victor',
+      name: '割据团长·维克托',
+      // 团本毕业考:四线全开——长枪风暴(分散)/断头锁链(束缚赌撤退)/征募令(转火)/困兽(软墙)
+      // ⑲ 校准:5 人双游侠 DPS 高,4800 血 29.0s 越下带 → 5300
+      maxHp: 5300,
+      attack: 17,
+      defense: 8,
+      speed: 8,
+      position: 'front',
+      range: 'melee',
+      mechanics: [
+        {
+          id: 'victor-lance',
+          kind: 'telegraph-aoe',
+          name: '长枪风暴',
+          params: { telegraphTicks: 36, damage: 34, everyTicks: 105 },
+        },
+        {
+          id: 'victor-chain',
+          kind: 'bind',
+          name: '断头锁链',
+          params: { atHpPct: 0.55, bindTicks: 24, damage: 22 },
+        },
+        {
+          id: 'victor-levy',
+          kind: 'summon',
+          name: '征募令',
+          params: { atHpPct: 0.5, count: 2, groupId: 'mercs-frail' },
+        },
+        {
+          id: 'victor-stand',
+          kind: 'enrage',
+          name: '困兽之斗',
+          params: { atTick: 220, attackMult: 1.75 },
+        },
+      ],
+      dropTable: [
+        { baseId: 'wpn-t2-bow', chance: 0.45 },
+        { baseId: 'trk-t2-totem', chance: 0.3 },
+      ],
+    },
+  },
+  encounters: [
+    { id: 'enc-swords', name: '正门刀盾阵', kind: 'wave', enemyGroupIds: ['swords'] },
+    { id: 'enc-heavies', name: '重斧亲卫', kind: 'wave', enemyGroupIds: ['heavies'] },
+    { id: 'enc-colt', name: '掌旗官·科尔特', kind: 'boss', enemyGroupIds: [], bossId: 'colt' },
+    { id: 'enc-victor', name: '割据团长·维克托', kind: 'boss', enemyGroupIds: [], bossId: 'victor' },
+  ],
+}
+
 /** 副本注册表(UI 选择/完整性校验用)——新副本在这里登记 */
-export const DUNGEONS: DungeonDef[] = [BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR]
+export const DUNGEONS: DungeonDef[] = [BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD]

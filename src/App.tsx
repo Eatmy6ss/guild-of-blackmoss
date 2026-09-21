@@ -285,26 +285,27 @@ export default function App() {
 
   // 远征队 = 花名册前三名幸存者（D11：亡者由招募补位）
   // M1 P0:出征队编组——显式编入/替补,不再固定'花名册前三个'
+  // 团本编制:上限随所选副本(activeDungeon.size),3 人本照旧,5 人团本可上 5 人
   const [expeditionIds, setExpeditionIds] = useState<string[]>([])
   const expedition = (() => {
     const byId = new Map(members.map((m) => [m.id, m]))
     return expeditionIds.map((id) => byId.get(id)).filter((m): m is Member => !!m && m.alive)
   })()
   useEffect(() => {
-    // 初次加载/远征减员后:自动补齐到 3 人(花名册顺序),保证随时可以出击
+    // 初次加载/远征减员后:自动补齐到所选副本编制(花名册顺序);换小图时裁到编制内
     setExpeditionIds((ids) => {
       const aliveIds = members.filter((m) => m.alive).map((m) => m.id)
       const kept = ids.filter((id) => aliveIds.includes(id))
-      if (kept.length >= 3) return kept
-      return [...kept, ...aliveIds.filter((id) => !kept.includes(id))].slice(0, 3)
+      if (kept.length >= activeDungeon.size) return kept.slice(0, activeDungeon.size)
+      return [...kept, ...aliveIds.filter((id) => !kept.includes(id))].slice(0, activeDungeon.size)
     })
-  }, [members])
+  }, [members, dungeonId])
   const enterExpedition = (id: string) => {
     if (runRef.current) return
     setExpeditionIds((ids) => {
       const aliveIds = members.filter((m) => m.alive).map((m) => m.id)
       const kept = ids.filter((x) => x !== id && aliveIds.includes(x))
-      if (kept.length >= 3) return [...kept.slice(0, 2), id] // 满员时编入=换下最后一位
+      if (kept.length >= activeDungeon.size) return [...kept.slice(0, activeDungeon.size - 1), id] // 满员时编入=换下最后一位
       return [...kept, id]
     })
   }
@@ -429,7 +430,7 @@ export default function App() {
       return
     }
     setDay((d) => d + 1)
-    if (expedition.length < 3) return
+    if (expedition.length < activeDungeon.size) return
     // M1 P0 成长快照:结算页要展示"这把你变强了什么"
     growthSnapshotRef.current = new Map(
       expedition.map((m) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s, n) => s + bondStars(n), 0), bonds: { ...m.bonds } }]),
@@ -711,7 +712,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const finished = run != null && (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated')
-  const canExpedition = !run && expedition.length >= 3
+  const canExpedition = !run && expedition.length >= activeDungeon.size
 
   const memberCard = (m: Member) => {
     const c = battle?.combatants.find((x) => x.memberId === m.id)
@@ -1197,7 +1198,7 @@ export default function App() {
                     disabled={!!run}
                     onClick={() => setDungeonId(d.id)}
                   >
-                    🗺 {d.name}
+                    🗺 {d.name}{d.size > 3 ? `（${d.size} 人团本）` : ''}
                   </button>
                 ))}
               </div>
@@ -1213,8 +1214,8 @@ export default function App() {
               ))}
               {!canExpedition && (
                 <p style={{ color: '#d48f8f' }}>
-                  {expedition.length < 3
-                    ? `人手不足（${expedition.length}/3）：去酒馆招募，或等待英灵庇佑。`
+                  {expedition.length < activeDungeon.size
+                    ? `编制不足（${expedition.length}/${activeDungeon.size}）：去花名册编入队员，或去酒馆招募。`
                     : ''}
                 </p>
               )}

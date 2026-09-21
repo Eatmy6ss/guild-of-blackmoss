@@ -53,7 +53,8 @@ export function createRun(
     stepIdx: 0,
     phase: 'battle',
     battle: null,
-    members: members.filter((m) => m.alive).slice(0, 3),
+    // 编制随副本:3 人本照旧,团本(5 人)要求并允许更多人上阵(Q22 人本路线)
+    members: members.filter((m) => m.alive).slice(0, dungeon.size),
     auraBonus,
     protectOn,
     potions,
