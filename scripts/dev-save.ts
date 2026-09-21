@@ -20,7 +20,7 @@ const rng = () => {
   return seed / 4294967296
 }
 
-const members = COMP.map((job, i) => {
+// 满配档:经典专精+人类(与门禁标准条件一致);Lv10 可自行精进
   const m = generateMember(job as keyof typeof JOBS, 10, 990000 + i * 17)
   levelTo(m, 10)
   m.hp = -1 // 约定:进场按满血处理(toCombatant 的 hp<=0 分支)
@@ -55,6 +55,7 @@ const save: GuildSave = {
   day: 20,
   buildings,
   potions: { heal: 9, fury: 9 },
+  unlockedHybrids: [],
 }
 
 // ---- 自检:不通过就拒发码 ----

@@ -1739,3 +1739,54 @@ const towerFailures: string[] = []
   if (fail26.length > 0) { console.log('✗ 种族系统未通过:', fail26); process.exit(1) }
   console.log('✓ 六种族通过:数据完整,轻被动全部接线(攻/防/经验/意志)')
 }
+
+// ============================================================
+// ㉗ 精进层+通用战技(宪法 v3 切片 4)
+// ============================================================
+{
+  const fail27: string[] = []
+  // 27a:18 专精各带 2 个精进技能,效果合法,id 不与主技能冲突
+  let advCount = 0
+  for (const job of Object.values(JOB_TABLE)) {
+    for (const sp of Object.values(job.specs)) {
+      const pool = sp.advancedSkills ?? []
+      advCount += pool.length
+      if (pool.length !== 2) fail27.push(`㉗ ${sp.id} 精进池不是 2:${pool.length}`)
+      const mainIds = new Set(sp.skills.map((sk) => sk.id))
+      for (const sk of pool) {
+        if (mainIds.has(sk.id)) fail27.push(`㉗ ${sp.id} 精进技能与主技能重名:${sk.id}`)
+      }
+    }
+  }
+  console.log(`㉗ 精进池:${advCount} 个精进技能(18 专精 × 2)`)
+
+  // 27b:精进投影——选中技能追加进组,切专精不带过去
+  {
+    const m = generateMember('guard', 6, 998000)
+    m.spec = 'guard-ironwall'
+    m.specAdvanced = { 'guard-ironwall': 'guard-wall-slam' }
+    seedMemberSeq([m])
+    const c = toCombatant(m)
+    if (!c.skills.some((s) => s.def.id === 'guard-wall-slam')) fail27.push('㉗ 精进技能未追加进技能组')
+    const m2 = { ...m, spec: 'guard-breaker' }
+    const c2 = toCombatant(m2)
+    if (c2.skills.some((s) => s.def.id === 'guard-wall-slam')) fail27.push('㉗ 精进技能跟随到了别的专精(应按专精记录)')
+    console.log(`㉗ 精进投影:铁壁 ${c.skills.length} 技能(含精进),破城 ${c2.skills.length} 技能(不含)`)
+  }
+  // 27c:通用战技投影——体魄/铁骨/锐眼/血性
+  {
+    const proto = generateMember('guard', 5, 999000)
+    const plain = { ...proto }
+    const buffed = { ...proto, augments: ['aug-vit', 'aug-iron', 'aug-eye', 'aug-blood'] }
+    seedMemberSeq([plain])
+    const cp = toCombatant(plain)
+    const cb = toCombatant(buffed)
+    if (cb.maxHp !== Math.round(cp.maxHp * 1.08)) fail27.push(`㉗ 体魄未生效:${cp.maxHp}→${cb.maxHp}`)
+    if (cb.defense !== cp.defense + 2) fail27.push('㉗ 铁骨未生效')
+    if (cb.critChance <= cp.critChance) fail27.push('㉗ 锐眼未生效')
+    if (cb.attack !== cp.attack + 3) fail27.push(`㉗ 血性未生效:${cp.attack}→${cb.attack}`)
+    console.log(`㉗ 通用战技:HP ${cp.maxHp}→${cb.maxHp} 防 ${cp.defense}→${cb.defense} 攻 ${cp.attack}→${cb.attack}`)
+  }
+  if (fail27.length > 0) { console.log('✗ 精进/通用战技未通过:', fail27); process.exit(1) }
+  console.log('✓ 精进+通用战技通过:36 精进技能二选一,通用被动跨专精携带')
+}

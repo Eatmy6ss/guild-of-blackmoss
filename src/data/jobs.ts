@@ -30,6 +30,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'guard-taunt', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
         ],
+        advancedSkills: [
+          { id: 'guard-wall-slam', name: '盾墙猛击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
+          { id: 'guard-bulwark', name: '盾墙坚守', effect: 'taunt', target: 'enemy', cooldownTicks: 45 },
+        ],
       }),
       'guard-breaker': spec({
         id: 'guard-breaker',
@@ -38,6 +42,10 @@ export const JOBS: Record<string, JobDef> = {
         statMods: { attack: 2, defense: -1, speed: 1 },
         skills: [
           { id: 'guard-charge', name: '破城冲锋', effect: 'charge-strike', target: 'enemy', cooldownTicks: 80 },
+        ],
+        advancedSkills: [
+          { id: 'guard-quake', name: '横扫践踏', effect: 'multishot', target: 'enemy', cooldownTicks: 85 },
+          { id: 'breaker-charge2', name: '破城重冲', effect: 'charge-strike', target: 'enemy', cooldownTicks: 75 },
         ],
       }),
       'guard-thorns': spec({
@@ -49,6 +57,10 @@ export const JOBS: Record<string, JobDef> = {
           { id: 'guard-taunt', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
         ],
         passive: 'counter',
+        advancedSkills: [
+          { id: 'thorn-wave', name: '荆棘波浪', effect: 'multishot', target: 'enemy', cooldownTicks: 90 },
+          { id: 'thorn-taunt', name: '荆棘威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 55 },
+        ],
       }),
     },
     synergy: ['shield-wall'],
@@ -75,6 +87,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'priest-heal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 15 },
         ],
+        advancedSkills: [
+          { id: 'holy-nova', name: '神圣新星', effect: 'group-heal', target: 'ally', cooldownTicks: 150 },
+          { id: 'holy-smite', name: '惩击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 90 },
+        ],
       }),
       'priest-discipline': spec({
         id: 'priest-discipline',
@@ -83,6 +99,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'priest-heal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 24 },
           { id: 'priest-shield', name: '真言盾', effect: 'shield-ally', target: 'ally', cooldownTicks: 50 },
+        ],
+        advancedSkills: [
+          { id: 'disc-burst', name: '苦修', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 95 },
+          { id: 'disc-shield2', name: '真言盾·固', effect: 'shield-ally', target: 'ally', cooldownTicks: 45 },
         ],
       }),
       'priest-chanter': spec({
@@ -94,6 +114,10 @@ export const JOBS: Record<string, JobDef> = {
           { id: 'priest-chant-heal', name: '抚慰颂', effect: 'heal-lowest', target: 'ally', cooldownTicks: 22 },
         ],
         passive: 'aura-attack',
+        advancedSkills: [
+          { id: 'chant-war', name: '战歌', effect: 'enchant-self', target: 'ally', cooldownTicks: 160 },
+          { id: 'chant-group', name: '抚慰群颂', effect: 'group-heal', target: 'ally', cooldownTicks: 140 },
+        ],
       }),
     },
     synergy: ['blessed-formation'],
@@ -119,6 +143,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'ranger-aimed', name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
         ],
+        advancedSkills: [
+          { id: 'hawk-pierce', name: '穿云箭', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 75 },
+          { id: 'hawk-double', name: '双重射击', effect: 'multishot', target: 'enemy', cooldownTicks: 85 },
+        ],
       }),
       'ranger-trapper': spec({
         id: 'ranger-trapper',
@@ -129,6 +157,10 @@ export const JOBS: Record<string, JobDef> = {
           { id: 'ranger-aimed', name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
           { id: 'ranger-trap', name: '捕兽夹', effect: 'trap-bind', target: 'enemy', cooldownTicks: 110 },
         ],
+        advancedSkills: [
+          { id: 'trap-frost', name: '冰霜陷阱', effect: 'frost-nova', target: 'enemy', cooldownTicks: 140 },
+          { id: 'trap-steel', name: '捕兽夹·改', effect: 'trap-bind', target: 'enemy', cooldownTicks: 100 },
+        ],
       }),
       'ranger-beastmaster': spec({
         id: 'ranger-beastmaster',
@@ -138,6 +170,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'ranger-aimed', name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
           { id: 'ranger-wolf', name: '召唤战狼', effect: 'summon-pet', target: 'ally', cooldownTicks: 200 },
+        ],
+        advancedSkills: [
+          { id: 'beast-frenzy', name: '野性鼓舞', effect: 'enchant-self', target: 'ally', cooldownTicks: 170 },
+          { id: 'beast-hawk', name: '猎鹰召唤', effect: 'summon-pet', target: 'ally', cooldownTicks: 210 },
         ],
       }),
     },
@@ -164,6 +200,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'warrior-whirl', name: '旋风斩', effect: 'multishot', target: 'enemy', cooldownTicks: 75 },
         ],
+        advancedSkills: [
+          { id: 'zerk-bloodlust', name: '嗜血', effect: 'enchant-self', target: 'ally', cooldownTicks: 160 },
+          { id: 'zerk-whirl', name: '狂乱旋斩', effect: 'multishot', target: 'enemy', cooldownTicks: 80 },
+        ],
       }),
       'warrior-weapons': spec({
         id: 'warrior-weapons',
@@ -172,6 +212,10 @@ export const JOBS: Record<string, JobDef> = {
         statMods: { attack: 1.5, speed: -1 },
         skills: [
           { id: 'warrior-cleave', name: '重型劈砍', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 65 },
+        ],
+        advancedSkills: [
+          { id: 'wpn-giant', name: '巨人杀手', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 75 },
+          { id: 'wpn-break', name: '破甲斩', effect: 'curse-mark', target: 'enemy', cooldownTicks: 110 },
         ],
       }),
       'warrior-vanguard': spec({
@@ -183,6 +227,10 @@ export const JOBS: Record<string, JobDef> = {
           { id: 'warrior-charge', name: '冲锋号令', effect: 'charge-strike', target: 'enemy', cooldownTicks: 70 },
         ],
         passive: 'counter',
+        advancedSkills: [
+          { id: 'vg-horn', name: '冲锋号角', effect: 'charge-strike', target: 'enemy', cooldownTicks: 75 },
+          { id: 'vg-horn2', name: '战吼', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
+        ],
       }),
     },
     synergy: ['shield-wall'],
@@ -208,6 +256,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'mage-fireball', name: '火球术', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 60 },
         ],
+        advancedSkills: [
+          { id: 'fire-storm', name: '烈焰风暴', effect: 'multishot', target: 'enemy', cooldownTicks: 90 },
+          { id: 'fire-blast', name: '炎爆术', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
+        ],
       }),
       'mage-frost': spec({
         id: 'mage-frost',
@@ -217,6 +269,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'mage-nova', name: '霜寒新星', effect: 'frost-nova', target: 'enemy', cooldownTicks: 120 },
         ],
+        advancedSkills: [
+          { id: 'frost-field', name: '极寒领域', effect: 'frost-nova', target: 'enemy', cooldownTicks: 150 },
+          { id: 'frost-spear', name: '冰锥术', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
+        ],
       }),
       'mage-arcane': spec({
         id: 'mage-arcane',
@@ -225,6 +281,10 @@ export const JOBS: Record<string, JobDef> = {
         statMods: { maxHp: 6 },
         skills: [
           { id: 'mage-missiles', name: '奥术飞弹', effect: 'multishot', target: 'enemy', cooldownTicks: 55 },
+        ],
+        advancedSkills: [
+          { id: 'arcane-flood', name: '奥术洪流', effect: 'multishot', target: 'enemy', cooldownTicks: 75 },
+          { id: 'arcane-focus', name: '秘法强化', effect: 'enchant-self', target: 'ally', cooldownTicks: 160 },
         ],
       }),
     },
@@ -251,6 +311,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'warlock-imp', name: '召唤小鬼', effect: 'summon-pet', target: 'ally', cooldownTicks: 190 },
         ],
+        advancedSkills: [
+          { id: 'demon-infernal', name: '地狱火降临', effect: 'summon-pet', target: 'ally', cooldownTicks: 210 },
+          { id: 'demon-rage', name: '恶魔之怒', effect: 'enchant-self', target: 'ally', cooldownTicks: 155 },
+        ],
       }),
       'warlock-affliction': spec({
         id: 'warlock-affliction',
@@ -260,6 +324,10 @@ export const JOBS: Record<string, JobDef> = {
         skills: [
           { id: 'warlock-curse', name: '痛苦诅咒', effect: 'curse-mark', target: 'enemy', cooldownTicks: 100 },
         ],
+        advancedSkills: [
+          { id: 'afflict-erode', name: '侵蚀诅咒', effect: 'curse-mark', target: 'enemy', cooldownTicks: 110 },
+          { id: 'afflict-bolt', name: '暗影箭', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
+        ],
       }),
       'warlock-destruction': spec({
         id: 'warlock-destruction',
@@ -267,6 +335,10 @@ export const JOBS: Record<string, JobDef> = {
         identity: '暗影不用绕路——暗影弹直接砸穿一切虚饰。',
         skills: [
           { id: 'warlock-bolt', name: '暗影弹', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 62 },
+        ],
+        advancedSkills: [
+          { id: 'dest-chaos', name: '混乱之箭', effect: 'multishot', target: 'enemy', cooldownTicks: 85 },
+          { id: 'dest-heavy', name: '毁灭重击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 68 },
         ],
       }),
     },

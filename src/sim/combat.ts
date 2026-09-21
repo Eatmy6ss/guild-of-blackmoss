@@ -101,11 +101,18 @@ export function toCombatant(member: Member): Combatant {
   const raceDef = race.passive.defense ?? 0
   const raceCrit = race.passive.crit ?? 0
   const raceHeal = race.passive.healReceived ?? 0
+  // 通用战技(DD Augment,跨专精携带)
+  const augs = member.augments ?? []
+  const augHp = augs.includes('aug-vit') ? 1.08 : 1
+  const augDef = augs.includes('aug-iron') ? 2 : 0
+  const augCrit = augs.includes('aug-eye') ? 0.03 : 0
+  const augAtk = augs.includes('aug-blood') ? 3 : 0
   const maxHp = Math.round(
-    Math.max(1, base.maxHp + (mods.maxHp ?? 0)) +
+    (Math.max(1, base.maxHp + (mods.maxHp ?? 0)) +
       (member.level - 1) * job.growth.maxHp +
       member.attrs.str * 3 +
-      (eq.maxHp ?? 0),
+      (eq.maxHp ?? 0)) *
+      augHp,
   )
   return {
     id: `c${++combatantSeq}`,
@@ -118,15 +125,15 @@ export function toCombatant(member: Member): Combatant {
       ((Math.max(1, base.attack + (mods.attack ?? 0)) + (member.level - 1) * job.growth.attack) *
         (1 + member.attrs[job.attackAttr] * 0.05) +
         (eq.attack ?? 0)) *
-        braveryAtkMult + raceAtk,
+        braveryAtkMult + raceAtk + augAtk,
     ),
     defense: Math.round(
-      Math.max(0, base.defense + (mods.defense ?? 0) + raceDef) *
+      Math.max(0, base.defense + (mods.defense ?? 0) + raceDef + augDef) *
         cautionDefMult +
         (member.level - 1) * job.growth.defense +
         (eq.defense ?? 0),
     ),
-    critChance: base.critChance + (mods.critChance ?? 0) + raceCrit + greedCrit + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
+    critChance: base.critChance + (mods.critChance ?? 0) + raceCrit + augCrit + greedCrit + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
     attackInterval: Math.max(
       6,
       Math.round(60 / (base.speed + (mods.speed ?? 0) + (eq.speed ?? 0))),
@@ -134,7 +141,14 @@ export function toCombatant(member: Member): Combatant {
     cooldownLeft: 0,
     alive: true,
     memberId: member.id,
-    skills: baseSpec.skills.map((def) => ({ def, cooldownLeft: 0 })),
+    skills: (() => {
+      const list = baseSpec.skills.map((def) => ({ def, cooldownLeft: 0 }))
+      // 精进(宪法 v3):该专精记录的精进技能追加进组——切回专精即恢复
+      const advId = member.specAdvanced?.[baseSpec.id]
+      const adv = advId ? baseSpec.advancedSkills?.find((sk) => sk.id === advId) : undefined
+      if (adv) list.push({ def: adv, cooldownLeft: 0 })
+      return list
+    })(),
     specId: baseSpec.id,
     counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
     healReceived: loyaltyHeal + raceHeal,

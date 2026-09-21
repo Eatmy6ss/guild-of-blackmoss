@@ -67,6 +67,8 @@ export interface SpecDef {
   /** 数值修正:相对职业 base 的加算偏移 */
   statMods?: { maxHp?: number; attack?: number; defense?: number; speed?: number; critChance?: number }
   skills: SkillDef[]
+  /** 精进技能池(宪法 v3 精进层):Lv6 训练场二选一,选中的追加进技能组 */
+  advancedSkills?: SkillDef[]
   /** 职业被动:反伤(荆棘/裂阵)/增益光环(咏叹) */
   passive?: 'counter' | 'aura-attack'
 }
@@ -144,6 +146,10 @@ export interface Member {
   spec?: string
   /** 种族(宪法 v3 六族);undefined = 人类(老存档) */
   race?: string
+  /** 精进记录:specId → 选中的精进技能 id(切回该专精即恢复) */
+  specAdvanced?: Record<string, string>
+  /** 通用战技(DD Augment):学过的被动,跨专精携带 */
+  augments?: string[]
   level: number
   nature: Nature
   personality: Personality

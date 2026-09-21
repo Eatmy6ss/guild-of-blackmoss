@@ -32,6 +32,17 @@ export const ECONOMY = {
   vocation: { switchGold: 120, switchBlessing: 2, hybridUnlockGold: 200, hybridUnlockBlessing: 5 },
   /** 混合职阶的默契门槛:成员默契星总和(共同远征积累) */
   hybridBondRequirement: 8,
+  /** 精进(Lv6+,二选一)与通用战技(祝福学,跨专精)成本 */
+  advancedCost: { gold: 150, blessing: 3 },
+  augmentCost: 8,
+  /** 通用战技表:id → { 名称/说明/效果键 }(效果在 toCombatant 解释) */
+  augments: {
+    'aug-vit': { name: '体魄', desc: '最大生命 +8%' },
+    'aug-iron': { name: '铁骨', desc: '防御 +2' },
+    'aug-eye': { name: '锐眼', desc: '暴击 +3%' },
+    'aug-blood': { name: '血性', desc: '攻击 +3' },
+    'aug-resolve': { name: '韧性', desc: '目睹阵亡的士气冲击减半' },
+  },
 } as const
 
 /** 上门访客的背景一句话(涌现叙事入口:每个人带着故事进门) */

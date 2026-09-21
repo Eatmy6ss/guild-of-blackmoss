@@ -84,6 +84,7 @@ export const BLACKMOSS: DungeonDef = {
       // D15 反馈:压迫感应强于格鲁什——全面加压(试玩反馈 #4)
       // 指挥有感补偿:打断变可达后中位胜率 86→98 越界,加血+狂暴提前把压力买回来
       // 节奏改版:血 ×1.25;中位 94% 越界回压:攻 15/束缚伤 22/狂暴提前 130
+      // 属性改革+种族钉人后小队抽取变化,⑲ 验收 3/8 差一档:软化狂暴与束缚把长败局转成胜局
       maxHp: 3000,
       attack: 13,
       defense: 6,
@@ -110,13 +111,13 @@ export const BLACKMOSS: DungeonDef = {
           kind: 'bind',
           name: '深渊束缚',
           // 节奏改版:0.5→0.6——战斗拉长后小队到不了半血线,束缚提前到 60% 保证中段机制必触发
-          params: { atHpPct: 0.6, bindTicks: 24, damage: 18 },
+          params: { atHpPct: 0.6, bindTicks: 24, damage: 16 },
         },
         {
           id: 'talma-enrage',
           kind: 'enrage',
           name: '狂暴软墙',
-          params: { atTick: 140, attackMult: 1.8 },
+          params: { atTick: 140, attackMult: 1.72 },
         },
       ],
       dropTable: [

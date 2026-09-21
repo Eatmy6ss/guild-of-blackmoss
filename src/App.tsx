@@ -721,6 +721,36 @@ export default function App() {
     logChronicle(chronicleRaw(day, m.name + ' 在训练场改换行当,如今是' + label + '。'))
     sfxCoin()
   }
+
+  // 精进(宪法 v3 精进层):Lv6+,当前专精的精进池二选一,按专精记录
+  const advanceSpec = (memberId: string, skillId: string) => {
+    if (runRef.current || towerRunRef.current) return
+    const m = membersRef.current.find((x) => x.id === memberId)
+    if (!m || m.level < 6 || isHybrid(m.spec)) return
+    const spec = specOf(m.job, m.spec)
+    const sk = spec.advancedSkills?.find((x) => x.id === skillId)
+    if (!sk) return
+    if (m.specAdvanced?.[spec.id]) return
+    const c = ECONOMY.advancedCost
+    if (gold < c.gold || blessing < c.blessing) return
+    setGold((g) => g - c.gold)
+    setBlessing((b) => b - c.blessing)
+    setMembers((ms) => ms.map((x) => (x.id === memberId ? { ...x, specAdvanced: { ...(x.specAdvanced ?? {}), [spec.id]: skillId } } : x)))
+    logChronicle(chronicleRaw(day, m.name + ' 精进了' + spec.name + '之道,习得【' + sk.name + '】。'))
+    sfxCoin()
+  }
+
+  // 通用战技(DD Augment):祝福学,永久,跨专精携带
+  const learnAugment = (memberId: string, augId: string) => {
+    if (runRef.current || towerRunRef.current) return
+    const m = membersRef.current.find((x) => x.id === memberId)
+    if (!m || m.augments?.includes(augId)) return
+    if (blessing < ECONOMY.augmentCost) return
+    setBlessing((b) => b - ECONOMY.augmentCost)
+    setMembers((ms) => ms.map((x) => (x.id === memberId ? { ...x, augments: [...(x.augments ?? []), augId] } : x)))
+    logChronicle(chronicleRaw(day, m.name + ' 在训练场悟出了通用战技【' + (ECONOMY.augments as Record<string, { name: string; desc: string }>)[augId].name + '】。'))
+    sfxCoin()
+  }
   // 紧急招募:人手不足时免冷却(防软锁)
   const effectiveCooldown = members.filter((m) => m.alive).length < 3 ? 0 : recruitCooldown
   const towerUnlocked = manual.includes('talma')
@@ -1163,6 +1193,32 @@ export default function App() {
                             onClick={() => changeVocation(m.id, hy.id)}
                           >
                             {hy.name}{unlocked ? '' : ' 🔒'}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {!isHybrid(m.spec) && m.level >= 6 && (
+                      <div className="voc-row2">
+                        <span className="hint">精进:</span>
+                        {(specOf(m.job, m.spec).advancedSkills ?? []).map((sk) => {
+                          const chosen = m.specAdvanced?.[specOf(m.job, m.spec).id] === sk.id
+                          const any = !!m.specAdvanced?.[specOf(m.job, m.spec).id]
+                          return (
+                            <button key={sk.id} disabled={any || !!run || gold < ECONOMY.advancedCost.gold || blessing < ECONOMY.advancedCost.blessing} title={sk.name} onClick={() => advanceSpec(m.id, sk.id)}>
+                              {sk.name}{chosen ? ' ✓' : ''}
+                            </button>
+                          )
+                        })}
+                        {m.specAdvanced?.[specOf(m.job, m.spec).id] ? <span className="hint">已精进</span> : null}
+                      </div>
+                    )}
+                    <div className="voc-row2">
+                      <span className="hint">通用战技:</span>
+                      {(Object.entries(ECONOMY.augments) as [string, { name: string; desc: string }][]).map(([id, ag]) => {
+                        const learned = m.augments?.includes(id)
+                        return (
+                          <button key={id} disabled={!!run || !!learned || blessing < ECONOMY.augmentCost} title={ag.desc} onClick={() => learnAugment(m.id, id)}>
+                            {ag.name}{learned ? ' ✓' : ' ' + ECONOMY.augmentCost + '🕯'}
                           </button>
                         )
                       })}

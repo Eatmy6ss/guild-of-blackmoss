@@ -412,3 +412,5 @@ button:disabled { opacity: 0.4; cursor: default; }
 .base-name { color: var(--gold); font-size: 13px; }
 .base-lv { color: var(--ink-faint); font-size: 11px; }
 .base-card button { width: 100%; margin-top: 6px; font-size: 12px; }
+.voc-row2 { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.voc-row2 .hint { font-size: 11px; }
