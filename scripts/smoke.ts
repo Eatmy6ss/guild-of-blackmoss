@@ -26,8 +26,12 @@ import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '
 import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE } from '../src/data/jobs'
 import { HYBRIDS } from '../src/data/vocations'
+import { RACES } from '../src/data/races'
+import { grantExp, rollSpec, setRaceOverride } from '../src/sim/gen'
 
 const JOBS = ['guard', 'priest', 'ranger'] as const
+// 门禁标准条件:全部生成器钉人类苗子(种族方差由 ㉖ 单独验证)
+setRaceOverride('human')
 const MAX_TICK = 10000
 const ROUNDS = 200
 
@@ -1670,4 +1674,68 @@ const towerFailures: string[] = []
 
   if (fail25.length > 0) { console.log('✗ 混合职阶未通过:', fail25); process.exit(1) }
   console.log('✓ 混合职阶通过:15 全配对数据完整,投影与战斗终结性成立')
+}
+
+// ============================================================
+// ㉖ 六种族(宪法 v3 切片 3):数据完整性+轻被动接线+招募随机专精
+// ============================================================
+{
+  const fail26: string[] = []
+  const raceCount = Object.keys(RACES).length
+  if (raceCount !== 6) fail26.push(`㉖ 种族数量不是 6:${raceCount}`)
+  for (const r of Object.values(RACES)) {
+    if (!r.identity) fail26.push(`㉖ ${r.id} 缺身份句`)
+    if (r.names.length < 5) fail26.push(`㉖ ${r.id} 名字池过小`)
+  }
+  // 26a:生成器——成员带种族,名字落在该族池内,专精可随机
+  {
+    setRaceOverride(undefined)
+    const m = generateMember('guard', 1, 993000)
+    if (!m.race || !RACES[m.race]) fail26.push('㉖ 成员无种族或种族非法')
+    if (!RACES[m.race ?? 'human'].names.includes(m.name)) fail26.push(`㉖ 名字不在种族池内:${m.name}`)
+    const sp = rollSpec('mage', () => 0.99)
+    if (sp !== 'mage-arcane') fail26.push(`㉖ rollSpec 边界异常:${sp}`)
+    console.log(`㉖ 生成:${m.name}(${RACES[m.race ?? 'human'].name}) 专精随机边界 ok`)
+    setRaceOverride('human')
+  }
+  // 26b:兽人攻/矮人防投影——克隆对照(同种子生成受名字去重影响不保证一致,克隆才等价)
+  {
+    const proto = generateMember('guard', 5, 994000)
+    const orc = { ...proto, race: 'orc' }
+    const dwarf = { ...proto, race: 'dwarf' }
+    const base = { ...proto, race: 'human' }
+    if (toCombatant(orc).attack !== toCombatant(base).attack + 4) fail26.push(`㉖ 兽人攻击加成未生效:${toCombatant(base).attack}→${toCombatant(orc).attack}`)
+    if (toCombatant(dwarf).defense !== toCombatant(base).defense + 2) fail26.push('㉖ 矮人防御加成未生效')
+    console.log(`㉖ 轻被动:兽人攻 +4(${toCombatant(base).attack}→${toCombatant(orc).attack}) 矮人防 +2(${toCombatant(base).defense}→${toCombatant(dwarf).defense})`)
+  }
+  // 26c:亡灵士气冲击减半
+  {
+    const squadA = JOBS.map((job, j) => generateMember(job, 5, 995000 + j))
+    const squadB = JOBS.map((job, j) => generateMember(job, 5, 996000 + j))
+    // 对照:性格必须一致(阵亡冲击按勇猛加权)
+    for (let j = 0; j < squadB.length; j++) squadB[j].personality = { ...squadA[j].personality }
+    for (const m of squadB) m.race = 'undead'
+    seedMemberSeq([...squadA, ...squadB])
+    const beforeA = squadA[0].morale ?? 60
+    const beforeB = squadB[0].morale ?? 60
+    applyDeathShock(squadA[1].id, squadA)
+    applyDeathShock(squadB[1].id, squadB)
+    const lossA = beforeA - (squadA[0].morale ?? 60)
+    const lossB = beforeB - (squadB[0].morale ?? 60)
+    if (Math.abs(lossA - lossB * 2) > 0.01) fail26.push(`㉖ 亡灵冲击减半异常:${lossA} vs ${lossB}`)
+    console.log(`㉖ 亡灵意志:常人损 ${lossA.toFixed(1)},亡灵损 ${lossB.toFixed(1)}(应减半)`)
+  }
+  // 26d:人类经验加成
+  {
+    const human = generateMember('guard', 1, 997000)
+    human.race = 'human'
+    const other = generateMember('guard', 1, 997000)
+    other.race = 'orc'
+    grantExp(human, 100)
+    grantExp(other, 100)
+    if (human.exp <= other.exp) fail26.push(`㉖ 人类经验加成未生效:${human.exp} vs ${other.exp}`)
+    console.log(`㉖ 人类经验:100 经验 → ${human.exp} vs 常人 ${other.exp}`)
+  }
+  if (fail26.length > 0) { console.log('✗ 种族系统未通过:', fail26); process.exit(1) }
+  console.log('✓ 六种族通过:数据完整,轻被动全部接线(攻/防/经验/意志)')
 }

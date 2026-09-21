@@ -1,6 +1,7 @@
 import type { Member, Nature, Personality, JobId, Attributes } from './types'
 import { createRng, int, chance, pick, type Rng } from './rng'
 import { JOBS } from '../data/jobs'
+import { RACES, RACE_IDS } from '../data/races'
 import { equipmentStats } from './loot'
 
 // 角色生成器（D1-2）：天性 + 性格 + 出身名字
@@ -21,9 +22,9 @@ let memberSeq = 0
 /** 全局已用名字：避免同一存档里出现无数个同名英雄 */
 const usedNames = new Set<string>()
 
-function uniqueName(rng: Rng): string {
+function uniqueName(rng: Rng, pool?: readonly string[]): string {
   for (let i = 0; i < 30; i++) {
-    let name = pick(rng, GIVEN_NAMES)
+    let name = pick(rng, pool ?? GIVEN_NAMES)
     if (chance(rng, 0.5)) name += '·' + pick(rng, EPITHETS)
     if (!usedNames.has(name)) {
       usedNames.add(name)
@@ -127,7 +128,9 @@ export function xpNeeded(level: number): number {
 
 /** 获得经验,跨阈值自动升级(调用 levelTo,受天性上限约束);返回是否升级 */
 export function grantExp(member: Member, amount: number): boolean {
-  member.exp += amount
+  // 人类轻被动:学得快(+5% 经验)
+  const race = member.race ? RACES[member.race] : RACES.human
+  member.exp += Math.round(amount * (1 + (race.passive.expMult ?? 0)))
   let leveled = false
   while (member.level < LEVEL_CAP && member.exp >= xpNeeded(member.level)) {
     member.exp -= xpNeeded(member.level)
@@ -160,12 +163,27 @@ export function maxHpOf(member: Member): number {
   )
 }
 
+// 门禁标准条件开关:smoke 钉住种族以隔离方差(运行时为 undefined = 随机六族)
+let raceOverride: string | undefined
+export function setRaceOverride(r?: string): void {
+  raceOverride = r
+}
+
+/** 招募随机专精(宪法 v3:招募即带专精) */
+export function rollSpec(jobId: JobId, rng: Rng): string {
+  const specs = Object.keys(JOBS[jobId].specs)
+  return specs[Math.floor(rng() * specs.length)] ?? JOBS[jobId].defaultSpec
+}
+
 export function generateMember(job: JobId, level: number, seed: number = Date.now() + memberSeq * 131): Member {
   const rng = createRng(seed)
-  const name = uniqueName(rng)
+  // 六族随机(宪法 v3):种族决定名字池与一条轻被动;老存档无 race 字段 = 人类
+  const raceId = raceOverride ?? pick(rng, RACE_IDS)
+  const name = uniqueName(rng, RACES[raceId].names)
   const member: Member = {
     id: `m${++memberSeq}`,
     name,
+    race: raceId,
     job,
     level: 1,
     nature: rollNature(rng, job),

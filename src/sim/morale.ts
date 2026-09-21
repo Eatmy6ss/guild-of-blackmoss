@@ -1,3 +1,4 @@
+import { RACES } from '../data/races'
 import type { Member } from './types'
 
 // 模拟灵魂层·第一层:士气与关系(M1 P2)
@@ -34,7 +35,10 @@ export function applyDeathShock(
 ): void {
   for (const m of witnesses) {
     const brave = m.personality.bravery / 100
-    const loss = MORALE.deathShock * (1 - brave * 0.5)
+    // 亡灵轻被动(宪法 v3):已经死过一次,阵亡冲击减半
+    const race = m.race ? RACES[m.race] : RACES.human
+    const undeadHalf = race.passive.undeadWill ? 0.5 : 1
+    const loss = MORALE.deathShock * (1 - brave * 0.5) * undeadHalf
     m.morale = clamp((m.morale ?? 60) - loss)
     if (m.id !== deadId) {
       const loyal = m.personality.loyalty / 100

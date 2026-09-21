@@ -11,6 +11,7 @@ import type {
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
 import { HYBRIDS, isHybrid } from '../data/vocations'
+import { RACES } from '../data/races'
 import type { SpecDef } from './types'
 import { processBossMechanics } from './mechanics'
 import { runAutoAI } from './ai'
@@ -94,6 +95,12 @@ export function toCombatant(member: Member): Combatant {
   const cautionDefMult = 1 + (p.caution - 50) * 0.0018
   const greedCrit = (p.greed - 50) * 0.0005
   const loyaltyHeal = (p.loyalty - 50) * 0.0012
+  // 种族轻被动(宪法 v3,数值压在门禁精度下):矮人防/精灵暴击/兽人攻/血精灵受疗
+  const race = member.race ? RACES[member.race] : RACES.human
+  const raceAtk = race.passive.attack ?? 0
+  const raceDef = race.passive.defense ?? 0
+  const raceCrit = race.passive.crit ?? 0
+  const raceHeal = race.passive.healReceived ?? 0
   const maxHp = Math.round(
     Math.max(1, base.maxHp + (mods.maxHp ?? 0)) +
       (member.level - 1) * job.growth.maxHp +
@@ -111,15 +118,15 @@ export function toCombatant(member: Member): Combatant {
       ((Math.max(1, base.attack + (mods.attack ?? 0)) + (member.level - 1) * job.growth.attack) *
         (1 + member.attrs[job.attackAttr] * 0.05) +
         (eq.attack ?? 0)) *
-        braveryAtkMult,
+        braveryAtkMult + raceAtk,
     ),
     defense: Math.round(
-      Math.max(0, base.defense + (mods.defense ?? 0)) *
+      Math.max(0, base.defense + (mods.defense ?? 0) + raceDef) *
         cautionDefMult +
         (member.level - 1) * job.growth.defense +
         (eq.defense ?? 0),
     ),
-    critChance: base.critChance + (mods.critChance ?? 0) + greedCrit + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
+    critChance: base.critChance + (mods.critChance ?? 0) + raceCrit + greedCrit + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
     attackInterval: Math.max(
       6,
       Math.round(60 / (base.speed + (mods.speed ?? 0) + (eq.speed ?? 0))),
@@ -130,7 +137,7 @@ export function toCombatant(member: Member): Combatant {
     skills: baseSpec.skills.map((def) => ({ def, cooldownLeft: 0 })),
     specId: baseSpec.id,
     counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
-    healReceived: loyaltyHeal,
+    healReceived: loyaltyHeal + raceHeal,
     tauntedTicks: 0,
     position: hy ? hy.position : job.position,
     range: hy ? hy.range : job.range,

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
-import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames } from './sim/gen'
+import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames, rollSpec } from './sim/gen'
+import { RACES } from './data/races'
 import { guildGoals } from './sim/goals'
 import { applyDeathShock, applyFeast, applyVictory, applyRestMorale, refusesToMarch } from './sim/morale'
 import { chronicleHeroFall, chronicleFirstKill, chronicleFeast, chronicleTowerRecord, chronicleBattleVictory, chronicleRefusal, chronicleRecruit, chronicleLevelUp, chronicleBondStar, chronicleBuilding, moraleReadout, seedChronicle, type ChronicleEntry } from './sim/chronicle'
@@ -540,8 +541,10 @@ export default function App() {
   }
 
   const hire = (m: Member) => {
-    setMembers((roster) => [...roster, m])
-    logChronicle(chronicleRecruit(day, m, '酒馆传闻'))
+    // 宪法 v3:招募即带专精(三专精随机);种族在生成时已定
+    const recruited = { ...m, spec: rollSpec(m.job, Math.random) }
+    setMembers((roster) => [...roster, recruited])
+    logChronicle(chronicleRecruit(day, recruited, '酒馆传闻'))
     setCandidates([])
   }
 
@@ -757,7 +760,7 @@ export default function App() {
         <div className="mc-head">
           <span className="name">{m.name}</span>
           <span className="job">
-            {isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
+            {RACES[m.race ?? 'human'].name}·{isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
             {onExpedition ? ' · ⚔远征队' : ''}
           </span>
           <span className={`hp${c && !c.alive ? ' dead' : ''}`}>
@@ -1027,7 +1030,7 @@ export default function App() {
                     <div className="mc-head">
                       <span className="name">{m.name}</span>
                       <span className="job">
-                        {isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
+                        {RACES[m.race ?? 'human'].name}·{isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
                       </span>
                       <div className="row">
                         <span className="hint">{isHybrid(m.spec) ? HYBRIDS[m.spec!].identity : specOf(m.job, m.spec).identity}</span>

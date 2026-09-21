@@ -142,6 +142,8 @@ export interface Member {
   job: JobId
   /** 专精 id(宪法 v3);undefined = 职业 defaultSpec(经典线) */
   spec?: string
+  /** 种族(宪法 v3 六族);undefined = 人类(老存档) */
+  race?: string
   level: number
   nature: Nature
   personality: Personality
