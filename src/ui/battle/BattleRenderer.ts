@@ -351,6 +351,10 @@ export class BattleRenderer {
         this.spawnFloat(target, '爆发!', 0xe8c67a, 14)
         continue
       }
+      if (ev.type === 'slowed') {
+        this.spawnFloat(target, '❄ 减速!', 0x9ad4e8, 13)
+        continue
+      }
       const attacker = ev.attackerId ? this.units.get(ev.attackerId) : undefined
       if (ev.type === 'heal') {
         this.spawnFloat(target, `+${ev.amount}`, COL.heal, 12)

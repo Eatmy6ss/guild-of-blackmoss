@@ -301,11 +301,13 @@ export function applyHit(
   if (attacker.team === 'guild') {
     target.threat[attacker.id] = (target.threat[attacker.id] ?? 0) + amount
   }
-  // 对咏唱中的 boss 造成伤害计入打断阈值
-  if (target.bossMechanics) {
-    const rt = target.mech?.['cast-buff']
-    if (rt && rt.until !== undefined && state.tick < rt.until) {
-      rt.taken = (rt.taken ?? 0) + amount
+  // 对咏唱中的 boss 造成伤害计入打断阈值(所有可打断咏唱线:cast-buff/cast-heal)
+  if (target.bossMechanics && target.mech) {
+    for (const kind of ['cast-buff', 'cast-heal'] as const) {
+      const rt = target.mech[kind]
+      if (rt?.until !== undefined && state.tick < rt.until) {
+        rt.taken = (rt.taken ?? 0) + amount
+      }
     }
   }
   state.events.push({
@@ -355,6 +357,17 @@ function dealDamage(
     crit,
     ranged: attacker.range === 'ranged',
   })
+  // 霜寒触摸(slow-touch 被动):命中概率减速目标——行动间隔加倍,持续可刷新
+  const slowDef = attacker.bossMechanics?.find((m) => m.kind === 'slow-touch')
+  if (slowDef && target.alive) {
+    const chance = typeof slowDef.params.chance === 'number' ? slowDef.params.chance : 0.35
+    if (battleRandom(state) < chance) {
+      const ticks = typeof slowDef.params.ticks === 'number' ? slowDef.params.ticks : 30
+      target.slowUntilTick = state.tick + ticks
+      state.events.push({ tick: state.tick, type: 'slowed', targetId: target.id, amount: ticks })
+      pushLog(state, 'enemy', `❄ ${target.name} 被【${slowDef.name}】冻结,行动变缓！`)
+    }
+  }
 }
 
 function actWith(c: Combatant, state: BattleState): void {
@@ -494,7 +507,9 @@ export function stepBattle(state: BattleState): void {
     if (c.boundUntilTick && state.tick < c.boundUntilTick) continue
     if (c.cooldownLeft <= 0) {
       actWith(c, state)
-      c.cooldownLeft = c.attackInterval
+      // 被霜寒减速:行动间隔加倍(减速是"少出手",不是"做不了事"——与束缚区分)
+      c.cooldownLeft =
+        c.slowUntilTick && state.tick < c.slowUntilTick ? c.attackInterval * 2 : c.attackInterval
     }
   }
 

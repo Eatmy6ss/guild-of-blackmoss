@@ -312,5 +312,192 @@ export const ASHFIELD: DungeonDef = {
   ],
 }
 
+// 副本 #4(2026-09 扩量):白霜墓园——终年不化的冻土墓园,亡者被霜封在临死的一刻
+// 主题机制「减速」:霜裔织法者的霜寒裹尸布让挨打的人行动变缓(间隔×2)——
+// 教玩家一个新 READ:队伍出手变慢=战报里自己人出手频率骤降,该交爆发药抢节奏
+export const FROSTGRAVE: DungeonDef = {
+  id: 'frostgrave',
+  name: '白霜墓园',
+  size: 3,
+  branches: [
+    {
+      id: 'tombroad',
+      name: '拜陵大道',
+      risk: 3,
+      reward: 3,
+      desc: '直抵织法者的冰棺：墓卫列队看守，但陪葬的遗物未被人动过',
+    },
+    {
+      id: 'pinepath',
+      name: '松林绕行',
+      risk: 1,
+      reward: 1,
+      desc: '钻松林绕开陵道：路远雪深，但霜狼不喜欢松脂味',
+    },
+  ],
+  enemyGroups: {
+    wights: [
+      { id: 'wight-a', name: '冻僵的墓卫', maxHp: 500, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'wight-b', name: '冻僵的墓卫', maxHp: 500, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'jackdaw', name: '寒鸦术士', maxHp: 360, attack: 12, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+    ],
+    frostwolves: [
+      { id: 'fwolf-a', name: '霜狼', maxHp: 460, attack: 14, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'fwolf-b', name: '霜狼', maxHp: 460, attack: 14, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'fwolf-c', name: '霜狼', maxHp: 420, attack: 13, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+    gravekeepers: [
+      { id: 'graver-a', name: '掘墓人', maxHp: 540, attack: 10, defense: 6, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'graver-b', name: '掘墓人', maxHp: 540, attack: 10, defense: 6, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'graver-c', name: '掘墓人', maxHp: 500, attack: 11, defense: 5, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
+    ],
+    'wights-frail': [
+      { id: 'wight-add-a', name: '冻僵的墓卫', maxHp: 300, attack: 9, defense: 3, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'wight-add-b', name: '冻僵的墓卫', maxHp: 300, attack: 9, defense: 3, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+    ],
+  },
+  bosses: {
+    velhola: {
+      id: 'velhola',
+      name: '霜裔织法者·薇尔霍拉',
+      // 减速系考试:裹尸布(挨打变慢)+ 冰葬风暴(分散)+ 凛冬(软墙)——后排施法者,坦克拉不住她的视线
+      // ⑲ 校准:2800 血 28.9s 越下带(减速还没发力人就死了)→ 3200 拉进 35-45s 带
+      maxHp: 3200,
+      attack: 15,
+      defense: 7,
+      speed: 8,
+      position: 'back',
+      range: 'ranged',
+      mechanics: [
+        {
+          id: 'velhola-shroud',
+          kind: 'slow-touch',
+          name: '霜寒裹尸布',
+          params: { chance: 0.35, ticks: 30 },
+        },
+        {
+          id: 'velhola-storm',
+          kind: 'telegraph-aoe',
+          name: '冰葬风暴',
+          params: { telegraphTicks: 36, damage: 28, everyTicks: 105 },
+        },
+        {
+          id: 'velhola-winter',
+          kind: 'enrage',
+          name: '凛冬之怒',
+          params: { atTick: 200, attackMult: 1.7 },
+        },
+      ],
+      dropTable: [
+        { baseId: 'wpn-t2-bow', chance: 0.4 },
+        { baseId: 'trk-t2-totem', chance: 0.25 },
+      ],
+    },
+  },
+  encounters: [
+    { id: 'enc-wights', name: '墓卫列队', kind: 'wave', enemyGroupIds: ['wights'] },
+    { id: 'enc-frostwolves', name: '霜狼游猎', kind: 'wave', enemyGroupIds: ['frostwolves'] },
+    { id: 'enc-gravekeepers', name: '掘墓工棚', kind: 'wave', enemyGroupIds: ['gravekeepers'] },
+    { id: 'enc-velhola', name: '霜裔织法者·薇尔霍拉', kind: 'boss', enemyGroupIds: [], bossId: 'velhola' },
+  ],
+}
+
+// 副本 #5(2026-09 扩量):渊底祭坛——深渊教团的地底圣所,血契让伤口在祷词中愈合
+// 主题机制「治疗链」:主教的血契共感为全家回血,不打断就永远打不完——
+// 「杀治疗/打断咏唱」这一课的毕业考,双咏唱线(治疗+圣歌)同时考验集火优先级
+export const ABYSSALTAR: DungeonDef = {
+  id: 'abyssaltar',
+  name: '渊底祭坛',
+  size: 3,
+  branches: [
+    {
+      id: 'altarstairs',
+      name: '献祭阶梯',
+      risk: 3,
+      reward: 3,
+      desc: '沿血槽石阶直下圣所：教徒阻路，但祭坛上的供品浸着古金',
+    },
+    {
+      id: 'darkriver',
+      name: '暗河渡道',
+      risk: 1,
+      reward: 1,
+      desc: '从暗河泅渡潜入：路湿难行，但祷声盖不过水声',
+    },
+  ],
+  enemyGroups: {
+    cultists: [
+      { id: 'cultist-a', name: '血祭教徒', maxHp: 520, attack: 11, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'cultist-b', name: '血祭教徒', maxHp: 520, attack: 11, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'cantor', name: '渊语咏叹者', maxHp: 380, attack: 13, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+    ],
+    ghouls: [
+      { id: 'ghoul-a', name: '食尸鬼', maxHp: 500, attack: 15, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'ghoul-b', name: '食尸鬼', maxHp: 500, attack: 15, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'ghoul-c', name: '食尸鬼', maxHp: 460, attack: 14, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+    eyes: [
+      { id: 'eye-a', name: '观渊之眼', maxHp: 360, attack: 13, defense: 2, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
+      { id: 'eye-b', name: '观渊之眼', maxHp: 360, attack: 13, defense: 2, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
+      { id: 'eye-c', name: '观渊之眼', maxHp: 320, attack: 12, defense: 2, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
+    ],
+    'ghouls-frail': [
+      { id: 'ghoul-add-a', name: '食尸鬼', maxHp: 320, attack: 10, defense: 2, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
+      { id: 'ghoul-add-b', name: '食尸鬼', maxHp: 320, attack: 10, defense: 2, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
+    ],
+  },
+  bosses: {
+    malsau: {
+      id: 'malsau',
+      name: '深渊主教·马尔萨乌斯',
+      // 治疗链毕业考:血契共感(打断!否则全家回血)+ 渊语圣歌(第二条咏唱线,打断优先级抉择)
+      // + 唤起饿殍(转火)+ 深渊降临(软墙)——打断 110 门槛与塔尔玛同线,窗口 3s
+      // ⑲ 校准:首版 1/8(无打断机器人扛不住双咏唱线)→ 血 2700/共感 160/圣歌减压到 8
+      maxHp: 2700,
+      attack: 16,
+      defense: 7,
+      speed: 8,
+      position: 'back',
+      range: 'ranged',
+      mechanics: [
+        {
+          id: 'malsau-communion',
+          kind: 'cast-heal',
+          name: '血契共感',
+          params: { castTicks: 30, healAmount: 160, everyTicks: 260, breakDamage: 110 },
+        },
+        {
+          id: 'malsau-call',
+          kind: 'summon',
+          name: '唤起饿殍',
+          params: { atHpPct: 0.65, count: 2, groupId: 'ghouls-frail' },
+        },
+        {
+          id: 'malsau-hymn',
+          kind: 'cast-buff',
+          name: '渊语圣歌',
+          params: { castTicks: 30, attackBuff: 8, durationTicks: 120, everyTicks: 280, breakDamage: 110 },
+        },
+        {
+          id: 'malsau-descend',
+          kind: 'enrage',
+          name: '深渊降临',
+          params: { atTick: 210, attackMult: 1.75 },
+        },
+      ],
+      dropTable: [
+        { baseId: 'trk-t2-totem', chance: 0.45 },
+        { baseId: 'arm-t2-plate', chance: 0.3 },
+      ],
+    },
+  },
+  encounters: [
+    { id: 'enc-cultists', name: '血祭教徒环', kind: 'wave', enemyGroupIds: ['cultists'] },
+    { id: 'enc-ghouls', name: '饿殍争食', kind: 'wave', enemyGroupIds: ['ghouls'] },
+    { id: 'enc-eyes', name: '观渊之眼', kind: 'wave', enemyGroupIds: ['eyes'] },
+    { id: 'enc-malsau', name: '深渊主教·马尔萨乌斯', kind: 'boss', enemyGroupIds: [], bossId: 'malsau' },
+  ],
+}
+
 /** 副本注册表(UI 选择/完整性校验用)——新副本在这里登记 */
-export const DUNGEONS: DungeonDef[] = [BLACKMOSS, RUSTMINE, ASHFIELD]
+export const DUNGEONS: DungeonDef[] = [BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR]

@@ -68,6 +68,42 @@ export function processBossMechanics(state: BattleState): void {
           }
           break
         }
+        case 'cast-heal': {
+          // 治疗链:咏唱完成后为自身与全部存活同伴回血——打断或集火秒掉咏唱者是唯一解,
+          // 否则战斗时长被无限拉长。打断框架与 cast-buff 共用(taken ≥ breakDamage)。
+          if (rt.until !== undefined) {
+            if (state.tick >= rt.until) {
+              delete rt.until
+              rt.next = state.tick + num(m.params.everyTicks, 240)
+              const amount = num(m.params.healAmount, 200)
+              const allies = state.combatants.filter((x) => x.alive && x.team === c.team)
+              for (const a of allies) {
+                const healed = Math.min(a.maxHp - a.hp, amount)
+                if (healed <= 0) continue
+                a.hp += healed
+                state.events.push({ tick: state.tick, type: 'heal', attackerId: c.id, targetId: a.id, amount: healed })
+              }
+              pushLog(state, 'enemy', `${c.name} 的【${m.name}】咏唱完成，伤势在血光中愈合！`)
+            } else if ((rt.taken ?? 0) >= num(m.params.breakDamage, 450)) {
+              delete rt.until
+              rt.taken = 0
+              rt.next = state.tick + num(m.params.everyTicks, 240)
+              state.events.push({ tick: state.tick, type: 'interrupted', targetId: c.id })
+              pushLog(state, 'guild', `集火奏效！${c.name} 的【${m.name}】被打断了！`)
+            }
+          } else if ((rt.next ?? 90) <= state.tick) {
+            const castTicks = num(m.params.castTicks, 30)
+            rt.until = state.tick + castTicks
+            rt.taken = 0
+            state.events.push({ tick: state.tick, type: 'casting', targetId: c.id, amount: castTicks })
+            pushLog(state, 'enemy', `${c.name} 开始咏唱【${m.name}】——快打断，它在治疗全家！`)
+          }
+          break
+        }
+        case 'slow-touch': {
+          // 被动霜寒:普攻命中概率减速目标(处理在 combat.dealDamage,这里只负责机制存在性)
+          break
+        }
         case 'summon': {
           if (!rt.fired && c.hp / c.maxHp <= num(m.params.atHpPct, 0.6)) {
             rt.fired = 1
@@ -159,7 +195,7 @@ export function bossIntents(state: BattleState): {
       const rt = c.mech?.[m.kind]
       if (rt?.until === undefined) continue
       if (m.kind === 'telegraph-aoe') telegraphing = true
-      if (m.kind === 'cast-buff') {
+      if (m.kind === 'cast-buff' || m.kind === 'cast-heal') {
         casting = true
         casterId = c.id
       }

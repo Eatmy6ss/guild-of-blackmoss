@@ -1188,7 +1188,8 @@ const towerFailures: string[] = []
     if (trash.length < 5 || medT < 13 || medT > 23) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
     // 毕业考 boss(图末 boss)≥4/8:验收机器人无撤退保护、打法标准化,半数通关即可达性下限
     // (真人另有撤退保护/药水存量/练度垫);再削 boss 会把 balance 中位胜率顶出带上限
-    if (bossD.length < 4 || medB < 30 || medB > 50) fail19.push(`⑲ ${d.name} ${bossEnc.name} 节奏越带 ${medB.toFixed(1)}s`)
+    if (bossD.length < 4) fail19.push(`⑲ ${d.name} ${bossEnc.name} 验收胜率不足 ${bossD.length}/8`)
+    if (medB < 30 || medB > 50) fail19.push(`⑲ ${d.name} ${bossEnc.name} 节奏越带 ${medB.toFixed(1)}s`)
   }
   if (fail19.length > 0) {
     console.log('✗ 副本注册表未通过:', fail19)

@@ -175,6 +175,8 @@ export interface Combatant {
   buffUntil?: number
   /** 吸血比例（装备词条聚合） */
   lifesteal?: number
+  /** 被减速：到该 tick 前攻击间隔 ×slowMult（霜寒系机制） */
+  slowUntilTick?: number
   /** 性格（仅我方，挂机 AI 代打用） */
   personality?: Personality
 }
@@ -200,6 +202,8 @@ export interface EnemyDef {
 export type MechanicKind =
   | 'telegraph-aoe'
   | 'cast-buff'
+  | 'cast-heal'
+  | 'slow-touch'
   | 'summon'
   | 'bind'
   | 'enrage'
@@ -299,6 +303,7 @@ export type BattleEventType =
   | 'summoned'
   | 'fury'
   | 'slam'
+  | 'slowed'
 
 export interface BattleEvent {
   tick: number
