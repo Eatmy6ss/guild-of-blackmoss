@@ -566,6 +566,9 @@ export default function App() {
         setMembers([...membersRef.current])
       }
     }
+    // 药水经济接入事件叙事:补给/失窃/赠礼直接改公会库存
+    if (fx.potionHeal) setPotions((p) => ({ ...p, heal: Math.max(0, p.heal + fx.potionHeal!) }))
+    if (fx.potionFury) setPotions((p) => ({ ...p, fury: Math.max(0, p.fury + fx.potionFury!) }))
     logChronicle(chronicleRaw(day, ev.title + ':' + outcome.text))
     setEventResult(outcome.text)
     setMembers([...membersRef.current])

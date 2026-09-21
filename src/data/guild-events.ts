@@ -1,6 +1,7 @@
 // 公会大事事件池(M1 P2,巫师 3 式:选择即取舍,结果有权重分支——没有标准答案)
 // 效果键:gold 金币 / blessing 英灵祝福 / moraleAll 全员士气 / moraleRandom 随机一人士气 /
 //        expAll 全员经验 / item 获得装备(baseId)/ recruit 获得一位上门候选 / injure 随机一人重伤(HP 减半)
+//        potionHeal / potionFury 药水库存增减(负数=消耗,药水经济接入事件叙事)
 
 export interface EventOutcome {
   weight: number
@@ -14,6 +15,8 @@ export interface EventOutcome {
     item?: string
     recruit?: boolean
     injure?: boolean
+    potionHeal?: number
+    potionFury?: number
   }
 }
 
@@ -651,6 +654,258 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '两边都不接,关门谢客一周。',
         outcomes: [
           { weight: 10, text: '公会大门紧闭的那周,酒馆的生意倒照旧。修道院和药商后来都找了别家。', effects: { moraleAll: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'peddler-potions',
+    title: '行脚药贩',
+    text: '一个背着半人高木箱的行脚药贩在酒馆门口支起摊子,嗓音沙哑:"行军药膏,亲测有效——便宜一半,别问来路。"木箱上爬着细小的白霜,在秋日里不化。',
+    choices: [
+      {
+        text: '便宜一半,要了。药效才是硬道理。',
+        outcomes: [
+          { weight: 5, text: '药膏管用。冰凉的膏体抹上伤口,疼得人一激灵,第二天就能拉弓。', effects: { potionHeal: 2, potionFury: 1 } },
+          { weight: 5, text: '药膏管用,但用完的人手心起了细小的霜纹,三天才退。没人愿意再用第二罐。', effects: { potionHeal: 2, injure: true } },
+        ],
+      },
+      {
+        text: '不买来路不明的东西,把他轰走。',
+        outcomes: [
+          { weight: 7, text: '药贩骂骂咧咧地收拾摊子。他的木箱在门槛上磕了一下,洒出的霜粉把地砖蚀出一个小坑。', effects: {} },
+          { weight: 3, text: '轰走药贩的当晚,有队员偷偷溜出去追他。回来时手里多了两罐正经药,和一句"他其实人不坏"。', effects: { potionHeal: 2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'warehouse-thief',
+    title: '仓库里的手',
+    text: '守夜的队员抓了个翻墙的小贼,怀里揣着两瓶治疗药。是个瘦得脱形的女人,说孩子在矿道镇病着,药铺的价钱她付不起。',
+    choices: [
+      {
+        text: '送官。规矩就是规矩。',
+        outcomes: [
+          { weight: 6, text: '民兵带走了她。第二天,矿道镇的药铺老板送来一篮子酒,感谢公会替他除恶。队员喝着酒,没人说话。', effects: { moraleAll: -4 } },
+          { weight: 4, text: '民兵带走了她。三天后一个高个子男人来公会门口放下两瓶药,深深鞠了一躬就走。是她的丈夫。', effects: { potionHeal: 2, moraleAll: -2 } },
+        ],
+      },
+      {
+        text: '药还回来,放她走,再送她一瓶。',
+        outcomes: [
+          { weight: 6, text: '女人磕了个头,抱着药跑了。一周后矿道镇捎来消息:孩子的烧退了。', effects: { potionHeal: -1, moraleAll: 6 } },
+          { weight: 4, text: '女人走后,守夜队员嘀咕:"下回别人有样学样怎么办?"你发现他说得对——当月仓库又少了两瓶。', effects: { potionHeal: -2, moraleAll: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'frost-envoy',
+    title: '白霜的信使',
+    text: '一个嘴唇冻成青色的信使带来了白霜墓园的信:织法者们愿意付钱,只求公会不要再接去墓园的委托。"死者需要安静。"信纸落款处的名字,全是你葬送在那里的旧敌。',
+    choices: [
+      {
+        text: '收钱,暂停墓园委托。',
+        outcomes: [
+          { weight: 6, text: '金子是真的,而且很沉。但下一个来委托扫墓的遗族,你们没脸接。', effects: { gold: 150, moraleAll: -4 } },
+          { weight: 4, text: '收钱的事被酒馆传成"黑苔收了死人的封口费"。来的委托少了一半,来的目光重了一倍。', effects: { gold: 150, moraleAll: -8 } },
+        ],
+      },
+      {
+        text: '把信原样退回。佣兵不看死人的脸色。',
+        outcomes: [
+          { weight: 7, text: '信退回去的当夜,公会屋檐挂了一层不合时令的霜。早上化了,什么也没发生——大概。', effects: { moraleAll: 3 } },
+          { weight: 3, text: '一周后,常客里最沉默的游侠不告而别,只留下一句"我不想葬在那种地方"。', effects: { moraleAll: -6 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'abyss-preacher',
+    title: '渊底的传教士',
+    text: '一个穿深袍的传教士在酒馆后巷布道,听众多是输光了的佣兵。他说渊底能让人"忘掉输掉的一切"。有人劝你们管管——也有人已经在问他入教的事。',
+    choices: [
+      {
+        text: '赶人。输光的人不该输掉别的。',
+        outcomes: [
+          { weight: 6, text: '传教士被请走了。听讲的佣兵们骂骂咧咧,但三天后,有两个人回来问你还有没有活干。', effects: { moraleAll: 5 } },
+          { weight: 4, text: '传教士临走留下一句:"主教会记住这份热情。"渊底祭坛方向的夜空,此后总有一线暗红。', effects: {} },
+        ],
+      },
+      {
+        text: '睁一只眼闭一只眼,收下他留的"香火钱"。',
+        outcomes: [
+          { weight: 5, text: '香火钱很厚。酒馆照常开门,只是角落里多了几个眼睛发直的人,他们后来委托时也不再多问价钱。', effects: { gold: 100, moraleAll: -4 } },
+          { weight: 5, text: '香火钱很厚。但当月公会的工资桌上,有人开始把酬金分出一半"献给渊底"。', effects: { gold: 100, moraleAll: -6 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'veteran-legacy',
+    title: '老兵的遗产',
+    text: '一个拄拐的退役佣兵被邻居发现死在屋里。邻居说,老人临终前一直念叨"黑苔"——三十年前他在这里当过队长。他没有任何亲人。',
+    choices: [
+      {
+        text: '出钱办丧事,把他的旧剑挂在堂前。',
+        outcomes: [
+          { weight: 6, text: '葬礼来了一百多个老佣兵,谁也没提当年的事,但谁都没走。旧剑挂在酒馆最亮的墙上。', effects: { gold: -60, moraleAll: 10 } },
+          { weight: 4, text: '葬礼办完,邻居送来老人真正留下的东西:一只上锁的箱子,钥匙在遗物里。里面是他攒了一辈子的药和金子。', effects: { gold: -60, moraleAll: 8, potionHeal: 2 } },
+        ],
+      },
+      {
+        text: '公会是做生意的地方。让镇上收容所料理吧。',
+        outcomes: [
+          { weight: 8, text: '收容所草草葬了他。没人怪公会——佣兵死在床上已经是福气。只是酒馆那面挂剑的墙,一直空着。', effects: {} },
+          { weight: 2, text: '老人队里活到最后的一个人找上门来,把一枚旧徽章拍在桌上:"他要是知道,会比死了更难受。"说完就走了。', effects: { moraleAll: -6 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tax-convoy',
+    title: '税官的车队',
+    text: '河湾村的村长找上门:税官的车队后天经过,课的是"灾年免不了"的重税。村里凑不出钱,凑得出二十个壮丁——和一份体面的报酬。',
+    choices: [
+      {
+        text: '接下。车队在渡口"遇上山洪"。',
+        outcomes: [
+          { weight: 5, text: '车队折返,税册泡烂了。村长付的钱里混着嫁妆银镯,你们谁也没说破。', effects: { gold: 110, moraleAll: 6 } },
+          { weight: 5, text: '车队折返,但护卫里有行家,认出了斧口的走向。镇上传言税官在攒一支讨伐队。', effects: { gold: 110, moraleAll: -3 } },
+        ],
+      },
+      {
+        text: '反过来接税官的镖:灾年是灾年,规矩是规矩。',
+        outcomes: [
+          { weight: 6, text: '车队平安过境。税官多付了酬金,村长在你们路过时往地上啐了一口。', effects: { gold: 80, moraleAll: -5 } },
+          { weight: 4, text: '车队平安过境。一个月后税官荐来一桩肥活——护送秋税。"墙头草"的名声,有时候也值钱。', effects: { gold: 130 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'mining-strike',
+    title: '矿工的请愿',
+    text: '锈坑矿道的矿工们联名请愿:公会一直在给"换掉他们"的裸井队做护卫。他们不求公会倒戈,只求别再接那种活。',
+    choices: [
+      {
+        text: '答应。矿道的死人已经够多了。',
+        outcomes: [
+          { weight: 6, text: '矿工们凑了份子钱,还把矿道深处一条"没被掘锚啃过"的支脉画给了你们。', effects: { gold: 60, moraleAll: 6 } },
+          { weight: 4, text: '裸井队转头雇了别家护卫,矿上打死人的事当月就出了。矿工们的感谢是真的,却救不了谁。', effects: { moraleAll: 3 } },
+        ],
+      },
+      {
+        text: '护卫是生意,跟谁做不是做。',
+        outcomes: [
+          { weight: 7, text: '裸井队的钱结得爽快。只是此后在酒馆,矿工们换到了最角落的桌子。', effects: { gold: 90, moraleAll: -4 } },
+          { weight: 3, text: '裸井队的钱结得爽快。月底对账时你发现,矿道出的委托少了两成——有些钱挣了,另一些钱就没了。', effects: { gold: 90 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'wandering-bard',
+    title: '写歌的人',
+    text: '一个吟游诗人愿意为公会写一首长歌,代价是食宿一个月,"和讲真话的权利"。他说歌要是写成了,黑苔的名声能传到公国边境。',
+    choices: [
+      {
+        text: '管吃管住,随他写。',
+        outcomes: [
+          { weight: 5, text: '歌写成了,连你们卖过命又被人赖账的破事都写了。奇怪的是,听过的没人嘲笑——真话有真话的分量。', effects: { gold: -40, moraleAll: 8 } },
+          { weight: 5, text: '歌写成了,把某位阵亡队员唱成了"被公会辜负的英雄"。客人们听得眼眶发红,队员们听得脸色发青。', effects: { gold: -40, moraleAll: -4, expAll: 20 } },
+        ],
+      },
+      {
+        text: '付费定制:只写光荣的部分。',
+        outcomes: [
+          { weight: 6, text: '定制的颂歌朗朗上口,就是没什么人记第二句。名声这东西,含金量果然和价钱成正比。', effects: { gold: -70 } },
+          { weight: 4, text: '诗人收了定金,写出一首完美的颂歌。临走时他说:"好的部分我写得很好。别的那部分,总会有人写的。"', effects: { gold: -70, moraleAll: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'snow-caravan',
+    title: '雪困的商队',
+    text: '急报:一支商队困在白霜墓园外的雪坡上,看守的人手被"会走路的冰雕"冲散。货主开出的救援价很高——高到说明他清楚那些冰雕是什么。',
+    choices: [
+      {
+        text: '连夜出发。人是真的会冻死。',
+        outcomes: [
+          { weight: 5, text: '人救回来了,货也带回来了。货主按约付钱,还多给了一箱"路上驱寒"的药酒。', effects: { gold: 120, potionHeal: 1, moraleAll: 6 } },
+          { weight: 5, text: '人救回来了。归途中队伍被霜狼盯了两天两夜,回城时每个人都瘦了一圈。货主只按货付钱。', effects: { gold: 120, moraleAll: -3, injure: true } },
+        ],
+      },
+      {
+        text: '让货主加价再来。天一亮人就该冻透了,但他得知道命值多少钱。',
+        outcomes: [
+          { weight: 5, text: '货主咬牙加了钱。队伍出发时天还没亮,回来时雪坡上只剩货箱能救。', effects: { gold: 180, moraleAll: -5 } },
+          { weight: 5, text: '货主没再来。一周后另一家公会接了那单,活着回来了六个,没回来的十四个。酒馆里没人提这件事,但都记得。', effects: { moraleAll: -4 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'cursed-grimoire',
+    title: '拾来的经书',
+    text: '一个采药孩子挖到一本用皮封面的书,拿到公会想换两个面包。识字的队员翻了两页就合上了:那不是经书,是"说明书"——教你如何给伤口做"不会好的包扎"。',
+    choices: [
+      {
+        text: '烧掉,给孩子两个面包和一句夸奖。',
+        outcomes: [
+          { weight: 7, text: '书烧的时候没有烟,只有一层白霜贴着火苗打转。孩子的面包换成了肉馅的。', effects: { gold: -5, moraleAll: 4, blessing: 1 } },
+          { weight: 3, text: '书烧了,但那天夜里,有队员梦见自己在给谁包扎,包得很好,好得吓人。醒来后他对伤口的处理突然熟练了。', effects: { expAll: 35 } },
+        ],
+      },
+      {
+        text: '留下研究。知识没有立场。',
+        outcomes: [
+          { weight: 4, text: '研究出了一些门道,某几种缝合手法确实高明。代价是研读的人连着一周梦见冰下的眼睛。', effects: { expAll: 50, moraleRandom: -8 } },
+          { weight: 6, text: '研究到第三天,书页开始多出没人写过的章节。你烧了它,烧的时候感觉自己慢了一步。', effects: { expAll: 30, moraleAll: -5 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'arena-invite',
+    title: '斗技场的请柬',
+    text: '邻镇斗技场送来烫金请柬:邀请"黑苔的勇士们"参加表演赛,胜方奖金丰厚,观众就爱看真佣兵。请柬背面用小字写着:死伤自负。',
+    choices: [
+      {
+        text: '去。赚钱和扬名,一趟全有了。',
+        outcomes: [
+          { weight: 5, text: '三场全胜,观众喊的是你们的名字。奖金里还混着观众扔的首饰。', effects: { gold: 140, moraleAll: 7 } },
+          { weight: 5, text: '赢了,但打得难看——对手是头没睡醒的熊。观众嘘声一片,钱照付,名没扬成,还添了伤员。', effects: { gold: 100, injure: true } },
+        ],
+      },
+      {
+        text: '不去。佣兵的剑不为取悦人出鞘。',
+        outcomes: [
+          { weight: 6, text: '请柬退了回去。斗技场后来办的那场,主演的是"黑苔风格的佣兵"——一群舞台武行。听说票卖得不错。', effects: { moraleAll: 3 } },
+          { weight: 4, text: '请柬退了回去。年轻队员们私下嘀咕了一阵子,但下次操练,没人缺席。', effects: { expAll: 15 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'great-contract',
+    title: '压垮桌子的大单',
+    text: '一位侯爵的管家带来一份长约:全公会整编听调三个月,扫清领地内所有"不安定因素"。报酬是一年的进项。管家补了一句:"包括那些不方便走法庭的。"',
+    choices: [
+      {
+        text: '接。一年进项,三个月脏活,公道自在人心。',
+        outcomes: [
+          { weight: 4, text: '活干完了,钱货两清。只是这三个月里干的事,队员们在酒桌上换了个讲法,又换了个讲法。', effects: { gold: 220, moraleAll: -6 } },
+          { weight: 6, text: '干到第二个月,队里最好的人来交辞职信:"我入这行不是为了这个。"管家催得紧,单还得干完。', effects: { gold: 160, moraleAll: -9 } },
+        ],
+      },
+      {
+        text: '拒。"不安定因素"这五个字,太像会给公会招麻烦的说法。',
+        outcomes: [
+          { weight: 6, text: '管家记下了拒绝,没有失态。三个月后,侯爵领地"肃清"的消息传来——接单的公会拿了钱,也拿进了墓碑一样的名声。', effects: { moraleAll: 5 } },
+          { weight: 4, text: '拒绝的理由传开后,几个不安分的队员反倒觉得公会"怂了"。人心这东西,拒绝也是一种考题。', effects: { moraleAll: -3 } },
         ],
       },
     ],

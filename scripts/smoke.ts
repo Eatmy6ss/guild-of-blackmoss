@@ -7,7 +7,7 @@ import { generateMember } from '../src/sim/gen'
 import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit } from '../src/sim/combat'
 import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
-import { BLACKMOSS, RUSTMINE, DUNGEONS } from '../src/data/dungeons'
+import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, DUNGEONS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
@@ -1335,4 +1335,74 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 药水经济通过:携带/逐场延续/消耗/退回/塔减半全链路成立')
+}
+
+// ============================================================
+// ㉑ 新机制门禁（副本 #4/#5 配套）：治疗链可打断 + 霜寒减速生效
+// ============================================================
+{
+  const fail21: string[] = []
+
+  // 21a:血契共感(cast-heal)必须可打断——打断是治疗链机制的唯一解,不可打断即机制死路
+  {
+    let communionCasts = 0
+    let communionInterrupts = 0
+    for (let i = 0; i < 10; i++) {
+      const squad = JOBS.map((job, j) => generateMember(job, 5, 981000 + i * 100 + j))
+      const b = createBattle(squad, ABYSSALTAR, 'enc-malsau', i * 53 + 11)
+      while (b.status === 'running' && b.tick < MAX_TICK) {
+        if (b.tick % 5 === 0) {
+          const boss = b.combatants.find((c) => c.boss && c.alive)
+          if (boss) setFocus(b, boss.id) // 集火咏唱者:打断是队长该做的事
+        }
+        stepBattle(b)
+      }
+      communionCasts += b.log.filter((e) => e.text.includes('血契共感') && e.text.includes('开始咏唱')).length
+      communionInterrupts += b.log.filter((e) => e.text.includes('血契共感') && e.text.includes('打断')).length
+    }
+    console.log(`㉑ 治疗链:血契共感咏唱 ${communionCasts} 次,打断 ${communionInterrupts} 次/10 场`)
+    if (communionCasts === 0) fail21.push('㉑ 血契共感从未咏唱(机制未接线)')
+    if (communionInterrupts < 3) fail21.push('㉑ 血契共感打断过少——cast-heal 打断链路失效')
+  }
+
+  // 21b:霜寒裹尸布(slow-touch)必须真实减速——间隔×2 是减速机制的核心
+  {
+    let slowedEvents = 0
+    for (let i = 0; i < 10; i++) {
+      const squad = JOBS.map((job, j) => generateMember(job, 5, 982000 + i * 100 + j))
+      const b = createBattle(squad, FROSTGRAVE, 'enc-velhola', i * 71 + 3)
+      while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
+      slowedEvents += b.events.filter((e) => e.type === 'slowed').length
+    }
+    console.log(`㉑ 减速:霜寒裹尸布触发 ${slowedEvents} 次/10 场`)
+    if (slowedEvents === 0) fail21.push('㉑ slow-touch 从未触发(被动未接线)')
+  }
+  {
+    // 纯单元验证:被减速者行动瞬间置入的冷却必须精确等于平常的两倍
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 983001 + j))
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 777)
+    const member = b.combatants.find((c) => c.team === 'guild')!
+    member.slowUntilTick = 9999
+    member.cooldownLeft = 1 // 一步后恰好触发行动
+    stepBattle(b)
+    const normal = member.attackInterval
+    if (member.cooldownLeft !== normal * 2) {
+      fail21.push(`㉑ 减速未生效:减速行动后冷却 ${member.cooldownLeft},应为 ${normal * 2}`)
+    }
+    // 对照组:无减速时同一步进路径应得到平常间隔
+    const b2 = createBattle(squad, BLACKMOSS, 'enc-frogs', 777)
+    const member2 = b2.combatants.find((c) => c.team === 'guild')!
+    member2.cooldownLeft = 1
+    stepBattle(b2)
+    if (member2.cooldownLeft !== normal) {
+      fail21.push(`㉑ 对照组异常:正常行动后冷却 ${member2.cooldownLeft},应为 ${normal}`)
+    }
+    console.log(`㉑ 减速单元:平常间隔 ${normal},减速后 ${member.cooldownLeft},对照 ${member2.cooldownLeft}`)
+  }
+
+  if (fail21.length > 0) {
+    console.log('✗ 新机制未通过:', fail21)
+    process.exit(1)
+  }
+  console.log('✓ 新机制门禁通过:治疗链可打断/霜寒减速真实生效')
 }
