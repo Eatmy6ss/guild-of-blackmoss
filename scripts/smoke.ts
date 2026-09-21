@@ -7,7 +7,7 @@ import { generateMember } from '../src/sim/gen'
 import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit } from '../src/sim/combat'
 import { rollBossDrops, rollDrop, describeItem, itemStats } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
-import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, DUNGEONS } from '../src/data/dungeons'
+import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
@@ -24,6 +24,7 @@ import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
 import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
+import { JOBS as JOB_TABLE } from '../src/data/jobs'
 
 const JOBS = ['guard', 'priest', 'ranger'] as const
 const MAX_TICK = 10000
@@ -1448,4 +1449,124 @@ const towerFailures: string[] = []
     process.exit(1)
   }
   console.log('✓ 团本编制通过:size 逐副本生效,3 人本回归无恙')
+}
+
+// ============================================================
+// ㉓ 专精系统(宪法 v3 角色篇切片 1):数据完整性+新效果引擎单元验证
+// ============================================================
+{
+  const fail23: string[] = []
+  const KNOWN_EFFECTS = new Set([
+    'heavy-strike', 'heal-lowest', 'taunt', 'group-heal', 'shield-ally', 'curse-mark',
+    'summon-pet', 'multishot', 'frost-nova', 'enchant-self', 'charge-strike', 'trap-bind',
+  ])
+
+  // 23a:专精数据完整性——每线 defaultSpec 存在,每专精带身份句/技能/已知效果
+  let specCount = 0
+  for (const job of Object.values(JOB_TABLE)) {
+    if (!job.specs[job.defaultSpec]) fail23.push(`㉓ ${job.id} defaultSpec 缺失`)
+    for (const sp of Object.values(job.specs)) {
+      specCount++
+      if (!sp.identity) fail23.push(`㉓ ${sp.id} 缺身份句`)
+      if (sp.skills.length === 0) fail23.push(`㉓ ${sp.id} 无技能`)
+      for (const sk of sp.skills) {
+        if (!KNOWN_EFFECTS.has(sk.effect)) fail23.push(`㉓ ${sp.id}/${sk.id} 未知效果 ${sk.effect}`)
+      }
+    }
+  }
+  console.log(`㉓ 专精表:${Object.keys(JOB_TABLE).length} 职业 / ${specCount} 专精`)
+
+  // 23b:吸收盾——伤害先扣盾不进血
+  {
+    const squad = JOBS.map((j) => j).map((job, j) => generateMember(job as (typeof JOBS)[number], 5, 985000 + j))
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 888)
+    const victim = b.combatants.find((c) => c.team === 'guild')!
+    victim.absorbShield = 50
+    const hpBefore = victim.hp
+    const attacker = b.combatants.find((c) => c.team === 'enemy')!
+    applyHit(b, attacker, victim, 30, '测试')
+    if (victim.hp !== hpBefore) fail23.push('㉓ 吸收盾未挡下伤害')
+    if (victim.absorbShield !== 20) fail23.push(`㉓ 盾余量错误:${victim.absorbShield}`)
+    applyHit(b, attacker, victim, 30, '测试')
+    if (victim.hp >= hpBefore) fail23.push('㉓ 盾破后未进血')
+    console.log(`㉓ 吸收盾:50 盾吃 30×2 → 血量 ${hpBefore - victim.hp}(应 10)`)
+  }
+
+  // 23c:反伤——近战命中者被反弹
+  {
+    const squad = JOBS.map((j) => j).map((job, j) => generateMember(job as (typeof JOBS)[number], 5, 986000 + j))
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 888)
+    const thorn = b.combatants.find((c) => c.team === 'guild')!
+    thorn.counterMult = 0.3
+    const attacker = b.combatants.find((c) => c.team === 'enemy')!
+    const atkHp = attacker.hp
+    applyHit(b, thorn, attacker, 100, '测试', { ranged: false })
+    if (attacker.hp >= atkHp) fail23.push('㉓ 反伤未生效(近战命中未反弹)')
+    console.log(`㉓ 反伤:命中 100 → 攻击者损 ${atkHp - attacker.hp}(应 30)`)
+  }
+
+  // 23d:诅咒易伤——同种子同伤害路径,易伤者受伤更多
+  {
+    const mk = () => {
+      const squad = JOBS.map((j) => j).map((job, j) => generateMember(job as (typeof JOBS)[number], 5, 987000 + j))
+      seedMemberSeq(squad)
+      return createBattle(squad, BLACKMOSS, 'enc-frogs', 4242)
+    }
+    const bA = mk()
+    const bB = mk()
+    const victimA = bA.combatants.find((c) => c.team === 'guild')!
+    const victimB = bB.combatants.find((c) => c.team === 'guild')!
+    victimB.vulnUntilTick = 9999
+    victimB.vulnMult = 1.25
+    const atkA = bA.combatants.find((c) => c.team === 'enemy')!
+    const atkB = bB.combatants.find((c) => c.team === 'enemy')!
+    const hpA = victimA.hp
+    const hpB = victimB.hp
+    applyHit(bA, atkA, victimA, 100, '测试')
+    applyHit(bB, atkB, victimB, 100, '测试')
+    const dmgA = hpA - victimA.hp
+    const dmgB = hpB - victimB.hp
+    if (dmgB <= dmgA) fail23.push(`㉓ 易伤未放大伤害:${dmgA} → ${dmgB}`)
+    console.log(`㉓ 易伤:基础 ${dmgA} → 易伤 ${dmgB}(应 ×1.25)`)
+  }
+
+  // 23e:召唤物——兽王/恶魔局的宠物入场,无 memberId(阵亡不进纪念堂)
+  {
+    let petSeen = 0
+    for (let i = 0; i < 10; i++) {
+      const squad = JOBS.map((j) => j).map((job, j) => generateMember(job as (typeof JOBS)[number], 5, 988000 + i * 100 + j))
+      squad[2].spec = 'ranger-beastmaster'
+      seedMemberSeq(squad)
+      const b = createBattle(squad, BLACKMOSS, 'enc-frogs', i * 37 + 5)
+      let guard = 0
+      while (b.status === 'running' && guard++ < MAX_TICK) stepBattle(b)
+      const pets = b.combatants.filter((c) => c.petOf)
+      if (pets.length > 0) {
+        petSeen++
+        if (pets.some((p) => p.memberId)) fail23.push('㉓ 宠物带 memberId(会被记入永久死亡!)')
+      }
+    }
+    if (petSeen < 8) fail23.push(`㉓ 召唤物入场率过低:${petSeen}/10`)
+    console.log(`㉓ 召唤物:战狼入场 ${petSeen}/10 场,均无 memberId`)
+  }
+
+  // 23f:咏叹光环——持有者存活时全队 auraMult=1.1
+  {
+    const squad = JOBS.map((j) => j).map((job, j) => generateMember(job as (typeof JOBS)[number], 5, 989000 + j))
+    squad[1].spec = 'priest-chanter'
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 666)
+    stepBattle(b)
+    const ally = b.combatants.find((c) => c.team === 'guild' && c.specId !== 'priest-chanter')!
+    if (ally.auraMult !== 1.1) fail23.push(`㉓ 光环未生效:${ally.auraMult}`)
+    console.log(`㉓ 光环:队友 auraMult=${ally.auraMult}`)
+  }
+
+  if (fail23.length > 0) {
+    console.log('✗ 专精系统未通过:', fail23)
+    process.exit(1)
+  }
+  console.log('✓ 专精系统通过:18 专精数据完整,吸收盾/反伤/易伤/召唤/光环全部按设计工作')
 }

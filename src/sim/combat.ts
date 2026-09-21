@@ -9,7 +9,7 @@ import type {
   Stance,
   BattleCommands,
 } from './types'
-import { JOBS } from '../data/jobs'
+import { JOBS, specOf } from '../data/jobs'
 import { processBossMechanics } from './mechanics'
 import { runAutoAI } from './ai'
 import { equipmentStats } from './loot'
@@ -79,9 +79,11 @@ export function initCommands(potions?: { heal: number; fury: number }): BattleCo
 /** 成员 → 战斗实体投影。装备加算（D10），数值公式占位，D13-14 平衡轮统一调 */
 export function toCombatant(member: Member): Combatant {
   const job = JOBS[member.job]
+  const spec = specOf(member.job, member.spec)
   const eq = equipmentStats(member.equipment)
+  const mods = spec.statMods ?? {}
   const maxHp = Math.round(
-    job.base.maxHp +
+    Math.max(1, job.base.maxHp + (mods.maxHp ?? 0)) +
       (member.level - 1) * job.growth.maxHp +
       member.attrs.str * 3 +
       (eq.maxHp ?? 0),
@@ -94,22 +96,26 @@ export function toCombatant(member: Member): Combatant {
     // D13 修复：血量延续——带上成员当前血量进场（远征内的消耗才成立）
     hp: Math.max(1, Math.min(member.hp > 0 ? member.hp : maxHp, maxHp)),
     attack: Math.round(
-      ((job.base.attack + (member.level - 1) * job.growth.attack) *
+      ((Math.max(1, job.base.attack + (mods.attack ?? 0)) + (member.level - 1) * job.growth.attack) *
         (1 + member.attrs[job.attackAttr] * 0.05) +
         (eq.attack ?? 0)),
     ),
     defense: Math.round(
-      job.base.defense + (member.level - 1) * job.growth.defense + (eq.defense ?? 0),
+      Math.max(0, job.base.defense + (mods.defense ?? 0)) +
+        (member.level - 1) * job.growth.defense +
+        (eq.defense ?? 0),
     ),
-    critChance: job.base.critChance + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
+    critChance: job.base.critChance + (mods.critChance ?? 0) + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
     attackInterval: Math.max(
       6,
-      Math.round(60 / (job.base.speed + (eq.speed ?? 0))),
+      Math.round(60 / (job.base.speed + (mods.speed ?? 0) + (eq.speed ?? 0))),
     ),
     cooldownLeft: 0,
     alive: true,
     memberId: member.id,
-    skills: job.skills.map((def) => ({ def, cooldownLeft: 0 })),
+    skills: spec.skills.map((def) => ({ def, cooldownLeft: 0 })),
+    specId: spec.id,
+    counterMult: spec.passive === 'counter' ? 0.3 : undefined,
     tauntedTicks: 0,
     position: job.position,
     range: job.range,
@@ -250,8 +256,10 @@ function effectiveAttack(state: BattleState, c: Combatant): number {
   const buff = c.buffUntil && state.tick < c.buffUntil ? (c.buffAttack ?? 0) : 0
   // 纪念堂光环 + 战术手册（D11）+ 默契（M1 P0）：死者的故事与公会的羁绊化作力量
   const legacy = c.team === 'guild' ? 1 + (state.auraBonus ?? 0) + (state.manualBonus ?? 0) : 1
+  // 咏叹光环:持有者存活时全队伤害加成(stepBattle 每 tick 刷新 auraMult)
+  const aura = c.team === 'guild' ? (c.auraMult ?? 1) : 1
   const bond = c.team === 'guild' ? (state.bondMults?.[c.id] ?? 1) : 1
-  return (c.attack + buff) * fury * stance * legacy * bond
+  return (c.attack + buff) * fury * stance * legacy * bond * aura
 }
 
 function effectiveDefense(state: BattleState, target: Combatant): number {
@@ -293,7 +301,33 @@ export function applyHit(
   label: string,
   opts?: { crit?: boolean; ranged?: boolean },
 ): void {
+  // 吸收盾(戒律/圣盾使):伤害先扣盾,余量才进血
+  if (target.absorbShield && target.absorbShield > 0) {
+    const absorbed = Math.min(target.absorbShield, amount)
+    target.absorbShield -= absorbed
+    amount -= absorbed
+    if (absorbed > 0) {
+      state.events.push({ tick: state.tick, type: 'shielded', targetId: target.id, amount: absorbed })
+      pushLog(state, target.team, '🛡 ' + target.name + ' 的护盾吸收了 ' + absorbed + ' 点伤害')
+    }
+    if (amount <= 0) return
+  }
+  // 诅咒易伤(痛苦/咒印):受伤加深
+  if (target.vulnUntilTick && state.tick < target.vulnUntilTick) {
+    amount = Math.round(amount * (target.vulnMult ?? 1.2))
+  }
   target.hp = Math.max(0, target.hp - amount)
+  // 反伤被动(荆棘/裂阵):近战命中者反弹 fraction
+  if (target.counterMult && attacker.range === 'melee' && attacker.alive) {
+    const back = Math.max(1, Math.round(amount * target.counterMult))
+    attacker.hp = Math.max(0, attacker.hp - back)
+    state.events.push({ tick: state.tick, type: 'counter', attackerId: target.id, targetId: attacker.id, amount: back })
+    if (attacker.hp <= 0 && attacker.alive) {
+      attacker.alive = false
+      state.events.push({ tick: state.tick, type: 'death', targetId: attacker.id })
+      pushLog(state, 'system', '☠ ' + attacker.name + ' 倒下了')
+    }
+  }
   // 吸血词条：攻击者按比例回血（静默，不产生事件）
   if (attacker.lifesteal && attacker.alive) {
     attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(amount * attacker.lifesteal))
@@ -455,6 +489,114 @@ function useSkill(
       pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，${victim.name} 被激怒了！`)
       return true
     }
+    case 'charge-strike': {
+      // 破城冲锋:高伤 + 注入大仇恨(破城锤手/冲锋队长——威胁靠伤害堆)
+      const target = pool.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
+      dealDamage(state, c, target, 1.6, `释放【${skill.name}】撞上`)
+      for (const e of aliveOf(state, 'enemy')) {
+        e.threat[c.id] = (e.threat[c.id] ?? 0) + 120
+      }
+      return true
+    }
+    case 'group-heal': {
+      const hurt = allies.filter((a) => a.hp / a.maxHp < 0.7)
+      if (hurt.length === 0) return false
+      const amount = Math.round(c.attack * 3.0)
+      for (const a of hurt) {
+        a.hp = Math.min(a.maxHp, a.hp + amount)
+        state.events.push({ tick: state.tick, type: 'heal', attackerId: c.id, targetId: a.id, amount })
+      }
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，恢复 ${hurt.length} 人各 ${amount} 点生命`)
+      return true
+    }
+    case 'shield-ally': {
+      // 真言盾:给最脆的人上吸收盾(吸收量按治疗者攻击定标)
+      const target = allies.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
+      const shield = Math.round(c.attack * 6)
+      target.absorbShield = (target.absorbShield ?? 0) + shield
+      state.events.push({ tick: state.tick, type: 'shielded', targetId: target.id, amount: shield })
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，为 ${target.name} 挂上 ${shield} 点护盾`)
+      return true
+    }
+    case 'curse-mark': {
+      // 痛苦诅咒:目标受伤 +25%,持续 12s
+      const target = pool.reduce((a, b) => (a.maxHp >= b.maxHp ? a : b))
+      target.vulnUntilTick = state.tick + 120
+      target.vulnMult = 1.25
+      state.events.push({ tick: state.tick, type: 'cursed', targetId: target.id })
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，${target.name} 成了全队的活靶子！`)
+      return true
+    }
+    case 'frost-nova': {
+      // 霜寒新星:全体敌人减速 + 轻伤
+      let hit = 0
+      for (const e of aliveOf(state, 'enemy')) {
+        e.slowUntilTick = state.tick + 80
+        hit++
+        dealDamage(state, c, e, 0.5, '被霜寒新星扫过')
+      }
+      if (hit === 0) return false
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，${hit} 个敌人被冻得步履蹒跚！`)
+      return true
+    }
+    case 'multishot': {
+      // 弹幕:最多打两个目标(奥术飞弹/旋风斩)
+      const targets = pool.slice(0, 2)
+      if (targets.length === 0) return false
+      for (const t of targets) dealDamage(state, c, t, 1.0, `被【${skill.name}】命中`)
+      return true
+    }
+    case 'trap-bind': {
+      // 捕兽夹:束缚目标 2s(猎手控场)
+      const target = pool.reduce((a, b) => (a.maxHp >= b.maxHp ? a : b))
+      target.boundUntilTick = state.tick + 20
+      state.events.push({ tick: state.tick, type: 'bound', targetId: target.id, amount: 20 })
+      pushLog(state, 'guild', `${c.name} 的【${skill.name}】咬住了 ${target.name}！`)
+      return true
+    }
+    case 'summon-pet': {
+      // 召唤物(战狼/小鬼/契灵):每场一只,存活期间技能不可用(回落平砍)
+      if (state.combatants.some((x) => x.petOf === c.id && x.alive)) return false
+      const pet = summonPet(c)
+      state.combatants.push(pet)
+      state.events.push({ tick: state.tick, type: 'summoned', targetId: pet.id })
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，${pet.name} 出现在战场上！`)
+      return true
+    }
+    case 'enchant-self': {
+      // 附魔:自我攻击加成
+      c.buffAttack = Math.round(c.attack * 0.3)
+      c.buffUntil = state.tick + 150
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，武器燃起了魔力！`)
+      return true
+    }
+  }
+}
+
+/** 召唤物:属性随召唤者成长,无 memberId(阵亡不进纪念堂) */
+function summonPet(caster: Combatant): Combatant {
+  const atk = Math.max(3, Math.round(caster.attack * 0.6))
+  const hp = Math.round(caster.maxHp * 0.45)
+  return {
+    id: `p${++combatantSeq}`,
+    name: caster.specId?.includes('warlock') ? '契约小鬼' : '战狼',
+    team: 'guild',
+    maxHp: hp,
+    hp,
+    attack: atk,
+    defense: 2,
+    critChance: 0.05,
+    attackInterval: 8,
+    cooldownLeft: 0,
+    alive: true,
+    skills: [],
+    tauntedTicks: 0,
+    position: 'front',
+    range: 'melee',
+    role: 'dps',
+    synergyIds: [],
+    threat: {},
+    petOf: caster.id,
   }
 }
 
@@ -491,6 +633,15 @@ export function stepBattle(state: BattleState): void {
 
   // boss 机制引擎（蓄力/咏唱/召唤/束缚/狂暴）
   processBossMechanics(state)
+
+  // 咏叹光环刷新:持有者存活 → 全队(除自身)伤害 +10%
+  {
+    const auraOn = state.combatants.some((x) => x.alive && x.specId === 'priest-chanter')
+    for (const c of state.combatants) {
+      if (c.team !== 'guild') continue
+      c.auraMult = auraOn && c.specId !== 'priest-chanter' ? 1.1 : 1
+    }
+  }
 
   // 坦克被动仇恨：活着就持续吸引战线
   for (const e of aliveOf(state, 'enemy')) {

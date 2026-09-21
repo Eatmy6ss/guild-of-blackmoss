@@ -63,6 +63,9 @@ function rollNature(rng: Rng, job: JobId): Nature {
     guard: { str: 6, agi: 2, int: 1 },
     priest: { str: 1, agi: 2, int: 6 },
     ranger: { str: 2, agi: 6, int: 1 },
+    warrior: { str: 7, agi: 3, int: 1 },
+    mage: { str: 1, agi: 2, int: 7 },
+    warlock: { str: 2, agi: 2, int: 6 },
   }
   const t = tilt[job]
   const base: Attributes = {

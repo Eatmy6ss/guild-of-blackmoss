@@ -32,7 +32,7 @@ export interface Personality {
 }
 
 // ===== 职业（Q13：轻协同——协同用词条表达，非硬门槛）=====
-export type JobId = 'guard' | 'priest' | 'ranger'
+export type JobId = 'guard' | 'priest' | 'ranger' | 'warrior' | 'mage' | 'warlock'
 export type Role = 'tank' | 'healer' | 'dps'
 export type Position = 'front' | 'back'
 export type AttackRange = 'melee' | 'ranged'
@@ -40,13 +40,41 @@ export type AttackRange = 'melee' | 'ranged'
 export interface SkillDef {
   id: string
   name: string
-  /** 效果由战斗引擎解释（D3-4） */
-  effect: 'heavy-strike' | 'heal-lowest' | 'taunt'
+  /** 效果由战斗引擎解释（D3-4;宪法 v3 角色篇扩容） */
+  effect:
+    | 'heavy-strike'
+    | 'heal-lowest'
+    | 'taunt'
+    | 'group-heal'
+    | 'shield-ally'
+    | 'curse-mark'
+    | 'summon-pet'
+    | 'multishot'
+    | 'frost-nova'
+    | 'enchant-self'
+    | 'charge-strike'
+    | 'trap-bind'
   target: 'enemy' | 'ally'
   cooldownTicks: number
 }
 
+/** 专精(宪法 v3 角色篇):同职业的三种打法,招募即带;undefined 引用 = defaultSpec(经典线,平衡假设保留) */
+export interface SpecDef {
+  id: string
+  name: string
+  /** 身份句(BG3):招募卡展示"你为什么是这个子类" */
+  identity: string
+  /** 数值修正:相对职业 base 的加算偏移 */
+  statMods?: { maxHp?: number; attack?: number; defense?: number; speed?: number; critChance?: number }
+  skills: SkillDef[]
+  /** 职业被动:反伤(荆棘/裂阵)/增益光环(咏叹) */
+  passive?: 'counter' | 'aura-attack'
+}
+
 export interface JobDef {
+  /** 经典专精(=宪法 v3 前的数值与技能,老存档/门禁的平衡假设) */
+  defaultSpec: string
+  specs: Record<string, SpecDef>
   id: JobId
   name: string
   role: Role
@@ -65,7 +93,6 @@ export interface JobDef {
     critChance: number
   }
   growth: { maxHp: number; attack: number; defense: number }
-  skills: SkillDef[]
   /** 轻协同词条 id，效果表见 data/jobs.ts SYNERGY */
   synergy: string[]
 }
@@ -113,6 +140,8 @@ export interface Member {
   id: string
   name: string
   job: JobId
+  /** 专精 id(宪法 v3);undefined = 职业 defaultSpec(经典线) */
+  spec?: string
   level: number
   nature: Nature
   personality: Personality
@@ -177,6 +206,18 @@ export interface Combatant {
   lifesteal?: number
   /** 被减速：到该 tick 前攻击间隔 ×slowMult（霜寒系机制） */
   slowUntilTick?: number
+  /** 吸收盾(戒律/圣盾使):伤害先扣盾 */
+  absorbShield?: number
+  /** 诅咒易伤(痛苦/咒印):到 tick 前受伤 ×vulnMult */
+  vulnUntilTick?: number
+  vulnMult?: number
+  /** 反伤被动(荆棘/裂阵):近战命中者反弹 fraction */
+  counterMult?: number
+  /** 光环(咏叹):存活时全队伤害 ×auraMult,每 tick 由 stepBattle 刷新 */
+  auraMult?: number
+  /** 召唤物归属(兽王狼/恶魔小鬼/契灵):无 memberId,阵亡不进纪念堂 */
+  petOf?: string
+  specId?: string
   /** 性格（仅我方，挂机 AI 代打用） */
   personality?: Personality
 }
@@ -304,6 +345,9 @@ export type BattleEventType =
   | 'fury'
   | 'slam'
   | 'slowed'
+  | 'shielded'
+  | 'cursed'
+  | 'counter'
 
 export interface BattleEvent {
   tick: number
