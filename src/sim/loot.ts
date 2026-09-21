@@ -59,7 +59,7 @@ export function rollBossDrops(
   return drops
 }
 
-function createLootRng(seed: number): () => number {
+export function createLootRng(seed: number): () => number {
   let s = seed | 0
   return () => {
     s = (s + 0x6d2b79f5) | 0
