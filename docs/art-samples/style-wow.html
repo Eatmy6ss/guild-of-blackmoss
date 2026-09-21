@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>样张 C · WoW 纹章 × 羊皮纸文书风</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1440px; height:980px; overflow:hidden; }
+  body {
+    font-family:'Songti SC','STSong','SimSun',Georgia,serif;
+    background:
+      radial-gradient(ellipse 820px 480px at 50% -6%, #4a3a26 0%, rgba(74,58,38,0) 60%),
+      radial-gradient(ellipse 1300px 860px at 50% 112%, #241a10 0%, rgba(36,26,16,0) 55%),
+      repeating-linear-gradient(90deg, #221812 0 116px, #261b14 116px 120px, #1e1510 120px 236px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 2px, transparent 2px 44px),
+      #221812;
+    color:#d8c8a0;
+    padding:22px 36px 20px;
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+  body::after { content:''; position:absolute; inset:0; pointer-events:none; z-index:9;
+    background: radial-gradient(ellipse 1250px 830px at 50% 44%, transparent 55%, rgba(10,6,2,.5) 100%); }
+
+  /* ── 样式标头 ── */
+  .stylebar { display:flex; justify-content:space-between; align-items:baseline; z-index:2; margin-bottom:14px; }
+  .stylebar .tag { font-size:14px; letter-spacing:.4em; color:#9a7a3a; border:1px solid #6a5228; padding:4px 16px; }
+  .stylebar h1 { font-size:29px; font-weight:700; letter-spacing:.22em; color:#e8c87a;
+    text-shadow:0 0 16px rgba(230,180,80,.4), 0 2px 0 #4a3210; }
+  .stylebar .sub { font-size:13px; color:#a08a5c; letter-spacing:.16em; }
+
+  /* ── 主区 ── */
+  .main { flex:1; min-height:0; display:flex; gap:22px; z-index:2; }
+
+  /* 公会大厅:石框鎏金 */
+  .frame { flex:1; position:relative;
+    background:
+      radial-gradient(ellipse 700px 300px at 50% 0%, rgba(120,90,50,.18) 0%, rgba(120,90,50,0) 60%),
+      linear-gradient(#332b36, #26202a 55%, #201a24);
+    border:2px solid #0f0c12;
+    outline:2px solid #8a6a2a; outline-offset:-7px;
+    box-shadow: inset 0 0 70px rgba(0,0,0,.72), 0 0 34px rgba(0,0,0,.6);
+    display:flex; flex-direction:column; }
+  .flourish { position:absolute; width:54px; height:54px; z-index:3; }
+  .flourish svg { width:100%; height:100%; }
+  .fl-tl { top:-8px; left:-8px; }
+  .fl-tr { top:-8px; right:-8px; transform:scaleX(-1); }
+  .fl-bl { bottom:-8px; left:-8px; transform:scaleY(-1); }
+  .fl-br { bottom:-8px; right:-8px; transform:scale(-1); }
+
+  .topbar { display:flex; align-items:center; gap:24px; padding:12px 26px;
+    background: linear-gradient(#3a303e, #292230);
+    border-bottom:2px solid #0f0c12; box-shadow: 0 1px 0 #6a5228, inset 0 -10px 20px rgba(0,0,0,.45); }
+  .crest-mini { width:30px; height:34px; }
+  .topbar .brand { font-size:20px; color:#e8c87a; letter-spacing:.26em; font-weight:700;
+    text-shadow:0 0 12px rgba(230,180,80,.45), 0 1px 0 #3a2810; }
+  .topbar .stat { font-size:14.5px; color:#b8a678; letter-spacing:.06em; }
+  .topbar .stat b { color:#ecd48a; font-weight:700; }
+  .topbar .day { margin-left:auto; }
+
+  .hall { flex:1; padding:20px 30px 16px; display:flex; flex-direction:column; position:relative; }
+
+  .hall-head { display:flex; align-items:center; gap:16px; margin-bottom:15px; }
+  .hall-head h2 { font-size:25px; letter-spacing:.4em; color:#e8c87a; font-weight:700;
+    text-shadow:0 0 12px rgba(230,180,80,.35), 0 1px 0 #3a2810; }
+  .hall-head .rule { flex:1; height:3px; position:relative;
+    background: linear-gradient(90deg, #8a6a2a, #4a3a18 70%, transparent);
+    box-shadow: 0 1px 0 rgba(0,0,0,.6); }
+  .hall-head .sub { font-size:12px; color:#a08a5c; letter-spacing:.22em; }
+
+  .dock { display:flex; gap:11px; margin-bottom:15px; }
+  .dock-btn { flex:1; padding:12px 5px 10px; text-align:center; cursor:pointer; position:relative;
+    background: linear-gradient(#3a3142, #261f2e);
+    border:2px solid #0f0c12; box-shadow: inset 0 0 0 1px #8a6a2a, inset 0 -8px 14px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.5); }
+  .dock-btn .icon { display:block; font-size:22px; margin-bottom:6px; }
+  .dock-btn .label { display:block; font-size:13px; color:#d8c088; letter-spacing:.22em; margin-bottom:4px; }
+  .dock-btn .key { display:inline-block; font-size:10.5px; color:#e8c87a; border:1px solid #8a6a2a;
+    background:rgba(0,0,0,.35); padding:1px 8px; }
+
+  .goal { display:flex; align-items:center; gap:12px; padding:10px 16px; margin-bottom:14px;
+    background: linear-gradient(#ece0bc, #ddd0a4);
+    border:1px solid #8a6a2a; box-shadow: inset 0 0 24px rgba(140,100,40,.25), 0 2px 6px rgba(0,0,0,.5);
+    font-size:14px; color:#4a3820; }
+  .goal::before, .route-parch::before { content:''; position:absolute; }
+  .goal .g-seal { flex-shrink:0; width:26px; height:26px; border-radius:50%;
+    background: radial-gradient(circle at 36% 32%, #a84040, #6a2020 70%, #4a1616);
+    box-shadow:0 1px 3px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center;
+    color:#3a0e0e; font-size:13px; }
+  .goal b { color:#7a2a1a; }
+
+  .squad { margin-bottom:14px; }
+  .squad h4 { font-size:12.5px; color:#a08a5c; letter-spacing:.4em; margin-bottom:8px; }
+  .squad-row { display:flex; gap:11px; }
+  .member { flex:1; padding:9px 11px 10px; background: linear-gradient(#3a3142, #261f2e);
+    border:2px solid #0f0c12; box-shadow: inset 0 0 0 1px #6a5228, inset 0 -8px 14px rgba(0,0,0,.5); }
+  .member .m-head { display:flex; align-items:center; gap:9px; margin-bottom:7px; }
+  .member .portrait { width:34px; height:34px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    font-size:17px; background:#1c1622; border:1px solid #8a6a2a; box-shadow: inset 0 0 10px rgba(0,0,0,.7); }
+  .member .m-name { font-size:13.5px; color:#ecd48a; letter-spacing:.05em; }
+  .member .m-job { display:block; font-size:10.5px; color:#a08a5c; letter-spacing:.1em; margin-top:2px; }
+  .hpbar { height:7px; background:#14101a; border:1px solid #0f0c12; box-shadow: inset 0 1px 3px rgba(0,0,0,.8); }
+  .hpbar i { display:block; height:100%; background: linear-gradient(#7aa85a, #4a7a34); }
+  .hpbar i.low { background: linear-gradient(#c05a4a, #8a2a1e); }
+  .member .m-hp { font-size:10px; color:#8a7a5c; margin-top:4px; letter-spacing:.05em; }
+
+  .tower { margin-top:auto; padding:15px 20px 14px;
+    background: linear-gradient(#3a303e, #262030);
+    border:2px solid #0f0c12; box-shadow: inset 0 0 0 1px #6a5228, inset 0 0 40px rgba(0,0,0,.55);
+    display:flex; gap:20px; align-items:center; }
+  .rune { flex-shrink:0; opacity:.9; }
+  .tower-body { flex:1; }
+  .tower h3 { font-size:16.5px; color:#e8c87a; letter-spacing:.2em; margin-bottom:7px;
+    text-shadow:0 0 10px rgba(230,180,80,.35); }
+  .tower p { font-size:12.5px; color:#a89878; line-height:1.75; margin-bottom:10px; }
+  .tower p b { color:#d86a5a; }
+  .tower-row { display:flex; align-items:center; gap:15px; }
+  .btn-enter { padding:9px 28px; font-family:inherit; font-size:14.5px; letter-spacing:.28em; cursor:pointer;
+    color:#2a1c08; font-weight:700; background: linear-gradient(#f0d080, #c8a04a 45%, #a07828);
+    border:2px solid #4a3210; box-shadow: 0 0 16px rgba(230,180,80,.3), inset 0 1px 0 rgba(255,255,255,.5), 0 2px 4px rgba(0,0,0,.6);
+    text-shadow:0 1px 0 rgba(255,240,200,.6); }
+  .tower-row .rec { font-size:12.5px; color:#a08a5c; letter-spacing:.1em; }
+  .tower-row .rec b { color:#ecd48a; }
+
+  .keysline { margin-top:12px; font-size:11px; color:#6a5c44; letter-spacing:.14em; }
+
+  /* ── 右列:羊皮纸事件卷轴 + 石质路线卡 ── */
+  .sidecol { width:398px; display:flex; flex-direction:column; gap:18px; }
+
+  .event-card { flex:1; position:relative; padding:22px 26px 18px;
+    background:
+      radial-gradient(ellipse 400px 220px at 80% 0%, rgba(120,84,40,.16) 0%, rgba(120,84,40,0) 60%),
+      linear-gradient(#f0e4c2, #e2d4ac);
+    border:1px solid #8a6a2a; box-shadow: inset 0 0 34px rgba(140,100,40,.3), 0 4px 14px rgba(0,0,0,.55);
+    display:flex; flex-direction:column; }
+  .event-card::before { content:''; position:absolute; inset:6px; border:1px solid rgba(140,100,40,.4); pointer-events:none; }
+  .event-kicker { font-size:11px; letter-spacing:.5em; color:#8a5a2a; margin-bottom:8px; }
+  .event-card h3 { font-size:22px; color:#4a3418; letter-spacing:.14em; margin-bottom:12px; font-weight:700; }
+  .event-card .rule { height:2px; margin-bottom:12px;
+    background: linear-gradient(90deg, transparent, #a8803a 18%, #a8803a 82%, transparent); }
+  .event-card .text { font-size:13.5px; line-height:2; color:#5a462c; margin-bottom:15px; }
+  .choice { display:block; width:100%; text-align:left; font-family:inherit; cursor:pointer;
+    padding:9px 14px 8px; margin-bottom:9px; font-size:13.5px; color:#4a3820;
+    background: rgba(255,250,235,.55); border:1.5px solid #a8803a; position:relative; }
+  .choice::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:#8a5a2a; }
+  .choice.risk::before { background:#a83828; }
+  .choice.safe::before { background:#3a6a8a; }
+  .choice small { display:block; margin-top:3px; font-size:11px; color:#8a6a44; }
+  .choice.risk small { color:#9a4a34; }
+  .choice.safe small { color:#4a7a9a; }
+  .seal { position:absolute; top:13px; right:15px; width:50px; height:50px; border-radius:50%;
+    background: radial-gradient(circle at 36% 32%, #b05040, #702420 68%, #4e1812);
+    box-shadow: 0 3px 8px rgba(0,0,0,.45), inset 0 2px 4px rgba(255,255,255,.2);
+    display:flex; align-items:center; justify-content:center; color:#3a0e0e; font-size:20px; transform:rotate(10deg); }
+  .event-quote { margin-top:auto; padding-top:12px; font-size:12.5px; color:#7a5e3a; font-style:italic; line-height:1.8; }
+  .event-quote span { display:block; margin-top:3px; font-size:10.5px; color:#9a8560; font-style:normal; }
+  .event-foot { margin-top:10px; padding-top:10px; font-size:11px; color:#8a6a3a; letter-spacing:.12em;
+    border-top:1px dashed #b89050; }
+
+  .route-card { position:relative; padding:14px 20px 13px;
+    background: linear-gradient(#3a303e, #262030);
+    border:2px solid #0f0c12; box-shadow: inset 0 0 0 1px #6a5228, inset 0 0 26px rgba(0,0,0,.5); }
+  .route-card h4 { font-size:13.5px; color:#e8c87a; letter-spacing:.34em; margin-bottom:10px;
+    text-shadow:0 0 8px rgba(230,180,80,.3); }
+  .route-row { display:flex; gap:12px; }
+  .route { flex:1; padding:9px 12px; background:#1c1622; border:1px solid #6a5228; }
+  .route .name { font-size:13px; color:#d8c088; letter-spacing:.12em; margin-bottom:3px; }
+  .route.danger .name { color:#d86a5a; }
+  .route .desc { font-size:10.5px; color:#8a7a5c; line-height:1.6; }
+
+  /* ── 底部风格要点 ── */
+  .notes { z-index:2; margin-top:16px; padding:13px 24px 11px;
+    border:1px solid #6a5228; background: rgba(16,12,8,.55); }
+  .notes h5 { font-size:12px; letter-spacing:.4em; color:#c8a04a; margin-bottom:8px; }
+  .notes ul { list-style:none; display:flex; gap:30px; }
+  .notes li { font-size:12px; color:#a89878; line-height:1.7; }
+  .notes li b { color:#e8c87a; }
+</style>
+</head>
+<body>
+  <div class="stylebar">
+    <span class="tag">样张 · C</span>
+    <h1>WoW 纹章 × 羊皮纸文书 —— 公会大厅概念</h1>
+    <span class="sub">魔兽式石框鎏金 · 矮人要塞式文书誊录 · 任务板上的佣兵公会</span>
+  </div>
+
+  <div class="main">
+    <div class="frame">
+      <div class="flourish fl-tl"><svg viewBox="0 0 56 56" fill="none"><path d="M4 52 C4 24 24 4 52 4 M4 52 C10 34 18 22 34 16 M4 52 C16 48 26 44 40 42" stroke="#c8a04a" stroke-width="2.5" fill="none"/><circle cx="52" cy="4" r="3.4" fill="#e8c87a"/></svg></div>
+      <div class="flourish fl-tr"><svg viewBox="0 0 56 56" fill="none"><path d="M4 52 C4 24 24 4 52 4 M4 52 C10 34 18 22 34 16 M4 52 C16 48 26 44 40 42" stroke="#c8a04a" stroke-width="2.5" fill="none"/><circle cx="52" cy="4" r="3.4" fill="#e8c87a"/></svg></div>
+      <div class="flourish fl-bl"><svg viewBox="0 0 56 56" fill="none"><path d="M4 52 C4 24 24 4 52 4 M4 52 C10 34 18 22 34 16 M4 52 C16 48 26 44 40 42" stroke="#c8a04a" stroke-width="2.5" fill="none"/><circle cx="52" cy="4" r="3.4" fill="#e8c87a"/></svg></div>
+      <div class="flourish fl-br"><svg viewBox="0 0 56 56" fill="none"><path d="M4 52 C4 24 24 4 52 4 M4 52 C10 34 18 22 34 16 M4 52 C16 48 26 44 40 42" stroke="#c8a04a" stroke-width="2.5" fill="none"/><circle cx="52" cy="4" r="3.4" fill="#e8c87a"/></svg></div>
+
+      <div class="topbar">
+        <svg class="crest-mini" viewBox="0 0 30 34" fill="none"><path d="M15 2 L27 7 V17 C27 26 22 30 15 32 C8 30 3 26 3 17 V7 Z" stroke="#c8a04a" stroke-width="2" fill="#1c1622"/><path d="M9 11 L21 23 M21 11 L9 23" stroke="#c8a04a" stroke-width="1.6"/><circle cx="15" cy="17" r="3.2" stroke="#e8c87a" stroke-width="1.4"/></svg>
+        <span class="brand">黑 苔 公 会</span>
+        <span class="stat">第 <b>14</b> 日</span>
+        <span class="stat">💰 <b>428</b></span>
+        <span class="stat">🕯 祝福 <b>12</b></span>
+        <span class="stat">👥 <b>5</b>/6</span>
+        <span class="stat day">⚔ 佣兵纪元 213 年</span>
+      </div>
+
+      <div class="hall">
+        <div class="hall-head">
+          <h2>公会大厅</h2>
+          <div class="rule"></div>
+          <span class="sub">佣兵任务板 · 深渊纪 213 年</span>
+        </div>
+
+        <div class="dock">
+          <div class="dock-btn"><span class="icon">📜</span><span class="label">花名册</span><span class="key">C</span></div>
+          <div class="dock-btn"><span class="icon">🍺</span><span class="label">酒馆</span><span class="key">T</span></div>
+          <div class="dock-btn"><span class="icon">📦</span><span class="label">仓库</span><span class="key">B</span></div>
+          <div class="dock-btn"><span class="icon">⚒</span><span class="label">基地</span><span class="key">N</span></div>
+          <div class="dock-btn"><span class="icon">📖</span><span class="label">大事记</span><span class="key">J</span></div>
+          <div class="dock-btn"><span class="icon">🏛</span><span class="label">名人堂</span><span class="key">H</span></div>
+          <div class="dock-btn"><span class="icon">📕</span><span class="label">手册</span><span class="key">K</span></div>
+        </div>
+
+        <div class="goal"><span class="g-seal">⚔</span><span>公会任务(羊皮纸敕令):<b>首杀深渊祭司·塔尔玛</b>(黑苔沼泽)—— 传闻她会在重伤时缚住勇者的双脚</span></div>
+
+        <div class="squad">
+          <h4>远 征 小 队 · 黑 苔 沼 泽</h4>
+          <div class="squad-row">
+            <div class="member"><div class="m-head"><span class="portrait">🛡</span><span><span class="m-name">罗 兰</span><span class="m-job">铁卫 · Lv4 · 沉稳</span></span></div><div class="hpbar"><i style="width:77%"></i></div><p class="m-hp">120 / 156</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">✚</span><span><span class="m-name">艾 拉</span><span class="m-job">牧师 · Lv3 · 仁慈</span></span></div><div class="hpbar"><i style="width:82%"></i></div><p class="m-hp">98 / 120</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">🏹</span><span><span class="m-name">凯 尔</span><span class="m-job">游侠 · Lv4 · 鲁莽</span></span></div><div class="hpbar"><i style="width:81%"></i></div><p class="m-hp">110 / 135</p></div>
+            <div class="member"><div class="m-head"><span class="portrait">🗡</span><span><span class="m-name">布 兰</span><span class="m-job">铁卫 · Lv2 · 新兵</span></span></div><div class="hpbar"><i class="low" style="width:30%"></i></div><p class="m-hp">45 / 150 · ⚠ 重伤</p></div>
+          </div>
+        </div>
+
+        <div class="tower">
+          <svg class="rune" width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="28" stroke="#8a6a2a" stroke-width="2"/>
+            <circle cx="32" cy="32" r="21" stroke="#6a5228" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <path d="M32 12 L44 20 V34 C44 43 39 48 32 51 C25 48 20 43 20 34 V20 Z" stroke="#c8a04a" stroke-width="2" fill="none"/>
+            <path d="M26 26 L38 38 M38 26 L26 38" stroke="#c8a04a" stroke-width="1.6"/>
+          </svg>
+          <div class="tower-body">
+            <h3>🗼 黑苔高塔 · 最高纪录 第七层</h3>
+            <p>逐层深入,敌人逐层变强;每三层遭遇守塔之主。<b>第九层起,撤退保护失效</b>——塔中陨落的英雄,名字将由书记官誊入名人堂。奖励逐层立即入账,随时可带着离开。</p>
+            <div class="tower-row">
+              <button class="btn-enter">进 入 高 塔</button>
+              <span class="rec">已探明 <b>7</b> 层 · 守塔之主已斩 <b>2</b></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="keysline">快捷键 —— C 花名册 · T 酒馆 · B 仓库 · N 基地 · J 大事记 · H 名人堂 · K 手册 · Esc 关闭</p>
+      </div>
+    </div>
+
+    <div class="sidecol">
+      <div class="event-card">
+        <span class="seal">⚔</span>
+        <p class="event-kicker">途 遭 事 件 · 书记官誊录</p>
+        <h3>沼泽中的哭声</h3>
+        <div class="rule"></div>
+        <p class="text">浓雾深处传来婴儿般的啼哭。向导说那是泥妖惯用的诱饵,可那哭声实在太像人声——队伍里已有人攥紧了剑柄。</p>
+        <button class="choice risk">循声而去<small>可能遭遇泥妖伏击 · 亦可能救下被困的旅人</small></button>
+        <button class="choice safe">绕道而行<small>消耗半日 · 平安,但向导的报酬要加倍</small></button>
+        <button class="choice">先派游侠侦察<small>视侦察结果再定 · 需队中有游侠</small></button>
+        <p class="event-quote">"别应声……在雾里,千万别应声。"<span>—— 向导压得极低的嗓音</span></p>
+        <p class="event-foot">⚖ 此事件的抉择与后果,将记入《大事记》。</p>
+      </div>
+
+      <div class="route-card">
+        <h4>分歧路线</h4>
+        <div class="route-row">
+          <div class="route danger"><div class="name">⸸ 险路 · 泥沼小径</div><div class="desc">多 1 场战斗与 1 个事件 · 报酬 +60%</div></div>
+          <div class="route"><div class="name">─ 稳路 · 官道</div><div class="desc">平安但漫长 · 报酬正常</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h5>风 格 要 点</h5>
+    <ul>
+      <li><b>材质语言:</b>暗石镶铁框、鎏金纹饰勾边(WoW 界面骨架);任务与事件皆为羊皮纸文书(矮人要塞的"记录感")</li>
+      <li><b>色彩:</b>暖黑石底 + 鎏金标题 + 羊皮纸米黄;血红只给危险——比 A 暖、比 B 沉</li>
+      <li><b>血统:</b>WoW 给"皮"(公会任务板/佣兵 fantasy),矮人要塞给"骨"(大事记/名人堂=被记录的历史),正对本作宪法主题</li>
+      <li><b>演出方向:</b>任务如揭下任务板敕令、事件如书记官现场誊录、结算如盖印文书</li>
+    </ul>
+  </div>
+</body>
+</html>
