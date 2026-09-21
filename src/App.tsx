@@ -56,6 +56,19 @@ const ROSTER_CAP = 6
 const MEMORIAL_AURA = 0.02 // 每位英灵全队伤害 +2%
 const MANUAL_BONUS = 0.05 // 已研习 boss 全队对其伤害 +5%
 
+// UI 2.0 屏幕栈:公会大厅(hub) + 功能界面覆盖层。快捷键呼出,Esc/再按关闭。
+type UIScreen = 'roster' | 'tavern' | 'warehouse' | 'base' | 'chronicle' | 'memorial' | 'manual' | 'expedition'
+// 大厅功能坞:图标 + 名称 + 快捷键(顺序即展示顺序)
+const HUB_DOCK: { key: UIScreen; icon: string; label: string; hotkey: string }[] = [
+  { key: 'roster', icon: '🛡', label: '花名册', hotkey: 'C' },
+  { key: 'tavern', icon: '🍺', label: '酒馆', hotkey: 'T' },
+  { key: 'warehouse', icon: '🎒', label: '仓库', hotkey: 'B' },
+  { key: 'base', icon: '🏰', label: '基地', hotkey: 'N' },
+  { key: 'chronicle', icon: '📜', label: '大事记', hotkey: 'J' },
+  { key: 'memorial', icon: '🕯', label: '名人堂', hotkey: 'H' },
+  { key: 'manual', icon: '📖', label: '手册', hotkey: 'K' },
+]
+
 function newRoster(): Member[] {
   return START_JOBS.map((job) => generateMember(job, 5))
 }
@@ -658,6 +671,24 @@ export default function App() {
   const battleOver = inBattle && battle!.status !== 'running'
   // 指挥有感:boss 意图实时推导——蓄力中「分散」脉冲,咏唱中亮「打断咏唱」按钮(决策窗口可见)
   const intents = inBattle && battle!.status === 'running' ? bossIntents(battle!) : null
+  // 屏幕栈状态:null = 大厅;远征/爬塔中快捷键不劫持(战斗界面是全屏态)。与 title/game 阶段状态相互独立
+  const [hubScreen, setHubScreen] = useState<UIScreen | null>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      if (runRef.current || towerRunRef.current) return
+      if (e.key === 'Escape') {
+        setHubScreen(null)
+        return
+      }
+      const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase())
+      if (hit) setHubScreen((cur) => (cur === hit.key ? null : hit.key))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const finished = run != null && (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated')
   const canExpedition = !run && expedition.length >= 3
 
@@ -778,20 +809,63 @@ export default function App() {
         <span className="slice-tag">M1 · 高塔版 —— 爬塔 / 招募三路径 / 成长 / 演出</span>
       </div>
       <div className="layout">
-        <div className="panel">
-          <h2>
-            公会花名册（{members.filter((m) => m.alive).length} 人存活）
-            {run ? ' · 远征中' : ''}
-          </h2>
-          {/* 全部存活成员可见:出征队带 ⚔ 标记,替补可编入(M1 P0 编组) */}
-          {members.filter((m) => m.alive).map(memberCard)}
+        <div className="panel hub-panel">
+          <div className="hub-topbar">
+            <span className="hub-title">🏰 黑苔公会</span>
+            <span>第 {day} 日</span>
+            <span>💰 {gold}</span>
+            <span>🕯 {blessing}</span>
+            <span>👥 {members.filter((m) => m.alive).length}/{ROSTER_CAP}</span>
+          </div>
+          <h2>公会大厅</h2>
+          <div className="hub-dock">
+            {HUB_DOCK.map((it) => (
+              <button
+                key={it.key}
+                className={`dock-btn${hubScreen === it.key ? ' open' : ''}`}
+                onClick={() => setHubScreen((cur) => (cur === it.key ? null : it.key))}
+              >
+                <span className="dock-icon">{it.icon}</span>
+                <span className="dock-label">{it.label}</span>
+                <span className="dock-key">{it.hotkey}</span>
+              </button>
+            ))}
+          </div>
+          {(() => {
+            const goals = guildGoals({ members, inventory, manual, expedition, towerBest })
+            const cur = goals.find((g) => !g.done)
+            return (
+              <p className="hub-goal">
+                📋 当前目标:{cur ? cur.text : '全部达成!'}{cur?.progress ? `(${cur.progress})` : ''}
+              </p>
+            )
+          })()}
+          <div className="inv-panel tower-entry">
+            <h2>🗼 黑苔高塔 —— 最高纪录 第 {towerBest} 层</h2>
+            <p className="hint">
+              逐层深入，敌人逐层变强；每 3 层遭遇守塔 boss。第 5 层起药水减半，
+              <b style={{ color: '#d48f8f' }}>第 9 层起撤退保护失效</b>。奖励逐层立即入账，随时可带着离开。
+            </p>
+            {towerUnlocked ? (
+              <button className="branch-btn" disabled={!canExpedition} onClick={enterTower}>
+                🗼 进入高塔（从第 1 层开始）
+              </button>
+            ) : (
+              <p className="hint">🔒 击败深渊祭司·塔尔玛后解锁</p>
+            )}
+          </div>
+          <p className="hint hub-keys">
+            快捷键:C 花名册 · T 酒馆 · B 仓库 · N 基地 · J 大事记 · H 名人堂 · K 手册 · Esc 关闭
+          </p>
           <div className="end-actions">
             <button onClick={restartGuild}>☠ 重开公会</button>
           </div>
-          <div className="inv-panel tavern-panel">
-            {pendingEvent && (
-              <div className="event-panel">
-                <h2>⚖ {pendingEvent.title}</h2>
+          {pendingEvent && (
+            <div className="screen-overlay event-overlay">
+              <div className="screen-panel event-modal">
+                <div className="screen-head">
+                  <h2>⚖ {pendingEvent.title}</h2>
+                </div>
                 {eventResult ? (
                   <>
                     <p className="event-result">{eventResult}</p>
@@ -809,11 +883,19 @@ export default function App() {
                     </div>
                   </>
                 )}
+                </div>
               </div>
             )}
-            <h2>
-              🍺 酒馆 —— 💰 {gold} · 🕯 祝福 {blessing} · 招募位 {members.filter((m) => m.alive).length}/{ROSTER_CAP}
-            </h2>
+            {hubScreen === 'tavern' && (
+              <div className="screen-overlay">
+                <div className="screen-panel">
+                  <div className="screen-head">
+                    <h2>🍺 酒馆</h2>
+                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                  </div>
+                  <p className="screen-sub">
+                    💰 {gold} · 🕯 祝福 {blessing} · 招募位 {members.filter((m) => m.alive).length}/{ROSTER_CAP}
+                  </p>
             <p className="hint">
               {effectiveCooldown > 0
                 ? `招募冷却：完成 ${effectiveCooldown} 次远征后解除（上门访客不受影响）`
@@ -903,29 +985,16 @@ export default function App() {
                 ))}
               </div>
             )}
-          </div>
-          {candidates.length > 0 && (
-            <div className="inv-panel">
-              <h2>来应征的冒险者（选一位入职）</h2>
-              {candidates.map((m) => (
-                <div key={m.id} className="member-card candidate">
-                  <div>
-                    <span className="name">{m.name}</span>
-                    <span className="job">
-                      {JOBS[m.job].name} Lv{m.level} · {ROLE_NAME[JOBS[m.job].role]}
-                    </span>
-                  </div>
-                  <div className="row">
-                    <span>{attrsLine(m)} · {natureLine(m)}</span>
-                  </div>
-                  <div className="row">
-                    <span>{personalityLine(m)}</span>
-                  </div>
-                  <button onClick={() => hire(m)}>✋ 招募入职</button>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            )}
+            {hubScreen === 'warehouse' && (
+              <div className="screen-overlay">
+                <div className="screen-panel">
+                  <div className="screen-head">
+                    <h2>🎒 公会仓库</h2>
+                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                  </div>
           <div className="inv-panel">
             <h2>公会仓库（{inventory.length}）</h2>
             {inventory.length === 0 ? (
@@ -945,7 +1014,17 @@ export default function App() {
                 本次远征共获得 {lastDrops.length} 件装备
               </p>
             )}
-          </div>
+                </div>
+              </div>
+              </div>
+            )}
+            {hubScreen === 'base' && (
+              <div className="screen-overlay">
+                <div className="screen-panel">
+                  <div className="screen-head">
+                    <h2>🏰 公会基地</h2>
+                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                  </div>
           <div className="inv-panel">
             <h2>🏰 公会基地（第 {day} 日）</h2>
             <div className="base-grid">
@@ -972,7 +1051,17 @@ export default function App() {
                 )
               })}
             </div>
-          </div>
+                </div>
+              </div>
+              </div>
+            )}
+            {hubScreen === 'chronicle' && (
+              <div className="screen-overlay">
+                <div className="screen-panel">
+                  <div className="screen-head">
+                    <h2>📜 大事记</h2>
+                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                  </div>
           <div className="inv-panel">
             <h2>📜 编年史（第 {day} 日 · {chronicle.length} 则）</h2>
             <div className="chronicle-box">
@@ -987,7 +1076,17 @@ export default function App() {
                 ))
               )}
             </div>
-          </div>
+                </div>
+              </div>
+              </div>
+            )}
+            {hubScreen === 'memorial' && (
+              <div className="screen-overlay">
+                <div className="screen-panel">
+                  <div className="screen-head">
+                    <h2>🕯 名人堂</h2>
+                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                  </div>
           <div className="inv-panel">
             <h2>
               🕯 纪念堂（{memorial.length} 位英灵 · 全队伤害 +
@@ -1002,7 +1101,17 @@ export default function App() {
                 </div>
               ))
             )}
-          </div>
+                </div>
+              </div>
+              </div>
+            )}
+            {hubScreen === 'manual' && (
+              <div className="screen-overlay">
+                <div className="screen-panel">
+                  <div className="screen-head">
+                    <h2>📖 战术手册</h2>
+                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                  </div>
           <div className="inv-panel">
             <h2>📖 战术手册（已研习 boss 伤害 +5%）</h2>
             <p className="hint">
@@ -1014,7 +1123,23 @@ export default function App() {
             >
               🛡 撤退保护：{protectOn ? '开（濒危自动撤离）' : '关（搏命模式）'}
             </button>
-          </div>
+                </div>
+              </div>
+              </div>
+            )}
+            {hubScreen === 'roster' && (
+              <div className="screen-overlay">
+                <div className="screen-panel">
+                  <div className="screen-head">
+                    <h2>🛡 花名册</h2>
+                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                  </div>
+                  <div className="inv-panel">
+                    {members.filter((m) => m.alive).map(memberCard)}
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
 
         <div className="panel">
@@ -1023,26 +1148,11 @@ export default function App() {
 
           {!run && (
             <>
-              <h2>出击（黑苔沼泽）</h2>
+              <h2>⚔ 作战板</h2>
               <p style={{ color: '#7a8191', marginBottom: 10 }}>
                 选择路线：险路战斗更多、收获机会更多；稳路少打一场杂兵。血量全程延续，
                 <b style={{ color: '#d48f8f' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
               </p>
-              {(() => {
-                const goals = guildGoals({ members, inventory, manual, expedition, towerBest })
-                const currentIdx = goals.findIndex((g) => !g.done)
-                return (
-                  <div className="inv-panel goals-panel">
-                    <h2>📋 公会目标{currentIdx >= 0 ? ` —— 当前:${goals[currentIdx].text}` : ' —— 全部达成!'}</h2>
-                    {goals.map((g, i) => (
-                      <div key={g.id} className={`goal-row ${g.done ? 'done' : i === currentIdx ? 'current' : ''}`}>
-                        <span className="goal-mark">{g.done ? '✓' : i === currentIdx ? '▶' : '○'}</span>
-                        <span>{g.text}{g.progress ? `(${g.progress})` : ''}</span>
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()}
               <div className="dungeon-picker">
                 {DUNGEONS.map((d) => (
                   <button
@@ -1072,20 +1182,6 @@ export default function App() {
                     : ''}
                 </p>
               )}
-              <div className="inv-panel tower-entry">
-                <h2>🗼 黑苔高塔 —— 最高纪录 第 {towerBest} 层</h2>
-                <p className="hint">
-                  逐层深入，敌人逐层变强；每 3 层遭遇守塔 boss。第 5 层起药水减半，
-                  <b style={{ color: '#d48f8f' }}>第 9 层起撤退保护失效</b>。奖励逐层立即入账，随时可带着离开。
-                </p>
-                {towerUnlocked ? (
-                  <button className="branch-btn" disabled={!canExpedition} onClick={enterTower}>
-                    🗼 进入高塔（从第 1 层开始）
-                  </button>
-                ) : (
-                  <p className="hint">🔒 击败深渊祭司·塔尔玛后解锁</p>
-                )}
-              </div>
             </>
           )}
 
