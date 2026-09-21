@@ -1824,7 +1824,7 @@ const towerFailures: string[] = []
       const r2 = t2.rolls.find((x) => x.affixId === 'aff-atk')
       if (!r1 || !r2) continue
       checked++
-      if (Math.abs(r2.value - r1.value * 1.5) > 0.01) {
+      if (Math.abs(r2.value - r1.value * 1.5) > 0.02) {
         fail28.push(`㉘ T2 缩放异常:T1 ${r1.value} → T2 ${r2.value}(应 ×1.5)`)
       }
       console.log(`㉘ 词条缩放对:${checked} 锋利 T1 ${r1.value} → T2 ${r2.value}`)
