@@ -1,6 +1,6 @@
 import type { ItemInstance, JobId, Member } from './types'
 import { generateMember } from './gen'
-import { pick } from './rng'
+import { pick, weighted } from './rng'
 import { RACES } from '../data/races'
 import { JOBS } from '../data/jobs'
 import { ECONOMY, VISITOR_STORIES } from '../data/economy'
@@ -28,8 +28,21 @@ function pickCandidate(rng: Rng, members: Member[], level: number, forcedJob?: J
     race = pick(rng, Object.values(RACES).filter((r) => r.allowedLines.includes('priest')).map((r) => r.id))
     job = 'priest'
   } else {
-    race = pick(rng, Object.keys(RACES))
-    job = pick(rng, RACES[race].allowedLines)
+    // 节奏方差控制(宪法 v3.2 缺陷三):队伍缺的线 ×3,已有两员及以上的线 ×0.5;种族向未出场族轻倾斜
+    const alive = members.filter((m) => m.alive)
+    const lineCount: Record<string, number> = {}
+    for (const m of alive) lineCount[m.job] = (lineCount[m.job] ?? 0) + 1
+    const weights: Record<string, number> = {}
+    for (const line of Object.keys(JOBS)) {
+      weights[line] = (lineCount[line] ?? 0) === 0 ? 3 : (lineCount[line] ?? 0) >= 2 ? 0.5 : 1
+    }
+    const raceCount: Record<string, number> = {}
+    for (const m of alive) if (m.race) raceCount[m.race] = (raceCount[m.race] ?? 0) + 1
+    const raceWeights: Record<string, number> = {}
+    for (const r of Object.keys(RACES)) raceWeights[r] = (raceCount[r] ?? 0) === 0 ? 1.5 : 1
+    race = weighted(rng, raceWeights)
+    const allowed = RACES[race].allowedLines.filter((l) => weights[l] > 0)
+    job = weighted(rng, Object.fromEntries(allowed.map((l) => [l, weights[l] ?? 1]))) as JobId
   }
   return generateMember(job, level, Math.floor(rng() * 0x7fffffff), { race })
 }

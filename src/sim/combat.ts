@@ -408,6 +408,12 @@ function dealDamage(
   mult: number,
   label: string,
 ): void {
+  // 相位无敌(敌人侧):一切伤害穿身而过
+  if (target.invulnUntilTick && state.tick < target.invulnUntilTick) {
+    state.events.push({ tick: state.tick, type: 'phase', targetId: target.id })
+    pushLog(state, attacker.team, `${target.name} 处于相位之中,攻击无效!`)
+    return
+  }
   const variance = 0.85 + nextRandom(state) * 0.3
   const crit = nextRandom(state) < attacker.critChance
   let raw =
@@ -674,6 +680,18 @@ export function stepBattle(state: BattleState): void {
   // boss 机制引擎（蓄力/咏唱/召唤/束缚/狂暴）
   processBossMechanics(state)
 
+  // 地面效果区结算:zoned 成员每 10 tick 受持续伤害;拉拽到期还原站位
+  for (const c of state.combatants) {
+    if (!c.alive) continue
+    if (c.zonedUntilTick && state.tick < c.zonedUntilTick && state.tick % 10 === 0) {
+      applyHit(state, c, c, 4, '毒沼侵蚀')
+    }
+    if (c.pulledUntilTick && state.tick >= c.pulledUntilTick && c.originalPosition) {
+      c.position = c.originalPosition
+      c.pulledUntilTick = undefined
+    }
+  }
+
   // 咏叹光环刷新:持有者存活 → 全队(除自身)伤害 +10%
   {
     const auraOn = state.combatants.some((x) => x.alive && x.specId === 'priest-chanter')
@@ -792,4 +810,77 @@ export function orderRetreat(state: BattleState): boolean {
     `撤退令下！全队撤离需要 ${EXTRACT_TICKS / 10} 秒——被束缚者将被留下！`,
   )
   return true
+}
+
+
+// ===== 透明面板(宪法 v3.2 缺陷二):把乘区逐层摊开给人看 =====
+export interface StatLayer {
+  label: string
+  text: string
+  good?: boolean
+  bad?: boolean
+}
+
+export function statLayers(member: Member): StatLayer[] {
+  const job = JOBS[member.job]
+  const spec = specOf(member.job, member.spec)
+  const race = member.race ? RACES[member.race] : RACES.human
+  const p = member.personality ?? { bravery: 50, caution: 50, greed: 50, loyalty: 50 }
+  const eq = equipmentStats(member.equipment)
+  const layers: StatLayer[] = []
+  layers.push({
+    label: '基础盘',
+    text: `${spec.name} · ${job.base.maxHp}血/${job.base.attack}攻/${job.base.defense}防`,
+  })
+  layers.push({
+    label: '主属性',
+    text: `${job.attackAttr === 'str' ? '力量' : job.attackAttr === 'agi' ? '敏捷' : '智力'} ${member.attrs[job.attackAttr]}(每点 +5% 攻击)`,
+  })
+  const br = Math.round((p.bravery - 50) * 0.12)
+  if (br !== 0) layers.push({ label: '性格·勇猛', text: `${br > 0 ? '+' : ''}${br}% 攻击`, good: br > 0, bad: br < 0 })
+  const ca = Math.round((p.caution - 50) * 0.18)
+  if (ca !== 0) layers.push({ label: '性格·谨慎', text: `${ca > 0 ? '+' : ''}${ca}% 防御`, good: ca > 0, bad: ca < 0 })
+  if (p.greed !== 50) {
+    const gr = ((p.greed - 50) * 0.05).toFixed(1)
+    layers.push({ label: '性格·贪婪', text: `${Number(gr) > 0 ? '+' : ''}${gr}% 暴击`, good: p.greed > 50, bad: p.greed < 50 })
+  }
+  if (p.loyalty !== 50) {
+    const lo = ((p.loyalty - 50) * 0.12).toFixed(1)
+    layers.push({ label: '性格·忠诚', text: `${Number(lo) > 0 ? '+' : ''}${lo}% 受疗`, good: p.loyalty > 50, bad: p.loyalty < 50 })
+  }
+  const rp = race.passive
+  const raceText = rp.attack
+    ? `攻击 +${rp.attack}`
+    : rp.defense
+      ? `防御 +${rp.defense}`
+      : rp.crit
+        ? `暴击 +${(rp.crit * 100).toFixed(0)}%`
+        : rp.healReceived
+          ? `受疗 +${(rp.healReceived * 100).toFixed(0)}%`
+          : rp.undeadWill
+            ? '阵亡冲击减半'
+            : rp.expMult
+              ? `经验 +${(rp.expMult * 100).toFixed(0)}%`
+              : '—'
+  layers.push({ label: `${'种族·' + race.name}`, text: raceText, good: Object.keys(rp).length > 0 })
+  if (member.augments?.length) {
+    layers.push({
+      label: '通用战技',
+      text: member.augments
+        .map((a) => (a === 'aug-vit' ? '体魄' : a === 'aug-iron' ? '铁骨' : a === 'aug-eye' ? '锐眼' : a === 'aug-blood' ? '血性' : '韧性'))
+        .join('、'),
+      good: true,
+    })
+  }
+  const eqParts: string[] = []
+  if (eq.maxHp) eqParts.push(`血 ${Math.round(eq.maxHp)}`)
+  if (eq.attack) eqParts.push(`攻 ${Math.round(eq.attack)}`)
+  if (eq.defense) eqParts.push(`防 ${Math.round(eq.defense)}`)
+  if (eq.critChance) eqParts.push(`暴 ${(eq.critChance * 100).toFixed(0)}%`)
+  if (eq.healReceived) eqParts.push(`受疗 ${(eq.healReceived * 100).toFixed(0)}%`)
+  if (eq.lifesteal) eqParts.push(`吸血 ${(eq.lifesteal * 100).toFixed(0)}%`)
+  if (eqParts.length) layers.push({ label: '装备', text: eqParts.join(' · '), good: true })
+  const bondTotal = Object.values(member.bonds).reduce((s2, n) => s2 + n, 0)
+  if (bondTotal > 0) layers.push({ label: '默契', text: `${bondTotal} 次共同远征(星数换算伤害加成)`, good: true })
+  return layers
 }

@@ -199,6 +199,12 @@ export const RUSTMINE: DungeonDef = {
           params: { telegraphTicks: 36, damage: 32, everyTicks: 110 },
         },
         {
+          id: 'delve-pull',
+          kind: 'pull',
+          name: '岩钉钩索',
+          params: { everyTicks: 260, durationTicks: 600 },
+        },
+        {
           id: 'delve-call',
           kind: 'summon',
           name: '唤出蝠群',
@@ -294,6 +300,12 @@ export const ASHFIELD: DungeonDef = {
           kind: 'cast-buff',
           name: '亡者号角',
           params: { castTicks: 30, attackBuff: 9, durationTicks: 120, everyTicks: 240, breakDamage: 110 },
+        },
+        {
+          id: 'mold-phase',
+          kind: 'phase-invuln',
+          name: '亡者相位',
+          params: { everyTicks: 300, durationTicks: 30 },
         },
         {
           id: 'mold-call',
@@ -573,6 +585,12 @@ export const THORNHOLD: DungeonDef = {
           kind: 'summon',
           name: '亲卫旗',
           params: { atHpPct: 0.65, count: 2, groupId: 'honor-frail' },
+        },
+        {
+          id: 'colt-mire',
+          kind: 'ground-zone',
+          name: '血污旗阵',
+          params: { castTicks: 30, durationTicks: 100, everyTicks: 340, breakDamage: 200 },
         },
         {
           id: 'colt-warcry',

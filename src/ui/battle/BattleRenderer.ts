@@ -355,6 +355,18 @@ export class BattleRenderer {
         this.spawnFloat(target, '❄ 减速!', 0x9ad4e8, 13)
         continue
       }
+      if (ev.type === 'pulled') {
+        this.spawnFloat(target, '被拽到前排!', 0xd9a05a, 14)
+        continue
+      }
+      if (ev.type === 'zoned') {
+        this.spawnFloat(target, ev.amount ? '毒沼缠身!' : '成功脱离!', 0x8ab86a, 13)
+        continue
+      }
+      if (ev.type === 'phase') {
+        this.spawnFloat(target, '相位·无效!', 0xb89ad4, 13)
+        continue
+      }
       const attacker = ev.attackerId ? this.units.get(ev.attackerId) : undefined
       if (ev.type === 'heal') {
         this.spawnFloat(target, `+${ev.amount}`, COL.heal, 12)

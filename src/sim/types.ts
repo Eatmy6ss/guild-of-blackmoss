@@ -228,6 +228,13 @@ export interface Combatant {
   petOf?: string
   /** 受疗加成(忠诚性格/血精灵/受疗词条):治疗量 ×(1+healReceived) */
   healReceived?: number
+  /** 被拉拽(敌人侧机制):到 tick 前站位被强制为前排 */
+  pulledUntilTick?: number
+  originalPosition?: Position
+  /** 处于地面效果区(敌人侧机制):到 tick 前每 10 tick 受持续伤害 */
+  zonedUntilTick?: number
+  /** 相位无敌(敌人侧机制):到 tick 前免疫一切伤害 */
+  invulnUntilTick?: number
   specId?: string
   /** 性格（仅我方，挂机 AI 代打用） */
   personality?: Personality
@@ -256,6 +263,9 @@ export type MechanicKind =
   | 'cast-buff'
   | 'cast-heal'
   | 'slow-touch'
+  | 'pull'
+  | 'ground-zone'
+  | 'phase-invuln'
   | 'summon'
   | 'bind'
   | 'enrage'
@@ -359,6 +369,9 @@ export type BattleEventType =
   | 'shielded'
   | 'cursed'
   | 'counter'
+  | 'pulled'
+  | 'zoned'
+  | 'phase'
 
 export interface BattleEvent {
   tick: number

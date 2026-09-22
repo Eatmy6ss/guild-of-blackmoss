@@ -4,7 +4,7 @@
 //       最终平衡在 D13-14 统一调。
 // 运行：npx esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=scripts/smoke.mjs && node scripts/smoke.mjs
 import { generateMember } from '../src/sim/gen'
-import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit } from '../src/sim/combat'
+import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit, statLayers } from '../src/sim/combat'
 import { rollBossDrops, rollDrop, describeItem, itemStats, createLootRng } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
@@ -1960,4 +1960,77 @@ const towerFailures: string[] = []
   }
   if (fail30.length > 0) { console.log('✗ 种族矩阵未通过:', fail30); process.exit(1) }
   console.log('✓ 种族×职业矩阵通过:限制生效,保底冲突有解,存档消毒兜底')
+}
+
+// ============================================================
+// ㉛ 宪法 v3.2:敌人三新机制 + 加权招募 + 透明面板数据
+// ============================================================
+{
+  const fail31: string[] = []
+  // 31a:拉拽——后排成员被拽到前排
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 973000 + j))
+    seedMemberSeq(squad)
+    const b = createBattle(squad, RUSTMINE, 'enc-delveanchor', 4242)
+    let pulled = 0
+    let guard = 0
+    while (b.status === 'running' && guard++ < MAX_TICK) stepBattle(b)
+    pulled = b.events.filter((e) => e.type === 'pulled').length
+    if (pulled === 0) fail31.push('㉛ 拉拽从未触发(掘锚岩钉钩索未接线)')
+    console.log(`㉛ 拉拽:岩钉钩索触发 ${pulled} 次`)
+  }
+  // 31b:相位无敌——无敌期伤害被格挡
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 974000 + j))
+    seedMemberSeq(squad)
+    const b = createBattle(squad, ASHFIELD, 'enc-moldreke', 4242)
+    let phaseBlocked = 0
+    let guard = 0
+    while (b.status === 'running' && guard++ < MAX_TICK) stepBattle(b)
+    phaseBlocked = b.log.filter((e) => e.text.includes('攻击无效')).length
+    if (phaseBlocked === 0) fail31.push('㉛ 相位无敌从未格挡(摩尔德雷克亡者相位未接线)')
+    console.log(`㉛ 相位:亡者相位格挡 ${phaseBlocked} 次攻击`)
+  }
+  // 31c:血污旗阵——非分散吃持续伤害(科尔特,5 人本编制)
+  {
+    const squad = (['guard', 'priest', 'ranger', 'ranger', 'warrior'] as const).map((job, j) => generateMember(job, 5, 975000 + j))
+    seedMemberSeq(squad)
+    const b = createBattle(squad, THORNHOLD, 'enc-colt', 4242, 0, 0, false)
+    let guard = 0
+    while (b.status === 'running' && guard++ < MAX_TICK) stepBattle(b)
+    const mireCasts = b.log.filter((e) => e.text.includes('血污旗阵') && e.text.includes('漫开')).length
+    if (mireCasts === 0) fail31.push('㉛ 血污旗阵从未漫开(毒区未生效)')
+    console.log(`㉛ 毒区:血污旗阵完成 ${mireCasts} 次`)
+  }
+  // 31d:加权招募——缺治疗线时,候选治疗线概率显著高于均匀(无保底触发的普通局面)
+  {
+    const squad = (['guard', 'warrior', 'ranger'] as const).map((job, j) => generateMember(job, 5, 976000 + j))
+    for (const m of squad) m.race = 'human'
+    seedMemberSeq(squad)
+    let healer = 0
+    for (let i = 0; i < 60; i++) {
+      const v = rollVisitor(Math.random, squad)
+      if (JOB_TABLE[v.member.job].role === 'healer') healer++
+    }
+    // 均匀六线 = 16.7%;缺治疗加权后应显著更高(×3)
+    if (healer < 15) fail31.push(`㉙ 加权招募未生效:60 次候选治疗线仅 ${healer}(均匀期望 ~10)`)
+    console.log(`㉙ 加权招募:缺线加权后治疗线候选 ${healer}/60(均匀期望 ~10)`)
+  }
+  // 31e:statLayers——基础盘/性格/种族/装备各层完整
+  {
+    const m = generateMember('guard', 5, 977000)
+    m.spec = 'guard-thorns'
+    m.race = 'orc'
+    m.augments = ['aug-iron']
+    m.equipment.trinket = rollDrop('trk-t2-medic', () => 0.4)
+    seedMemberSeq([m])
+    const layers = statLayers(m)
+    const labels = layers.map((l) => l.label)
+    for (const need of ['基础盘', '主属性', '种族·兽人', '通用战技', '装备']) {
+      if (!labels.includes(need)) fail31.push(`㉛ 透明面板缺层:${need}`)
+    }
+    console.log(`㉙ 透明面板:${layers.length} 层(${labels.join('/')})`)
+  }
+  if (fail31.length > 0) { console.log('✗ 宪法 v3.2 未通过:', fail31); process.exit(1) }
+  console.log('✓ 宪法 v3.2 通过:拉拽/相位/毒区/加权招募/透明面板全部成立')
 }

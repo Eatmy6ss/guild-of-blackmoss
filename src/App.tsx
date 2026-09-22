@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames, rollSpec } from './sim/gen'
+import { statLayers } from './sim/combat'
 import { RACES } from './data/races'
 import { guildGoals } from './sim/goals'
 import { applyDeathShock, applyFeast, applyVictory, applyRestMorale, refusesToMarch } from './sim/morale'
@@ -761,6 +762,8 @@ export default function App() {
   const intents = inBattle && battle!.status === 'running' ? bossIntents(battle!) : null
   // 屏幕栈状态:null = 大厅;远征/爬塔中快捷键不劫持(战斗界面是全屏态)。与 title/game 阶段状态相互独立
   const [hubScreen, setHubScreen] = useState<UIScreen | null>(null)
+  // 透明面板(宪法 v3.2 缺陷二):展开显示乘区逐层明细的成员
+  const [detailOpen, setDetailOpen] = useState<Set<string>>(new Set())
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName
@@ -787,7 +790,7 @@ export default function App() {
     const onExpedition = run != null ? run.members.includes(m) : expedition.includes(m)
     return (
       <div key={m.id} className="member-card">
-        <div className="mc-head">
+        <div className="mc-head" style={{ cursor: 'pointer' }} title="点击展开属性明细" onClick={() => setDetailOpen((cur) => { const n = new Set(cur); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n })}>
           <span className="name">{m.name}</span>
           <span className="job">
             {RACES[m.race ?? 'human'].name}·{isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
@@ -798,6 +801,16 @@ export default function App() {
             {c && !c.alive ? '（已倒下）' : ''}
           </span>
         </div>
+        {detailOpen.has(m.id) && (
+          <div className="stat-layers">
+            {statLayers(m).map((l, i) => (
+              <div key={i} className="stat-layer">
+                <span className="sl-label">{l.label}</span>
+                <span className={l.good ? 'good' : l.bad ? 'bad' : ''}>{l.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="row">
           <span>{attrsLine(m)}</span>
           <span>{personalityLine(m)}</span>

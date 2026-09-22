@@ -104,6 +104,61 @@ export function processBossMechanics(state: BattleState): void {
           // 被动霜寒:普攻命中概率减速目标(处理在 combat.dealDamage,这里只负责机制存在性)
           break
         }
+        case 'pull': {
+          // 拉拽:把一个后排成员拽到前排(阵型意义实时化——后排不再绝对安全)
+          if ((rt.next ?? 120) <= state.tick) {
+            rt.next = state.tick + num(m.params.everyTicks, 240)
+            const backs = state.combatants.filter((x) => x.alive && x.team === 'guild' && x.position === 'back')
+            if (backs.length > 0) {
+              const victim = backs[Math.floor(battleRandom(state) * backs.length)]
+              if (victim.originalPosition === undefined) victim.originalPosition = victim.position
+              victim.position = 'front'
+              victim.pulledUntilTick = state.tick + num(m.params.durationTicks, 600)
+              state.events.push({ tick: state.tick, type: 'pulled', targetId: victim.id })
+              pushLog(state, 'enemy', `${c.name} 的【${m.name}】把 ${victim.name} 拽到了前排!`)
+            }
+          }
+          break
+        }
+        case 'ground-zone': {
+          // 地面效果区:咏唱完成后全场染毒——施放瞬间处于分散阵型的成员成功脱离
+          if (rt.until !== undefined) {
+            if (state.tick >= rt.until) {
+              delete rt.until
+              rt.next = state.tick + num(m.params.everyTicks, 300)
+              const escaped = state.commands.stance === 'spread'
+              for (const g of state.combatants.filter((x) => x.alive && x.team === 'guild')) {
+                if (!escaped) g.zonedUntilTick = state.tick + num(m.params.durationTicks, 120)
+              }
+              state.events.push({ tick: state.tick, type: 'zoned', targetId: c.id, amount: escaped ? 0 : 1 })
+              pushLog(state, 'enemy', escaped ? `【${m.name}】漫开——分散的队伍站在了毒雾之外!` : `【${m.name}】漫开,队伍泡在毒雾里——分散可以脱身!`)
+            } else if ((rt.taken ?? 0) >= num(m.params.breakDamage, 200)) {
+              delete rt.until
+              rt.taken = 0
+              rt.next = state.tick + num(m.params.everyTicks, 300)
+              state.events.push({ tick: state.tick, type: 'interrupted', targetId: c.id })
+              pushLog(state, 'guild', `集火奏效!${c.name} 的【${m.name}】被打断了!`)
+            }
+          } else if ((rt.next ?? 150) <= state.tick) {
+            const castTicks = num(m.params.castTicks, 30)
+            rt.until = state.tick + castTicks
+            rt.taken = 0
+            state.events.push({ tick: state.tick, type: 'casting', targetId: c.id, amount: castTicks })
+            pushLog(state, 'enemy', `${c.name} 开始咏唱【${m.name}】——分散可以提前脱离!`)
+          }
+          break
+        }
+        case 'phase-invuln': {
+          // 相位无敌:周期性免疫伤害数秒——集火窗口失效,该转火或交药
+          if ((rt.next ?? 200) <= state.tick) {
+            rt.next = state.tick + num(m.params.everyTicks, 320)
+            rt.until = state.tick + num(m.params.durationTicks, 30)
+            c.invulnUntilTick = rt.until
+            state.events.push({ tick: state.tick, type: 'phase', targetId: c.id })
+            pushLog(state, 'enemy', `${c.name} 进入【${m.name}】,一切攻击穿身而过!`)
+          }
+          break
+        }
         case 'summon': {
           if (!rt.fired && c.hp / c.maxHp <= num(m.params.atHpPct, 0.6)) {
             rt.fired = 1
