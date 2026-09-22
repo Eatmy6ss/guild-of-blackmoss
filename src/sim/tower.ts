@@ -35,6 +35,8 @@ export interface TowerRun {
   goldEarned: number
   /** 携带药水(药水经济):进塔时从公会库存带出,逐层延续,离开时退回剩余 */
   potions: { heal: number; fury: number }
+  /** 挂机连刷(试玩反馈):跨层延续,rest 自动深入下一层 */
+  autoMode?: boolean
   result?: 'left' | 'defeated'
 }
 
@@ -111,6 +113,7 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
     floor <= TOWER.protectUntilFloor,
     alloc,
   )
+  run.battle.commands.autoMode = !!run.autoMode
   run.phase = 'battle'
 }
 

@@ -150,6 +150,10 @@ export default function App() {
   }, [])
 
   const runRef = useRef<DungeonRun | null>(null)
+  const lastBranchRef = useRef('shortcut')
+  const autoLoopRef = useRef(false)
+  const continueDeepRef = useRef<(() => void) | null>(null)
+  const startExpeditionRef = useRef<((branchId: string) => void) | null>(null)
   const [run, setRun] = useState<DungeonRun | null>(null)
   const [battle, setBattle] = useState<BattleState | null>(null)
   const [running, setRunning] = useState(false)
@@ -228,6 +232,20 @@ export default function App() {
       setTowerBest((best) => Math.max(best, t.floor))
       setTowerRunning(false)
       setTowerRun({ ...t })
+      // 挂机连刷:rest 自动休整并深入下一层
+      if (t.autoMode) {
+        window.setTimeout(() => {
+          const t2 = towerRunRef.current
+          if (!t2 || t2.phase !== 'rest') return
+          towerRest(t2)
+          towerNext(t2, ++seedRef.current * 9973)
+          setTowerRun({ ...t2 })
+          setTowerRunning(true)
+          setBattle(null)
+          lastBattleRef.current = null
+          drainAndSync(t2.battle!)
+        }, 500)
+      }
     } else {
       setTowerRunning(false)
       setTowerRun({ ...t })
@@ -382,6 +400,18 @@ export default function App() {
     if (endPhase === 'defeat') sfxDefeat()
     if (dead.length > 0) setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
     setRecruitCooldown((c) => Math.max(0, c - 1))
+    // 挂机连刷(试玩反馈):rest 自动下一场;victory 自动重刷同一副本;团灭/保护撤退停止
+    if (endPhase !== 'battle' && r.autoMode) {
+      if (endPhase === 'rest') {
+        window.setTimeout(() => continueDeepRef.current?.(), 500)
+      } else if (endPhase === 'victory') {
+        window.setTimeout(() => startExpeditionRef.current?.(lastBranchRef.current), 600)
+      } else if (endPhase === 'defeat') {
+        logChronicle(chronicleRaw(day, '挂机连刷结束:队伍全灭于' + r.dungeon.name + '。'))
+      } else if (endPhase === 'retreated') {
+        logChronicle(chronicleRaw(day, '挂机连刷结束:撤退保护把队伍带回了公会。'))
+      }
+    }
   }
 
   const equip = (m: Member, slot: Slot, itemId: string) => {
@@ -428,6 +458,8 @@ export default function App() {
   }
 
   const startExpedition = (branchId: string) => {
+    if (runRef.current || towerRunRef.current) return
+    lastBranchRef.current = branchId
     const refusers = expedition.filter((m) => refusesToMarch(m))
     if (refusers.length > 0) {
       logChronicle(chronicleRefusal(day, refusers))
@@ -449,10 +481,12 @@ export default function App() {
       protectOn,
       potions,
     )
+    runRef.current.autoMode = autoLoopRef.current
     setLastDrops([])
     setRunning(true)
     syncAll()
   }
+  startExpeditionRef.current = startExpedition
 
   const continueDeep = () => {
     const r = runRef.current
@@ -464,6 +498,7 @@ export default function App() {
     setRunning(true)
     syncAll()
   }
+  continueDeepRef.current = continueDeep
 
   const backToGuild = () => {
     const r = runRef.current
@@ -781,7 +816,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const finished = run != null && (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated')
-  const canExpedition = !run && expedition.length >= activeDungeon.size
+  const canExpedition = !run && !towerRun && expedition.length >= activeDungeon.size
 
   const memberCard = (m: Member) => {
     const c = battle?.combatants.find((x) => x.memberId === m.id)
@@ -1336,7 +1371,7 @@ export default function App() {
           {/* 舞台常驻：渲染器挂载一次，非战斗阶段隐藏（避免 ref 为 null 导致挂载失败） */}
           <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }} />
 
-          {!run && (
+          {!run && !towerRun && (
             <>
               <h2>⚔ 作战板</h2>
               <p style={{ color: '#7a8191', marginBottom: 10 }}>
@@ -1389,6 +1424,7 @@ export default function App() {
                       cmd(
                         (b) => {
                           b.commands.autoMode = !b.commands.autoMode
+                          if (runRef.current) runRef.current.autoMode = b.commands.autoMode
                         },
                         true,
                       )
@@ -1554,9 +1590,9 @@ export default function App() {
               <div className="cmd-bar">
                 <button
                   className={battle.commands.autoMode ? 'active' : ''}
-                  onClick={() => cmdTower((b) => { b.commands.autoMode = !b.commands.autoMode }, true)}
+                  onClick={() => cmdTower((b) => { b.commands.autoMode = !b.commands.autoMode; if (towerRunRef.current) towerRunRef.current.autoMode = b.commands.autoMode }, true)}
                 >
-                  🤖 挂机{battle.commands.autoMode ? '中（队长代打）' : ''}
+                  🤖 挂机{battle.commands.autoMode ? '中（自动深入）' : ''}
                 </button>
                 <span className="cmd-label">│</span>
                 <span className="cmd-label">阵型</span>

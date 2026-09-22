@@ -26,6 +26,8 @@ export interface DungeonRun {
   protectOn: boolean
   /** 携带药水（药水经济）：出征时从公会库存带出，逐场延续，回城退回剩余 */
   potions: { heal: number; fury: number }
+  /** 挂机连刷(试玩反馈):跨战斗延续,rest 自动下一场,victory 自动重进同一副本 */
+  autoMode?: boolean
 }
 
 /** 岔路映射：险路打满全部遭遇（更多战斗=更多收获机会）；稳路跳过最后一段杂兵 */
@@ -46,6 +48,7 @@ export function createRun(
   auraBonus = 0,
   protectOn = true,
   potions = { heal: POTION_STOCK, fury: POTION_STOCK },
+  autoMode = false,
 ): DungeonRun {
   const run: DungeonRun = {
     dungeon,
@@ -58,6 +61,7 @@ export function createRun(
     auraBonus,
     protectOn,
     potions,
+    autoMode,
   }
   startStep(run, seed)
   return run
@@ -74,6 +78,7 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     run.protectOn,
     run.potions,
   )
+  run.battle.commands.autoMode = !!run.autoMode
   run.phase = 'battle'
 }
 

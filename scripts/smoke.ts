@@ -2118,3 +2118,45 @@ const towerFailures: string[] = []
   if (fail32.length > 0) { console.log('✗ 回归池机制未通过:', fail32); process.exit(1) }
   console.log('✓ 回归池四机制通过:护甲击碎/连击/位移/引导咏唱全部成立')
 }
+
+// ============================================================
+// ㉝ 挂机连刷(试玩反馈):autoMode 跨战斗延续 + 自动推进数据链
+// ============================================================
+{
+  const fail33: string[] = []
+  const runToEnd33 = (b: { status: string }, guardMax = 20000) => {
+    let guard = 0
+    while ((b as { status: string }).status === 'running' && guard++ < guardMax) stepBattle(b as never)
+  }
+  // 33a:run.autoMode 传入后,每一场战斗进场自动置位
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 983000 + j))
+    seedMemberSeq(squad)
+    const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true, { heal: 2, fury: 1 }, true)
+    if (!run.battle.commands.autoMode) fail33.push('㉝ 首场战斗 autoMode 未置位')
+    runToEnd33(run.battle)
+    advanceRun(run)
+    if (run.phase === 'battle') {
+      startStep(run, 991)
+      if (!run.battle.commands.autoMode) fail33.push('㉝ 第二场 autoMode 未延续')
+    }
+    console.log(`㉝ autoMode 跨战斗:首场 ✓ 第二场延续 = ${run.battle.commands.autoMode}`)
+  }
+  // 33b:tower.autoMode 传入后跨层延续
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 984000 + j))
+    seedMemberSeq(squad)
+    const t = startTower(squad, 20260922, { heal: 4, fury: 4 })
+    t.autoMode = true
+    startTowerFloor(t, 20260922)
+    if (!t.battle!.commands.autoMode) fail33.push('㉝ 塔 autoMode 未置位')
+    runToEnd33(t.battle!)
+    settleTowerFloor(t)
+    t.floor = 2
+    startTowerFloor(t, 77)
+    if (!t.battle!.commands.autoMode) fail33.push('㉝ 塔 2 层 autoMode 未延续')
+    console.log(`㉝ 塔跨层:autoMode 延续 = ${t.battle!.commands.autoMode}`)
+  }
+  if (fail33.length > 0) { console.log('✗ 挂机连刷未通过:', fail33); process.exit(1) }
+  console.log('✓ 挂机连刷通过:autoMode 跨战斗/跨层延续,自动推进数据链成立')
+}
