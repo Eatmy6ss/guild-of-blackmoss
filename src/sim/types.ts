@@ -312,7 +312,7 @@ export interface RouteNodeDef {
   id: string
   /** 风味名(下水道/甬道/天花板)——未探索时只显示这个 */
   name: string
-  kind: 'battle' | 'elite' | 'event' | 'rest'
+  kind: 'battle' | 'elite' | 'event' | 'rest' | 'treasure'
   /** battle/elite 节点对应的遭遇 id */
   encounterId?: string
   /** 高熟练全揭示文本 */
@@ -346,6 +346,8 @@ export interface DungeonDef {
   encounters: EncounterDef[]
   /** 副本内部路线节点图(逐段选路;boss 节点由 encounters 的 boss 承担,不入此表) */
   routeNodes: RouteNodeDef[]
+  /** 敌方强度倍率(宪法 v3.3 试玩反馈③:拉扯感——按副本阶梯) */
+  enemyPower?: number
 }
 
 // ===== 战斗状态 =====

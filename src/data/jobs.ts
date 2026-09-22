@@ -20,7 +20,7 @@ export const JOBS: Record<string, JobDef> = {
     range: 'melee',
     // D15 反馈调参：坦克太硬（试玩反馈 #2）——削基础血与防御，压力感给足
     // 节奏改版(2026-09-20):攻速分化=守卫适中 0.9s/刀(60/7≈9tick);血量×1.5 拉长双向 TTK
-    base: { maxHp: 156, attack: 7, defense: 9, speed: 7, critChance: 0.05 },
+    base: { maxHp: 156, attack: 7, defense: 9, speed: 6, critChance: 0.05 },
     growth: { maxHp: 18, attack: 1.0, defense: 1.0 },
     specs: {
       'guard-ironwall': spec({
@@ -108,7 +108,7 @@ export const JOBS: Record<string, JobDef> = {
     position: 'back',
     range: 'ranged',
     // 节奏改版:游侠最快 0.6s/刀(60/10=6tick);血量×1.5,攻击微降抵消杂兵变肉
-    base: { maxHp: 135, attack: 8.0, defense: 4, speed: 10, critChance: 0.12 },
+    base: { maxHp: 135, attack: 8.0, defense: 4, speed: 12, critChance: 0.12 },
     growth: { maxHp: 13, attack: 1.4, defense: 0.7 },
     specs: {
       'ranger-hawk': spec({

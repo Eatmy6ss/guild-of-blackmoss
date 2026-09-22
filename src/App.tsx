@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames, rollSpec } from './sim/gen'
 import { statLayers } from './sim/combat'
+import { ITEM_BASES } from './data/items'
 import { RACES } from './data/races'
 import { guildGoals } from './sim/goals'
 import { applyDeathShock, applyFeast, applyVictory, applyRestMorale, refusesToMarch } from './sim/morale'
@@ -203,6 +204,7 @@ export default function App() {
     const fresh = state.events.slice(eventCursorRef.current)
     eventCursorRef.current = state.events.length
     try {
+      rendererRef.current?.setMembers(membersRef.current)
       rendererRef.current?.setBattle(state, fresh)
     } catch (e) {
       console.error('渲染同步失败', e)
@@ -540,6 +542,20 @@ export default function App() {
             const max = maxHpOf(mem)
             mem.hp = Math.min(max, mem.hp + Math.round(max * 0.3))
           }
+          setRun({ ...r })
+          return
+        }
+        if (kind === 'treasure') {
+          // 宝箱节点(试玩反馈二轮):不战斗,纯收获——金币+一件带品级的装备
+          const gold2 = 60 + Math.floor(Math.random() * 90)
+          setGold((g) => g + gold2)
+          const maxTier = r.dungeon.id === 'thornhold' ? 3 : 2
+          const bases = Object.keys(ITEM_BASES).filter((id) => ITEM_BASES[id].tier <= maxTier)
+          const baseId = bases[Math.floor(Math.random() * bases.length)]
+          const item = rollDrop(baseId, Math.random, { qualityBias: 0.3 })
+          setInventory((inv) => [...inv, item])
+          setLastDrops((d) => [...d, item])
+          logChronicle(chronicleRaw(day, r.dungeon.name + '的' + node.name + '开出了好东西。'))
           setRun({ ...r })
           return
         }
@@ -1814,7 +1830,7 @@ export default function App() {
                 const isBossNext = run.stepIdx + 1 >= run.steps.length - 1
                 const opts = junctionOptions(run, seedRef.current)
                 const bossDirect = m >= MASTERY.BOSS_DIRECT && !isBossNext
-                const kindLabel: Record<string, string> = { battle: '⚔ 战斗', elite: '☠ 精英·掉落翻倍', event: '❓ 事件', rest: '⛺ 休整·额外回复' }
+                const kindLabel: Record<string, string> = { battle: '⚔ 战斗', elite: '☠ 精英·掉落翻倍', event: '❓ 事件', rest: '⛺ 休整·额外回复', treasure: '🎁 宝箱·无战斗' }
                 return (
                   <>
                     <div className="route-choice">

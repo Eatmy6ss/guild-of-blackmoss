@@ -202,7 +202,7 @@ for (let i = 0; i < RUNS_PER_BRANCH * 2; i++) {
   const squad = JOBS.map((job, j) => generateMember(job, 5, 800000 + i * 100 + j))
   const branchId = risky ? 'shortcut' : 'safepath'
   const run = createRun(squad, BLACKMOSS, branchId, i * 313 + 11)
-  const expectedSteps = risky ? 5 : 4 // D15:新增水蛭缓冲场(险路全打,稳路跳过最后一场杂兵)
+  const expectedSteps = risky ? 7 : 6 // 宪法 v3.3 R1:波次扩容 3→5(险路 5 波+2boss,稳路跳过最后一场杂兵)
   if (run.steps.length !== expectedSteps) {
     runFailures.push(`分支 ${branchId} 步数 ${run.steps.length} ≠ ${expectedSteps}`)
   }
@@ -2182,7 +2182,7 @@ const towerFailures: string[] = []
       if (d.routeNodes.length < 4) fail34.push(`㉞ ${d.id} 节点不足 4:${d.routeNodes.length}`)
       const encIds = new Set(d.encounters.map((e) => e.id))
       for (const n of d.routeNodes) {
-        if (!['battle', 'elite', 'event', 'rest'].includes(n.kind)) fail34.push(`㉞ ${d.id}/${n.id} kind 非法`)
+        if (!['battle', 'elite', 'event', 'rest', 'treasure'].includes(n.kind)) fail34.push(`㉞ ${d.id}/${n.id} kind 非法`)
         if ((n.kind === 'battle' || n.kind === 'elite') && (!n.encounterId || !encIds.has(n.encounterId))) {
           fail34.push(`㉞ ${d.id}/${n.id} 遭遇引用缺失 ${n.encounterId}`)
         }

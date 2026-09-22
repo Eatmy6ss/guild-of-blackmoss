@@ -4,6 +4,7 @@ import type { DungeonDef } from '../sim/types'
 export const BLACKMOSS: DungeonDef = {
   id: 'blackmoss',
   name: '黑苔沼泽',
+  enemyPower: 1.0,
   size: 3,
   branches: [
     {
@@ -118,7 +119,7 @@ export const BLACKMOSS: DungeonDef = {
           id: 'talma-enrage',
           kind: 'enrage',
           name: '狂暴软墙',
-          params: { atTick: 140, attackMult: 1.72 },
+          params: { atTick: 140, attackMult: 1.78 },
         },
       ],
       dropTable: [
@@ -134,6 +135,9 @@ export const BLACKMOSS: DungeonDef = {
     { id: 'bm-leeches', name: '水蛭洼地', kind: 'battle', encounterId: 'enc-leeches', desc: '水蛭成片,磨人的泥沼' },
     { id: 'bm-camp', name: '药贩营地', kind: 'event', desc: '一个行脚药贩在营地等候' },
     { id: 'bm-hut', name: '隐士棚屋', kind: 'rest', desc: '隐士允许你们歇歇脚' },
+    { id: 'bm-quirrel', name: '混编伏击', kind: 'battle', encounterId: 'enc-quirrel', desc: '蛙人与狼联手设伏' },
+    { id: 'bm-mire', name: '沼腹深处', kind: 'battle', encounterId: 'enc-mire', desc: '越往里,泥越深' },
+    { id: 'bm-chest', name: '沉船货箱', kind: 'treasure', desc: '搁浅的货船残骸,货箱还封着蜡' },
   ],
   encounters: [
     { id: 'enc-frogs', name: '蛙人哨兵', kind: 'wave', enemyGroupIds: ['frogs'] },
@@ -141,6 +145,8 @@ export const BLACKMOSS: DungeonDef = {
     { id: 'enc-leeches', name: '沼泽水蛭', kind: 'wave', enemyGroupIds: ['leeches'] },
     { id: 'enc-grush', name: '沼泽食人魔·格鲁什', kind: 'boss', enemyGroupIds: [], bossId: 'grush' },
     { id: 'enc-talma', name: '深渊祭司·塔尔玛', kind: 'boss', enemyGroupIds: [], bossId: 'talma' },
+    { id: 'enc-quirrel', name: '蛙人狼群混编', kind: 'wave', enemyGroupIds: ['frogs-frail', 'wolves'] },
+    { id: 'enc-mire', name: '水蛭蛙人沼腹', kind: 'wave', enemyGroupIds: ['leeches', 'frogs-frail'] },
   ],
 }
 
@@ -149,6 +155,7 @@ export const BLACKMOSS: DungeonDef = {
 export const RUSTMINE: DungeonDef = {
   id: 'rustmine',
   name: '锈坑矿道',
+  enemyPower: 1.05,
   size: 3,
   branches: [
     {
@@ -238,12 +245,17 @@ export const RUSTMINE: DungeonDef = {
     { id: 'rm-spiders', name: '蛛网巷道', kind: 'battle', encounterId: 'enc-spiders', desc: '岩蛛与毒蛛后的领地' },
     { id: 'rm-shed', name: '废弃工棚', kind: 'event', desc: '矿工们留下过东西' },
     { id: 'rm-cart', name: '矿车休息站', kind: 'rest', desc: '还能推动的矿车,正好歇脚' },
+    { id: 'rm-batmix', name: '蝠蛛混巢', kind: 'battle', encounterId: 'enc-batmix', desc: '蝠群与蛛网在同一巷道' },
+    { id: 'rm-deepvein', name: '深层矿脉', kind: 'battle', encounterId: 'enc-deepvein', desc: '越深,矿灯越暗' },
+    { id: 'rm-crate', name: '坍塌货仓', kind: 'treasure', desc: '塌方封存的物资仓' },
   ],
   encounters: [
     { id: 'enc-miners', name: '尸化矿工队', kind: 'wave', enemyGroupIds: ['miners'] },
     { id: 'enc-bats', name: '锈穴蝠群', kind: 'wave', enemyGroupIds: ['bats'] },
     { id: 'enc-spiders', name: '岩蛛巢室', kind: 'wave', enemyGroupIds: ['spiders'] },
     { id: 'enc-delveanchor', name: '矿脉吞噬者·掘锚', kind: 'boss', enemyGroupIds: [], bossId: 'delveanchor' },
+    { id: 'enc-batmix', name: '蝠蛛混巢', kind: 'wave', enemyGroupIds: ['bats-frail', 'spiders'] },
+    { id: 'enc-deepvein', name: '深层矿脉', kind: 'wave', enemyGroupIds: ['miners', 'bats-frail'] },
   ],
 }
 
@@ -253,6 +265,7 @@ export const RUSTMINE: DungeonDef = {
 export const ASHFIELD: DungeonDef = {
   id: 'ashfield',
   name: '灰烬旧战场',
+  enemyPower: 1.1,
   size: 3,
   branches: [
     {
@@ -341,12 +354,17 @@ export const ASHFIELD: DungeonDef = {
     { id: 'af-knights', name: '墓骑巡境', kind: 'battle', encounterId: 'enc-knights', desc: '墓骑的巡逻路线' },
     { id: 'af-stone', name: '阵亡者纪念碑', kind: 'event', desc: '无名碑上刻满了名字' },
     { id: 'af-camp', name: '旧军营垒', kind: 'rest', desc: '半塌的营垒,还能挡风' },
+    { id: 'af-bonemix', name: '骨怨混编', kind: 'battle', encounterId: 'enc-bonemix', desc: '骸骨与怨灵同行' },
+    { id: 'af-funeral', name: '葬仪行列', kind: 'battle', encounterId: 'enc-funeral', desc: '墓骑开道,挽歌相随' },
+    { id: 'af-relic', name: '军械库残堆', kind: 'treasure', desc: '王朝军械库的最后一角' },
   ],
   encounters: [
     { id: 'enc-skeletons', name: '骸骨列队', kind: 'wave', enemyGroupIds: ['skeletons'] },
     { id: 'enc-wraiths', name: '怨灵游荡', kind: 'wave', enemyGroupIds: ['wraiths'] },
     { id: 'enc-knights', name: '墓骑巡境', kind: 'wave', enemyGroupIds: ['knights'] },
     { id: 'enc-moldreke', name: '破誓大公·摩尔德雷克', kind: 'boss', enemyGroupIds: [], bossId: 'moldreke' },
+    { id: 'enc-bonemix', name: '骨怨混编', kind: 'wave', enemyGroupIds: ['wraiths-frail', 'skeletons'] },
+    { id: 'enc-funeral', name: '葬仪行列', kind: 'wave', enemyGroupIds: ['knights'] },
   ],
 }
 
@@ -356,6 +374,7 @@ export const ASHFIELD: DungeonDef = {
 export const FROSTGRAVE: DungeonDef = {
   id: 'frostgrave',
   name: '白霜墓园',
+  enemyPower: 1.08,
   size: 3,
   branches: [
     {
@@ -439,12 +458,17 @@ export const FROSTGRAVE: DungeonDef = {
     { id: 'fg-gravers', name: '掘墓工棚', kind: 'battle', encounterId: 'enc-gravekeepers', desc: '掘墓人昼夜不休' },
     { id: 'fg-altar', name: '冰封祭坛', kind: 'event', desc: '祭坛上结着不化的冰' },
     { id: 'fg-tent', name: '猎户帐篷', kind: 'rest', desc: '猎户留下的帐篷,火塘还温着' },
+    { id: 'fg-frostmix', name: '墓卫鸦士混编', kind: 'battle', encounterId: 'enc-frostmix', desc: '墓卫与寒鸦同巡' },
+    { id: 'fg-icetomb', name: '冰棺回廊', kind: 'battle', encounterId: 'enc-icetomb', desc: '冰棺排满回廊两侧' },
+    { id: 'fg-cache', name: '陪葬冰窖', kind: 'treasure', desc: '冰层里封着陪葬品' },
   ],
   encounters: [
     { id: 'enc-wights', name: '墓卫列队', kind: 'wave', enemyGroupIds: ['wights'] },
     { id: 'enc-frostwolves', name: '霜狼游猎', kind: 'wave', enemyGroupIds: ['frostwolves'] },
     { id: 'enc-gravekeepers', name: '掘墓工棚', kind: 'wave', enemyGroupIds: ['gravekeepers'] },
     { id: 'enc-velhola', name: '霜裔织法者·薇尔霍拉', kind: 'boss', enemyGroupIds: [], bossId: 'velhola' },
+    { id: 'enc-frostmix', name: '墓卫鸦士混编', kind: 'wave', enemyGroupIds: ['wights-frail', 'gravekeepers'] },
+    { id: 'enc-icetomb', name: '冰棺回廊', kind: 'wave', enemyGroupIds: ['gravekeepers'] },
   ],
 }
 
@@ -454,6 +478,7 @@ export const FROSTGRAVE: DungeonDef = {
 export const ABYSSALTAR: DungeonDef = {
   id: 'abyssaltar',
   name: '渊底祭坛',
+  enemyPower: 1.05,
   size: 3,
   branches: [
     {
@@ -544,12 +569,17 @@ export const ABYSSALTAR: DungeonDef = {
     { id: 'ab-eyes', name: '观渊回廊', kind: 'battle', encounterId: 'enc-eyes', desc: '无数眼睛在黑暗里眨动' },
     { id: 'ab-fire', name: '献祭残火', kind: 'event', desc: '残火里浮着未烧尽的契约' },
     { id: 'ab-stone', name: '暗河石台', kind: 'rest', desc: '暗河边干燥的石台' },
+    { id: 'ab-abyssmix', name: '眼目咏叹混编', kind: 'battle', encounterId: 'enc-abyssmix', desc: '眼睛与祷声同行' },
+    { id: 'ab-bloodfeast', name: '血宴残席', kind: 'battle', encounterId: 'enc-bloodfeast', desc: '宴席未散,饿殍未走' },
+    { id: 'ab-relic', name: '沉供奉龛', kind: 'treasure', desc: '供奉沉在血池底,泛着金光' },
   ],
   encounters: [
     { id: 'enc-cultists', name: '血祭教徒环', kind: 'wave', enemyGroupIds: ['cultists'] },
     { id: 'enc-ghouls', name: '饿殍争食', kind: 'wave', enemyGroupIds: ['ghouls'] },
     { id: 'enc-eyes', name: '观渊之眼', kind: 'wave', enemyGroupIds: ['eyes'] },
     { id: 'enc-malsau', name: '深渊主教·马尔萨乌斯', kind: 'boss', enemyGroupIds: [], bossId: 'malsau' },
+    { id: 'enc-abyssmix', name: '眼目咏叹混编', kind: 'wave', enemyGroupIds: ['eyes', 'cultists'] },
+    { id: 'enc-bloodfeast', name: '血宴残席', kind: 'wave', enemyGroupIds: ['ghouls-frail', 'cultists'] },
   ],
 }
 
@@ -559,6 +589,7 @@ export const ABYSSALTAR: DungeonDef = {
 export const THORNHOLD: DungeonDef = {
   id: 'thornhold',
   name: '荆棘要塞',
+  enemyPower: 1.5,
   size: 5,
   branches: [
     {
@@ -687,12 +718,17 @@ export const THORNHOLD: DungeonDef = {
     { id: 'th-heavies', name: '重斧亲卫', kind: 'elite', encounterId: 'enc-heavies', desc: '重斧手成队,掉落翻倍' },
     { id: 'th-honor', name: '旗卫营房', kind: 'event', desc: '亲卫们的营房灯火未熄' },
     { id: 'th-yard', name: '校场', kind: 'rest', desc: '空置的校场,正好整队' },
+    { id: 'th-siege', name: '攻城混编', kind: 'battle', encounterId: 'enc-siege', desc: '围攻的完整编制' },
+    { id: 'th-vanguard2', name: '前卫余部', kind: 'battle', encounterId: 'enc-vanguard2', desc: '败退的前卫重整再战' },
+    { id: 'th-armory', name: '团库武械房', kind: 'treasure', desc: '荆棘团的团库就在门后' },
   ],
   encounters: [
     { id: 'enc-swords', name: '正门刀盾阵', kind: 'wave', enemyGroupIds: ['swords'] },
     { id: 'enc-heavies', name: '重斧亲卫', kind: 'wave', enemyGroupIds: ['heavies'] },
     { id: 'enc-colt', name: '掌旗官·科尔特', kind: 'boss', enemyGroupIds: [], bossId: 'colt' },
     { id: 'enc-victor', name: '割据团长·维克托', kind: 'boss', enemyGroupIds: [], bossId: 'victor' },
+    { id: 'enc-siege', name: '攻城混编', kind: 'wave', enemyGroupIds: ['swords', 'heavies'] },
+    { id: 'enc-vanguard2', name: '前卫余部', kind: 'wave', enemyGroupIds: ['honor-frail', 'mercs-frail'] },
   ],
 }
 

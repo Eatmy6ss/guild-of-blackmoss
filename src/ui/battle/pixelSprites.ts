@@ -192,6 +192,21 @@ const TALMA: PixelDef = {
   palette: { g: P.gold, s: P.skin, e: P.eye, p: P.clothPurple, w: P.clothPurpleDark, h: P.wood },
 }
 
+// ---- 家族变体(试玩反馈④):复用行画换调色板——小团队产能路线,每敌系一个辨识色 ----
+const BONE: PixelDef = { rows: FROG.rows, palette: { s: '#d8d5c8', e: '#2a2a34', a: '#a8a498', l: '#8a867a' } }
+const MINER: PixelDef = { rows: FROG.rows, palette: { s: '#b08a5a', e: '#2a2a34', a: '#6a5238', l: '#52402c' } }
+const CULTIST: PixelDef = { rows: PRIEST.rows, palette: { s: '#c8b0a0', e: '#d04a4a', a: '#4a3558', l: '#33254a' } }
+const THORN: PixelDef = { rows: GUARD.rows, palette: { s: '#c8a078', e: '#2a2a34', a: '#7a3a30', l: '#5a2822' } }
+const FROSTWOLF: PixelDef = { rows: WOLF.rows, palette: { s: '#a8c4d4', e: '#2a3a4a', a: '#7a98ac', l: '#5a7a90' } }
+const WRAITH: PixelDef = { rows: PRIEST.rows, palette: { s: '#b8c8d8', e: '#3a4a6a', a: '#5a6a8a', l: '#42506a' } }
+
+// ---- 武器贴图(试玩反馈④:换装可见——按装备武器基底切换外形) ----
+const WP_SWORD: PixelDef = { rows: ['.ww', 'ww.', 'ww.', 'ww.', 'ww.', '.ll'], palette: { w: '#c8ccd8', l: '#8a6a42' } }
+const WP_BOW: PixelDef = { rows: ['.w.', 'w..', 'w..', 'w..', 'w..', '.w.'], palette: { w: '#a8824f' } }
+const WP_AXE: PixelDef = { rows: ['www', 'www', '.w.', '.w.', '.w.', '.w.'], palette: { w: '#9aa3b5' } }
+const WP_STAFF: PixelDef = { rows: ['gg.', '..w', '..w', '..w', '..w', '..w'], palette: { g: '#7ad4c8', w: '#8a6a42' } }
+const WP_DAGGER: PixelDef = { rows: ['ww.', 'w..', 'w..', '.w.', '.w.', '.w.'], palette: { w: '#d8d5c8' } }
+
 // ---- 生成管线 ----
 
 const cache = new Map<string, Texture>()
@@ -235,12 +250,36 @@ export const UNIT_SPRITES: Record<string, PixelDef> = {
   wolf: WOLF,
   ogre: OGRE,
   talma: TALMA,
+  bone: BONE,
+  miner: MINER,
+  cultist: CULTIST,
+  thorn: THORN,
+  frostwolf: FROSTWOLF,
+  wraith: WRAITH,
+  'wpn-sword': WP_SWORD,
+  'wpn-bow': WP_BOW,
+  'wpn-axe': WP_AXE,
+  'wpn-staff': WP_STAFF,
+  'wpn-dagger': WP_DAGGER,
 }
 
 /** 按战斗实体挑精灵 key(阵营/职业/boss 名) */
 export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; name?: string }): string {
-  if (c.boss) return c.name?.includes('塔尔玛') ? 'talma' : 'ogre'
-  if (c.team === 'enemy') return c.name?.includes('狼') ? 'wolf' : 'frog'
+  const n = c.name ?? ''
+  if (c.boss) {
+    if (n.includes('塔尔玛')) return 'talma'
+    if (n.includes('荆棘') || n.includes('维克托') || n.includes('科尔特')) return 'thorn'
+    return 'ogre'
+  }
+  if (c.team === 'enemy') {
+    if (n.includes('狼')) return n.includes('霜') ? 'frostwolf' : 'wolf'
+    if (n.includes('矿工') || n.includes('掘锚') || n.includes('蝠') || n.includes('蛛') || n.includes('矿灯')) return 'miner'
+    if (n.includes('骸骨') || n.includes('墓卫') || n.includes('掘墓') || n.includes('墓骑') || n.includes('冰棺')) return 'bone'
+    if (n.includes('怨灵') || n.includes('挽歌') || n.includes('观渊') || n.includes('眼')) return 'wraith'
+    if (n.includes('教徒') || n.includes('食尸鬼') || n.includes('咏叹') || n.includes('主教') || n.includes('恶')) return 'cultist'
+    if (n.includes('荆棘') || n.includes('刀盾') || n.includes('弩手') || n.includes('重斧') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'thorn'
+    return 'frog'
+  }
   const ROLE_KEY: Record<string, string> = { tank: 'guard', healer: 'priest', dps: 'ranger' }
   return ROLE_KEY[c.role ?? 'dps'] ?? 'ranger'
 }

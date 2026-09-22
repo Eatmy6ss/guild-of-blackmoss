@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Rectangle, Sprite, Text } from 'pixi.js'
+import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import { pixelTexture, spriteKeyFor } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
@@ -58,6 +58,8 @@ class UnitView {
   lockCount = 0
   body: Sprite
   bobPhase: number
+  private weapon: Sprite | null = null
+  private lastWeapon = ''
   nameText: Text
   /** 单位被点击（指挥台：点击敌人 = 集火） */
   onClick?: (c: Combatant) => void
@@ -88,6 +90,16 @@ class UnitView {
     this.nameText = nameText
 
     this.container.addChild(body, hpBg, this.hpFill, nameText)
+    // 武器贴图挂点(换装可见):guild 单位手侧
+    if (combatant.team === 'guild') {
+      const wp = new Sprite(Texture.WHITE)
+      wp.anchor.set(0.5, 1)
+      wp.scale.set(2)
+      wp.position.set(10, -6)
+      wp.visible = false
+      this.weapon = wp
+      this.container.addChild(wp)
+    }
     this.container.position.set(x, y)
     this.container.scale.set(this.baseScale)
     this.updateHp(1)
@@ -97,6 +109,36 @@ class UnitView {
     this.container.cursor = combatant.team === 'enemy' ? 'pointer' : 'default'
     this.container.hitArea = new Rectangle(-18, -46, 36, 52)
     this.container.on('pointerdown', () => this.onClick?.(this.combatant))
+  }
+
+  /** 换装可见(试玩反馈④):按装备武器基底切换贴图与成色 */
+  updateWeapon(baseId: string | undefined): void {
+    if (!this.weapon) return
+    const id = baseId ?? ''
+    if (id === this.lastWeapon) return
+    this.lastWeapon = id
+    if (!id) { this.weapon.visible = false; return }
+    let key = 'wpn-sword'
+    let tint = 0xe8c67a
+    if (id.includes('greatsword') || id.includes('line-warrior')) { key = 'wpn-axe'; tint = 0xb89ad4 }
+    else if (id.includes('axe')) { key = 'wpn-axe'; tint = 0xd8d5c8 }
+    else if (id.includes('bow') || id.includes('line-ranger')) { key = 'wpn-bow'; tint = id.includes('line-') ? 0xb89ad4 : 0xe8c67a }
+    else if (id.includes('staff') || id.includes('line-priest') || id.includes('line-mage') || id.includes('line-warlock')) { key = 'wpn-staff'; tint = id.includes('line-') ? 0xb89ad4 : 0x7ad4c8 }
+    else if (id.includes('dagger')) { key = 'wpn-dagger'; tint = 0xe8c67a }
+    else if (id.includes('line-guard')) { key = 'wpn-sword'; tint = 0xb89ad4 }
+    else if (id.includes('-t3-')) tint = 0xb89ad4
+    this.weapon.texture = pixelTexture(key)
+    this.weapon.tint = tint
+    this.weapon.visible = true
+  }
+
+  /** 近战突进冲量(试玩反馈④:攻击节奏可见)——靠回位插值的弹簧自然收回 */
+  lungeTo(target: UnitView): void {
+    const dx = target.slot.x - this.slot.x
+    const dy = target.slot.y - this.slot.y
+    const len = Math.max(1, Math.hypot(dx, dy))
+    this.container.x += (dx / len) * 7
+    this.container.y += (dy / len) * 7
   }
 
   updateHp(pct: number): void {
@@ -166,6 +208,16 @@ export class BattleRenderer {
   }
 
   /** 每次模拟推进后调用：battle 引用变化（新一战）时自动重建场景 */
+  membersById = new Map<string, { weapon?: string }>()
+
+  /** 花名册注入(换装可见):成员的武器基底 id 供贴图切换 */
+  setMembers(members: Array<{ id: string; equipment?: Partial<Record<string, { baseId: string }>> }>): void {
+    this.membersById.clear()
+    for (const m of members) {
+      this.membersById.set(m.id, { weapon: m.equipment?.weapon?.baseId })
+    }
+  }
+
   setBattle(b: BattleState, events: BattleEvent[]): void {
     if (this.battle !== b) {
       this.clearUnits()
@@ -252,6 +304,7 @@ export class BattleRenderer {
         }
         u.slot = { x: colX[key], y: H * ((i + 1) / (list.length + 1)) }
         u.updateHp(c.hp / c.maxHp)
+        if (c.memberId) u.updateWeapon(this.membersById.get(c.memberId)?.weapon)
       })
     }
     // 集火标记（D8-9 指挥台）；destroyed 防御：任何路径漏清引用也不得复用销毁对象

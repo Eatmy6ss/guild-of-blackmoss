@@ -219,7 +219,7 @@ export function junctionOptions(run: DungeonRun, seed: number, count = 3): Route
 }
 
 /** 应用节点选择:返回节点类型;battle/elite 改写下一场遭遇;event/rest 不发生战斗 */
-export function applyNodeChoice(run: DungeonRun, nodeId: string): 'battle' | 'elite' | 'event' | 'rest' | null {
+export function applyNodeChoice(run: DungeonRun, nodeId: string): 'battle' | 'elite' | 'event' | 'rest' | 'treasure' | null {
   const node = run.dungeon.routeNodes.find((n) => n.id === nodeId)
   if (!node || run.nodeIds.includes(node.id)) return null
   run.nodeIds.push(node.id)

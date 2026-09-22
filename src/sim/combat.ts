@@ -203,16 +203,17 @@ export function createBattle(
   potions?: { heal: number; fury: number },
   enemyScale = 1,
 ): BattleState {
+  const power = (dungeon.enemyPower ?? 1) * enemyScale
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
   const combatants: Combatant[] = members.map(toCombatant)
   for (const gid of enc.enemyGroupIds) {
     for (const e of dungeon.enemyGroups[gid] ?? []) {
       const raw = enemyToCombatant(e)
-      if (enemyScale !== 1) {
-        raw.maxHp = Math.round(raw.maxHp * enemyScale)
+      if (power !== 1) {
+        raw.maxHp = Math.round(raw.maxHp * power)
         raw.hp = raw.maxHp
-        raw.attack = Math.round(raw.attack * enemyScale)
+        raw.attack = Math.round(raw.attack * power)
       }
       combatants.push(raw)
     }
@@ -928,6 +929,10 @@ export function statLayers(member: Member): StatLayer[] {
   const p = member.personality ?? { bravery: 50, caution: 50, greed: 50, loyalty: 50 }
   const eq = equipmentStats(member.equipment)
   const layers: StatLayer[] = []
+  layers.push({
+    label: '攻速',
+    text: `每 ${(toCombatant(member).attackInterval / 10).toFixed(1)} 秒攻击一次(职业+敏捷决定)`,
+  })
   layers.push({
     label: '基础盘',
     text: `${spec.name} · ${job.base.maxHp}血/${job.base.attack}攻/${job.base.defense}防`,
