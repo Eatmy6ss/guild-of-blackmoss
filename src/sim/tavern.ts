@@ -1,7 +1,8 @@
 import type { ItemInstance, JobId, Member } from './types'
 import { generateMember } from './gen'
+import { pick } from './rng'
+import { RACES } from '../data/races'
 import { JOBS } from '../data/jobs'
-import { LINE_IDS } from '../data/jobs'
 import { ECONOMY, VISITOR_STORIES } from '../data/economy'
 
 // 酒馆与经济(M1 P0 切片 2):招募三路径的纯逻辑。
@@ -13,11 +14,24 @@ import { ECONOMY, VISITOR_STORIES } from '../data/economy'
 
 export type Rng = () => number
 
-/** 治疗保底:无存活治疗者 → 必出治疗线;否则六职业随机 */
-function pickCandidateJob(rng: Rng, members: Member[]): JobId {
+/** 治疗保底(矩阵感知):无存活治疗者 → 必出治疗线,且种族从牧师可用族中 roll(兽人/亡灵无牧师);否则按种族矩阵随机 */
+function pickCandidate(rng: Rng, members: Member[], level: number, forcedJob?: JobId): Member {
   const hasHealer = members.some((m) => m.alive && JOBS[m.job]?.role === 'healer')
-  if (!hasHealer) return 'priest'
-  return LINE_IDS[Math.floor(rng() * LINE_IDS.length)] ?? 'priest'
+  let race: string
+  let job: JobId
+  if (forcedJob) {
+    // 悬赏:玩家指定职业,种族从该职业可用族中 roll
+    race = pick(rng, Object.values(RACES).filter((r) => r.allowedLines.includes(forcedJob)).map((r) => r.id))
+    job = forcedJob
+  } else if (!hasHealer) {
+    // 治疗保底优先于种族限制:种族改从牧师可用族中 roll
+    race = pick(rng, Object.values(RACES).filter((r) => r.allowedLines.includes('priest')).map((r) => r.id))
+    job = 'priest'
+  } else {
+    race = pick(rng, Object.keys(RACES))
+    job = pick(rng, RACES[race].allowedLines)
+  }
+  return generateMember(job, level, Math.floor(rng() * 0x7fffffff), { race })
 }
 
 /** 装备变卖价:tier 基础 + 词条加值(T2 > T1,词条越多越值钱) */
@@ -51,8 +65,7 @@ export function rollVisitor(rng: Rng, members: Member[], tavernLevel = 0): Visit
     1,
     avgLevel(members) + ECONOMY.visitorLevel.base + levelBonus + Math.floor(rng() * (ECONOMY.visitorLevel.spread + 1)),
   )
-  const job = pickCandidateJob(rng, members)
-  const member = generateMember(job, level, Math.floor(rng() * 0x7fffffff))
+  const member = pickCandidate(rng, members, level)
   const story = VISITOR_STORIES[Math.floor(rng() * VISITOR_STORIES.length)]
   return { member, story: `${member.name} ${story}` }
 }
@@ -60,16 +73,13 @@ export function rollVisitor(rng: Rng, members: Member[], tavernLevel = 0): Visit
 /** 路径二:定向悬赏——花金指定职业招一人 */
 export function bountyCandidate(rng: Rng, members: Member[], job: JobId): Member {
   const level = Math.max(1, avgLevel(members) + Math.floor(rng() * 3) - 1)
-  return generateMember(job, level, Math.floor(rng() * 0x7fffffff))
+  return pickCandidate(rng, members, level, job)
 }
 
 /** 路径三:酒馆传闻——花金+祝福抽三选一,候选等级更高 */
 export function taleCandidates(rng: Rng, members: Member[], count = 3): Member[] {
   const level = Math.max(1, avgLevel(members) + ECONOMY.taleLevelBonus)
-  return Array.from({ length: count }, () => {
-    const job = pickCandidateJob(rng, members)
-    return generateMember(job, level, Math.floor(rng() * 0x7fffffff))
-  })
+  return Array.from({ length: count }, () => pickCandidate(rng, members, level))
 }
 
 /** 离线累积:离开的时间里,存活英雄们接零工赚金币(有上限——世界不替你玩) */

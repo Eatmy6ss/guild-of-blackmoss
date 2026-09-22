@@ -1,4 +1,7 @@
 import type { DeadHero, ItemInstance, Member } from '../sim/types'
+import { JOBS } from '../data/jobs'
+import { RACES } from '../data/races'
+import { isHybrid } from '../data/vocations'
 import type { ChronicleEntry } from '../sim/chronicle'
 
 // 公会存档(save-systems:版本号 + 迁移链 + 防御式加载)
@@ -92,13 +95,26 @@ function validate(d: GuildSave): boolean {
   )
 }
 
-/** 防御式加载:解析 → 逐级迁移 → 校验,任何异常回退为无存档 */
+/** 成员消毒(宪法 v3.1):被砍 spec/非法种族回落——老档与新数据表之间永远安全 */
+export function sanitizeMembers(members: Member[]): Member[] {
+  return members.map((m) => {
+    const out = { ...m }
+    const okSpec = out.spec && (isHybrid(out.spec) || !!JOBS[out.job]?.specs[out.spec])
+    if (!okSpec) out.spec = undefined
+    if (out.race && !RACES[out.race]) out.race = undefined
+    return out
+  })
+}
+
+/** 防御式加载:解析 → 逐级迁移 → 消毒 → 校验,任何异常回退为无存档 */
 export function loadGuildSave(): GuildSave | null {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
     const migrated = migrate(JSON.parse(raw) as Record<string, unknown>)
-    return validate(migrated) ? migrated : null
+    if (!validate(migrated)) return null
+    migrated.members = sanitizeMembers(migrated.members)
+    return migrated
   } catch {
     return null
   }
@@ -124,7 +140,9 @@ export function importSave(text: string): GuildSave | null {
   try {
     const json = decodeURIComponent(escape(atob(text.trim())))
     const migrated = migrate(JSON.parse(json) as Record<string, unknown>)
-    return validate(migrated) ? migrated : null
+    if (!validate(migrated)) return null
+    migrated.members = sanitizeMembers(migrated.members)
+    return migrated
   } catch {
     return null
   }

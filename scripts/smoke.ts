@@ -10,7 +10,7 @@ import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded, taleCandidates } from '../src/sim/tavern'
-import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
+import { migrate, exportSave, importSave, sanitizeMembers, SAVE_VERSION } from '../src/state/save'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
 import { BUILDINGS, baseEffects } from '../src/data/base'
 import { refusesToMarch, applyDeathShock, applyFeast, MORALE, clamp } from '../src/sim/morale'
@@ -1482,7 +1482,7 @@ const towerFailures: string[] = []
       }
     }
   }
-  console.log(`㉓ 专精表:${Object.keys(JOB_TABLE).length} 职业 / ${specCount} 专精`)
+  console.log(`㉓ 专精表:${Object.keys(JOB_TABLE).length} 职业 / ${specCount} 专精(宪法 v3.1:12 真机制)`)
 
   // 23b:吸收盾——伤害先扣盾不进血
   {
@@ -1560,16 +1560,17 @@ const towerFailures: string[] = []
     console.log(`㉓ 召唤物:战狼入场 ${petSeen}/10 场,均无 memberId`)
   }
 
-  // 23f:咏叹光环——持有者存活时全队 auraMult=1.1
+  // 23f:光环引擎(v3.1 咏叹已砍,引擎保留给回归)——直接注入持光环者验证刷新路径
   {
     const squad = JOBS.map((j) => j).map((job, j) => generateMember(job as (typeof JOBS)[number], 5, 989000 + j))
-    squad[1].spec = 'priest-chanter'
     seedMemberSeq(squad)
     const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 666)
+    const chanter = b.combatants.find((c) => c.team === 'guild')!
+    chanter.specId = 'priest-chanter' // 模拟光环持有者(引擎按 specId 判定)
     stepBattle(b)
     const ally = b.combatants.find((c) => c.team === 'guild' && c.specId !== 'priest-chanter')!
     if (ally.auraMult !== 1.1) fail23.push(`㉓ 光环未生效:${ally.auraMult}`)
-    console.log(`㉓ 光环:队友 auraMult=${ally.auraMult}`)
+    console.log(`㉓ 光环引擎(注入验证):队友 auraMult=${ally.auraMult}`)
   }
 
   if (fail23.length > 0) {
@@ -1624,8 +1625,8 @@ const towerFailures: string[] = []
 // ============================================================
 {
   const fail25: string[] = []
-  // 25a:15 混合职阶数据完整性
-  if (Object.keys(HYBRIDS).length !== 15) fail25.push(`㉕ 混合职阶数量不是 15:${Object.keys(HYBRIDS).length}`)
+  // 25a:15 混合职阶数据完整(v3.1 dormant:数据保留, recruits/training 不出现)
+  if (Object.keys(HYBRIDS).length !== 15) fail25.push(`㉕ 混合职阶数据不是 15:${Object.keys(HYBRIDS).length}`)
   for (const [key, hy] of Object.entries(HYBRIDS)) {
     if (key !== hy.id) fail25.push(`㉕ 混合键名与 id 不一致:${key} vs ${hy.id}`)
     if (!hy.identity) fail25.push(`㉕ ${hy.id} 缺身份句`)
@@ -1675,6 +1676,18 @@ const towerFailures: string[] = []
     console.log(`㉕ 15 混合职阶各打一场:终结 ${completed}/15`)
   }
 
+  // 25d:dormant——连续 60 次候选生成不得出现混合职阶(暂撤生效)
+  {
+    const pool = JOBS.map((job, j) => generateMember(job, 5, 968000 + j))
+    seedMemberSeq(pool)
+    let hySeen = 0
+    for (let i = 0; i < 60; i++) {
+      const v = rollVisitor(Math.random, pool)
+      if (v.member.spec?.startsWith('hy-')) hySeen++
+    }
+    if (hySeen > 0) fail25.push(`㉕ dormant 失效:混合职阶出现在候选 ${hySeen} 次`)
+    console.log(`㉕ dormant:60 次候选混合出现 ${hySeen} 次(应 0)`)
+  }
   if (fail25.length > 0) { console.log('✗ 混合职阶未通过:', fail25); process.exit(1) }
   console.log('✓ 混合职阶通过:15 全配对数据完整,投影与战斗终结性成立')
 }
@@ -1697,7 +1710,7 @@ const towerFailures: string[] = []
     if (!m.race || !RACES[m.race]) fail26.push('㉖ 成员无种族或种族非法')
     if (!RACES[m.race ?? 'human'].names.includes(m.name)) fail26.push(`㉖ 名字不在种族池内:${m.name}`)
     const sp = rollSpec('mage', () => 0.99)
-    if (sp !== 'mage-arcane') fail26.push(`㉖ rollSpec 边界异常:${sp}`)
+    if (sp !== 'mage-frost') fail26.push(`㉖ rollSpec 边界异常:${sp}`)
     console.log(`㉖ 生成:${m.name}(${RACES[m.race ?? 'human'].name}) 专精随机边界 ok`)
     setRaceOverride('human')
   }
@@ -1761,7 +1774,7 @@ const towerFailures: string[] = []
       }
     }
   }
-  console.log(`㉗ 精进池:${advCount} 个精进技能(18 专精 × 2)`)
+  console.log(`㉗ 精进池:${advCount} 个精进技能(12 专精 × 2,宪法 v3.1)`)
 
   // 27b:精进投影——选中技能追加进组,切专精不带过去
   {
@@ -1771,10 +1784,10 @@ const towerFailures: string[] = []
     seedMemberSeq([m])
     const c = toCombatant(m)
     if (!c.skills.some((s) => s.def.id === 'guard-wall-slam')) fail27.push('㉗ 精进技能未追加进技能组')
-    const m2 = { ...m, spec: 'guard-breaker' }
+    const m2 = { ...m, spec: 'guard-thorns' }
     const c2 = toCombatant(m2)
     if (c2.skills.some((s) => s.def.id === 'guard-wall-slam')) fail27.push('㉗ 精进技能跟随到了别的专精(应按专精记录)')
-    console.log(`㉗ 精进投影:铁壁 ${c.skills.length} 技能(含精进),破城 ${c2.skills.length} 技能(不含)`)
+    console.log(`㉗ 精进投影:铁壁 ${c.skills.length} 技能(含精进),荆棘 ${c2.skills.length} 技能(不含)`)
   }
   // 27c:通用战技投影——体魄/铁骨/锐眼/血性
   {
@@ -1891,4 +1904,60 @@ const towerFailures: string[] = []
   }
   if (fail29.length > 0) { console.log('✗ 自检修复未通过:', fail29); process.exit(1) }
   console.log('✓ 自检修复通过:治疗保底/盾时机/新专精挂机全部成立')
+}
+
+// ============================================================
+// ㉚ 种族×职业矩阵(宪法 v3.1):限制生效+保底冲突解法+存档消毒
+// ============================================================
+{
+  const fail30: string[] = []
+  // 30a:矩阵数据完整性——每族 allowedLines 非空,且 6 条线在矩阵中各有至少两族可选
+  {
+    for (const r of Object.values(RACES)) {
+      if (r.allowedLines.length < 3) fail30.push(`㉚ ${r.id} 可选线过少:${r.allowedLines.length}`)
+    }
+    for (const line of ['guard', 'priest', 'ranger', 'warrior', 'mage', 'warlock'] as const) {
+      const races = Object.values(RACES).filter((r) => r.allowedLines.includes(line))
+      if (races.length < 2) fail30.push(`㉚ ${line} 线可用种族不足 2(保底/悬赏会锁死)`)
+    }
+    console.log(`㉚ 矩阵:6 族 × 6 线,每线可用族 ${['guard','priest','ranger','warrior','mage','warlock'].map((l) => Object.values(RACES).filter((r) => r.allowedLines.includes(l)).length).join('/')}`)
+  }
+  // 30b:矩阵感知候选——兽人/亡灵局出的法师候选不会是兽人/亡灵
+  {
+    const squad = (['guard', 'warrior', 'ranger'] as const).map((job, j) => generateMember(job, 5, 969000 + j))
+    for (const m of squad) m.race = 'orc'
+    seedMemberSeq(squad)
+    for (let i = 0; i < 40; i++) {
+      const t = taleCandidates(Math.random, squad, 1)[0]
+      if (t.job === 'mage' && (t.race === 'orc' || t.race === 'undead')) {
+        fail30.push(`㉚ 矩阵失效:${t.race} 法师上门`)
+        break
+      }
+    }
+    console.log('㉚ 矩阵:兽人局 40 次候选无兽人/亡灵法师')
+  }
+  // 30c:保底×矩阵冲突——全兽人无治疗局,保底候选必须是牧师且种族 ∈ 牧师可用族
+  {
+    const squad = (['guard', 'warrior', 'ranger'] as const).map((job, j) => generateMember(job, 5, 970000 + j))
+    for (const m of squad) m.race = 'orc'
+    seedMemberSeq(squad)
+    for (let i = 0; i < 20; i++) {
+      const v = rollVisitor(Math.random, squad)
+      if (JOB_TABLE[v.member.job].role !== 'healer') { fail30.push('㉚ 保底失效:全兽人无治疗局访客非治疗'); break }
+      if (v.member.race === 'orc' || v.member.race === 'undead') { fail30.push(`㉚ 保底×矩阵冲突:${v.member.race} 牧师上门`); break }
+    }
+    console.log('㉚ 保底×矩阵:全兽人局 20 次访客全为可用族治疗线')
+  }
+  // 30d:存档消毒——被砍 spec/非法种族回落
+  {
+    const m = generateMember('guard', 5, 971000)
+    m.spec = 'guard-breaker' // v3.1 已砍
+    m.race = 'naga' // 非法种族
+    const back = sanitizeMembers([JSON.parse(JSON.stringify(m))])[0]
+    if (back.spec === 'guard-breaker') fail30.push('㉚ 被砍 spec 未回落')
+    if (back.race === 'naga') fail30.push('㉚ 非法种族未回落')
+    console.log(`㉚ 消毒:spec=${back.spec ?? '(缺省=铁壁)'},race=${back.race ?? '(缺省=人类)'}`)
+  }
+  if (fail30.length > 0) { console.log('✗ 种族矩阵未通过:', fail30); process.exit(1) }
+  console.log('✓ 种族×职业矩阵通过:限制生效,保底冲突有解,存档消毒兜底')
 }

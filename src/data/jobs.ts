@@ -35,19 +35,6 @@ export const JOBS: Record<string, JobDef> = {
           { id: 'guard-bulwark', name: '盾墙坚守', effect: 'taunt', target: 'enemy', cooldownTicks: 45 },
         ],
       }),
-      'guard-breaker': spec({
-        id: 'guard-breaker',
-        name: '破城锤手',
-        identity: '最好的防守,是把对面的防线砸开——威胁靠伤害堆起来。',
-        statMods: { attack: 2, defense: -1, speed: 1 },
-        skills: [
-          { id: 'guard-charge', name: '破城冲锋', effect: 'charge-strike', target: 'enemy', cooldownTicks: 80 },
-        ],
-        advancedSkills: [
-          { id: 'guard-quake', name: '横扫践踏', effect: 'multishot', target: 'enemy', cooldownTicks: 85 },
-          { id: 'breaker-charge2', name: '破城重冲', effect: 'charge-strike', target: 'enemy', cooldownTicks: 75 },
-        ],
-      }),
       'guard-thorns': spec({
         id: 'guard-thorns',
         name: '荆棘重卫',
@@ -105,20 +92,6 @@ export const JOBS: Record<string, JobDef> = {
           { id: 'disc-shield2', name: '真言盾·固', effect: 'shield-ally', target: 'ally', cooldownTicks: 45 },
         ],
       }),
-      'priest-chanter': spec({
-        id: 'priest-chanter',
-        name: '咏叹祭司',
-        identity: '战歌不歇,士气不坠——治疗量小些,但全队的刀都更快更沉。',
-        statMods: { attack: -0.5 },
-        skills: [
-          { id: 'priest-chant-heal', name: '抚慰颂', effect: 'heal-lowest', target: 'ally', cooldownTicks: 22 },
-        ],
-        passive: 'aura-attack',
-        advancedSkills: [
-          { id: 'chant-war', name: '战歌', effect: 'enchant-self', target: 'ally', cooldownTicks: 160 },
-          { id: 'chant-group', name: '抚慰群颂', effect: 'group-heal', target: 'ally', cooldownTicks: 140 },
-        ],
-      }),
     },
     synergy: ['blessed-formation'],
   },
@@ -146,20 +119,6 @@ export const JOBS: Record<string, JobDef> = {
         advancedSkills: [
           { id: 'hawk-pierce', name: '穿云箭', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 75 },
           { id: 'hawk-double', name: '双重射击', effect: 'multishot', target: 'enemy', cooldownTicks: 85 },
-        ],
-      }),
-      'ranger-trapper': spec({
-        id: 'ranger-trapper',
-        name: '陷阱猎手',
-        identity: '路,早就替你们铺好了——陷阱让猎物动弹不得。',
-        statMods: { attack: -0.5, critChance: -0.02 },
-        skills: [
-          { id: 'ranger-aimed', name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
-          { id: 'ranger-trap', name: '捕兽夹', effect: 'trap-bind', target: 'enemy', cooldownTicks: 110 },
-        ],
-        advancedSkills: [
-          { id: 'trap-frost', name: '冰霜陷阱', effect: 'frost-nova', target: 'enemy', cooldownTicks: 140 },
-          { id: 'trap-steel', name: '捕兽夹·改', effect: 'trap-bind', target: 'enemy', cooldownTicks: 100 },
         ],
       }),
       'ranger-beastmaster': spec({
@@ -192,19 +151,6 @@ export const JOBS: Record<string, JobDef> = {
     base: { maxHp: 168, attack: 10, defense: 6, speed: 8, critChance: 0.07 },
     growth: { maxHp: 15, attack: 1.5, defense: 0.8 },
     specs: {
-      'warrior-berserker': spec({
-        id: 'warrior-berserker',
-        name: '狂暴战士',
-        identity: '痛觉是奢侈品——双斧快得像不要命。',
-        statMods: { speed: 2, defense: -1, maxHp: -10 },
-        skills: [
-          { id: 'warrior-whirl', name: '旋风斩', effect: 'multishot', target: 'enemy', cooldownTicks: 75 },
-        ],
-        advancedSkills: [
-          { id: 'zerk-bloodlust', name: '嗜血', effect: 'enchant-self', target: 'ally', cooldownTicks: 160 },
-          { id: 'zerk-whirl', name: '狂乱旋斩', effect: 'multishot', target: 'enemy', cooldownTicks: 80 },
-        ],
-      }),
       'warrior-weapons': spec({
         id: 'warrior-weapons',
         name: '武器大师',
@@ -274,19 +220,6 @@ export const JOBS: Record<string, JobDef> = {
           { id: 'frost-spear', name: '冰锥术', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
         ],
       }),
-      'mage-arcane': spec({
-        id: 'mage-arcane',
-        name: '奥术法师',
-        identity: '弹幕不讲道理,只讲密度——奥术飞弹永远比你想的多一发。',
-        statMods: { maxHp: 6 },
-        skills: [
-          { id: 'mage-missiles', name: '奥术飞弹', effect: 'multishot', target: 'enemy', cooldownTicks: 55 },
-        ],
-        advancedSkills: [
-          { id: 'arcane-flood', name: '奥术洪流', effect: 'multishot', target: 'enemy', cooldownTicks: 75 },
-          { id: 'arcane-focus', name: '秘法强化', effect: 'enchant-self', target: 'ally', cooldownTicks: 160 },
-        ],
-      }),
     },
     synergy: ['blessed-formation'],
   },
@@ -327,18 +260,6 @@ export const JOBS: Record<string, JobDef> = {
         advancedSkills: [
           { id: 'afflict-erode', name: '侵蚀诅咒', effect: 'curse-mark', target: 'enemy', cooldownTicks: 110 },
           { id: 'afflict-bolt', name: '暗影箭', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
-        ],
-      }),
-      'warlock-destruction': spec({
-        id: 'warlock-destruction',
-        name: '毁灭术士',
-        identity: '暗影不用绕路——暗影弹直接砸穿一切虚饰。',
-        skills: [
-          { id: 'warlock-bolt', name: '暗影弹', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 62 },
-        ],
-        advancedSkills: [
-          { id: 'dest-chaos', name: '混乱之箭', effect: 'multishot', target: 'enemy', cooldownTicks: 85 },
-          { id: 'dest-heavy', name: '毁灭重击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 68 },
         ],
       }),
     },

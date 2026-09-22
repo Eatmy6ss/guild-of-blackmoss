@@ -1182,7 +1182,7 @@ export default function App() {
                           {sp.name}
                         </button>
                       ))}
-                      {Object.values(HYBRIDS).map((hy) => {
+                      {Object.values(HYBRIDS).filter((hy) => unlockedHybrids.includes(hy.id)).map((hy) => {
                         const unlocked = unlockedHybrids.includes(hy.id)
                         const canBond = bond >= ECONOMY.hybridBondRequirement
                         const canPay = gold >= ECONOMY.vocation.hybridUnlockGold && blessing >= ECONOMY.vocation.hybridUnlockBlessing

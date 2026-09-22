@@ -175,10 +175,10 @@ export function rollSpec(jobId: JobId, rng: Rng): string {
   return specs[Math.floor(rng() * specs.length)] ?? JOBS[jobId].defaultSpec
 }
 
-export function generateMember(job: JobId, level: number, seed: number = Date.now() + memberSeq * 131): Member {
+export function generateMember(job: JobId, level: number, seed: number = Date.now() + memberSeq * 131, opts?: { race?: string }): Member {
   const rng = createRng(seed)
   // 六族随机(宪法 v3):种族决定名字池与一条轻被动;老存档无 race 字段 = 人类
-  const raceId = raceOverride ?? pick(rng, RACE_IDS)
+  const raceId = raceOverride ?? opts?.race ?? pick(rng, RACE_IDS)
   const name = uniqueName(rng, RACES[raceId].names)
   const member: Member = {
     id: `m${++memberSeq}`,
