@@ -31,7 +31,7 @@ import {
 } from './sim/run'
 import { powerScore } from './sim/combat'
 
-import { rollBossDrops, describeItem, slotsOf } from './sim/loot'
+import { rollBossDrops, rollWaveDrop, describeItem, slotsOf } from './sim/loot'
 import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave } from './state/save'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
@@ -159,6 +159,8 @@ export default function App() {
   const lastBranchRef = useRef('shortcut')
   const autoLoopRef = useRef(false)
   const continueDeepRef = useRef<(() => void) | null>(null)
+  const resolveEventRef = useRef<((choiceIdx: number) => void) | null>(null)
+  const dismissEventRef = useRef<(() => void) | null>(null)
   const startExpeditionRef = useRef<((branchId: string) => void) | null>(null)
   const [run, setRun] = useState<DungeonRun | null>(null)
   const [battle, setBattle] = useState<BattleState | null>(null)
@@ -374,6 +376,14 @@ export default function App() {
         logChronicle(chronicleFirstKill(day, r.dungeon.bosses[bossId].name, r.members.find((m) => m.alive) ?? r.members[0]))
       }
     }
+    // 杂兵掉落(试玩三轮):小概率装备,刷图过程有反馈
+    else if (b.status === 'guild-win') {
+      const waveDrop = rollWaveDrop(r.dungeon.id, Math.random)
+      if (waveDrop) {
+        setInventory((inv) => [...inv, waveDrop])
+        setLastDrops((d2) => [...d2, waveDrop])
+      }
+    }
     advanceRun(r)
     const dead = markPermadeath(r)
     if (dead.length > 0) {
@@ -531,7 +541,8 @@ export default function App() {
       if (node && !r.nodeIds.includes(node.id)) {
         const kind = applyNodeChoice(r, node.id)
         if (kind === 'event') {
-          const ev = rollGuildEvent(Math.random)
+          // 路线事件节点必触发(挂机时由队长性格代打选项)
+          const ev = rollGuildEvent(Math.random, { force: true })
           if (ev) { setPendingEvent(ev); setEventResult(null) }
           setRun({ ...r })
           return
@@ -543,6 +554,7 @@ export default function App() {
             mem.hp = Math.min(max, mem.hp + Math.round(max * 0.3))
           }
           setRun({ ...r })
+          if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
           return
         }
         if (kind === 'treasure') {
@@ -557,6 +569,7 @@ export default function App() {
           setLastDrops((d) => [...d, item])
           logChronicle(chronicleRaw(day, r.dungeon.name + '的' + node.name + '开出了好东西。'))
           setRun({ ...r })
+          if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
           return
         }
       }
@@ -692,17 +705,44 @@ export default function App() {
       setMembers([...membersRef.current])
     }
     // 药水经济接入事件叙事:补给/失窃/赠礼直接改公会库存
-    if (fx.potionHeal) setPotions((p) => ({ ...p, heal: Math.max(0, p.heal + fx.potionHeal!) }))
+    resolveEventRef.current = resolveEvent
+    undefined
     if (fx.potionFury) setPotions((p) => ({ ...p, fury: Math.max(0, p.fury + fx.potionFury!) }))
     logChronicle(chronicleRaw(day, ev.title + ':' + outcome.text))
     setEventResult(outcome.text)
     setMembers([...membersRef.current])
+    // 挂机连刷:远征途中触发的事件,代打结算后自动继续推进
+    if (runRef.current?.autoMode && runRef.current.phase === 'rest') {
+      window.setTimeout(() => continueDeepRef.current?.(), 900)
+    }
   }
 
   const dismissEvent = () => {
     setPendingEvent(null)
     setEventResult(null)
   }
+  dismissEventRef.current = dismissEvent
+
+  // 挂机代打事件(试玩反馈二轮):远征途中触发的事件,队长随机择路;结果展示后自动翻页
+  useEffect(() => {
+    if (!pendingEvent || eventResult) return
+    const r = runRef.current
+    if (!r?.autoMode || r.phase !== 'rest') return
+    const timer = setTimeout(() => {
+      resolveEventRef.current?.(Math.floor(Math.random() * pendingEvent.choices.length))
+    }, 900)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingEvent, eventResult])
+
+  useEffect(() => {
+    if (!eventResult) return
+    const r = runRef.current
+    if (!r?.autoMode || r.phase !== 'rest') return
+    const timer = setTimeout(() => dismissEventRef.current?.(), 1200)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventResult])
 
   const sellItem = (id: string) => {
     const item = inventory.find((i) => i.id === id)

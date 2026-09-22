@@ -154,7 +154,8 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
   if (b.status === 'guild-win') {
     const enc = run.dungeon.encounters.find((e) => e.id === run.steps[run.stepIdx])
     // 宪法 v3.3 批次④:经验获取收紧
-    const exp = enc?.kind === 'boss' ? 120 : 45
+    // 试玩反馈二轮:经验倍率再降——重复刷同一本是最优解
+    const exp = enc?.kind === 'boss' ? 85 : 32
     for (const c of b.combatants) {
       if (c.team !== 'guild' || !c.alive || !c.memberId) continue
       const m = run.members.find((x) => x.id === c.memberId)

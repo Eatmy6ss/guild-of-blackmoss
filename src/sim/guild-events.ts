@@ -18,8 +18,9 @@ export function pickOutcome(def: GuildEventDef, choiceIdx: number, roll: number)
 }
 
 /** 回城时掷事件:EVENT_CHANCE 概率随机返回一个事件,否则 null(与访客 roll 互斥由调用方处理) */
-export function rollGuildEvent(rng: Rng): GuildEventDef | null {
-  if (rng() >= EVENT_CHANCE) return null
+export function rollGuildEvent(rng: Rng, opts?: { force?: boolean }): GuildEventDef | null {
+  // 路线事件节点必触发(试玩反馈:45% 概率门槛只适用于回城 roll)
+  if (!opts?.force && rng() >= EVENT_CHANCE) return null
   return GUILD_EVENTS[Math.floor(rng() * GUILD_EVENTS.length)] ?? null
 }
 

@@ -148,3 +148,25 @@ export const STAT_NAME: Record<StatKey, string> = {
 export function slotsOf(item: ItemInstance): Slot {
   return ITEM_BASES[item.baseId].slot
 }
+
+// ===== 杂兵掉落(试玩三轮:刷图过程要有装备反馈,不然长草)=====
+
+/** 各副本杂兵的装备纪元:版图一前两图 T1,后三图 T2,团本杂兵 T2 */
+const DUNGEON_TIER: Record<string, number> = {
+  blackmoss: 1,
+  rustmine: 1,
+  ashfield: 2,
+  frostgrave: 2,
+  abyssaltar: 2,
+  thornhold: 2,
+}
+
+/** 杂兵小概率掉装备(8%),白/绿为主——稀有但不至于全程空手 */
+export function rollWaveDrop(dungeonId: string, rng: () => number): ItemInstance | null {
+  if (rng() >= 0.08) return null
+  const tier = DUNGEON_TIER[dungeonId] ?? 1
+  const pool = Object.values(ITEM_BASES).filter((b) => b.tier === tier)
+  if (pool.length === 0) return null
+  const base = pool[Math.floor(rng() * pool.length)]
+  return rollDrop(base.id, rng, { qualityBias: -0.05 })
+}

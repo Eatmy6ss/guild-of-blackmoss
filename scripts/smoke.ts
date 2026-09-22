@@ -5,7 +5,7 @@
 // 运行：npx esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=scripts/smoke.mjs && node scripts/smoke.mjs
 import { generateMember } from '../src/sim/gen'
 import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit, statLayers } from '../src/sim/combat'
-import { rollBossDrops, rollDrop, describeItem, itemStats, createLootRng } from '../src/sim/loot'
+import { rollBossDrops, rollDrop, rollWaveDrop, describeItem, itemStats, createLootRng } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
@@ -637,7 +637,7 @@ const growthFailures: string[] = []
   for (let i = 0; i < 25; i++) {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 200000 + i * 100 + j))
     // 宪法 v3.3 批次④:升级放缓——契约改为"两轮通关升一级"
-    for (let clear = 0; clear < 2; clear++) {
+    for (let clear = 0; clear < 3; clear++) {
     const run = createRun(squad, BLACKMOSS, 'shortcut', i * 419 + 3 + clear * 17)
     let g2 = 0
     while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && g2++ < 40) {
@@ -680,8 +680,8 @@ const growthFailures: string[] = []
   }
     }
   console.log(`⑩ 成长：会玩通关 ${runs}/50，幸存者升级 ${leveled}/${runs || '-'}，两两默契 ${bonded}/${runs || '-'}`)
-  if (runs < 10) growthFailures.push(`⑩ 通关样本不足 ${runs}`)
-  if (leveled < runs * 0.4) growthFailures.push('⑩ 升级节奏失衡——宪法 v3.3 契约:两轮升一级(实测 ' + leveled + '/' + runs + ')')
+  if (runs < 15) growthFailures.push(`⑩ 通关样本不足 ${runs}`)
+  if (leveled < runs * 0.25) growthFailures.push('⑩ 升级节奏失衡——宪法 v3.3 契约:三轮升一级(实测 ' + leveled + '/' + runs + ')')
   if (bonded !== runs) growthFailures.push('⑩ 通关未建立两两默契')
 
   // 10b:默契战斗加成——同一批种子,有默契的队伍伤害更高
@@ -2241,5 +2241,53 @@ const towerFailures: string[] = []
     console.log(`㉞ 阈值:hidden<${MASTERY.KIND} ≤ kind<${MASTERY.FULL} ≤ full<${MASTERY.BOSS_DIRECT}≤直捣`)
   }
   if (fail34.length > 0) { console.log('✗ 熟练度迷雾未通过:', fail34); process.exit(1) }
+
+  // ㉟ 路线事件节点必触发(force)+ 加权招募软锁防线
+  {
+    const f35: string[] = []
+    let hit = 0
+    for (let i = 0; i < 30; i++) {
+      const ev = rollGuildEvent(Math.random, { force: true })
+      if (ev) hit++
+    }
+    if (hit !== 30) f35.push(`㉟ force 触发 ${hit}/30`)
+    console.log(`㉟ 路线事件必触发:${hit}/30`)
+    void f35
+    if (f35.length > 0) { console.log('✗ 路线事件未通过:', f35); process.exit(1) }
+    console.log('✓ 路线事件必触发通过')
+  }
   console.log('✓ 熟练度迷雾通过:节点图/岔口/事件代位/精英缩放/揭示阈值全部成立')
+}
+
+// ============================================================
+// ㊱ 杂兵掉落(试玩三轮):小概率装备,纪元正确
+// ============================================================
+{
+  const fail36: string[] = []
+  let drops = 0
+  let wrongTier = 0
+  for (let i = 0; i < 200; i++) {
+    const w = rollWaveDrop('blackmoss', createLootRng(700000 + i * 31))
+    if (w) {
+      drops++
+      const t = ITEM_BASES[w.baseId].tier
+      if (t !== 1) wrongTier++
+    }
+  }
+  // 8% 概率,200 抽期望 16;容差 [6,30]
+  if (drops < 6 || drops > 30) fail36.push(`㊱ 杂兵掉率异常:${drops}/200(期望 ~16)`)
+  if (wrongTier > 0) fail36.push(`㊱ 黑苔(T1)掉出了非 T1 装备 ${wrongTier} 件`)
+  // 渊底(T2)池
+  let t2drops = 0
+  for (let i = 0; i < 200; i++) {
+    const w = rollWaveDrop('abyssaltar', createLootRng(910000 + i * 37))
+    if (w) {
+      t2drops++
+      if (ITEM_BASES[w.baseId].tier !== 2) wrongTier++
+    }
+  }
+  if (wrongTier > 0) fail36.push(`㊱ T2 池混入非 T2 装备`)
+  console.log(`㊱ 杂兵掉落:黑苔 ${drops}/200(T1 池),渊底 ${t2drops}/200(T2 池)`)
+  if (fail36.length > 0) { console.log('✗ 杂兵掉落未通过:', fail36); process.exit(1) }
+  console.log('✓ 杂兵掉落通过:8% 触发,纪元绑定正确')
 }

@@ -138,6 +138,7 @@ export const BLACKMOSS: DungeonDef = {
     { id: 'bm-quirrel', name: '混编伏击', kind: 'battle', encounterId: 'enc-quirrel', desc: '蛙人与狼联手设伏' },
     { id: 'bm-mire', name: '沼腹深处', kind: 'battle', encounterId: 'enc-mire', desc: '越往里,泥越深' },
     { id: 'bm-chest', name: '沉船货箱', kind: 'treasure', desc: '搁浅的货船残骸,货箱还封着蜡' },
+    { id: 'bm-wisp', name: '沼气鬼火', kind: 'event', desc: '鬼火引路,跟不跟?' },
   ],
   encounters: [
     { id: 'enc-frogs', name: '蛙人哨兵', kind: 'wave', enemyGroupIds: ['frogs'] },
@@ -248,6 +249,7 @@ export const RUSTMINE: DungeonDef = {
     { id: 'rm-batmix', name: '蝠蛛混巢', kind: 'battle', encounterId: 'enc-batmix', desc: '蝠群与蛛网在同一巷道' },
     { id: 'rm-deepvein', name: '深层矿脉', kind: 'battle', encounterId: 'enc-deepvein', desc: '越深,矿灯越暗' },
     { id: 'rm-crate', name: '坍塌货仓', kind: 'treasure', desc: '塌方封存的物资仓' },
+    { id: 'rm-echo', name: '巷道回声', kind: 'event', desc: '塌方后有敲击声,像求救' },
   ],
   encounters: [
     { id: 'enc-miners', name: '尸化矿工队', kind: 'wave', enemyGroupIds: ['miners'] },
@@ -357,6 +359,7 @@ export const ASHFIELD: DungeonDef = {
     { id: 'af-bonemix', name: '骨怨混编', kind: 'battle', encounterId: 'enc-bonemix', desc: '骸骨与怨灵同行' },
     { id: 'af-funeral', name: '葬仪行列', kind: 'battle', encounterId: 'enc-funeral', desc: '墓骑开道,挽歌相随' },
     { id: 'af-relic', name: '军械库残堆', kind: 'treasure', desc: '王朝军械库的最后一角' },
+    { id: 'af-trumpet', name: '未响的号角', kind: 'event', desc: '号角一响,亡者当立正位' },
   ],
   encounters: [
     { id: 'enc-skeletons', name: '骸骨列队', kind: 'wave', enemyGroupIds: ['skeletons'] },
@@ -461,6 +464,7 @@ export const FROSTGRAVE: DungeonDef = {
     { id: 'fg-frostmix', name: '墓卫鸦士混编', kind: 'battle', encounterId: 'enc-frostmix', desc: '墓卫与寒鸦同巡' },
     { id: 'fg-icetomb', name: '冰棺回廊', kind: 'battle', encounterId: 'enc-icetomb', desc: '冰棺排满回廊两侧' },
     { id: 'fg-cache', name: '陪葬冰窖', kind: 'treasure', desc: '冰层里封着陪葬品' },
+    { id: 'fg-icecrack', name: '冰面裂痕', kind: 'event', desc: '裂痕下有东西在动' },
   ],
   encounters: [
     { id: 'enc-wights', name: '墓卫列队', kind: 'wave', enemyGroupIds: ['wights'] },
@@ -572,6 +576,7 @@ export const ABYSSALTAR: DungeonDef = {
     { id: 'ab-abyssmix', name: '眼目咏叹混编', kind: 'battle', encounterId: 'enc-abyssmix', desc: '眼睛与祷声同行' },
     { id: 'ab-bloodfeast', name: '血宴残席', kind: 'battle', encounterId: 'enc-bloodfeast', desc: '宴席未散,饿殍未走' },
     { id: 'ab-relic', name: '沉供奉龛', kind: 'treasure', desc: '供奉沉在血池底,泛着金光' },
+    { id: 'ab-whisper', name: '渊底低语', kind: 'event', desc: '低语许诺力量,代价未提' },
   ],
   encounters: [
     { id: 'enc-cultists', name: '血祭教徒环', kind: 'wave', enemyGroupIds: ['cultists'] },
@@ -721,6 +726,7 @@ export const THORNHOLD: DungeonDef = {
     { id: 'th-siege', name: '攻城混编', kind: 'battle', encounterId: 'enc-siege', desc: '围攻的完整编制' },
     { id: 'th-vanguard2', name: '前卫余部', kind: 'battle', encounterId: 'enc-vanguard2', desc: '败退的前卫重整再战' },
     { id: 'th-armory', name: '团库武械房', kind: 'treasure', desc: '荆棘团的团库就在门后' },
+    { id: 'th-deserter', name: '逃兵求见', kind: 'event', desc: '一名荆棘逃兵想谈条件' },
   ],
   encounters: [
     { id: 'enc-swords', name: '正门刀盾阵', kind: 'wave', enemyGroupIds: ['swords'] },
