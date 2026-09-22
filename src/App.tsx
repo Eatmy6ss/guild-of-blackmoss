@@ -78,7 +78,7 @@ function newRoster(): Member[] {
 
 function attrsLine(m: Member): string {
   const a = m.attrs
-  return `力${a.str} 敏${a.agi} 智${a.int}`
+  return `力${a.str} 敏${a.agi} 智${a.int} 体${a.vit} 精${a.spr} 运${a.lck}`
 }
 
 function personalityLine(m: Member): string {
@@ -609,6 +609,16 @@ export default function App() {
         hurt.hp = Math.max(1, Math.floor(hurt.hp / 2))
         setMembers([...membersRef.current])
       }
+    }
+    // 属性点(六维改革):全队每人 +N 随机维
+    if (fx.attrPoint) {
+      const DIMS = ['str', 'agi', 'int', 'vit', 'spr', 'lck'] as const
+      for (const m of membersRef.current) {
+        if (!m.alive) continue
+        const dim = DIMS[Math.floor(Math.random() * DIMS.length)]
+        m.attrs[dim] += fx.attrPoint
+      }
+      setMembers([...membersRef.current])
     }
     // 药水经济接入事件叙事:补给/失窃/赠礼直接改公会库存
     if (fx.potionHeal) setPotions((p) => ({ ...p, heal: Math.max(0, p.heal + fx.potionHeal!) }))

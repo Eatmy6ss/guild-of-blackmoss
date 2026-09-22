@@ -1610,11 +1610,13 @@ const towerFailures: string[] = []
   const loathed = mk(4)
   loathed.personality = { bravery: 50, caution: 50, greed: 50, loyalty: 0 }
   if ((toCombatant(beloved).healReceived ?? 0) <= (toCombatant(loathed).healReceived ?? 0)) fail24.push('㉔ 忠诚未提高受疗')
-  // 中性校验:全 50 时面板与无性格一致(不白给)
+  // 中性校验:全 50 时性格对受疗贡献为 0(剩余部分来自精神,精确等式)
   const neutral = mk(5)
   neutral.personality = { bravery: 50, caution: 50, greed: 50, loyalty: 50 }
   const cNeutral = toCombatant(neutral)
-  if (cNeutral.healReceived !== 0) fail24.push('㉔ 中性性格受疗应为 0')
+  if (Math.abs((cNeutral.healReceived ?? 0) - (neutral.attrs.spr ?? 0) * 0.004) > 0.0001) {
+    fail24.push('㉔ 中性性格受疗应恰为精神贡献')
+  }
   console.log(`㉔ 性格面板:勇猛攻 ${toCombatant(brave).attack}/${toCombatant(timid).attack} 谨慎防 ${toCombatant(cautious).defense}/${toCombatant(reckless).defense} 贪婪暴 ${(toCombatant(greedy).critChance * 100).toFixed(1)}/${(toCombatant(ascetic).critChance * 100).toFixed(1)}%`)
   if (fail24.length > 0) { console.log('✗ 性格面板未通过:', fail24); process.exit(1) }
   console.log('✓ 性格→面板通过:勇猛/谨慎/贪婪/忠诚四维真实影响战斗属性')
@@ -1655,7 +1657,7 @@ const towerFailures: string[] = []
     const c = toCombatant(m)
     if (c.role !== 'tank' || c.position !== 'front') fail25.push('㉕ 圣盾使主职/站位错误')
     if (!c.skills.some((s) => s.def.effect === 'shield-ally')) fail25.push('㉕ 圣盾使缺移形圣盾')
-    if (c.maxHp !== Math.round(150 + 4 * 18 + m.attrs.str * 3)) fail25.push(`㉕ 圣盾使血量未走混合头:${c.maxHp}`)
+    if (c.maxHp !== Math.round(150 + 4 * 18 + m.attrs.vit * 3)) fail25.push(`㉕ 圣盾使血量未走混合头:${c.maxHp}(vit=${m.attrs.vit})`)
     console.log(`㉕ 圣盾使投影:HP ${c.maxHp} 攻 ${c.attack} 防 ${c.defense} 主职 ${c.role}`)
   }
 
@@ -1719,15 +1721,20 @@ const towerFailures: string[] = []
     console.log(`㉖ 生成:${m.name}(${RACES[m.race ?? 'human'].name}) 专精随机边界 ok`)
     setRaceOverride('human')
   }
-  // 26b:兽人攻/矮人防投影——克隆对照(同种子生成受名字去重影响不保证一致,克隆才等价)
+  // 26b:六维招牌维(宪法 v3.3)——克隆对照;兽人力量经主属性系数放大攻击,矮人体质直加血
   {
     const proto = generateMember('guard', 5, 994000)
     const orc = { ...proto, race: 'orc' }
     const dwarf = { ...proto, race: 'dwarf' }
     const base = { ...proto, race: 'human' }
-    if (toCombatant(orc).attack !== toCombatant(base).attack + 4) fail26.push(`㉖ 兽人攻击加成未生效:${toCombatant(base).attack}→${toCombatant(orc).attack}`)
-    if (toCombatant(dwarf).defense !== toCombatant(base).defense + 2) fail26.push('㉖ 矮人防御加成未生效')
-    console.log(`㉖ 轻被动:兽人攻 +4(${toCombatant(base).attack}→${toCombatant(orc).attack}) 矮人防 +2(${toCombatant(base).defense}→${toCombatant(dwarf).defense})`)
+    const aO = toCombatant(orc).attack
+    const aB = toCombatant(base).attack
+    // 兽人 str+4 → 攻击按 (1+str×0.05) 放大
+    if (aO <= aB) fail26.push(`㉖ 兽人力量未提升攻击:${aB}→${aO}`)
+    const hpD = toCombatant(dwarf).maxHp
+    const hpB = toCombatant(base).maxHp
+    if (hpD !== hpB + 5 * 3) fail26.push(`㉖ 矮人体质未提升生命:${hpB}→${hpD}`)
+    console.log(`㉖ 招牌维:兽人攻 ${aB}→${aO}(力量+4),矮人血 ${hpB}→${hpD}(体质+5)`)
   }
   // 26c:亡灵士气冲击减半
   {

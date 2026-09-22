@@ -97,10 +97,16 @@ export function toCombatant(member: Member): Combatant {
   const loyaltyHeal = (p.loyalty - 50) * 0.0012
   // 种族轻被动(宪法 v3,数值压在门禁精度下):矮人防/精灵暴击/兽人攻/血精灵受疗
   const race = member.race ? RACES[member.race] : RACES.human
-  const raceAtk = race.passive.attack ?? 0
-  const raceDef = race.passive.defense ?? 0
-  const raceCrit = race.passive.crit ?? 0
-  const raceHeal = race.passive.healReceived ?? 0
+  // 六维改革:种族招牌维加成并入有效属性;亡灵意志/人类经验保持独立字段
+  const ab = race.attrBonus ?? {}
+  const eff = {
+    str: member.attrs.str + (ab.str ?? 0),
+    agi: member.attrs.agi + (ab.agi ?? 0),
+    int: member.attrs.int + (ab.int ?? 0),
+    vit: member.attrs.vit + (ab.vit ?? 0),
+    spr: member.attrs.spr + (ab.spr ?? 0),
+    lck: member.attrs.lck + (ab.lck ?? 0),
+  }
   // 通用战技(DD Augment,跨专精携带)
   const augs = member.augments ?? []
   const augHp = augs.includes('aug-vit') ? 1.08 : 1
@@ -110,7 +116,7 @@ export function toCombatant(member: Member): Combatant {
   const maxHp = Math.round(
     (Math.max(1, base.maxHp + (mods.maxHp ?? 0)) +
       (member.level - 1) * job.growth.maxHp +
-      member.attrs.str * 3 +
+      eff.vit * 3 +
       (eq.maxHp ?? 0)) *
       augHp,
   )
@@ -123,20 +129,20 @@ export function toCombatant(member: Member): Combatant {
     hp: Math.max(1, Math.min(member.hp > 0 ? member.hp : maxHp, maxHp)),
     attack: Math.round(
       ((Math.max(1, base.attack + (mods.attack ?? 0)) + (member.level - 1) * job.growth.attack) *
-        (1 + member.attrs[job.attackAttr] * 0.05) +
+        (1 + eff[job.attackAttr] * 0.05) +
         (eq.attack ?? 0)) *
-        braveryAtkMult + raceAtk + augAtk,
+        braveryAtkMult + augAtk,
     ),
     defense: Math.round(
-      Math.max(0, base.defense + (mods.defense ?? 0) + raceDef + augDef) *
+      Math.max(0, base.defense + (mods.defense ?? 0) + augDef) *
         cautionDefMult +
         (member.level - 1) * job.growth.defense +
         (eq.defense ?? 0),
     ),
-    critChance: base.critChance + (mods.critChance ?? 0) + raceCrit + augCrit + greedCrit + member.attrs.agi * 0.004 + (eq.critChance ?? 0),
+    critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0),
     attackInterval: Math.max(
       6,
-      Math.round(60 / (base.speed + (mods.speed ?? 0) + (eq.speed ?? 0))),
+      Math.round(60 / (base.speed + (mods.speed ?? 0) + eff.agi * 0.04 + (eq.speed ?? 0))),
     ),
     cooldownLeft: 0,
     alive: true,
@@ -150,8 +156,9 @@ export function toCombatant(member: Member): Combatant {
       return list
     })(),
     specId: baseSpec.id,
+    spr: eff.spr,
     counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
-    healReceived: loyaltyHeal + raceHeal + (eq.healReceived ?? 0),
+    healReceived: loyaltyHeal + (race.passive.healReceived ?? 0) + eff.spr * 0.004 + (eq.healReceived ?? 0),
     tauntedTicks: 0,
     position: hy ? hy.position : job.position,
     range: hy ? hy.range : job.range,
@@ -442,7 +449,8 @@ function dealDamage(
   if (slowDef && target.alive) {
     const chance = typeof slowDef.params.chance === 'number' ? slowDef.params.chance : 0.35
     if (battleRandom(state) < chance) {
-      const ticks = typeof slowDef.params.ticks === 'number' ? slowDef.params.ticks : 30
+      let ticks = typeof slowDef.params.ticks === 'number' ? slowDef.params.ticks : 30
+      ticks = controlResist(target, ticks)
       target.slowUntilTick = state.tick + ticks
       state.events.push({ tick: state.tick, type: 'slowed', targetId: target.id, amount: ticks })
       pushLog(state, 'enemy', `❄ ${target.name} 被【${slowDef.name}】冻结,行动变缓！`)
@@ -599,8 +607,9 @@ function useSkill(
     case 'trap-bind': {
       // 捕兽夹:束缚目标 2s(猎手控场)
       const target = pool.reduce((a, b) => (a.maxHp >= b.maxHp ? a : b))
-      target.boundUntilTick = state.tick + 20
-      state.events.push({ tick: state.tick, type: 'bound', targetId: target.id, amount: 20 })
+      const bindTicks = controlResist(target, 20)
+      target.boundUntilTick = state.tick + bindTicks
+      state.events.push({ tick: state.tick, type: 'bound', targetId: target.id, amount: bindTicks })
       pushLog(state, 'guild', `${c.name} 的【${skill.name}】咬住了 ${target.name}！`)
       return true
     }
@@ -673,6 +682,12 @@ function useSkill(
       return true
     }
   }
+}
+
+/** 控制韧性(宪法 v3.3):我方精神缩短被控时长(至多 -40%) */
+export function controlResist(target: Combatant, ticks: number): number {
+  if (target.team !== 'guild') return ticks
+  return Math.max(6, Math.round(ticks * (1 - Math.min(0.4, (target.spr ?? 0) * 0.008))))
 }
 
 /** 召唤物:属性随召唤者成长,无 memberId(阵亡不进纪念堂) */
@@ -912,7 +927,7 @@ export function statLayers(member: Member): StatLayer[] {
   })
   layers.push({
     label: '主属性',
-    text: `${job.attackAttr === 'str' ? '力量' : job.attackAttr === 'agi' ? '敏捷' : '智力'} ${member.attrs[job.attackAttr]}(每点 +5% 攻击)`,
+    text: `${job.attackAttr === 'str' ? '力量' : job.attackAttr === 'agi' ? '敏捷' : '智力'} ${member.attrs[job.attackAttr] + (race.attrBonus?.[job.attackAttr] ?? 0)}(每点 +5% 攻击) · 体质 ${member.attrs.vit + (race.attrBonus?.vit ?? 0)} · 精神 ${member.attrs.spr + (race.attrBonus?.spr ?? 0)} · 幸运 ${member.attrs.lck + (race.attrBonus?.lck ?? 0)}`,
   })
   const br = Math.round((p.bravery - 50) * 0.12)
   if (br !== 0) layers.push({ label: '性格·勇猛', text: `${br > 0 ? '+' : ''}${br}% 攻击`, good: br > 0, bad: br < 0 })

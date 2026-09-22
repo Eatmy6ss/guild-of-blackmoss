@@ -102,6 +102,15 @@ export function sanitizeMembers(members: Member[]): Member[] {
     const okSpec = out.spec && (isHybrid(out.spec) || !!JOBS[out.job]?.specs[out.spec])
     if (!okSpec) out.spec = undefined
     if (out.race && !RACES[out.race]) out.race = undefined
+    // 六维改革:老档缺体/精/运 → 补中性值 3
+    out.attrs = {
+      str: out.attrs.str ?? 3,
+      agi: out.attrs.agi ?? 3,
+      int: out.attrs.int ?? 3,
+      vit: out.attrs.vit ?? 3,
+      spr: out.attrs.spr ?? 3,
+      lck: out.attrs.lck ?? 3,
+    }
     return out
   })
 }

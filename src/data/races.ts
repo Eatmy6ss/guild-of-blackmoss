@@ -1,7 +1,7 @@
 // 六种族(宪法 v3 角色篇):WoW 软处理——风味+轻被动,数值压在平衡门禁精度以下。
 // 种族影响:名字池(生成器)/身份句(招募卡)/一条轻被动。招募随机,无职业限制。
 
-import type { JobId } from '../sim/types'
+import type { Attributes, JobId } from '../sim/types'
 export interface RaceDef {
   id: string
   name: string
@@ -10,6 +10,8 @@ export interface RaceDef {
   allowedLines: JobId[]
   /** 种族名字池(生成器按种族取名;称谓池沿用全局) */
   names: string[]
+  /** 招牌维加成(宪法 v3.3):每族一个六维招牌 */
+  attrBonus: Partial<Attributes>
   passive: {
     /** 人类:经验 +5%(学得快) */
     expMult?: number
@@ -29,6 +31,7 @@ export interface RaceDef {
 export const RACES: Record<string, RaceDef> = {
   human: {
     id: 'human',
+  attrBonus: { lck: 2 },
   allowedLines: ['guard', 'priest', 'ranger', 'warrior', 'mage', 'warlock'],
     name: '人类',
     identity: '四海为家的短命种,却总能把日子过成事业——学什么都快。',
@@ -37,6 +40,7 @@ export const RACES: Record<string, RaceDef> = {
   },
   dwarf: {
     id: 'dwarf',
+  attrBonus: { vit: 5 },
   allowedLines: ['guard', 'priest', 'warrior', 'ranger'],
     name: '矮人',
     identity: '石头的骨头,炉火的脾气——站得住的地方就有矮人。',
@@ -45,6 +49,7 @@ export const RACES: Record<string, RaceDef> = {
   },
   elf: {
     id: 'elf',
+  attrBonus: { agi: 3 },
   allowedLines: ['priest', 'ranger', 'mage', 'warlock'],
     name: '高等精灵',
     identity: '千年的手感,百年的傲气——他们的箭很少落空两次。',
@@ -53,6 +58,7 @@ export const RACES: Record<string, RaceDef> = {
   },
   orc: {
     id: 'orc',
+  attrBonus: { str: 4 },
   allowedLines: ['guard', 'ranger', 'warrior', 'warlock'],
     name: '兽人',
     identity: '荣耀即力量——别的种族健身,他们出生就在健身。',
@@ -61,6 +67,7 @@ export const RACES: Record<string, RaceDef> = {
   },
   undead: {
     id: 'undead',
+  attrBonus: { spr: 4 },
   allowedLines: ['ranger', 'warrior', 'mage', 'warlock'],
     name: '亡灵',
     identity: '已经死过一次的人,不太在乎第二次——恐惧对他们失效。',
@@ -69,6 +76,7 @@ export const RACES: Record<string, RaceDef> = {
   },
   bloodelf: {
     id: 'bloodelf',
+  attrBonus: { int: 3 },
   allowedLines: ['priest', 'ranger', 'mage', 'warlock'],
     name: '血精灵',
     identity: '魔力在血里烧——他们对治疗的反应,好得让人嫉妒。',

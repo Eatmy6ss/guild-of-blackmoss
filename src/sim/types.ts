@@ -9,6 +9,12 @@ export interface Attributes {
   str: number
   agi: number
   int: number
+  /** 体质:最大生命 */
+  vit: number
+  /** 精神:受疗加成 + 控制韧性 */
+  spr: number
+  /** 幸运:暴击 + 掉落品质 */
+  lck: number
 }
 
 /** 天性：成长方向与上限，由出身背景生成，永不改变 */
@@ -241,6 +247,8 @@ export interface Combatant {
   invulnUntilTick?: number
   /** 连击资源(宪法 v3.2 回归池):连击层数,combo-strike 消耗 */
   combo?: number
+  /** 精神(六维投影):控制韧性计算用 */
+  spr?: number
   /** 我方引导咏唱:到 tick 前引导,被打断阈值见 channelBreak */
   channelUntilTick?: number
   channelTaken?: number

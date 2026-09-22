@@ -1,5 +1,5 @@
 import type { BattleState, Combatant } from './types'
-import { applyHit, battleRandom, enemyToCombatant as mkEnemy, pushLog } from './combat'
+import { applyHit, battleRandom, controlResist, enemyToCombatant as mkEnemy, pushLog } from './combat'
 
 // boss 机制引擎（D8-9）：解释 BossMechanicDef 数据。
 // 每个机制对应一个团长指令（Q27 映射）：
@@ -184,7 +184,7 @@ export function processBossMechanics(state: BattleState): void {
             )
             if (candidates.length > 0) {
               const victim = candidates[Math.floor(battleRandom(state) * candidates.length)]
-              const ticks = num(m.params.bindTicks, 30)
+              const ticks = controlResist(victim, num(m.params.bindTicks, 30))
               victim.boundUntilTick = state.tick + ticks
               applyHit(state, c, victim, num(m.params.damage, 20), '束缚')
               state.events.push({

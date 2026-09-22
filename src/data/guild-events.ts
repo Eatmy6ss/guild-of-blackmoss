@@ -17,6 +17,8 @@ export interface EventOutcome {
     injure?: boolean
     potionHeal?: number
     potionFury?: number
+    /** 属性点(六维改革):全队每人 +N 点随机维 */
+    attrPoint?: number
   }
 }
 

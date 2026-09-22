@@ -61,19 +61,22 @@ function hashStr(s: string): number {
 function rollNature(rng: Rng, job: JobId): Nature {
   // 天性随职业倾向倾斜（战士胚子力量高——Q18），但保留随机苗子空间
   const tilt: Record<JobId, Attributes> = {
-    guard: { str: 6, agi: 2, int: 1 },
-    priest: { str: 1, agi: 2, int: 6 },
-    ranger: { str: 2, agi: 6, int: 1 },
-    warrior: { str: 7, agi: 3, int: 1 },
-    mage: { str: 1, agi: 2, int: 7 },
-    warlock: { str: 2, agi: 2, int: 6 },
+    guard:    { str: 6, agi: 2, int: 1, vit: 4, spr: 1, lck: 1 },
+    priest:   { str: 1, agi: 2, int: 6, vit: 1, spr: 4, lck: 1 },
+    ranger:   { str: 2, agi: 6, int: 1, vit: 1, spr: 1, lck: 3 },
+    warrior:  { str: 6, agi: 3, int: 1, vit: 3, spr: 1, lck: 1 },
+    mage:     { str: 1, agi: 2, int: 6, vit: 1, spr: 3, lck: 1 },
+    warlock:  { str: 2, agi: 2, int: 6, vit: 1, spr: 3, lck: 1 },
   }
   const t = tilt[job]
-  // 属性改革(制作人 2026-09-22):方差 2-5 → 0-7(均值 3.5 不变,⑱ 校准),苗子差异拉开——同职业不同人真正不同
+  // 属性改革(宪法 v3.3 批次①):六维;方差 0-7(均值 3.5,⑱ 校准)
   const base: Attributes = {
     str: int(rng, 0, 7) + t.str,
     agi: int(rng, 0, 7) + t.agi,
     int: int(rng, 0, 7) + t.int,
+    vit: int(rng, 0, 7) + t.vit,
+    spr: int(rng, 0, 7) + t.spr,
+    lck: int(rng, 0, 7) + t.lck,
   }
   return {
     base,
@@ -81,11 +84,17 @@ function rollNature(rng: Rng, job: JobId): Nature {
       str: int(rng, 10, 70) / 100,
       agi: int(rng, 10, 70) / 100,
       int: int(rng, 8, 52) / 100,
+      vit: int(rng, 10, 60) / 100,
+      spr: int(rng, 8, 50) / 100,
+      lck: int(rng, 6, 40) / 100,
     },
     caps: {
       str: base.str + int(rng, 3, 12),
       agi: base.agi + int(rng, 3, 12),
       int: base.int + int(rng, 3, 12),
+      vit: base.vit + int(rng, 3, 12),
+      spr: base.spr + int(rng, 3, 12),
+      lck: base.lck + int(rng, 3, 12),
     },
   }
 }
@@ -104,9 +113,9 @@ export function levelTo(member: Member, targetLevel: number): void {
   const rng = createRng(hashStr(member.id) + targetLevel * 7919)
   while (member.level < targetLevel) {
     member.level++
-    const keys: (keyof Attributes)[] = ['str', 'agi', 'int']
+    const keys: (keyof Attributes)[] = ['str', 'agi', 'int', 'vit', 'spr', 'lck']
     const weights = member.nature.growth
-    const total = weights.str + weights.agi + weights.int
+    const total = keys.reduce((sum, k) => sum + weights[k], 0)
     let roll = rng() * total
     for (const k of keys) {
       roll -= weights[k]
@@ -158,7 +167,7 @@ export function maxHpOf(member: Member): number {
   return Math.round(
     job.base.maxHp +
       (member.level - 1) * job.growth.maxHp +
-      member.attrs.str * 3 +
+      member.attrs.vit * 3 +
       (eq.maxHp ?? 0),
   )
 }
@@ -188,7 +197,7 @@ export function generateMember(job: JobId, level: number, seed: number = Date.no
     level: 1,
     nature: rollNature(rng, job),
     personality: rollPersonality(rng),
-    attrs: { str: 0, agi: 0, int: 0 },
+    attrs: { str: 0, agi: 0, int: 0, vit: 0, spr: 0, lck: 0 },
     hp: 0,
     equipment: {},
     alive: true,
