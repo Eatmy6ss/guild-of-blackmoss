@@ -694,7 +694,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '药还回来,放她走,再送她一瓶。',
         outcomes: [
-          { weight: 6, text: '女人磕了个头,抱着药跑了。一周后矿道镇捎来消息:孩子的烧退了。', effects: { potionHeal: -1, moraleAll: 6 } },
+          { weight: 6, text: '女人磕了个头,抱着药跑了。一周后矿道镇捎来消息:孩子的烧退了。公会的药柜里,少的那一瓶有了去处。', effects: { potionHeal: -1, moraleAll: 6 } },
           { weight: 4, text: '女人走后,守夜队员嘀咕:"下回别人有样学样怎么办?"你发现他说得对——当月仓库又少了两瓶。', effects: { potionHeal: -2, moraleAll: -2 } },
         ],
       },

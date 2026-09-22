@@ -9,7 +9,7 @@ import { rollBossDrops, rollDrop, describeItem, itemStats, createLootRng } from 
 import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
-import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded } from '../src/sim/tavern'
+import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded, taleCandidates } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, SAVE_VERSION } from '../src/state/save'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
 import { BUILDINGS, baseEffects } from '../src/data/base'
@@ -730,7 +730,7 @@ const econFailures: string[] = []
   for (let i = 0; i < 30; i++) {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 300000 + i * 50 + j))
     const v = rollVisitor(() => 0.5, squad)
-    const jobsOk = ['guard', 'priest', 'ranger'].includes(v.member.job)
+    const jobsOk = (Object.keys(JOB_TABLE) as string[]).includes(v.member.job)
     if (!jobsOk || v.member.level < 1 || v.story.length === 0) badVisitor++
   }
   console.log(`⑩·五 访客：30 次生成,非法 ${badVisitor}`)
@@ -1842,4 +1842,53 @@ const towerFailures: string[] = []
   }
   if (fail28.length > 0) { console.log('✗ 装备扩容未通过:', fail28); process.exit(1) }
   console.log('✓ 装备扩容通过:基底/词条/缩放/掉落/受疗全链路成立')
+}
+
+// ============================================================
+// ㉙ 自检修复验证:治疗保底 + AI 多技能择优
+// ============================================================
+{
+  const fail29: string[] = []
+  // 29a:治疗保底——无存活治疗者时,访客与传闻候选必出治疗线
+  {
+    const healerless = ['guard', 'warrior', 'ranger'].map((job, j) => generateMember(job as (typeof JOBS)[number], 5, 960000 + j))
+    seedMemberSeq(healerless)
+    const v = rollVisitor(Math.random, healerless)
+    if (JOB_TABLE[v.member.job].role !== 'healer') fail29.push(`㉙ 治疗保底失效:访客 ${v.member.job}`)
+    const tales = taleCandidates(Math.random, healerless, 3)
+    if (tales.some((t) => JOB_TABLE[t.job].role !== 'healer')) fail29.push('㉙ 治疗保底失效:传闻候选')
+    console.log(`㉙ 治疗保底:无治疗局面 → 访客 ${JOB_TABLE[v.member.job].role}/传闻 3 治疗线`)
+  }
+  // 29b:盾的时机——全员健康时不施放真言盾(前 20 tick 无盾事件)
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 961000 + j))
+    squad[1].spec = 'priest-discipline'
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 31415)
+    for (let t = 0; t < 20 && b.status === 'running'; t++) stepBattle(b)
+    const earlyShields = b.events.filter((e) => e.type === 'shielded' && e.tick < 20)
+    if (earlyShields.length > 0) fail29.push(`㉙ 满血乱交盾:${earlyShields.length} 次发生在前 20 tick`)
+    console.log(`㉙ 盾时机:前 20 tick 盾事件 ${earlyShields.length} 次(应 0)`)
+  }
+  // 29c:新专精挂机可玩性——战先锋/戒律牧/兽王 自动打格鲁什,20 局 ≥5 胜
+  {
+    let wins = 0
+    for (let i = 0; i < 20; i++) {
+      const squad = (['warrior', 'priest', 'ranger'] as const).map((job, j) => generateMember(job, 5, 962000 + i * 100 + j))
+      squad[0].spec = 'warrior-vanguard'
+      squad[1].spec = 'priest-discipline'
+      squad[2].spec = 'ranger-beastmaster'
+      seedMemberSeq(squad)
+      const b = createBattle(squad, BLACKMOSS, 'enc-grush', i * 67 + 3)
+      b.commands.autoMode = true
+      b.commands.protectRetreat = false
+      let guard = 0
+      while (b.status === 'running' && guard++ < MAX_TICK) stepBattle(b)
+      if (b.status === 'guild-win') wins++
+    }
+    console.log(`㉙ 新专精挂机:战先锋/戒律牧/兽王 自动 grush 胜 ${wins}/20`)
+    if (wins < 5) fail29.push(`㉙ 新专精挂机胜率过低:${wins}/20`)
+  }
+  if (fail29.length > 0) { console.log('✗ 自检修复未通过:', fail29); process.exit(1) }
+  console.log('✓ 自检修复通过:治疗保底/盾时机/新专精挂机全部成立')
 }

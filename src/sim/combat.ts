@@ -446,10 +446,13 @@ function actWith(c: Combatant, state: BattleState): void {
   if (foes.length === 0) return
   const pool = allowedPool(c, foes)
 
-  const ready = c.skills.find((s) => s.cooldownLeft <= 0)
-  if (ready && useSkill(c, ready.def, allies, pool, state)) {
-    ready.cooldownLeft = ready.def.cooldownTicks
-    return
+  // AI 多技能择优:逐个尝试就绪技能,条件不满足(无人可疗/满血/宠物在场)则回落下一个
+  for (const ready of c.skills) {
+    if (ready.cooldownLeft > 0) continue
+    if (useSkill(c, ready.def, allies, pool, state)) {
+      ready.cooldownLeft = ready.def.cooldownTicks
+      return
+    }
   }
 
   let target: Combatant | undefined
@@ -546,7 +549,8 @@ function useSkill(
       return true
     }
     case 'shield-ally': {
-      // 真言盾:给最脆的人上吸收盾(吸收量按治疗者攻击定标)
+      // 真言盾:给最脆的人上吸收盾;全队 >75% 时不施放(时机条件——AI 不再满血乱交盾)
+      if (allies.every((a) => a.hp / a.maxHp > 0.75)) return false
       const target = allies.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
       const shield = Math.round(c.attack * 6)
       target.absorbShield = (target.absorbShield ?? 0) + shield

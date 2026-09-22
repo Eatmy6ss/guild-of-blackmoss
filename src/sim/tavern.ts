@@ -1,5 +1,7 @@
 import type { ItemInstance, JobId, Member } from './types'
 import { generateMember } from './gen'
+import { JOBS } from '../data/jobs'
+import { LINE_IDS } from '../data/jobs'
 import { ECONOMY, VISITOR_STORIES } from '../data/economy'
 
 // 酒馆与经济(M1 P0 切片 2):招募三路径的纯逻辑。
@@ -7,8 +9,16 @@ import { ECONOMY, VISITOR_STORIES } from '../data/economy'
 // 路径二:定向悬赏(花金指定职业,受冷却)
 // 路径三:酒馆传闻(花金+祝福三选一,候选品质更高,受冷却)
 // 软锁保护:存活 <3 时冷却减半;上门事件不受冷却,任何情况都有恢复通道。
+// 治疗保底(自检 P1-1):无存活治疗者时,访客/传闻必含治疗线——不能让运气把公会锁死在打不过 boss 的阵容上。
 
 export type Rng = () => number
+
+/** 治疗保底:无存活治疗者 → 必出治疗线;否则六职业随机 */
+function pickCandidateJob(rng: Rng, members: Member[]): JobId {
+  const hasHealer = members.some((m) => m.alive && JOBS[m.job]?.role === 'healer')
+  if (!hasHealer) return 'priest'
+  return LINE_IDS[Math.floor(rng() * LINE_IDS.length)] ?? 'priest'
+}
 
 /** 装备变卖价:tier 基础 + 词条加值(T2 > T1,词条越多越值钱) */
 export function sellValue(item: ItemInstance, mult = 1): number {
@@ -41,8 +51,7 @@ export function rollVisitor(rng: Rng, members: Member[], tavernLevel = 0): Visit
     1,
     avgLevel(members) + ECONOMY.visitorLevel.base + levelBonus + Math.floor(rng() * (ECONOMY.visitorLevel.spread + 1)),
   )
-  const jobs: JobId[] = ['guard', 'priest', 'ranger']
-  const job = jobs[Math.floor(rng() * jobs.length)]
+  const job = pickCandidateJob(rng, members)
   const member = generateMember(job, level, Math.floor(rng() * 0x7fffffff))
   const story = VISITOR_STORIES[Math.floor(rng() * VISITOR_STORIES.length)]
   return { member, story: `${member.name} ${story}` }
@@ -57,9 +66,8 @@ export function bountyCandidate(rng: Rng, members: Member[], job: JobId): Member
 /** 路径三:酒馆传闻——花金+祝福抽三选一,候选等级更高 */
 export function taleCandidates(rng: Rng, members: Member[], count = 3): Member[] {
   const level = Math.max(1, avgLevel(members) + ECONOMY.taleLevelBonus)
-  const jobs: JobId[] = ['guard', 'priest', 'ranger']
   return Array.from({ length: count }, () => {
-    const job = jobs[Math.floor(rng() * jobs.length)]
+    const job = pickCandidateJob(rng, members)
     return generateMember(job, level, Math.floor(rng() * 0x7fffffff))
   })
 }

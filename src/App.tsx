@@ -305,7 +305,7 @@ export default function App() {
     })
   }, [members, dungeonId])
   const enterExpedition = (id: string) => {
-    if (runRef.current) return
+    if (runRef.current || towerRunRef.current) return
     setExpeditionIds((ids) => {
       const aliveIds = members.filter((m) => m.alive).map((m) => m.id)
       const kept = ids.filter((x) => x !== id && aliveIds.includes(x))
@@ -314,7 +314,7 @@ export default function App() {
     })
   }
   const leaveExpedition = (id: string) => {
-    if (runRef.current) return
+    if (runRef.current || towerRunRef.current) return
     setExpeditionIds((ids) => ids.filter((x) => x !== id))
   }
 
@@ -912,6 +912,7 @@ export default function App() {
             {HUB_DOCK.map((it) => (
               <button
                 key={it.key}
+                disabled={!!run || !!towerRun}
                 className={`dock-btn${hubScreen === it.key ? ' open' : ''}`}
                 onClick={() => setHubScreen((cur) => (cur === it.key ? null : it.key))}
               >
