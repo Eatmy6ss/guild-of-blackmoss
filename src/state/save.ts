@@ -10,7 +10,7 @@ import type { ChronicleEntry } from '../sim/chronicle'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 8
+export const SAVE_VERSION = 9
 
 export interface GuildSave {
   version: number
@@ -36,6 +36,8 @@ export interface GuildSave {
   potions: { heal: number; fury: number }
   /** v8:已解锁的混合职阶(公会级,训练场一次性解锁) */
   unlockedHybrids: string[]
+  /** v9:副本熟练度(逐段选路迷雾揭示) */
+  dungeonMastery: Record<string, number>
 }
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
@@ -60,6 +62,8 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   6: (d) => ({ ...d, potions: { heal: 3, fury: 3 } }),
   // v7 → v8:混合职阶解锁记录
   7: (d) => ({ ...d, unlockedHybrids: [] }),
+  // v8 → v9:副本熟练度
+  8: (d) => ({ ...d, dungeonMastery: {} }),
 }
 
 /** 纯函数迁移:供 loadGuildSave 与 smoke 直接验证 */
@@ -91,7 +95,8 @@ function validate(d: GuildSave): boolean {
     d.potions !== undefined &&
     typeof d.potions.heal === 'number' &&
     typeof d.potions.fury === 'number' &&
-    Array.isArray(d.unlockedHybrids)
+    Array.isArray(d.unlockedHybrids) &&
+    d.dungeonMastery !== undefined
   )
 }
 
@@ -102,6 +107,7 @@ export function sanitizeMembers(members: Member[]): Member[] {
     const okSpec = out.spec && (isHybrid(out.spec) || !!JOBS[out.job]?.specs[out.spec])
     if (!okSpec) out.spec = undefined
     if (out.race && !RACES[out.race]) out.race = undefined
+    void 0
     // 六维改革:老档缺体/精/运 → 补中性值 3
     out.attrs = {
       str: out.attrs.str ?? 3,

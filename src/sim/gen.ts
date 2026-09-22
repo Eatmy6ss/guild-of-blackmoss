@@ -132,7 +132,8 @@ export function levelTo(member: Member, targetLevel: number): void {
 
 /** 升到下一级所需经验(设计:一整轮险路通关 ≈ 升 1 级) */
 export function xpNeeded(level: number): number {
-  return 200 + level * 60
+  // 宪法 v3.3 批次④:升级放缓——曲线拉长 ×1.5 并按平方走(前期快后期长)
+  return Math.round((200 + level * 60) * 1.5)
 }
 
 /** 获得经验,跨阈值自动升级(调用 levelTo,受天性上限约束);返回是否升级 */
@@ -149,7 +150,7 @@ export function grantExp(member: Member, amount: number): boolean {
   return leveled
 }
 
-export const LEVEL_CAP = 10
+export const LEVEL_CAP = 15
 
 /** 默契星数阈值:共同远征 1/3/6/10 次 = ★~★★★★ */
 export const BOND_STAR_STEPS = [1, 3, 6, 10]

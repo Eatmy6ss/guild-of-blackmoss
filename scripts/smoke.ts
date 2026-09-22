@@ -23,7 +23,7 @@ import { bossIntents } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
-import { createRun, advanceRun, startStep, markPermadeath, settleGrowth } from '../src/sim/run'
+import { createRun, advanceRun, startStep, markPermadeath, settleGrowth, junctionOptions, revealLevel, applyNodeChoice, MASTERY } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE } from '../src/data/jobs'
 import { HYBRIDS } from '../src/data/vocations'
@@ -373,14 +373,14 @@ if (dropTotal < 50 || dropTotal > 90) lootFailures.push(`6a 掉落率偏离 ${dr
 // 6b: 词条 roll 合法性（条数区间 + 数值区间）
 for (let i = 0; i < 60; i++) {
   const item = rollBossDrops([{ baseId: 'wpn-t2-bow', chance: 1 }], i * 31 + 7)[0]
-  if (item.rolls.length < 2 || item.rolls.length > 3) {
+  if (item.rolls.length < 2 || item.rolls.length > 4) {
     lootFailures.push(`6b 词条条数越界 ${item.rolls.length}`)
     break
   }
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
-    // 装备扩容:T2 词条区间 ×1.5(rollAffixes tierScale)
-    const hi = aff.range[1] * 1.5 + 0.01
+    // 装备扩容:T2 词条区间 ×1.5 × 品级紫 ×1.25(rollAffixes tierScale + quality)
+    const hi = aff.range[1] * 1.5 * 1.25 + 0.01
     if (r.value < aff.range[0] - 0.01 || r.value > hi) {
       lootFailures.push(`6b 词条 ${aff.id} 数值越界 ${r.value}(上界 ${hi.toFixed(2)})`)
     }
@@ -636,7 +636,9 @@ const growthFailures: string[] = []
   let bonded = 0
   for (let i = 0; i < 25; i++) {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 200000 + i * 100 + j))
-    const run = createRun(squad, BLACKMOSS, 'shortcut', i * 419 + 3)
+    // 宪法 v3.3 批次④:升级放缓——契约改为"两轮通关升一级"
+    for (let clear = 0; clear < 2; clear++) {
+    const run = createRun(squad, BLACKMOSS, 'shortcut', i * 419 + 3 + clear * 17)
     let g2 = 0
     while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && g2++ < 40) {
       const bt = run.battle!
@@ -676,9 +678,10 @@ const growthFailures: string[] = []
       if (allBonded) bonded++
     }
   }
-  console.log(`⑩ 成长：会玩通关 ${runs}/25，幸存者升级 ${leveled}/${runs || '-'}，两两默契 ${bonded}/${runs || '-'}`)
+    }
+  console.log(`⑩ 成长：会玩通关 ${runs}/50，幸存者升级 ${leveled}/${runs || '-'}，两两默契 ${bonded}/${runs || '-'}`)
   if (runs < 10) growthFailures.push(`⑩ 通关样本不足 ${runs}`)
-  if (leveled < runs * 0.8) growthFailures.push('⑩ 通关未稳定升级——经验曲线失衡')
+  if (leveled < runs * 0.4) growthFailures.push('⑩ 升级节奏失衡——宪法 v3.3 契约:两轮升一级(实测 ' + leveled + '/' + runs + ')')
   if (bonded !== runs) growthFailures.push('⑩ 通关未建立两两默契')
 
   // 10b:默契战斗加成——同一批种子,有默契的队伍伤害更高
@@ -834,10 +837,10 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
-  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [] }
+  const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
   const code = exportSave(saveObj)
   const back = importSave(code)
-  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids)
+  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids) && back.dungeonMastery.blackmoss === 5
   console.log(`⑬ 导出导入:回环 ${roundOk},码长 ${code.length}`)
   if (!roundOk) fail13.push('⑬ 导出导入回环失败')
   if (importSave('垃圾输入!!!') !== null) fail13.push('⑬ 无效码未被拒绝')
@@ -2166,4 +2169,77 @@ const towerFailures: string[] = []
   }
   if (fail33.length > 0) { console.log('✗ 挂机连刷未通过:', fail33); process.exit(1) }
   console.log('✓ 挂机连刷通过:autoMode 跨战斗/跨层延续,自动推进数据链成立')
+}
+
+// ============================================================
+// ㉞ 熟练度迷雾逐段选路(宪法 v3.3 批次⑤)
+// ============================================================
+{
+  const fail34: string[] = []
+  // 34a:routeNodes 数据完整——每图 ≥4 节点,kinds 合法,battle/elite 引用存在的遭遇,boss 不入池
+  {
+    for (const d of DUNGEONS) {
+      if (d.routeNodes.length < 4) fail34.push(`㉞ ${d.id} 节点不足 4:${d.routeNodes.length}`)
+      const encIds = new Set(d.encounters.map((e) => e.id))
+      for (const n of d.routeNodes) {
+        if (!['battle', 'elite', 'event', 'rest'].includes(n.kind)) fail34.push(`㉞ ${d.id}/${n.id} kind 非法`)
+        if ((n.kind === 'battle' || n.kind === 'elite') && (!n.encounterId || !encIds.has(n.encounterId))) {
+          fail34.push(`㉞ ${d.id}/${n.id} 遭遇引用缺失 ${n.encounterId}`)
+        }
+        if (!n.name || !n.desc) fail34.push(`㉞ ${d.id}/${n.id} 缺名/缺描述`)
+      }
+    }
+    console.log(`㉞ 节点图:6 图共 ${DUNGEONS.reduce((s2, d) => s2 + d.routeNodes.length, 0)} 节点,引用完整`)
+  }
+  // 34b:junctionOptions——确定性 + 未踏过 + 数量 2-3
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 985000 + j))
+    seedMemberSeq(squad)
+    const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true)
+    const o1 = junctionOptions(run, 7)
+    const o2 = junctionOptions(run, 7)
+    if (JSON.stringify(o1.map((x) => x.id)) !== JSON.stringify(o2.map((x) => x.id))) fail34.push('㉞ 岔口选项非确定')
+    if (o1.length < 2 || o1.length > 3) fail34.push(`㉞ 岔口选项数异常:${o1.length}`)
+    for (const o of o1) if (run.nodeIds.includes(o.id)) fail34.push('㉞ 选项含已踏过节点')
+    console.log(`㉞ 岔口:${o1.map((x) => x.name).join('/')}(${o1.length} 选,确定性 ✓)`)
+  }
+  // 34c:事件/休整节点消耗战斗位次
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 986000 + j))
+    seedMemberSeq(squad)
+    const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true)
+    const before = run.steps.length
+    const kind = applyNodeChoice(run, 'bm-camp')
+    if (kind !== 'event') fail34.push(`㉝ 事件节点返回错误类型:${kind}`)
+    if (run.steps.length >= before) fail34.push(`㉝ 事件节点未消耗战斗位次:${before}→${run.steps.length}`)
+    if (!run.nodeIds.includes('bm-camp')) fail34.push('㉝ 事件节点未记录踏过')
+    console.log(`㉝ 事件节点:步数 ${before}→${run.steps.length}(事件替代一场战斗)`)
+  }
+  // 34d:精英节点缩放——同种子下精英战敌人血量 ×1.25
+  {
+    const mk = (elite: boolean) => {
+      const squad = JOBS.map((job, j) => generateMember(job, 5, 987000 + j))
+      seedMemberSeq(squad)
+      const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true)
+      if (elite) {
+        applyNodeChoice(run, 'bm-wolves')
+      }
+      startStep(run, 777)
+      return run.battle!.combatants.filter((c) => c.team === 'enemy').reduce((s2, c) => s2 + c.maxHp, 0)
+    }
+    const normal = mk(false)
+    const elite = mk(true)
+    if (elite <= normal) fail34.push(`㉞ 精英缩放未生效:${normal} → ${elite}`)
+    console.log(`㉞ 精英缩放:敌总血 ${normal} → ${elite}`)
+  }
+  // 34e:熟练度揭示阈值
+  {
+    if (revealLevel(0) !== 'hidden' || revealLevel(4) !== 'kind' || revealLevel(8) !== 'full') {
+      fail34.push('㉞ 揭示阈值错误')
+    }
+    if (!(MASTERY.BOSS_DIRECT > MASTERY.FULL)) fail34.push('㉞ 直捣 boss 门槛应高于全揭示')
+    console.log(`㉞ 阈值:hidden<${MASTERY.KIND} ≤ kind<${MASTERY.FULL} ≤ full<${MASTERY.BOSS_DIRECT}≤直捣`)
+  }
+  if (fail34.length > 0) { console.log('✗ 熟练度迷雾未通过:', fail34); process.exit(1) }
+  console.log('✓ 熟练度迷雾通过:节点图/岔口/事件代位/精英缩放/揭示阈值全部成立')
 }

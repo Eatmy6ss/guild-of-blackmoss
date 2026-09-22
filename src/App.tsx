@@ -15,6 +15,7 @@ import {
   useFuryPotion,
   orderRetreat,
   STANCE_NAME,
+  toCombatant,
 } from './sim/combat'
 import {
   createRun,
@@ -36,6 +37,7 @@ import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisi
 import { bossIntents } from './sim/mechanics'
 import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, settleTowerFloor, towerRest, towerNext, towerMarkPermadeath, towerFloorIsBoss, type TowerRun } from './sim/tower'
+import { junctionOptions, revealLevel, applyNodeChoice, MASTERY } from './sim/run'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
@@ -46,6 +48,7 @@ import { chronicleRaw } from './sim/chronicle'
 import { grantExp } from './sim/gen'
 import { JOBS, specOf } from './data/jobs'
 import { HYBRIDS, isHybrid } from './data/vocations'
+import { REGIONS, dungeonLock, nextRegionLocked } from './data/regions'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
 // 花名册 = 全体成员（含亡者记录）；远征队 = 花名册前三名幸存者。
@@ -131,6 +134,8 @@ export default function App() {
   const [potions, setPotions] = useState(() => saved?.potions ?? { ...ECONOMY.startingPotions })
   // 已解锁混合职阶(宪法 v3,训练场一次性解锁)
   const [unlockedHybrids, setUnlockedHybrids] = useState<string[]>(() => saved?.unlockedHybrids ?? [])
+  // 副本熟练度(宪法 v3.3 修正案):迷雾揭示进度
+  const [dungeonMastery, setDungeonMastery] = useState<Record<string, number>>(() => saved?.dungeonMastery ?? {})
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
 
   // 读档登记已用名字：新招募不与存档英雄/英灵重名
@@ -260,8 +265,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, run, towerRun])
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -400,6 +405,11 @@ export default function App() {
     if (endPhase === 'defeat') sfxDefeat()
     if (dead.length > 0) setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
     setRecruitCooldown((c) => Math.max(0, c - 1))
+    // 副本熟练度(宪法 v3.3 修正案):胜 +1,boss +2
+    if (b.status === 'guild-win') {
+      const gain = enc?.kind === 'boss' ? 2 : 1
+      setDungeonMastery((mm) => ({ ...mm, [r.dungeon.id]: (mm[r.dungeon.id] ?? 0) + gain }))
+    }
     // 挂机连刷(试玩反馈):rest 自动下一场;victory 自动重刷同一副本;团灭/保护撤退停止
     if (endPhase !== 'battle' && r.autoMode) {
       if (endPhase === 'rest') {
@@ -488,10 +498,45 @@ export default function App() {
   }
   startExpeditionRef.current = startExpedition
 
-  const continueDeep = () => {
+  const continueDeep = (nodeId?: string) => {
     const r = runRef.current
     if (!r || r.phase !== 'rest') return
-    applyRestMorale(r.members.filter((m) => m.alive))
+    const m = dungeonMastery[r.dungeon.id] ?? 0
+    // 挂机选路:高熟练按知识(健康选精英/残血选事件),低熟练盲选
+    if (!nodeId && r.autoMode && r.stepIdx + 1 < r.steps.length - 1) {
+      const opts = junctionOptions(r, ++seedRef.current)
+      const alive = r.members.filter((x) => x.alive)
+      const avgHp = alive.length ? alive.reduce((sum, x) => sum + x.hp / toCombatant(x).maxHp, 0) / alive.length : 1
+      const byKind = (k: string) => opts.find((o) => o.kind === k && !r.nodeIds.includes(o.id))
+      if (revealLevel(m) !== 'hidden') {
+        if (avgHp < 0.5 && byKind('event')) nodeId = byKind('event')!.id
+        else if (avgHp > 0.7 && byKind('elite')) nodeId = byKind('elite')!.id
+      } else {
+        nodeId = opts[Math.floor(Math.random() * opts.length)]?.id
+      }
+    }
+    if (nodeId) {
+      const node = r.dungeon.routeNodes.find((n) => n.id === nodeId)
+      if (node && !r.nodeIds.includes(node.id)) {
+        const kind = applyNodeChoice(r, node.id)
+        if (kind === 'event') {
+          const ev = rollGuildEvent(Math.random)
+          if (ev) { setPendingEvent(ev); setEventResult(null) }
+          setRun({ ...r })
+          return
+        }
+        if (kind === 'rest') {
+          for (const mem of r.members) {
+            if (!mem.alive) continue
+            const max = maxHpOf(mem)
+            mem.hp = Math.min(max, mem.hp + Math.round(max * 0.3))
+          }
+          setRun({ ...r })
+          return
+        }
+      }
+    }
+    applyRestMorale(r.members.filter((x) => x.alive))
     const enc = r.dungeon.encounters.find((e) => e.id === r.steps[r.stepIdx])
     const manualBonus = enc?.bossId && manual.includes(enc.bossId) ? MANUAL_BONUS : 0
     startStep(r, ++seedRef.current * SEED_BASE, manualBonus)
@@ -543,6 +588,7 @@ export default function App() {
     setRecruitCooldown(0)
     setPotions({ ...ECONOMY.startingPotions })
     setUnlockedHybrids([])
+    setDungeonMastery({})
     setMembers(newRoster())
   }
 
@@ -1025,7 +1071,7 @@ export default function App() {
                     <p className="event-text">{pendingEvent.text}</p>
                     <div className="event-choices">
                       {pendingEvent.choices.map((c, i) => (
-                        <button key={i} disabled={!!run} onClick={() => resolveEvent(i)}>
+                        <button key={i} disabled={!!run && run.phase === 'battle'} onClick={() => resolveEvent(i)}>
                           {c.text}
                         </button>
                       ))}
@@ -1389,16 +1435,34 @@ export default function App() {
                 <b style={{ color: '#d48f8f' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
               </p>
               <div className="dungeon-picker">
-                {DUNGEONS.map((d) => (
-                  <button
-                    key={d.id}
-                    className={d.id === dungeonId ? 'active' : ''}
-                    disabled={!!run}
-                    onClick={() => setDungeonId(d.id)}
-                  >
-                    🗺 {d.name}{d.size > 3 ? `（${d.size} 人团本）` : ''}
-                  </button>
-                ))}
+                {REGIONS.map((rg) => {
+                  const regionDungeons = DUNGEONS.filter((d) => [...rg.main, ...rg.side, rg.finale].includes(d.id))
+                  const ordered = [...rg.main, ...rg.side, rg.finale].map((id) => regionDungeons.find((d) => d.id === id)!).filter(Boolean)
+                  return (
+                    <div key={rg.id} className="region-block">
+                      <p className="region-name">🗺 {rg.name}</p>
+                      <div className="region-dungeons">
+                        {ordered.map((d) => {
+                          const lock = dungeonLock(d.id, manual)
+                          return (
+                            <button
+                              key={d.id}
+                              className={d.id === dungeonId ? 'active' : ''}
+                              disabled={!!run || !!lock}
+                              title={lock ?? undefined}
+                              onClick={() => setDungeonId(d.id)}
+                            >
+                              🗺 {d.name}{d.size > 3 ? `（${d.size} 人团本）` : ''}{lock ? ' 🔒' : ''}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+                {nextRegionLocked(manual) && (
+                  <p className="hint">🔒 下一版图:{nextRegionLocked(manual)}</p>
+                )}
               </div>
               {activeDungeon.branches.map((br) => (
                 <button
@@ -1723,8 +1787,52 @@ export default function App() {
                   ))}
                 </div>
               )}
+              {(() => {
+                const dId = run.dungeon.id
+                const m = dungeonMastery[dId] ?? 0
+                const lvl = revealLevel(m)
+                const isBossNext = run.stepIdx + 1 >= run.steps.length - 1
+                const opts = junctionOptions(run, seedRef.current)
+                const bossDirect = m >= MASTERY.BOSS_DIRECT && !isBossNext
+                const kindLabel: Record<string, string> = { battle: '⚔ 战斗', elite: '☠ 精英·掉落翻倍', event: '❓ 事件', rest: '⛺ 休整·额外回复' }
+                return (
+                  <>
+                    <div className="route-choice">
+                      <p className="hint">
+                        熟练度 {m} —— {lvl === 'hidden' ? '前路未知,只闻其名。' : lvl === 'kind' ? '你已记得这些路的类别。' : '这张图你闭着眼都能走。'}
+                        {bossDirect ? ' 你已熟到可以直接挑战深处!' : ''}
+                      </p>
+                      {isBossNext ? (
+                        <p className="hint">深处的气息近了——前方就是<b style={{ color: '#d48f8f' }}>{encName(run, run.steps[run.stepIdx + 1])}</b>。</p>
+                      ) : (
+                        <div className="route-choices">
+                          {opts.map((n) => (
+                            <button key={n.id} disabled={!!run && run.phase === 'battle'} onClick={() => continueDeep(n.id)}>
+                              {n.name}
+                              <small>{lvl === 'hidden' ? '❓ 未知' : kindLabel[n.kind] ?? n.kind}{lvl === 'full' ? ` —— ${n.desc}` : ''}</small>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {bossDirect && (
+                        <button onClick={() => {
+                          const r2 = runRef.current
+                          if (!r2) return
+                          const bossEnc = r2.steps[r2.steps.length - 1]
+                          r2.steps = [r2.steps[0], bossEnc]
+                          r2.stepIdx = 0
+                          r2.nodeIds.push('boss-direct')
+                          setRun({ ...r2 })
+                          logChronicle(chronicleRaw(day, '熟练的队伍跳过了外围,直取' + r2.dungeon.name + '深处。'))
+                          continueDeepRef.current?.()
+                        }}>⚡ 直捣 boss(熟练度 {m} ≥ {MASTERY.BOSS_DIRECT})</button>
+                      )}
+                    </div>
+                  </>
+                )
+              })()}
               <div className="end-actions">
-                <button onClick={continueDeep}>⬇ 继续深入</button>
+                <button onClick={() => continueDeep()}>⬇ 继续深入</button>
                 <button onClick={retreat}>🏳 撤退回城</button>
               </div>
             </>

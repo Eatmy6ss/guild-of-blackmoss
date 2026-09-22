@@ -1,4 +1,4 @@
-import type { ItemBaseDef, ItemInstance, Slot, StatKey } from './types'
+import type { ItemBaseDef, ItemInstance, ItemQuality, Slot, StatKey } from './types'
 import { ITEM_BASES } from '../data/items'
 import { AFFIXES } from '../data/affixes'
 
@@ -18,8 +18,9 @@ function rollAffixes(rng: () => number, base: ItemBaseDef): ItemInstance['rolls'
   const pool = Object.values(AFFIXES)
   const used = new Set<string>()
   const rolls: ItemInstance['rolls'] = []
-  // 装备扩容:T2 词条区间 ×1.5(上限拉高一档,T2 更有感)
-  const tierScale = base.tier >= 2 ? 1.5 : 1
+  // 装备纪元(宪法 v3.3):词条区间按 tier 表递增——版图一 T1-T2,版图二 T3-T4
+  const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
+  const tierScale = TIER_SCALE[base.tier] ?? 1
   for (let i = 0; i < count; i++) {
     const candidates = pool.filter((a) => !used.has(a.id))
     if (candidates.length === 0) break
@@ -35,9 +36,31 @@ function rollAffixes(rng: () => number, base: ItemBaseDef): ItemInstance['rolls'
   return rolls
 }
 
-export function rollDrop(baseId: string, rng: () => number): ItemInstance {
+/** 品级(宪法 v3.3 装备三轴):白/绿/紫——紫史诗:词条更多、数值更高 */
+export const QUALITY_BIAS_BASE = 0.12
+function rollQuality(rng: () => number, bias = 0): ItemQuality {
+  const purple = 0.12 + bias
+  const green = 0.38 + bias * 0.5
+  const r = rng()
+  if (r < purple) return 'purple'
+  if (r < purple + green) return 'green'
+  return 'white'
+}
+
+export function rollDrop(baseId: string, rng: () => number, opts?: { qualityBias?: number }): ItemInstance {
   const base = ITEM_BASES[baseId]
-  return { id: `i${++itemSeq}`, baseId, rolls: rollAffixes(rng, base) }
+  const quality = rollQuality(rng, opts?.qualityBias ?? 0)
+  const rolls = rollAffixes(rng, base)
+  const qAdj = quality === 'purple' ? { mult: 1.25, add: 1 } : quality === 'green' ? { mult: 1.08, add: 0 } : { mult: 0.9, add: -0 }
+  const adjusted = rolls.map((r) => ({ ...r, value: round2(r.value * qAdj.mult) }))
+  if (qAdj.add > 0 && base.affixCount[1] > adjusted.length && rng() < 0.6) {
+    const pool = Object.values(AFFIXES).filter((x) => !adjusted.some((r) => r.affixId === x.id))
+    if (pool.length > 0) {
+      const aff = pool[Math.floor(rng() * pool.length)]
+      adjusted.push({ affixId: aff.id, value: round2(aff.range[0] * (base.tier >= 2 ? 1.5 : 1)) })
+    }
+  }
+  return { id: `i${++itemSeq}`, baseId, quality, rolls: adjusted }
 }
 
 /** boss 固定掉落表结算：每条按 chance 独立 roll；pity=true 时空手则保底一件（D14 首杀保底） */
@@ -98,7 +121,8 @@ export function equipmentStats(equipment: Partial<Record<Slot, ItemInstance>>): 
 
 export function describeItem(item: ItemInstance): string {
   const base = ITEM_BASES[item.baseId]
-  const parts = [`${STAT_NAME[base.stat]}+${fmt(base.stat, base.value)}`]
+  const qName = item.quality === 'purple' ? '【史诗】' : item.quality === 'green' ? '【精良】' : ''
+  const parts = [qName + `${STAT_NAME[base.stat]}+${fmt(base.stat, base.value)}`]
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
     parts.push(`${aff.name}+${fmt(aff.stat, r.value)}`)

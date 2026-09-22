@@ -61,8 +61,11 @@ function pickCandidate(rng: Rng, members: Member[], level: number, forcedJob?: J
 
 /** 装备变卖价:tier 基础 + 词条加值(T2 > T1,词条越多越值钱) */
 export function sellValue(item: ItemInstance, mult = 1): number {
-  const tier = item.baseId.includes('-t2-') ? 2 : 1
-  return Math.round((ECONOMY.sell.perTier * tier + item.rolls.length * ECONOMY.sell.perRoll) * mult)
+  const qMult = item.quality === 'purple' ? 1.4 : item.quality === 'green' ? 1.15 : 1
+  void qMult
+  const tier = item.baseId.includes('-t3-') || item.baseId.includes('-line-') ? 3 : item.baseId.includes('-t2-') ? 2 : 1
+  const base = ECONOMY.sell.perTier * tier + item.rolls.length * ECONOMY.sell.perRoll
+  return Math.round(base * qMult * mult)
 }
 
 /** 招募冷却:招募一位后需完成的远征次数。人手不足(<3,凑不齐远征队)时为 0——

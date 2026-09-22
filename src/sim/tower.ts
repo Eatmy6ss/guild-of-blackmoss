@@ -88,6 +88,7 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
     name: `黑苔高塔·第 ${floor} 层`,
     size: 3,
     branches: [],
+    routeNodes: [],
     enemyGroups: { tower: pool },
     bosses: isBoss ? { boss: BOSS_ROTATION[(Math.floor(floor / TOWER.bossEvery) - 1) % BOSS_ROTATION.length](floor) } : {},
     encounters: [

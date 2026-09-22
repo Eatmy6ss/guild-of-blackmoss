@@ -142,9 +142,13 @@ export interface ItemBaseDef {
 }
 
 /** 一次具体的掉落实例：baseId 固定来源，词条掉落时 roll（Q22） */
+export type ItemQuality = 'white' | 'green' | 'purple'
+
 export interface ItemInstance {
   id: string
   baseId: string
+  /** 品级(宪法 v3.3 装备三轴):白/绿/紫——绿精良,紫史诗 */
+  quality?: ItemQuality
   rolls: { affixId: string; value: number }[]
 }
 
@@ -303,6 +307,18 @@ export interface BossDef extends EnemyDef {
   dropTable: { baseId: string; chance: number }[]
 }
 
+/** 路线节点(宪法 v3.3 修正案·熟练度迷雾):副本内部图固定,身份随熟练度揭示 */
+export interface RouteNodeDef {
+  id: string
+  /** 风味名(下水道/甬道/天花板)——未探索时只显示这个 */
+  name: string
+  kind: 'battle' | 'elite' | 'event' | 'rest'
+  /** battle/elite 节点对应的遭遇 id */
+  encounterId?: string
+  /** 高熟练全揭示文本 */
+  desc: string
+}
+
 export interface BranchDef {
   id: string
   name: string
@@ -328,6 +344,8 @@ export interface DungeonDef {
   enemyGroups: Record<string, EnemyDef[]>
   bosses: Record<string, BossDef>
   encounters: EncounterDef[]
+  /** 副本内部路线节点图(逐段选路;boss 节点由 encounters 的 boss 承担,不入此表) */
+  routeNodes: RouteNodeDef[]
 }
 
 // ===== 战斗状态 =====

@@ -1,4 +1,4 @@
-import type { BattleState, DeadHero, DungeonDef, Member } from './types'
+import type { BattleState, DeadHero, DungeonDef, Member, RouteNodeDef } from './types'
 import { createBattle, POTION_STOCK, toCombatant } from './combat'
 import { grantExp } from './gen'
 
@@ -28,6 +28,8 @@ export interface DungeonRun {
   potions: { heal: number; fury: number }
   /** 挂机连刷(试玩反馈):跨战斗延续,rest 自动下一场,victory 自动重进同一副本 */
   autoMode?: boolean
+  nodeIds: string[]
+  eliteNow?: boolean
 }
 
 /** 岔路映射：险路打满全部遭遇（更多战斗=更多收获机会）；稳路跳过最后一段杂兵 */
@@ -62,6 +64,7 @@ export function createRun(
     protectOn,
     potions,
     autoMode,
+    nodeIds: [],
   }
   startStep(run, seed)
   return run
@@ -77,7 +80,9 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     manualBonus,
     run.protectOn,
     run.potions,
+    run.eliteNow ? 1.25 : 1,
   )
+  run.eliteNow = false
   run.battle.commands.autoMode = !!run.autoMode
   run.phase = 'battle'
 }
@@ -148,7 +153,8 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
   if (!b) return
   if (b.status === 'guild-win') {
     const enc = run.dungeon.encounters.find((e) => e.id === run.steps[run.stepIdx])
-    const exp = enc?.kind === 'boss' ? 170 : 65
+    // 宪法 v3.3 批次④:经验获取收紧
+    const exp = enc?.kind === 'boss' ? 120 : 45
     for (const c of b.combatants) {
       if (c.team !== 'guild' || !c.alive || !c.memberId) continue
       const m = run.members.find((x) => x.id === c.memberId)
@@ -181,4 +187,52 @@ export function resetAfterRun(members: Member[]): void {
   for (const m of members) {
     if (m.alive) m.hp = toCombatant(m).maxHp
   }
+}
+
+
+// ===== 逐段选路(宪法 v3.3 修正案·熟练度迷雾)=====
+
+/** 熟练度阈值:类型揭示/全揭示/直捣 boss */
+export const MASTERY = { KIND: 4, FULL: 8, BOSS_DIRECT: 12 } as const
+
+export type RevealLevel = 'hidden' | 'kind' | 'full'
+
+export function revealLevel(mastery: number): RevealLevel {
+  if (mastery >= MASTERY.FULL) return 'full'
+  if (mastery >= MASTERY.KIND) return 'kind'
+  return 'hidden'
+}
+
+/** 岔口选项:未踏过的节点抽 2-3 个(确定性);踏满 3 个节点后只剩 boss */
+export function junctionOptions(run: DungeonRun, seed: number, count = 3): RouteNodeDef[] {
+  const unvisited = run.dungeon.routeNodes.filter((n) => !run.nodeIds.includes(n.id))
+  if (unvisited.length <= count) return [...unvisited]
+  const picked: RouteNodeDef[] = []
+  const pool = [...unvisited]
+  let x = seed * 2654435761 + run.nodeIds.length * 97
+  while (picked.length < count && pool.length > 0) {
+    x = (x * 1103515245 + 12345) | 0
+    const idx = Math.abs(x) % pool.length
+    picked.push(pool.splice(idx, 1)[0])
+  }
+  return picked
+}
+
+/** 应用节点选择:返回节点类型;battle/elite 改写下一场遭遇;event/rest 不发生战斗 */
+export function applyNodeChoice(run: DungeonRun, nodeId: string): 'battle' | 'elite' | 'event' | 'rest' | null {
+  const node = run.dungeon.routeNodes.find((n) => n.id === nodeId)
+  if (!node || run.nodeIds.includes(node.id)) return null
+  run.nodeIds.push(node.id)
+  if (node.kind === 'battle' || node.kind === 'elite') {
+    if (node.encounterId && run.steps[run.stepIdx + 1] !== undefined) {
+      run.steps[run.stepIdx + 1] = node.encounterId
+    }
+    run.eliteNow = node.kind === 'elite'
+    return node.kind
+  }
+  // 事件/休整节点:消耗一场战斗的位次(少打一场,以事件/休整代之)
+  if (run.steps.length > 1 && run.stepIdx + 1 < run.steps.length - 1) {
+    run.steps.splice(run.stepIdx + 1, 1)
+  }
+  return node.kind
 }

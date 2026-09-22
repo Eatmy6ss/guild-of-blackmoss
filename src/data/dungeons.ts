@@ -128,6 +128,13 @@ export const BLACKMOSS: DungeonDef = {
       ],
     },
   },
+  routeNodes: [
+    { id: 'bm-frogs', name: '蛙人哨兵', kind: 'battle', encounterId: 'enc-frogs', desc: '蛙人拦路的哨戒线' },
+    { id: 'bm-wolves', name: '狼群猎场', kind: 'elite', encounterId: 'enc-wolves', desc: '腐化狼群,凶险但掉落翻倍' },
+    { id: 'bm-leeches', name: '水蛭洼地', kind: 'battle', encounterId: 'enc-leeches', desc: '水蛭成片,磨人的泥沼' },
+    { id: 'bm-camp', name: '药贩营地', kind: 'event', desc: '一个行脚药贩在营地等候' },
+    { id: 'bm-hut', name: '隐士棚屋', kind: 'rest', desc: '隐士允许你们歇歇脚' },
+  ],
   encounters: [
     { id: 'enc-frogs', name: '蛙人哨兵', kind: 'wave', enemyGroupIds: ['frogs'] },
     { id: 'enc-wolves', name: '腐化狼群', kind: 'wave', enemyGroupIds: ['wolves'] },
@@ -225,6 +232,13 @@ export const RUSTMINE: DungeonDef = {
       ],
     },
   },
+  routeNodes: [
+    { id: 'rm-miners', name: '主矿脉', kind: 'battle', encounterId: 'enc-miners', desc: '尸化矿工仍在凿壁' },
+    { id: 'rm-bats', name: '穴蝠巢', kind: 'elite', encounterId: 'enc-bats', desc: '锈穴蝠成群,掉落翻倍' },
+    { id: 'rm-spiders', name: '蛛网巷道', kind: 'battle', encounterId: 'enc-spiders', desc: '岩蛛与毒蛛后的领地' },
+    { id: 'rm-shed', name: '废弃工棚', kind: 'event', desc: '矿工们留下过东西' },
+    { id: 'rm-cart', name: '矿车休息站', kind: 'rest', desc: '还能推动的矿车,正好歇脚' },
+  ],
   encounters: [
     { id: 'enc-miners', name: '尸化矿工队', kind: 'wave', enemyGroupIds: ['miners'] },
     { id: 'enc-bats', name: '锈穴蝠群', kind: 'wave', enemyGroupIds: ['bats'] },
@@ -321,6 +335,13 @@ export const ASHFIELD: DungeonDef = {
       ],
     },
   },
+  routeNodes: [
+    { id: 'af-skeletons', name: '白骨大道', kind: 'battle', encounterId: 'enc-skeletons', desc: '骸骨仍在列队行军' },
+    { id: 'af-wraiths', name: '怨灵游荡', kind: 'elite', encounterId: 'enc-wraiths', desc: '游荡的怨灵,掉落翻倍' },
+    { id: 'af-knights', name: '墓骑巡境', kind: 'battle', encounterId: 'enc-knights', desc: '墓骑的巡逻路线' },
+    { id: 'af-stone', name: '阵亡者纪念碑', kind: 'event', desc: '无名碑上刻满了名字' },
+    { id: 'af-camp', name: '旧军营垒', kind: 'rest', desc: '半塌的营垒,还能挡风' },
+  ],
   encounters: [
     { id: 'enc-skeletons', name: '骸骨列队', kind: 'wave', enemyGroupIds: ['skeletons'] },
     { id: 'enc-wraiths', name: '怨灵游荡', kind: 'wave', enemyGroupIds: ['wraiths'] },
@@ -412,6 +433,13 @@ export const FROSTGRAVE: DungeonDef = {
       ],
     },
   },
+  routeNodes: [
+    { id: 'fg-wights', name: '墓卫列队', kind: 'battle', encounterId: 'enc-wights', desc: '冻僵的墓卫仍在站岗' },
+    { id: 'fg-wolves', name: '霜狼猎场', kind: 'elite', encounterId: 'enc-frostwolves', desc: '霜狼成群,掉落翻倍' },
+    { id: 'fg-gravers', name: '掘墓工棚', kind: 'battle', encounterId: 'enc-gravekeepers', desc: '掘墓人昼夜不休' },
+    { id: 'fg-altar', name: '冰封祭坛', kind: 'event', desc: '祭坛上结着不化的冰' },
+    { id: 'fg-tent', name: '猎户帐篷', kind: 'rest', desc: '猎户留下的帐篷,火塘还温着' },
+  ],
   encounters: [
     { id: 'enc-wights', name: '墓卫列队', kind: 'wave', enemyGroupIds: ['wights'] },
     { id: 'enc-frostwolves', name: '霜狼游猎', kind: 'wave', enemyGroupIds: ['frostwolves'] },
@@ -510,6 +538,13 @@ export const ABYSSALTAR: DungeonDef = {
       ],
     },
   },
+  routeNodes: [
+    { id: 'ab-cultists', name: '教徒环阵', kind: 'battle', encounterId: 'enc-cultists', desc: '血祭教徒的祷告环' },
+    { id: 'ab-ghouls', name: '饿殍坑', kind: 'elite', encounterId: 'enc-ghouls', desc: '食尸鬼争食,掉落翻倍' },
+    { id: 'ab-eyes', name: '观渊回廊', kind: 'battle', encounterId: 'enc-eyes', desc: '无数眼睛在黑暗里眨动' },
+    { id: 'ab-fire', name: '献祭残火', kind: 'event', desc: '残火里浮着未烧尽的契约' },
+    { id: 'ab-stone', name: '暗河石台', kind: 'rest', desc: '暗河边干燥的石台' },
+  ],
   encounters: [
     { id: 'enc-cultists', name: '血祭教徒环', kind: 'wave', enemyGroupIds: ['cultists'] },
     { id: 'enc-ghouls', name: '饿殍争食', kind: 'wave', enemyGroupIds: ['ghouls'] },
@@ -647,6 +682,12 @@ export const THORNHOLD: DungeonDef = {
       ],
     },
   },
+  routeNodes: [
+    { id: 'th-swords', name: '正门刀盾阵', kind: 'battle', encounterId: 'enc-swords', desc: '刀盾与弩手的正面阵' },
+    { id: 'th-heavies', name: '重斧亲卫', kind: 'elite', encounterId: 'enc-heavies', desc: '重斧手成队,掉落翻倍' },
+    { id: 'th-honor', name: '旗卫营房', kind: 'event', desc: '亲卫们的营房灯火未熄' },
+    { id: 'th-yard', name: '校场', kind: 'rest', desc: '空置的校场,正好整队' },
+  ],
   encounters: [
     { id: 'enc-swords', name: '正门刀盾阵', kind: 'wave', enemyGroupIds: ['swords'] },
     { id: 'enc-heavies', name: '重斧亲卫', kind: 'wave', enemyGroupIds: ['heavies'] },

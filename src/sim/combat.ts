@@ -201,13 +201,20 @@ export function createBattle(
   manualBonus = 0,
   protectOn = true,
   potions?: { heal: number; fury: number },
+  enemyScale = 1,
 ): BattleState {
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
   const combatants: Combatant[] = members.map(toCombatant)
   for (const gid of enc.enemyGroupIds) {
     for (const e of dungeon.enemyGroups[gid] ?? []) {
-      combatants.push(enemyToCombatant(e))
+      const raw = enemyToCombatant(e)
+      if (enemyScale !== 1) {
+        raw.maxHp = Math.round(raw.maxHp * enemyScale)
+        raw.hp = raw.maxHp
+        raw.attack = Math.round(raw.attack * enemyScale)
+      }
+      combatants.push(raw)
     }
   }
   if (enc.bossId) {
