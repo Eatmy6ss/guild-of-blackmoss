@@ -371,6 +371,10 @@ export function applyHit(
   if (attacker.team === 'guild') {
     target.threat[attacker.id] = (target.threat[attacker.id] ?? 0) + amount
   }
+  // 我方引导咏唱:被打的伤害累积,超过阈值即打断
+  if (target.channelUntilTick && state.tick < target.channelUntilTick) {
+    target.channelTaken = (target.channelTaken ?? 0) + amount
+  }
   // 对咏唱中的 boss 造成伤害计入打断阈值(所有可打断咏唱线:cast-buff/cast-heal)
   if (target.bossMechanics && target.mech) {
     for (const kind of ['cast-buff', 'cast-heal'] as const) {
@@ -452,8 +456,8 @@ function actWith(c: Combatant, state: BattleState): void {
   if (foes.length === 0) return
   const pool = allowedPool(c, foes)
 
-  // AI 多技能择优:逐个尝试就绪技能,条件不满足(无人可疗/满血/宠物在场)则回落下一个
-  for (const ready of c.skills) {
+  // AI 多技能择优:逆序逐个尝试(情境技/精进技优先,基础输出压轴),条件不满足则回落
+  for (const ready of [...c.skills].reverse()) {
     if (ready.cooldownLeft > 0) continue
     if (useSkill(c, ready.def, allies, pool, state)) {
       ready.cooldownLeft = ready.def.cooldownTicks
@@ -609,6 +613,58 @@ function useSkill(
       pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，${pet.name} 出现在战场上！`)
       return true
     }
+    case 'armor-break': {
+      // 护甲击碎:永久削减目标防御——磨高防盾卫/重甲 boss 的先手
+      const target = pool.reduce((a, b) => (a.maxHp >= b.maxHp ? a : b))
+      dealDamage(state, c, target, 0.8, `释放【${skill.name}】`)
+      target.defense = Math.max(0, target.defense - 4)
+      state.events.push({ tick: state.tick, type: 'armorbreak', targetId: target.id })
+      pushLog(state, 'guild', `【${skill.name}】奏效——${target.name} 的护甲被击碎,防御永久下降!`)
+      return true
+    }
+    case 'combo-strike': {
+      // 连击资源:2 层连击时爆发(高倍率并清空),否则积攒——节奏型输出的资源循环
+      c.combo = c.combo ?? 0
+      const target = pool.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
+      if (c.combo >= 2) {
+        c.combo = 0
+        dealDamage(state, c, target, 2.2, `【${skill.name}】连击爆发`)
+      } else {
+        c.combo += 1
+        dealDamage(state, c, target, 1.0, `释放【${skill.name}】`)
+      }
+      return true
+    }
+    case 'reposition': {
+      // 位移:优先救回被拉拽的队友(解除拉拽归位),否则把最伤的前排换到后排
+      const pulledAlly = allies.find((a) => a.pulledUntilTick && state.tick < a.pulledUntilTick)
+      if (pulledAlly) {
+        if (pulledAlly.originalPosition) pulledAlly.position = pulledAlly.originalPosition
+        pulledAlly.pulledUntilTick = undefined
+        state.events.push({ tick: state.tick, type: 'reposition', targetId: pulledAlly.id })
+        pushLog(state, 'guild', `${c.name} 掩护 ${pulledAlly.name} 脱离拉拽,回到了自己的位置!`)
+        return true
+      }
+      const front = allies.filter((a) => a.position === 'front' && a.id !== c.id)
+      if (front.length === 0) return false
+      const hurt = front.reduce((a, b2) => (a.hp / a.maxHp <= b2.hp / b2.maxHp ? a : b2))
+      hurt.position = 'back'
+      state.events.push({ tick: state.tick, type: 'reposition', targetId: hurt.id })
+      pushLog(state, 'guild', `${c.name} 掩护 ${hurt.name} 撤到了后排!`)
+      return true
+    }
+    case 'channel-heal': {
+      // 我方引导咏唱:引导 4s 后全队大治疗;期间自身受伤 ≥ 阈值则被打断——守住治疗者!
+      if (allies.every((a) => a.hp / a.maxHp > 0.8)) return false
+      if (c.channelUntilTick && state.tick < c.channelUntilTick) return false
+      c.channelUntilTick = state.tick + 40
+      c.channelTaken = 0
+      c.channelBreak = Math.round(c.attack * 3)
+      c.channelAmount = Math.round(c.attack * 8)
+      state.events.push({ tick: state.tick, type: 'casting', targetId: c.id, amount: 40 })
+      pushLog(state, 'guild', `${c.name} 开始引导【${skill.name}】——守住她!`)
+      return true
+    }
     case 'enchant-self': {
       // 附魔:自我攻击加成
       c.buffAttack = Math.round(c.attack * 0.3)
@@ -679,6 +735,28 @@ export function stepBattle(state: BattleState): void {
 
   // boss 机制引擎（蓄力/咏唱/召唤/束缚/狂暴）
   processBossMechanics(state)
+
+  // 我方引导咏唱结算:完成 = 全队大治疗;被打断 = 前功尽弃
+  for (const c of state.combatants) {
+    if (!c.alive || !c.channelUntilTick || c.team !== 'guild') continue
+    if (state.tick < c.channelUntilTick) {
+      if ((c.channelTaken ?? 0) >= (c.channelBreak ?? 0)) {
+        c.channelUntilTick = undefined
+        state.events.push({ tick: state.tick, type: 'interrupted', targetId: c.id })
+        pushLog(state, 'enemy', `${c.name} 的引导被打断了——治疗化作泡影!`)
+      }
+      continue
+    }
+    const amount = c.channelAmount ?? 0
+    for (const a of state.combatants.filter((x) => x.alive && x.team === 'guild')) {
+      const healed = Math.min(a.maxHp - a.hp, amount)
+      if (healed <= 0) continue
+      a.hp += healed
+      state.events.push({ tick: state.tick, type: 'heal', attackerId: c.id, targetId: a.id, amount: healed })
+    }
+    pushLog(state, 'guild', `${c.name} 的引导完成——圣光洒满全场!`)
+    c.channelUntilTick = undefined
+  }
 
   // 地面效果区结算:zoned 成员每 10 tick 受持续伤害;拉拽到期还原站位
   for (const c of state.combatants) {

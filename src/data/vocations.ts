@@ -140,7 +140,7 @@ export const HYBRIDS: Record<string, HybridDef> = {
     base: { maxHp: 145, attack: 8, defense: 7, speed: 7, critChance: 0.05 },
     skills: [
       { id: 'cr-heal', name: '战地急救', effect: 'heal-lowest', target: 'ally', cooldownTicks: 22 },
-      { id: 'cr-smite', name: '惩戒之锤', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 75 },
+      { id: 'cr-channel', name: '战地祷告', effect: 'channel-heal', target: 'ally', cooldownTicks: 175 },
     ],
   }),
 
@@ -183,6 +183,7 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 150, attack: 9, defense: 5, speed: 9, critChance: 0.09 },
     skills: [
+      { id: 'sk-reposition', name: '游刃换位', effect: 'reposition', target: 'ally', cooldownTicks: 90 },
       { id: 'sk-whirl', name: '回旋刃', effect: 'multishot', target: 'enemy', cooldownTicks: 80 },
     ],
   }),
@@ -197,7 +198,7 @@ export const HYBRIDS: Record<string, HybridDef> = {
     base: { maxHp: 148, attack: 9.5, defense: 5, speed: 7, critChance: 0.07 },
     skills: [
       { id: 'bm-enchant', name: '武器附魔', effect: 'enchant-self', target: 'ally', cooldownTicks: 150 },
-      { id: 'bm-cleave', name: '法术斩', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
+      { id: 'bm-combo', name: '符文连斩', effect: 'combo-strike', target: 'enemy', cooldownTicks: 65 },
     ],
   }),
   'hy-bloodreaver': h({
@@ -210,7 +211,7 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 158, attack: 10, defense: 4, speed: 8, critChance: 0.08 },
     skills: [
-      { id: 'br-whirl', name: '血宴旋斩', effect: 'multishot', target: 'enemy', cooldownTicks: 75 },
+      { id: 'br-combo', name: '血宴连击', effect: 'combo-strike', target: 'enemy', cooldownTicks: 70 },
     ],
   }),
   'hy-spellfire': h({

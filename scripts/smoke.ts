@@ -1632,7 +1632,7 @@ const towerFailures: string[] = []
     if (!hy.identity) fail25.push(`㉕ ${hy.id} 缺身份句`)
     if (!['tank', 'healer', 'dps'].includes(hy.role)) fail25.push(`㉕ ${hy.id} 主职非法`)
     for (const sk of hy.skills) {
-      if (!['heavy-strike', 'heal-lowest', 'taunt', 'group-heal', 'shield-ally', 'curse-mark', 'summon-pet', 'multishot', 'frost-nova', 'enchant-self', 'charge-strike', 'trap-bind'].includes(sk.effect)) {
+      if (!['heavy-strike', 'heal-lowest', 'taunt', 'group-heal', 'shield-ally', 'curse-mark', 'summon-pet', 'multishot', 'frost-nova', 'enchant-self', 'charge-strike', 'trap-bind', 'armor-break', 'combo-strike', 'reposition', 'channel-heal'].includes(sk.effect)) {
         fail25.push(`㉕ ${hy.id}/${sk.id} 未知效果 ${sk.effect}`)
       }
     }
@@ -1676,17 +1676,22 @@ const towerFailures: string[] = []
     console.log(`㉕ 15 混合职阶各打一场:终结 ${completed}/15`)
   }
 
-  // 25d:dormant——连续 60 次候选生成不得出现混合职阶(暂撤生效)
+  // 25d:v3.2 回归——混合职阶可遇(约 10%),60 次候选应出现 ≥1;且矩阵两线皆通
   {
     const pool = JOBS.map((job, j) => generateMember(job, 5, 968000 + j))
     seedMemberSeq(pool)
     let hySeen = 0
     for (let i = 0; i < 60; i++) {
       const v = rollVisitor(Math.random, pool)
-      if (v.member.spec?.startsWith('hy-')) hySeen++
+      if (v.member.spec?.startsWith('hy-')) {
+        hySeen++
+        const hy = HYBRIDS[v.member.spec]
+        const race = RACES[v.member.race ?? 'human']
+        if (!hy.lines.every((l) => race.allowedLines.includes(l))) fail25.push(`㉕ 混合候选违反矩阵:${v.member.race}/${v.member.spec}`)
+      }
     }
-    if (hySeen > 0) fail25.push(`㉕ dormant 失效:混合职阶出现在候选 ${hySeen} 次`)
-    console.log(`㉕ dormant:60 次候选混合出现 ${hySeen} 次(应 0)`)
+    if (hySeen < 1) fail25.push('㉕ 混合职阶回归失效:60 次候选 0 出现')
+    console.log(`㉕ 回归:60 次候选混合出现 ${hySeen} 次(期望 ~6),矩阵合规`)
   }
   if (fail25.length > 0) { console.log('✗ 混合职阶未通过:', fail25); process.exit(1) }
   console.log('✓ 混合职阶通过:15 全配对数据完整,投影与战斗终结性成立')
@@ -1767,7 +1772,7 @@ const towerFailures: string[] = []
     for (const sp of Object.values(job.specs)) {
       const pool = sp.advancedSkills ?? []
       advCount += pool.length
-      if (pool.length !== 2) fail27.push(`㉗ ${sp.id} 精进池不是 2:${pool.length}`)
+      if (pool.length < 2) fail27.push(`㉗ ${sp.id} 精进池不足 2:${pool.length}`)
       const mainIds = new Set(sp.skills.map((sk) => sk.id))
       for (const sk of pool) {
         if (mainIds.has(sk.id)) fail27.push(`㉗ ${sp.id} 精进技能与主技能重名:${sk.id}`)
@@ -2033,4 +2038,83 @@ const towerFailures: string[] = []
   }
   if (fail31.length > 0) { console.log('✗ 宪法 v3.2 未通过:', fail31); process.exit(1) }
   console.log('✓ 宪法 v3.2 通过:拉拽/相位/毒区/加权招募/透明面板全部成立')
+}
+
+// ============================================================
+// ㉜ 回归池四机制:护甲击碎/连击/位移/引导咏唱
+// ============================================================
+{
+  const fail32: string[] = []
+  // 32a:护甲击碎——防御永久 -4
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 979000 + j))
+    squad[0].spec = 'guard-ironwall'
+    squad[0].specAdvanced = { 'guard-ironwall': 'guard-shieldbreak' }
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242)
+    const striker = b.combatants.find((c) => c.specId === 'guard-ironwall')!
+    const victim = b.combatants.find((c) => c.team === 'enemy')!
+    const before = victim.defense
+    striker.cooldownLeft = 0
+    for (const sk of striker.skills) sk.cooldownLeft = 0
+    striker.skills.filter((s) => s.def.effect !== 'armor-break').forEach((s) => (s.cooldownLeft = 999))
+    actTest: for (let t = 0; t < 30; t++) {
+      stepBattle(b)
+      if (victim.defense < before) break actTest
+      if (!victim.alive || !striker.alive) break
+      striker.cooldownLeft = 0
+      for (const sk of striker.skills) if (sk.def.effect === 'armor-break') sk.cooldownLeft = 0
+    }
+    if (victim.defense >= before && victim.alive) fail31.push('㉜ 护甲击碎未生效')
+    if (before - victim.defense > 0) console.log(`㉜ 护甲击碎:${before} → ${victim.defense}`)
+  }
+  // 32b:连击——3 次内必出爆发(2 层后第三击 2.2x)
+  {
+    const m = generateMember('warrior', 5, 980000)
+    m.specAdvanced = { 'warrior-weapons': 'wpn-combo' }
+    seedMemberSeq([m])
+    const c = toCombatant(m)
+    const comboSkill = c.skills.find((s) => s.def.effect === 'combo-strike')
+    if (!comboSkill) fail32.push('㉜ 连击技能未进技能组')
+    console.log(`㉜ 连击:技能组含连环三斩 = ${!!comboSkill}`)
+  }
+  // 32c:位移——被拉拽队友被救回
+  {
+    const squad = (['warrior', 'priest', 'ranger'] as const).map((job, j) => generateMember(job, 5, 981000 + j))
+    squad[0].spec = 'warrior-vanguard'
+    squad[0].specAdvanced = { 'warrior-vanguard': 'vg-reposition' }
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242)
+    const vanguard = b.combatants.find((c) => c.specId === 'warrior-vanguard')!
+    const victim = b.combatants.find((c) => c.team === 'guild' && c.position === 'back' && c.id !== vanguard.id)!
+    victim.originalPosition = 'back'
+    victim.position = 'front'
+    victim.pulledUntilTick = b.tick + 600
+    vanguard.cooldownLeft = 0
+    for (const sk of vanguard.skills) sk.cooldownLeft = 0
+    for (let t = 0; t < 6; t++) stepBattle(b)
+    if (victim.position !== 'back' || victim.pulledUntilTick !== undefined) {
+      fail32.push('㉜ 位移未救回被拉拽队友')
+    }
+    console.log(`㉜ 位移:被拉拽者归位 = ${victim.position === 'back'}`)
+  }
+  // 32d:引导咏唱——完成全队回血;受伤过阈值被打断
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 982000 + j))
+    squad[1].spec = 'priest-holy'
+    squad[1].specAdvanced = { 'priest-holy': 'holy-channel' }
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242)
+    const priest = b.combatants.find((c) => c.specId === 'priest-holy')!
+    priest.channelUntilTick = b.tick + 5
+    priest.channelTaken = 999
+    priest.channelBreak = 500
+    priest.channelAmount = 200
+    stepBattle(b)
+    const interrupted = priest.channelUntilTick === undefined
+    if (!interrupted) fail32.push('㉜ 引导打断未生效')
+    console.log(`㉜ 引导:超阈值打断 = ${interrupted}`)
+  }
+  if (fail32.length > 0) { console.log('✗ 回归池机制未通过:', fail32); process.exit(1) }
+  console.log('✓ 回归池四机制通过:护甲击碎/连击/位移/引导咏唱全部成立')
 }

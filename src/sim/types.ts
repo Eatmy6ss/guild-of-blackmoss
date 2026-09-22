@@ -54,6 +54,10 @@ export interface SkillDef {
     | 'enchant-self'
     | 'charge-strike'
     | 'trap-bind'
+    | 'armor-break'
+    | 'combo-strike'
+    | 'reposition'
+    | 'channel-heal'
   target: 'enemy' | 'ally'
   cooldownTicks: number
 }
@@ -235,6 +239,13 @@ export interface Combatant {
   zonedUntilTick?: number
   /** 相位无敌(敌人侧机制):到 tick 前免疫一切伤害 */
   invulnUntilTick?: number
+  /** 连击资源(宪法 v3.2 回归池):连击层数,combo-strike 消耗 */
+  combo?: number
+  /** 我方引导咏唱:到 tick 前引导,被打断阈值见 channelBreak */
+  channelUntilTick?: number
+  channelTaken?: number
+  channelBreak?: number
+  channelAmount?: number
   specId?: string
   /** 性格（仅我方，挂机 AI 代打用） */
   personality?: Personality
@@ -372,6 +383,8 @@ export type BattleEventType =
   | 'pulled'
   | 'zoned'
   | 'phase'
+  | 'armorbreak'
+  | 'reposition'
 
 export interface BattleEvent {
   tick: number

@@ -367,6 +367,14 @@ export class BattleRenderer {
         this.spawnFloat(target, '相位·无效!', 0xb89ad4, 13)
         continue
       }
+      if (ev.type === 'armorbreak') {
+        this.spawnFloat(target, '破甲!', 0xd9b05a, 13)
+        continue
+      }
+      if (ev.type === 'reposition') {
+        this.spawnFloat(target, '换位!', 0x9ad4b8, 13)
+        continue
+      }
       const attacker = ev.attackerId ? this.units.get(ev.attackerId) : undefined
       if (ev.type === 'heal') {
         this.spawnFloat(target, `+${ev.amount}`, COL.heal, 12)

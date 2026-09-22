@@ -2,6 +2,7 @@ import type { ItemInstance, JobId, Member } from './types'
 import { generateMember } from './gen'
 import { pick, weighted } from './rng'
 import { RACES } from '../data/races'
+import { HYBRIDS } from '../data/vocations'
 import { JOBS } from '../data/jobs'
 import { ECONOMY, VISITOR_STORIES } from '../data/economy'
 
@@ -43,6 +44,17 @@ function pickCandidate(rng: Rng, members: Member[], level: number, forcedJob?: J
     race = weighted(rng, raceWeights)
     const allowed = RACES[race].allowedLines.filter((l) => weights[l] > 0)
     job = weighted(rng, Object.fromEntries(allowed.map((l) => [l, weights[l] ?? 1]))) as JobId
+  }
+  // 混合职阶可遇(宪法 v3.2 回归):10% 概率候选为混合职阶,种族须两线皆通(矩阵内的稀缺相遇)。
+  // 治疗保底优先:无治疗局面绝不抽混合(保底走纯牧师线)
+  if (!forcedJob && hasHealer && rng() < 0.1) {
+    const hyIds = Object.keys(HYBRIDS)
+    const hy = HYBRIDS[hyIds[Math.floor(rng() * hyIds.length)] ?? 'hy-saint']
+    const racesOk = Object.values(RACES).filter((r) => hy.lines.every((l) => r.allowedLines.includes(l))).map((r) => r.id)
+    const hyRace = racesOk[Math.floor(rng() * racesOk.length)] ?? 'human'
+    const m = generateMember(hy.lines[0], level, Math.floor(rng() * 0x7fffffff), { race: hyRace })
+    m.spec = hy.id
+    return m
   }
   return generateMember(job, level, Math.floor(rng() * 0x7fffffff), { race })
 }

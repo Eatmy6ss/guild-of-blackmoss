@@ -33,6 +33,7 @@ export const JOBS: Record<string, JobDef> = {
         advancedSkills: [
           { id: 'guard-wall-slam', name: '盾墙猛击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
           { id: 'guard-bulwark', name: '盾墙坚守', effect: 'taunt', target: 'enemy', cooldownTicks: 45 },
+          { id: 'guard-shieldbreak', name: '破甲盾击', effect: 'armor-break', target: 'enemy', cooldownTicks: 95 },
         ],
       }),
       'guard-thorns': spec({
@@ -77,6 +78,7 @@ export const JOBS: Record<string, JobDef> = {
         advancedSkills: [
           { id: 'holy-nova', name: '神圣新星', effect: 'group-heal', target: 'ally', cooldownTicks: 150 },
           { id: 'holy-smite', name: '惩击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 90 },
+          { id: 'holy-channel', name: '虔信祷告', effect: 'channel-heal', target: 'ally', cooldownTicks: 170 },
         ],
       }),
       'priest-discipline': spec({
@@ -162,6 +164,7 @@ export const JOBS: Record<string, JobDef> = {
         advancedSkills: [
           { id: 'wpn-giant', name: '巨人杀手', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 75 },
           { id: 'wpn-break', name: '破甲斩', effect: 'curse-mark', target: 'enemy', cooldownTicks: 110 },
+          { id: 'wpn-combo', name: '连环三斩', effect: 'combo-strike', target: 'enemy', cooldownTicks: 60 },
         ],
       }),
       'warrior-vanguard': spec({
@@ -176,6 +179,7 @@ export const JOBS: Record<string, JobDef> = {
         advancedSkills: [
           { id: 'vg-horn', name: '冲锋号角', effect: 'charge-strike', target: 'enemy', cooldownTicks: 75 },
           { id: 'vg-horn2', name: '战吼', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
+          { id: 'vg-reposition', name: '战术转移', effect: 'reposition', target: 'ally', cooldownTicks: 90 },
         ],
       }),
     },
