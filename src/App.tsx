@@ -276,8 +276,17 @@ export default function App() {
   }, [battle?.log.length])
 
   useEffect(() => {
-    if (!running) return
+    if (!running && !towerRunning) return
     const timer = setInterval(() => {
+      // 高塔线:塔进行中由本循环推进(试玩 bug 修复——此前塔战斗没有任何 tick 驱动)
+      const t = towerRunRef.current
+      if (t && towerRunning && t.phase === 'battle' && t.battle && t.battle.status === 'running') {
+        if (performance.now() - (rendererRef.current?.lastTickAt ?? 0) > 800) return
+        stepBattle(t.battle)
+        if (t.battle.status !== 'running') setTowerRunning(false)
+        drainAndSync(t.battle)
+        return
+      }
       const r = runRef.current
       const b = r?.battle
       if (!r || !b || r.phase !== 'battle' || b.status !== 'running') return
@@ -1730,6 +1739,17 @@ export default function App() {
               <div className="enc-row">
                 <button onClick={() => setTowerRunning((r) => !r)} disabled={battle.status !== 'running'}>
                   {towerRunning ? '⏸ 暂停' : '⏵ 继续'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (battle.status !== 'running') return
+                    setTowerRunning(false)
+                    for (let i = 0; i < 10 && battle.status === 'running'; i++) stepBattle(battle)
+                    drainAndSync(battle)
+                  }}
+                  disabled={battle.status !== 'running'}
+                >
+                  ⏭ ×10 tick
                 </button>
                 <span className="tick-info">tick {battle.tick}</span>
                 <span className="tick-info">· 塔内金币已入账 {towerRun.goldEarned}</span>
