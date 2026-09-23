@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
-import { pixelTexture, spriteKeyFor, spriteScale, preloadUrlSprites } from './pixelSprites'
+import { pixelTexture, spriteKeyFor, spriteScale, spriteLayersFor, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
@@ -57,6 +57,9 @@ class UnitView {
   /** 动画占用计数（突进/形变/倒地可叠加，全部结束才恢复回位插值） */
   lockCount = 0
   body: Sprite
+  /** 分层精灵组(素材包职业分层);bob/tint 作用于整组 */
+  bodyGroup = new Container()
+  bodySprites: Sprite[] = []
   bobPhase: number
   private weapon: Sprite | null = null
   private lastWeapon = ''
@@ -72,11 +75,30 @@ class UnitView {
     this.baseScale = combatant.boss ? 1.5 : 1
 
     // M1 演出验证:像素精灵(换皮只换 pixelSprites.ts 的像素图与调色板)
+    // 素材包分层(DCSS):职业/龙裔怪为多层叠加(32×32 同网格);其余单精灵
     const bodyKey = spriteKeyFor(combatant)
-    const body = new Sprite(pixelTexture(bodyKey))
-    body.anchor.set(0.5, 1)
-    body.scale.set(spriteScale(bodyKey))
-    body.position.set(0, 6)
+    const layers = spriteLayersFor(bodyKey)
+    const bodyGroup = new Container()
+    bodyGroup.position.set(0, 6)
+    const bodySprites: Sprite[] = []
+    if (layers) {
+      for (const url of layers) {
+        const s = new Sprite(pixelTexture(url))
+        s.anchor.set(0.5, 1)
+        s.scale.set(spriteScale(url))
+        bodyGroup.addChild(s)
+        bodySprites.push(s)
+      }
+    } else {
+      const s = new Sprite(pixelTexture(bodyKey))
+      s.anchor.set(0.5, 1)
+      s.scale.set(spriteScale(bodyKey))
+      bodyGroup.addChild(s)
+      bodySprites.push(s)
+    }
+    const body = bodySprites[0]
+    this.bodyGroup = bodyGroup
+    this.bodySprites = bodySprites
     this.body = body
     this.bobPhase = Math.random() * Math.PI * 2
     const hpBg = new Graphics()
@@ -90,7 +112,7 @@ class UnitView {
     nameText.position.set(0, -42)
     this.nameText = nameText
 
-    this.container.addChild(body, hpBg, this.hpFill, nameText)
+    this.container.addChild(bodyGroup, hpBg, this.hpFill, nameText)
     // 武器贴图挂点(换装可见):guild 单位手侧
     if (combatant.team === 'guild') {
       const wp = new Sprite(Texture.WHITE)
@@ -460,7 +482,7 @@ export class BattleRenderer {
       }
       if (ev.type === 'enraged') {
         sfxEnrage()
-        target.body.tint = 0xff5a5a
+        target.bodyGroup.tint = 0xff5a5a
         this.spawnFloat(target, '狂暴!!', 0xff5a5a, 18)
         this.addTrauma(0.5)
         continue
@@ -873,7 +895,7 @@ export class BattleRenderer {
   private spawnFall(u: UnitView): void {
     u.lockCount++
     // 遗骸样式：变暗变灰 + 名字淡出——清晰读作尸体，不是白色残影
-    u.body.tint = 0x6e6e6e
+    u.bodyGroup.tint = 0x6e6e6e
     u.nameText.alpha = 0.4
     const sy = u.container.y
     const dir = u.combatant.team === 'enemy' ? -1 : 1
@@ -921,7 +943,7 @@ export class BattleRenderer {
       u.container.x += (u.slot.x - u.container.x) * k
       u.container.y += (u.slot.y - u.container.y) * k
       // 待机呼吸:像素小人轻轻起伏(活着才有生命)
-      u.body.y = 6 + Math.sin(nowT / 320 + u.bobPhase) * 1.2
+      u.bodyGroup.y = 6 + Math.sin(nowT / 320 + u.bobPhase) * 1.2
     }
     // 手动循环而非 filter：弹道命中的 onHit 会在迭代期间向 this.effects
     // 推入新效果——filter 按初始长度迭代，会把它们遗弃在旧数组里永不更新

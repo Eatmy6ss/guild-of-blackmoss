@@ -453,37 +453,71 @@ const URL_SPRITES: Record<string, string> = {
   'mon-ogre': '/assets/mon/ogre.png',
 }
 
-/** 预加载全部素材包 PNG(mount 时 await;加载完成的纹理进同一 cache) */
+/** 我方三职业分层(DCSS 分层系统:base+护甲+披风+武器,32×32 同网格叠加) */
+const URL_LAYERS: Record<string, string[]> = {
+  'hero-guard': [
+    '/assets/layers/human_m.png',
+    '/assets/layers/chainmail.png',
+    '/assets/layers/cloak_blue.png',
+    '/assets/layers/buckler.png',
+    '/assets/layers/long_sword.png',
+  ],
+  'hero-priest': [
+    '/assets/layers/human_m.png',
+    '/assets/layers/robe_white.png',
+    '/assets/layers/cloak_black.png',
+    '/assets/layers/quarterstaff.png',
+  ],
+  'hero-ranger': [
+    '/assets/layers/human_m.png',
+    '/assets/layers/leather.png',
+    '/assets/layers/cloak_brown.png',
+    '/assets/layers/bow.png',
+  ],
+}
+
+/** 全部待预加载 URL(素材帧+职业分层) */
+const ALL_URLS: string[] = [
+  ...Object.values(URL_SPRITES),
+  ...Object.values(URL_LAYERS).flat(),
+]
+
+/** 预加载全部素材 PNG(mount 时 await;成功进同一 texture 缓存) */
 export async function preloadUrlSprites(): Promise<void> {
   await Promise.all(
-    Object.entries(URL_SPRITES).map(async ([key, url]) => {
+    ALL_URLS.map(async (url) => {
       try {
         const tex = await Assets.load(url)
         tex.source.scaleMode = 'nearest'
         tex.source.style.scaleMode = 'nearest'
-        cache.set(key, tex)
-      } catch {
-        // 单张失败静默降级(占位白块),不阻塞战斗
+        cache.set(url, tex)
+      } catch (e) {
+        console.warn('[pixelSprites] 素材加载失败:', url, e)
       }
     }),
   )
+}
+
+/** 职业分层帧列表(渲染器逐层叠加);非分层 key 返回 undefined */
+export function spriteLayersFor(key: string): string[] | undefined {
+  return URL_LAYERS[key]
 }
 
 const cache = new Map<string, Texture>()
 
 /** 精灵显示缩放:素材包 32×32 与 HD 矩阵(≥20 行)原生 1:1;旧 12×14/16×18 矩阵保持 ×2 */
 export function spriteScale(key: string): number {
-  if (key.startsWith('mon-')) return 1
+  if (key.startsWith('mon-') || key.startsWith('/assets/')) return 1
   const def = UNIT_SPRITES[key]
   if (!def) return 2
   return def.rows.length >= 20 ? 1 : 2
 }
 
-/** ASCII 像素图 → nearest-neighbor 纹理(幂等,按 key 缓存;矩阵查 UNIT_SPRITES,素材包查预加载缓存) */
+/** ASCII 像素图 → nearest-neighbor 纹理(幂等,按 key 缓存;矩阵查 UNIT_SPRITES,素材/分层按 url 查缓存) */
 export function pixelTexture(key: string): Texture {
   const cached = cache.get(key)
   if (cached) return cached
-  if (key.startsWith('mon-')) return Texture.WHITE // 预加载未就绪/失败的占位
+  if (key.startsWith('mon-') || key.startsWith('/assets/')) return Texture.WHITE // 预加载未就绪的占位
   const def = UNIT_SPRITES[key]
   if (!def) throw new Error(`未知像素精灵: ${key}`)
   const w = def.rows[0].length
