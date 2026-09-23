@@ -1157,8 +1157,8 @@ export default function App() {
         {muted ? '🔇' : '🔊'}
       </button>
       <div className="app-header">
-        <h1>guild-game</h1>
-        <span className="slice-tag">M1 · 高塔版 —— 爬塔 / 招募三路径 / 成长 / 演出</span>
+        <h1>黑 苔 公 会</h1>
+        <span className="slice-tag">佣兵纪元 · 任务板上的公会 —— 爬塔 / 招募 / 成长 / 演出</span>
       </div>
       <div className="layout">
         <div className="panel hub-panel">
@@ -1202,7 +1202,7 @@ export default function App() {
               <b style={{ color: '#d48f8f' }}>第 9 层起撤退保护失效</b>。奖励逐层立即入账，随时可带着离开。
             </p>
             {towerUnlocked ? (
-              <button className="branch-btn" disabled={!canExpedition} onClick={enterTower}>
+              <button className="branch-btn primary" disabled={!canExpedition} onClick={enterTower}>
                 🗼 进入高塔（从第 1 层开始）
               </button>
             ) : (
@@ -1687,7 +1687,7 @@ export default function App() {
               {activeDungeon.branches.map((br) => (
                 <button
                   key={br.id}
-                  className="branch-btn"
+                  className="branch-btn primary"
                   disabled={!canExpedition}
                   onClick={() => startExpedition(br.id)}
                 >
@@ -2063,7 +2063,7 @@ export default function App() {
                 )
               })()}
               <div className="end-actions">
-                <button onClick={() => continueDeep()}>⬇ 继续深入</button>
+                <button className="primary" onClick={() => continueDeep()}>⬇ 继续深入</button>
                 <button onClick={retreat}>🏳 撤退回城</button>
               </div>
             </>

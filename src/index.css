@@ -130,6 +130,21 @@ button:hover:not(:disabled) {
 button:active:not(:disabled) { transform: translate(0, 1px); box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.5); }
 button:disabled { opacity: 0.4; cursor: default; }
 
+/* 主行动按钮 = 鎏金实体(样张 .btn-enter):出征/进塔/继续深入 */
+button.primary {
+  color: #2a1c08;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  background: linear-gradient(#f0d080, #c8a04a 45%, #a07828);
+  border: 2px solid #4a3210;
+  box-shadow: 0 0 14px rgba(230, 180, 80, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6);
+}
+button.primary:hover:not(:disabled) {
+  color: #1a1004;
+  box-shadow: 0 0 22px rgba(230, 180, 80, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
 .result-banner {
   margin: 10px 0;
   padding: 10px;

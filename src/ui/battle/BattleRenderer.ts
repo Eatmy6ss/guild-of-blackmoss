@@ -184,7 +184,7 @@ export class BattleRenderer {
     await app.init({
       width: W,
       height: H,
-      background: 0x14161c,
+      background: 0x1c1410,
       antialias: true,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
