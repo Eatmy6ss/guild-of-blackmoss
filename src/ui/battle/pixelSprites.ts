@@ -42,66 +42,118 @@ const P = {
   blood: '#c05a5a',
 } satisfies Palette
 
-// ---- 我方三职业(12 宽 × 14 高,面朝右)----
+// ---- 我方三职业(HD-2D 精度升级:24 宽 × 28 高,面朝右,三阶光影)----
+// 色键约定:大写=暗部/轮廓,k=铁框,g=金饰,小写=中间调,双写=高光
 
 const GUARD: PixelDef = {
   rows: [
-    '............',
-    '...ssssss...',
-    '..ssssssss..',
-    '..sseeeess..',
-    '...seeees...',
-    '....aaaa....',
-    '..aaaaaaaa..',
-    '.waaaaaaaaw.',
-    '.saaaaaaaas.',
-    '.saaaaaaaas.',
-    '..aaaaaa aa.',
-    '...ll..ll...',
-    '...ll..ll...',
-    '............',
+    '........................',
+    '.......kkkkkkk..........',
+    '......khhhhhhhk.........',
+    '.....khhhhhhhhhk........',
+    '.....khdssssdhk.........',
+    '.....khdskeedsk.........',
+    '.....khdssssdhk.........',
+    '......khdssdhk..........',
+    '..kkkkhhsssshhkkkk......',
+    '.khhhhhdssssdhhhhhk.....',
+    '.khhhhhdssssdhhhhhk.....',
+    '.khhhkssssssssshhkkkk...',
+    '.khhksaaaaaaasskssssk...',
+    '.khksaaaaaaaaassksk.....',
+    '.khksaaaaaaaaassk.......',
+    '.khksaaaaaaaaassk.......',
+    '.khkaaaaaaaaaaaask......',
+    '..kkaaaaaaaaaaaak.......',
+    '..kkssssssssssskk.......',
+    '...ksssssssssssk........',
+    '...kss.kkkkk.ssk........',
+    '...kss.kddddkssk........',
+    '...ksd.kddddksd.........',
+    '...ksd.kddddksd.........',
+    '...ksd.kddddksd.........',
+    '...kkd..kkk.kdk.........',
+    '......kddk.kdk..........',
+    '......kkkk.kkk..........',
   ],
-  palette: { s: P.steel, e: P.eye, a: P.clothBlue, w: P.clothWhite, l: P.leather },
+  palette: {
+    k: '#1a2030', h: '#c8d8f0', d: '#5a6f96', s: '#8fa3c8',
+    e: '#f0d060', a: '#3a6aa4',
+  },
 }
 
 const PRIEST: PixelDef = {
   rows: [
-    '......hh....',
-    '.....hh.....',
-    '....ssss....',
-    '....ssss....',
-    '...rrrrrr...',
-    '..rrrrrrrr.g',
-    '..rrwrrwrr.g',
-    '..rrrrrrrr.g',
-    '..rrrrrrrr.g',
-    '.rrrrrrrrr.g',
-    '.rrrrrrrrr..',
-    '.rrrrrrrrr..',
-    '.rrrrrrrrr..',
-    '............',
+    '........................',
+    '........kkkkkk..........',
+    '.......kggggggk.........',
+    '......kgrrrrrrgk........',
+    '......krrrrrrrk.........',
+    '.....krrssssrrk.........',
+    '.....krrseesrrk.........',
+    '.....krrssssrrk.........',
+    '.....krrrrrrrrk...kk....',
+    '....krrrrrrrrrrk.kggk...',
+    '....krrwrrwrrrk.kggk....',
+    '...krrrwrrwrrrk.kggk....',
+    '...krrrrrrrrrrkkgggk....',
+    '...krrrrrrrrrrkkgk......',
+    '...krrwrrrwrrrk.k.......',
+    '..krrrwrrrwrrrk.k.......',
+    '..krrrrrrrrrrrrkk.......',
+    '..krrrrrrrrrrrrk........',
+    '..krrrrrrrrrrrrk........',
+    '.krrrrrrrrrrrrrrk.......',
+    '.krrrrrrrrrrrrrrk.......',
+    '.krrrwwrrrwrrrrrk.......',
+    '..krrrrrrrrrrrrrk.......',
+    '..krrrrrrrrrrrrk........',
+    '...krrrrrrrrrrrk........',
+    '...krrrrrrrrrrk.........',
+    '....kkkkkkkkkk..........',
+    '........................',
   ],
-  palette: { h: P.gold, s: P.skin, r: P.robeWhite, w: P.robeWhiteDark, g: P.wood },
+  palette: {
+    k: '#2a2418', g: '#e8c87a', r: '#e0e0e0', w: '#a8a8b0',
+    s: '#e8c8a0', e: '#1a1a2a',
+  },
 }
 
 const RANGER: PixelDef = {
   rows: [
-    '............',
-    '....hhhh....',
-    '...hhhhhh...',
-    '...seeees...',
-    '....cccc....',
-    '...cccccc.b.',
-    '...cccccc.b.',
-    '..llcccc..b.',
-    '..llcccc..b.',
-    '...cccc...b.',
-    '...cccc.....',
-    '...ll.ll....',
-    '...ll.ll....',
-    '............',
+    '........................',
+    '.......kkkkkk...........',
+    '......kccccccck.........',
+    '.....kcccccccck..kk.....',
+    '.....kcscscscsk.kbbk....',
+    '.....kcseseecsk.kbbk....',
+    '.....kcscscscsk.kbbk....',
+    '......kcscsscsk.kbbk....',
+    '...kkkkccccccckkkbbk....',
+    '..kllllcccllllk.kbbk....',
+    '.kllllllclllllk.kbbk....',
+    '.kllkccccccccck.kbbk....',
+    '.kllkccllllcckkkbbk.....',
+    '.kllkclllllck.kbbk......',
+    '.kllkclllllckkbbk.......',
+    '.kllkccclllckbbk........',
+    '.kllkccccllckb..........',
+    '..kllkccccllk...........',
+    '..kkllccccck............',
+    '...kllccccck............',
+    '...klc.kkk.ck...........',
+    '...kll.kllk.k...........',
+    '...kll.kllk.k...........',
+    '...kll.kllk.k...........',
+    '...kll.kllk.k...........',
+    '...kkk.kkk.kk...........',
+    '........................',
+    '........................',
   ],
-  palette: { h: P.clothGreenDark, s: P.skin, e: P.eye, c: P.clothGreen, l: P.leather, b: P.wood },
+  palette: {
+    k: '#1a2418', c: '#6dbf6d', s: '#e8c8a0', e: '#1a1a2a',
+    l: '#8a6a42', b: '#a8824f',
+  },
 }
 
 // ---- 敌方(12 宽 × 14 高,面朝左)----
@@ -359,9 +411,39 @@ const WP_AXE: PixelDef = { rows: ['www', 'www', '.w.', '.w.', '.w.', '.w.'], pal
 const WP_STAFF: PixelDef = { rows: ['gg.', '..w', '..w', '..w', '..w', '..w'], palette: { g: '#7ad4c8', w: '#8a6a42' } }
 const WP_DAGGER: PixelDef = { rows: ['ww.', 'w..', 'w..', '.w.', '.w.', '.w.'], palette: { w: '#d8d5c8' } }
 
+// 龙铁系独特武器贴图(反馈:boss 掉落要有独特造型)——烙焰长剑:熔岩纹刃+龙骨柄,8×16
+const WP_DRAGON: PixelDef = {
+  rows: [
+    '...fo...',
+    '..fho...',
+    '..fho...',
+    '.fhsf...',
+    '.fhsfo..',
+    'fhsso...',
+    'fhs.f...',
+    'fhs.....',
+    'fhs.....',
+    'khs.....',
+    'kk......',
+    'kk......',
+    'kg......',
+    'kg......',
+    'kk......',
+    'k.......',
+  ],
+  palette: { f: '#ff9a3a', h: '#ffd060', s: '#f0e4c2', o: '#d84a2a', k: '#3a2a18', g: '#e8c87a' },
+}
+
 // ---- 生成管线 ----
 
 const cache = new Map<string, Texture>()
+
+/** 精灵显示缩放:HD-2D 高精度矩阵(≥20 行)原生 1:1;旧 12×14/16×18 矩阵保持 ×2 视觉尺寸 */
+export function spriteScale(key: string): number {
+  const def = UNIT_SPRITES[key]
+  if (!def) return 2
+  return def.rows.length >= 20 ? 1 : 2
+}
 
 /** ASCII 像素图 → nearest-neighbor 纹理(幂等,按 key 缓存;定义查 UNIT_SPRITES) */
 export function pixelTexture(key: string): Texture {
@@ -413,6 +495,7 @@ export const UNIT_SPRITES: Record<string, PixelDef> = {
   'wpn-axe': WP_AXE,
   'wpn-staff': WP_STAFF,
   'wpn-dagger': WP_DAGGER,
+  'wpn-dragon': WP_DRAGON,
   'boss-grush': BOSS_GRUSH,
   'boss-delveanchor': BOSS_DELVEANCHOR,
   'boss-moldreke': BOSS_MOLDREKE,

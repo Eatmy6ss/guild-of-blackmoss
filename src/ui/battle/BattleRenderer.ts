@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
-import { pixelTexture, spriteKeyFor } from './pixelSprites'
+import { pixelTexture, spriteKeyFor, spriteScale } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
@@ -72,9 +72,10 @@ class UnitView {
     this.baseScale = combatant.boss ? 1.5 : 1
 
     // M1 演出验证:像素精灵(换皮只换 pixelSprites.ts 的像素图与调色板)
-    const body = new Sprite(pixelTexture(spriteKeyFor(combatant)))
+    const bodyKey = spriteKeyFor(combatant)
+    const body = new Sprite(pixelTexture(bodyKey))
     body.anchor.set(0.5, 1)
-    body.scale.set(2)
+    body.scale.set(spriteScale(bodyKey))
     body.position.set(0, 6)
     this.body = body
     this.bobPhase = Math.random() * Math.PI * 2
@@ -120,7 +121,8 @@ class UnitView {
     if (!id) { this.weapon.visible = false; return }
     let key = 'wpn-sword'
     let tint = 0xe8c67a
-    if (id.includes('greatsword') || id.includes('line-warrior')) { key = 'wpn-axe'; tint = 0xb89ad4 }
+    if (id.includes('dragon-brand')) { key = 'wpn-dragon'; tint = 0xffffff }
+    else if (id.includes('greatsword') || id.includes('line-warrior')) { key = 'wpn-axe'; tint = 0xb89ad4 }
     else if (id.includes('axe')) { key = 'wpn-axe'; tint = 0xd8d5c8 }
     else if (id.includes('bow') || id.includes('line-ranger')) { key = 'wpn-bow'; tint = id.includes('line-') ? 0xb89ad4 : 0xe8c67a }
     else if (id.includes('staff') || id.includes('line-priest') || id.includes('line-mage') || id.includes('line-warlock')) { key = 'wpn-staff'; tint = id.includes('line-') ? 0xb89ad4 : 0x7ad4c8 }
@@ -129,6 +131,7 @@ class UnitView {
     else if (id.includes('-t3-')) tint = 0xb89ad4
     this.weapon.texture = pixelTexture(key)
     this.weapon.tint = tint
+    this.weapon.scale.set(spriteScale(key))
     this.weapon.visible = true
   }
 
