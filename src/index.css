@@ -199,7 +199,7 @@ button.primary:hover:not(:disabled) {
   height: 560px;
   box-shadow: inset 0 0 0 1px var(--edge-gold), inset 0 0 80px rgba(0, 0, 0, 0.75), 0 0 34px rgba(0, 0, 0, 0.6);
 }
-.layout.battle-mode .stage canvas { width: 100%; height: 100%; object-fit: contain; margin: 0 auto; }
+.layout.battle-mode .stage canvas { width: 100% !important; height: 100% !important; display: block; }
 
 .branch-btn {
   display: block;

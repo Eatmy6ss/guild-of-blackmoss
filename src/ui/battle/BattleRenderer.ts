@@ -72,7 +72,7 @@ class UnitView {
   constructor(public combatant: Combatant, x: number, y: number) {
     this.slot = { x, y }
     this.hpColor = combatant.team === 'guild' ? COL.hpGuild : COL.hpEnemy
-    this.baseScale = combatant.boss ? 1.5 : 1
+    this.baseScale = 1
 
     // M1 演出验证:像素精灵(换皮只换 pixelSprites.ts 的像素图与调色板)
     // 素材包分层(DCSS):职业/龙裔怪为多层叠加(32×32 同网格);其余单精灵
@@ -224,9 +224,19 @@ export class BattleRenderer {
       return
     }
     this.app = app
-    this.root.scale.set(2)
     container.appendChild(app.canvas)
     await preloadUrlSprites() // 素材包 PNG 预加载(失败静默降级)
+    // cover 填充:测量容器实际尺寸,渲染器按容器出图,root 按比例 cover(填满,允许裁边)
+    const fit = () => {
+      const cw = Math.max(320, container.clientWidth || W * 2)
+      const ch = Math.max(240, container.clientHeight || H * 2)
+      this.app?.renderer.resize(cw, ch)
+      const s = Math.max(cw / W, ch / H) * 2
+      this.root.scale.set(s)
+      this.root.position.set((cw - W * s) / 2, (ch - H * s) / 2)
+    }
+    fit()
+    window.addEventListener('resize', fit)
     app.stage.addChild(this.root)
     this.drawBackdrop(this.theme)
     app.ticker.add((t) => this.tick(t.deltaMS))
@@ -324,10 +334,10 @@ export class BattleRenderer {
       const k = i / (bands - 1)
       g.rect(0, (H * 0.86 * i) / bands, W, (H * 0.86) / bands + 1).fill({
         color: t.sky[0],
-        alpha: (1 - k) * 0.9,
+        alpha: 1 - k * 0.82,
       })
     }
-    g.rect(0, 0, W, H * 0.86).fill({ color: t.sky[1], alpha: 0.55 })
+    g.rect(0, 0, W, H * 0.86).fill({ color: t.sky[1], alpha: 0.72 })
     // 地面
     g.rect(0, H * 0.86, W, H * 0.14).fill(t.ground)
     g.rect(0, H * 0.86, W, 2).fill(t.fog)
@@ -346,8 +356,15 @@ export class BattleRenderer {
         g.rect(x, H * (0.1 + (i % 4) * 0.12), 3, 3).fill({ color: 0xe8f4ff, alpha: 0.7 })
       }
     } else {
-      for (let i = 0; i < 6; i++) {
-        g.rect(0, H * (0.2 + i * 0.1), W, 2).fill({ color: t.fog, alpha: 0.12 })
+      for (let i = 0; i < 9; i++) {
+        g.rect(0, H * (0.12 + i * 0.09), W, 3).fill({ color: t.fog, alpha: 0.3 })
+      }
+    }
+    if (theme === 'swamp') {
+      for (let i = 0; i < 14; i++) {
+        const x = W * (0.02 + 0.07 * i)
+        const h = H * (0.12 + ((i * 13) % 5) * 0.03)
+        g.rect(x, H * 0.86 - h, 4, h).fill({ color: 0x0e1a08, alpha: 0.9 })
       }
     }
     // 中轴线与地平线(敌我分界)

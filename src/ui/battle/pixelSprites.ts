@@ -1,4 +1,4 @@
-import { Assets, Texture } from 'pixi.js'
+import { Texture } from 'pixi.js'
 
 // 像素精灵管线(M1 演出验证切片):ASCII 像素图 → 离屏 canvas → nearest-neighbor 纹理。
 // 设计契约(D5-6):换皮只换这里的像素图与调色板,动画结构不动。
@@ -462,6 +462,11 @@ const URL_SPRITES: Record<string, string> = {
   'mon-deathknight': '/assets/mon/deathknight.png',
   'mon-arcanist': '/assets/mon/arcanist.png',
   'mon-hellknight': '/assets/mon/hellknight.png',
+  'mon-bullfrog': '/assets/mon/bullfrog.png',
+  'mon-leech': '/assets/mon/leech.png',
+  'mon-bat': '/assets/mon/bat.png',
+  'mon-spider': '/assets/mon/spider.png',
+  'mon-gnoll': '/assets/mon/gnoll.png',
 }
 
 /** 我方三职业分层(DCSS 分层系统:base+护甲+披风+武器,32×32 同网格叠加) */
@@ -496,17 +501,29 @@ export async function preloadUrlSprites(): Promise<void> {
     ...Object.values(URL_LAYERS).flat().map((url) => [url, url] as [string, string]),
   ]
   await Promise.all(
-    jobs.map(async ([key, url]) => {
-      try {
-        const tex = await Assets.load(url)
-        tex.source.scaleMode = 'nearest'
-        tex.source.style.scaleMode = 'nearest'
-        cache.set(key, tex)
-        cache.set(url, tex)
-      } catch (e) {
-        console.warn('[pixelSprites] 素材加载失败:', url, e)
-      }
-    }),
+    jobs.map(
+      ([key, url]) =>
+        new Promise<void>((res) => {
+          const img = new Image()
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = img.width
+            canvas.height = img.height
+            canvas.getContext('2d')!.drawImage(img, 0, 0)
+            const tex = Texture.from(canvas)
+            tex.source.scaleMode = 'nearest'
+            tex.source.style.scaleMode = 'nearest'
+            cache.set(key, tex)
+            cache.set(url, tex)
+            res()
+          }
+          img.onerror = () => {
+            console.warn('[pixelSprites] 素材加载失败:', url)
+            res()
+          }
+          img.src = url
+        }),
+    ),
   )
 }
 
@@ -519,7 +536,7 @@ const cache = new Map<string, Texture>()
 
 /** 精灵显示缩放:素材包 32×32 与 HD 矩阵(≥20 行)原生 1:1;旧 12×14/16×18 矩阵保持 ×2 */
 export function spriteScale(key: string): number {
-  if (key.startsWith('mon-') || key.startsWith('/assets/')) return 3
+  if (key.startsWith('mon-') || key.startsWith('/assets/')) return 2.4
   const def = UNIT_SPRITES[key]
   if (!def) return 2
   return 2
@@ -603,6 +620,10 @@ export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; n
     return 'mon-ogre'
   }
   if (c.team === 'enemy') {
+    if (n.includes('蛙人') || n.includes('蛙群') || n.includes('蛙')) return 'mon-goliathfrog'
+    if (n.includes('水蛭') || n.includes('沼腹')) return 'mon-leech'
+    if (n.includes('蝠')) return 'mon-bat'
+    if (n.includes('蛛')) return 'mon-spider'
     if (n.includes('龙裔鳞卫') || n.includes('狂信卫士') || n.includes('龙裔祭卫')) return 'mon-dracored'
     if (n.includes('龙渊鳞卫') || n.includes('渊龙亲卫')) return 'mon-dracoknight'
     if (n.includes('龙裔吐息手') || n.includes('龙裔驭火者') || n.includes('龙渊驭火者') || n.includes('焰背蜥后')) return 'mon-dracoscorcher'
@@ -620,7 +641,7 @@ export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; n
     if (n.includes('怨灵') || n.includes('挽歌') || n.includes('观渊') || n.includes('亡魂') || n.includes('提灯') || n.includes('眼')) return 'mon-wraith'
     if (n.includes('教徒') || n.includes('咏叹') || n.includes('主教') || n.includes('恶')) return 'mon-occultist'
     if (n.includes('荆棘')) return 'mon-myrmidon'
-    return 'frog'
+    return 'mon-goliathfrog'
   }
   const ROLE_KEY: Record<string, string> = { tank: 'guard', healer: 'priest', dps: 'ranger' }
   return ROLE_KEY[c.role ?? 'dps'] ?? 'ranger'
