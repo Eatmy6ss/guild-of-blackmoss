@@ -1160,7 +1160,7 @@ export default function App() {
         <h1>黑 苔 公 会</h1>
         <span className="slice-tag">佣兵纪元 · 任务板上的公会 —— 爬塔 / 招募 / 成长 / 演出</span>
       </div>
-      <div className="layout">
+      <div className={`layout${inBattle ? ' battle-mode' : ''}`}>
         <div className="panel hub-panel">
           <div className="hub-topbar">
             <span className="hub-title">🏰 黑苔公会</span>
