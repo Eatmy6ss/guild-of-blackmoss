@@ -155,11 +155,17 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
     const enc = run.dungeon.encounters.find((e) => e.id === run.steps[run.stepIdx])
     // 宪法 v3.3 批次④:经验获取收紧
     // 试玩反馈二轮:经验倍率再降——重复刷同一本是最优解
+    // 试玩反馈④:等级压制配套——高等级刷低图经验锐减(门槛收窄:当前进度的图不吃衰减)
     const exp = enc?.kind === 'boss' ? 85 : 32
+    const expected = run.dungeon.expectedLevel
+    const over = expected !== undefined
+      ? Math.max(0, run.members.reduce((s, m) => s + m.level, 0) / Math.max(1, run.members.length) - expected)
+      : 0
+    const underMult = over >= 10 ? 0.05 : over >= 7 ? 0.2 : over >= 4 ? 0.5 : 1
     for (const c of b.combatants) {
       if (c.team !== 'guild' || !c.alive || !c.memberId) continue
       const m = run.members.find((x) => x.id === c.memberId)
-      if (m?.alive) grantExp(m, Math.round(exp * expMult))
+      if (m?.alive) grantExp(m, Math.round(exp * expMult * underMult))
     }
   }
   if (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated') {

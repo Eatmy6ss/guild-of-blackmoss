@@ -16,7 +16,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   'arm-t2-plate': {
     id: 'arm-t2-plate', name: '沼地重铠', slot: 'armor', tier: 2,
-    stat: 'maxHp', value: 40, affixCount: [2, 3],
+    stat: 'defense', value: 8, affixCount: [2, 3],
   },
   'trk-t1-band': {
     id: 'trk-t1-band', name: '铜戒指', slot: 'trinket', tier: 1,
@@ -99,5 +99,79 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   'wpn-line-warlock': {
     id: 'wpn-line-warlock', name: '缚魂咒典', slot: 'weapon', tier: 2,
     stat: 'lifesteal', value: 0.06, affixCount: [2, 3],
+  },
+  // ===== 六线专属防具+饰品(试玩反馈④:装备多样性——职阶专精可换装) =====
+  'arm-line-guard': {
+    id: 'arm-line-guard', name: '壁垒甲壳铠', slot: 'armor', tier: 2,
+    stat: 'defense', value: 6, affixCount: [2, 3],
+  },
+  'trk-line-guard': {
+    id: 'trk-line-guard', name: '誓约之石', slot: 'trinket', tier: 2,
+    stat: 'defense', value: 3, affixCount: [2, 2],
+  },
+  'arm-line-priest': {
+    id: 'arm-line-priest', name: '圣职祭袍', slot: 'armor', tier: 2,
+    stat: 'healReceived', value: 0.07, affixCount: [2, 3],
+  },
+  'trk-line-priest': {
+    id: 'trk-line-priest', name: '祈祷烛台', slot: 'trinket', tier: 2,
+    stat: 'maxHp', value: 30, affixCount: [2, 2],
+  },
+  'arm-line-ranger': {
+    id: 'arm-line-ranger', name: '鹰皮猎衣', slot: 'armor', tier: 2,
+    stat: 'speed', value: 2, affixCount: [2, 3],
+  },
+  'trk-line-ranger': {
+    id: 'trk-line-ranger', name: '鹰眼坠饰', slot: 'trinket', tier: 2,
+    stat: 'critChance', value: 0.06, affixCount: [2, 2],
+  },
+  'arm-line-warrior': {
+    id: 'arm-line-warrior', name: '血宴皮甲', slot: 'armor', tier: 2,
+    stat: 'lifesteal', value: 0.05, affixCount: [2, 3],
+  },
+  'trk-line-warrior': {
+    id: 'trk-line-warrior', name: '骨髓哨', slot: 'trinket', tier: 2,
+    stat: 'attack', value: 6, affixCount: [2, 2],
+  },
+  'arm-line-mage': {
+    id: 'arm-line-mage', name: '符文织披', slot: 'armor', tier: 2,
+    stat: 'critChance', value: 0.05, affixCount: [2, 3],
+  },
+  'trk-line-mage': {
+    id: 'trk-line-mage', name: '秘法核心', slot: 'trinket', tier: 2,
+    stat: 'attack', value: 5, affixCount: [2, 2],
+  },
+  'arm-line-warlock': {
+    id: 'arm-line-warlock', name: '缚魂裹布', slot: 'armor', tier: 2,
+    stat: 'lifesteal', value: 0.07, affixCount: [2, 3],
+  },
+  'trk-line-warlock': {
+    id: 'trk-line-warlock', name: '血契印戒', slot: 'trinket', tier: 2,
+    stat: 'lifesteal', value: 0.08, affixCount: [1, 2],
+  },
+  // ===== 副本特化招牌(试玩反馈④:对应副本特化——挂在各图 boss 掉落表+杂兵加权) =====
+  'trk-sign-frogeye': {
+    id: 'trk-sign-frogeye', name: '蛙神之眼', slot: 'trinket', tier: 2,
+    stat: 'healReceived', value: 0.1, affixCount: [2, 3],
+  },
+  'arm-sign-minershell': {
+    id: 'arm-sign-minershell', name: '矿监铁壳', slot: 'armor', tier: 2,
+    stat: 'defense', value: 9, affixCount: [2, 3],
+  },
+  'wpn-sign-warbrand': {
+    id: 'wpn-sign-warbrand', name: '战痕军刀', slot: 'weapon', tier: 2,
+    stat: 'attack', value: 14, affixCount: [2, 3],
+  },
+  'trk-sign-frostheart': {
+    id: 'trk-sign-frostheart', name: '霜心坠', slot: 'trinket', tier: 2,
+    stat: 'defense', value: 5, affixCount: [2, 3],
+  },
+  'wpn-sign-bloodletter': {
+    id: 'wpn-sign-bloodletter', name: '放血短刃', slot: 'weapon', tier: 2,
+    stat: 'critChance', value: 0.07, affixCount: [2, 3],
+  },
+  'arm-sign-thornmail': {
+    id: 'arm-sign-thornmail', name: '荆棘重铠', slot: 'armor', tier: 2,
+    stat: 'defense', value: 10, affixCount: [1, 3],
   },
 }

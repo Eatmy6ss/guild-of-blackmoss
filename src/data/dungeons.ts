@@ -5,6 +5,7 @@ export const BLACKMOSS: DungeonDef = {
   id: 'blackmoss',
   name: '黑苔沼泽',
   enemyPower: 1.0,
+  expectedLevel: 3,
   size: 3,
   branches: [
     {
@@ -64,8 +65,9 @@ export const BLACKMOSS: DungeonDef = {
       id: 'grush',
       name: '沼泽食人魔·格鲁什',
       // 节奏改版:boss TTK 目标 35-45s——血 ×1.3;零指挥 54% 越界回调:血 2500/震地 30
-      maxHp: 2500,
-      attack: 18,
+      // 试玩反馈④:全场硬化后零指挥 59% 再松一档——血 2400/攻 17
+      maxHp: 2400,
+      attack: 17,
       defense: 8,
       speed: 7,
       position: 'front',
@@ -90,6 +92,7 @@ export const BLACKMOSS: DungeonDef = {
         { baseId: 'wpn-t2-bow', chance: 0.3 },
         { baseId: 'arm-t2-plate', chance: 0.3 },
         { baseId: 'wpn-line-guard', chance: 0.2 },
+        { baseId: 'trk-sign-frogeye', chance: 0.3 },
       ],
     },
     'talma': {
@@ -99,8 +102,9 @@ export const BLACKMOSS: DungeonDef = {
       // 指挥有感补偿:打断变可达后中位胜率 86→98 越界,加血+狂暴提前把压力买回来
       // 节奏改版:血 ×1.25;中位 94% 越界回压:攻 15/束缚伤 22/狂暴提前 130
       // 属性改革+种族钉人后小队抽取变化,⑲ 验收 3/8 差一档:软化狂暴与束缚把长败局转成胜局
-      maxHp: 3000,
-      attack: 13,
+      // 试玩反馈④节奏重校准:全场敌人硬化后 3000 血拖成 80s+ 狂暴拉锯——血 2450/攻 14 压回带内
+      maxHp: 2450,
+      attack: 14,
       defense: 6,
       speed: 9,
       position: 'back',
@@ -169,6 +173,7 @@ export const RUSTMINE: DungeonDef = {
   id: 'rustmine',
   name: '锈坑矿道',
   enemyPower: 1.05,
+  expectedLevel: 3,
   size: 3,
   branches: [
     {
@@ -260,6 +265,7 @@ export const RUSTMINE: DungeonDef = {
         { baseId: 'trk-t2-totem', chance: 0.2 },
         { baseId: 'wpn-t2-bow', chance: 0.2 },
         { baseId: 'wpn-line-ranger', chance: 0.2 },
+        { baseId: 'arm-sign-minershell', chance: 0.3 },
       ],
     },
   },
@@ -291,6 +297,7 @@ export const ASHFIELD: DungeonDef = {
   id: 'ashfield',
   name: '灰烬旧战场',
   enemyPower: 1.1,
+  expectedLevel: 5,
   size: 3,
   branches: [
     {
@@ -380,6 +387,7 @@ export const ASHFIELD: DungeonDef = {
         { baseId: 'wpn-t2-bow', chance: 0.3 },
         { baseId: 'arm-t2-plate', chance: 0.2 },
         { baseId: 'wpn-line-warrior', chance: 0.2 },
+        { baseId: 'wpn-sign-warbrand', chance: 0.3 },
       ],
     },
   },
@@ -411,6 +419,7 @@ export const FROSTGRAVE: DungeonDef = {
   id: 'frostgrave',
   name: '白霜墓园',
   enemyPower: 0.95,
+  expectedLevel: 6,
   size: 3,
   branches: [
     {
@@ -490,6 +499,7 @@ export const FROSTGRAVE: DungeonDef = {
         { baseId: 'wpn-t2-bow', chance: 0.3 },
         { baseId: 'trk-t2-totem', chance: 0.2 },
         { baseId: 'wpn-line-priest', chance: 0.2 },
+        { baseId: 'trk-sign-frostheart', chance: 0.3 },
       ],
     },
   },
@@ -521,6 +531,7 @@ export const ABYSSALTAR: DungeonDef = {
   id: 'abyssaltar',
   name: '渊底祭坛',
   enemyPower: 1.05,
+  expectedLevel: 7,
   size: 3,
   branches: [
     {
@@ -608,9 +619,10 @@ export const ABYSSALTAR: DungeonDef = {
         },
       ],
       dropTable: [
-        { baseId: 'trk-t2-totem', chance: 0.35 },
-        { baseId: 'arm-t2-plate', chance: 0.25 },
+        { baseId: 'wpn-t2-bow', chance: 0.3 },
+        { baseId: 'trk-t2-totem', chance: 0.2 },
         { baseId: 'wpn-line-warlock', chance: 0.2 },
+        { baseId: 'wpn-sign-bloodletter', chance: 0.3 },
       ],
     },
   },
@@ -642,6 +654,7 @@ export const THORNHOLD: DungeonDef = {
   id: 'thornhold',
   name: '荆棘要塞',
   enemyPower: 1.32,
+  expectedLevel: 9,
   size: 5,
   branches: [
     {
@@ -731,6 +744,7 @@ export const THORNHOLD: DungeonDef = {
       dropTable: [
         { baseId: 'arm-t2-plate', chance: 0.4 },
         { baseId: 'wpn-t2-bow', chance: 0.25 },
+        { baseId: 'arm-sign-thornmail', chance: 0.35 },
       ],
     },
     victor: {
@@ -773,6 +787,7 @@ export const THORNHOLD: DungeonDef = {
       dropTable: [
         { baseId: 'wpn-t2-bow', chance: 0.45 },
         { baseId: 'trk-t2-totem', chance: 0.3 },
+        { baseId: 'wpn-sign-warbrand', chance: 0.35 },
       ],
     },
   },

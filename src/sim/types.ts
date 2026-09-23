@@ -360,6 +360,8 @@ export interface DungeonDef {
   routeNodes: RouteNodeDef[]
   /** 敌方强度倍率(宪法 v3.3 试玩反馈③:拉扯感——按副本阶梯) */
   enemyPower?: number
+  /** 副本预期等级(节奏系数+等级压制的锚;未注册=高塔等临时内容不吃补正) */
+  expectedLevel?: number
 }
 
 // ===== 战斗状态 =====

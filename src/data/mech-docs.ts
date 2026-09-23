@@ -46,7 +46,7 @@ export function mechanicBrief(m: BossMechanicDef): string {
       const dmg = n(p.damage, 30)
       const tele = n(p.telegraphTicks, 30)
       const every = n(p.everyTicks, 100)
-      return `每 ${sec(every)} 吟唱 ${sec(tele)} 后重击全队(${dmg} 伤)——读条时切【分散】可大幅减伤`
+      return `每 ${sec(every)} 一轮:吟唱 ${sec(tele)} 后重击全队(${dmg} 伤)——读条时切【分散】可大幅减伤`
     }
     case 'cast-buff': {
       const cast = n(p.castTicks, 30)

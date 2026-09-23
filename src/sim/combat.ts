@@ -24,10 +24,11 @@ import { bondStars, BOND_MULT_PER_STAR } from './gen'
 
 export const TICK_MS = 100 // 10 tick / 秒；模拟与演出解耦，演出层按 tick 回放
 
-/** 护甲减伤常数：dmg × K/(K+def)，K 越大护甲越弱（D13-14 平衡） */
-const MITIGATION_K = 60
+/** 护甲减伤常数：dmg × K/(K+def)，K 越大护甲越弱（D13-14 平衡）
+ *  试玩反馈④:装备端治本——K 60→30,def 属性真实化(def10:14%→25%),护甲值得穿 */
+const MITIGATION_K = 30
 /** 坦克每 tick 对每个敌人的被动仇恨（活着就拉住阵线；战斗变长后须压过游侠输出仇恨,1.8 起稳坐第一仇恨） */
-const TANK_AURA_THREAT = 2.2
+const TANK_AURA_THREAT = 3.0
 /** 威胁目标选择的抖动概率：偶尔打二号仇恨，模拟走位失误 */
 const THREAT_DITHER = 0.2
 /** 集火加成：全队对集火目标伤害 +50%（打断咏唱/秒杀增援的核心手段） */
@@ -52,6 +53,8 @@ export const EXTRACT_TICKS = 50
 /** 战斗硬上限(试玩反馈:tick 无限拖):软压力/强制撤离 */
 export const TICK_SOFT_CAP = 900
 export const TICK_HARD_CAP = 1200
+/** 副本敌人全局血量系数(试玩反馈④;温和放慢——弱档不磨死,秒杀感主要由等级压制治理) */
+export const ENEMY_HP_MULT = 1.1
 
 let combatantSeq = 0
 
@@ -211,14 +214,23 @@ export function createBattle(
   const power = (dungeon.enemyPower ?? 1) * enemyScale
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
+  // 副本节奏系数(试玩反馈④:满配队 11-18s 秒杀 boss、机制零触发)——只作用于注册了
+  // expectedLevel 的副本;高塔有自己的 scaleEnemy 分层缩放,不吃这套
+  // 等级压制:队伍平均等级超出副本预期等级时敌人血/攻上修,高等级回头刷低图不再无损碾压
+  const hasCurve = dungeon.expectedLevel !== undefined
+  const overLvl = hasCurve
+    ? Math.max(0, members.reduce((s, m) => s + m.level, 0) / Math.max(1, members.length) - (dungeon.expectedLevel ?? 0))
+    : 0
+  const hpFactor = hasCurve ? ENEMY_HP_MULT * (1 + Math.min(1.2, overLvl * 0.12)) : 1
+  const atkFactor = hasCurve ? 1 + Math.min(0.6, overLvl * 0.06) : 1
   const combatants: Combatant[] = members.map(toCombatant)
   for (const gid of enc.enemyGroupIds) {
     for (const e of dungeon.enemyGroups[gid] ?? []) {
       const raw = enemyToCombatant(e)
-      if (power !== 1) {
-        raw.maxHp = Math.round(raw.maxHp * power)
+      if (power !== 1 || hpFactor !== 1) {
+        raw.maxHp = Math.round(raw.maxHp * power * hpFactor)
         raw.hp = raw.maxHp
-        raw.attack = Math.round(raw.attack * power)
+        raw.attack = Math.round(raw.attack * power * atkFactor)
       }
       combatants.push(raw)
     }
@@ -229,6 +241,11 @@ export function createBattle(
     boss.boss = true
     boss.bossMechanics = def.mechanics
     boss.mech = {}
+    if (hpFactor !== 1) {
+      boss.maxHp = Math.round(boss.maxHp * power * hpFactor)
+      boss.hp = boss.maxHp
+      boss.attack = Math.round(boss.attack * power * atkFactor)
+    }
     const sumMech = def.mechanics.find((m) => m.kind === 'summon')
     if (sumMech) boss.summonPool = dungeon.enemyGroups[String(sumMech.params.groupId)] ?? []
     combatants.push(boss)
@@ -596,9 +613,10 @@ function useSkill(
       // 牧师基础攻击 7.0 配 4.5 倍 ≈ 31/s,恢复 D15 校准的绝对吞吐,否则长战斗必崩盘
       const amount = Math.round(c.attack * 4.5 * (1 + (target.healReceived ?? 0)))
       target.hp = Math.min(target.maxHp, target.hp + amount)
-      // 治疗仇恨：治疗量全额转化为威胁——坦克倒下后牧师是下一个目标
+      // 治疗仇恨：0.4× 转化为威胁(节奏改版④:战斗拉长后 1:1 会让牧师威胁反超坦克,
+      // 远程转火治疗——打折扣保住坦克仇恨线;坦克倒下后累积仍会居首,兜底逻辑不变)
       for (const e of aliveOf(state, 'enemy')) {
-        e.threat[c.id] = (e.threat[c.id] ?? 0) + amount
+        e.threat[c.id] = (e.threat[c.id] ?? 0) + Math.round(amount * 0.4)
       }
       state.events.push({
         tick: state.tick,

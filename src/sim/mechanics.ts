@@ -160,7 +160,8 @@ export function processBossMechanics(state: BattleState): void {
           break
         }
         case 'summon': {
-          if (!rt.fired && c.hp / c.maxHp <= num(m.params.atHpPct, 0.6)) {
+          // 机制登场保障:血量线 OR 时间兜底(默认 26s)——战斗变长/打不穿的局里增援照样登场
+          if (!rt.fired && (c.hp / c.maxHp <= num(m.params.atHpPct, 0.6) || state.tick >= num(m.params.atTickFallback, 260))) {
             rt.fired = 1
             const pool = c.summonPool ?? []
             const count = num(m.params.count, 2)
@@ -177,7 +178,7 @@ export function processBossMechanics(state: BattleState): void {
           break
         }
         case 'bind': {
-          if (!rt.fired && c.hp / c.maxHp <= num(m.params.atHpPct, 0.5)) {
+          if (!rt.fired && (c.hp / c.maxHp <= num(m.params.atHpPct, 0.5) || state.tick >= num(m.params.atTickFallback, 260))) {
             rt.fired = 1
             const candidates = state.combatants.filter(
               (x) => x.alive && x.team === 'guild' && x.role !== 'tank',

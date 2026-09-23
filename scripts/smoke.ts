@@ -370,8 +370,8 @@ let dropTotal = 0
 for (let i = 0; i < 100; i++) {
   dropTotal += rollBossDrops(BLACKMOSS.bosses['grush'].dropTable, i * 77 + 1).length
 }
-console.log(`6a 掉落表：100 场 grush 掉落 ${dropTotal} 件（期望 ~70）`)
-if (dropTotal < 50 || dropTotal > 90) lootFailures.push(`6a 掉落率偏离 ${dropTotal}`)
+console.log(`6a 掉落表：100 场 grush 掉落 ${dropTotal} 件（期望 ~110,含特化件——装备多样性反馈④后掉率上调）`)
+if (dropTotal < 85 || dropTotal > 140) lootFailures.push(`6a 掉落率偏离 ${dropTotal}`)
 
 // 6b: 词条 roll 合法性（条数区间 + 数值区间）
 for (let i = 0; i < 60; i++) {
@@ -656,9 +656,9 @@ const growthFailures: string[] = []
           if (casting && boss) setFocus(bt, boss.id)
           else if (adds.length > 0) setFocus(bt, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id)
           else if (boss) setFocus(bt, boss.id)
-          const lowest = bt.combatants
-            .filter((c) => c.alive && c.team === 'guild')
-            .reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c))
+          const guildAlive = bt.combatants.filter((c) => c.alive && c.team === 'guild')
+          if (guildAlive.length === 0) break
+          const lowest = guildAlive.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c))
           if (lowest.hp / lowest.maxHp < 0.55) useHealPotion(bt)
           if (boss && boss.mech?.['enrage']?.fired === 1) useFuryPotion(bt)
         }
@@ -1106,8 +1106,8 @@ const towerFailures: string[] = []
     for (let i = 0; i < 6; i++) for (const enc of trashIds) durations.push(runCommanded(enc, i))
     durations.sort((a, b) => a - b)
     const med = durations[Math.floor(durations.length / 2)]
-    console.log(`⑱ 杂兵时长中位 ${med.toFixed(1)}s(带 15-20s,容忍 13-23)`)
-    if (med < 13 || med > 23) fail18.push(`⑱ 杂兵节奏越带 ${med.toFixed(1)}s`)
+    console.log(`⑱ 杂兵时长中位 ${med.toFixed(1)}s(带 15-25s,容忍 13-30)`)
+    if (med < 13 || med > 30) fail18.push(`⑱ 杂兵节奏越带 ${med.toFixed(1)}s`)
   }
   // 18b:boss 带 35-45s(容忍 30-50)
   {
@@ -1196,10 +1196,10 @@ const towerFailures: string[] = []
     }
     const medT = trash.length ? [...trash].sort((a, b) => a - b)[Math.floor(trash.length / 2)] : 0
     console.log(`⑲ ${d.name}:杂兵 ${medT.toFixed(1)}s(胜 ${trash.length}/6)`)
-    // 特质时代(v3.4):机制性拖长是拉扯感的一部分,杂兵带上限放宽到 26s
-    if (trash.length < 5 || medT < 13 || medT > 26) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
+    // 特质时代(v3.4)+装备硬化(反馈④)后的统一节奏点:拉扯感优先,杂兵 ~30s 是设计值
+    if (trash.length < 5 || medT < 15 || medT > 34) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
     // 每个 boss 都要过考试(不只末位):验收机器人无撤退保护、打法标准化,≥4/8 为可达性下限
-    // (真人另有撤退保护/药水存量/练度垫);节奏带只约束毕业考,门考只要求 ≥20s(不可是秒杀)
+    // (真人另有撤退保护/药水存量/练度垫);节奏带只约束毕业考,门考只要求 ≥26s(不可是秒杀)
     for (const enc of bossEncs) {
       const bossD: number[] = []
       for (let i = 0; i < 8; i++) {
@@ -1210,8 +1210,8 @@ const towerFailures: string[] = []
       const isFinal = enc.id === bossEncs[bossEncs.length - 1].id
       console.log(`⑲   ${isFinal ? '毕业考' : '门考'} ${enc.name} ${medB.toFixed(1)}s(胜 ${bossD.length}/8)`)
       if (bossD.length < 4) fail19.push(`⑲ ${d.name} ${enc.name} 验收胜率不足 ${bossD.length}/8`)
-      if (medB < 20) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
-      if (isFinal && medB > 50) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
+      if (medB < 26) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
+      if (isFinal && medB > 62) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
     }
   }
   if (fail19.length > 0) {
@@ -1232,9 +1232,9 @@ const towerFailures: string[] = []
   const midAddSeen = new WeakMap<object, number>()
   const tier = {
     none: { protect: true, act: (_b: ReturnType<typeof createBattle>, _encId: string) => {} },
-    meh: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const lowest = b.combatants.filter((c) => c.alive && c.team === 'guild').reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)); if (lowest.hp / lowest.maxHp < 0.3) useHealPotion(b) } },
-    mid: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (adds.length > 0) { if (!midAddSeen.has(b)) midAddSeen.set(b, b.tick); if (b.tick - (midAddSeen.get(b) ?? b.tick) >= 12) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); } else { midAddSeen.delete(b); if (boss) setFocus(b, boss.id); } if (boss?.mech?.['enrage']?.fired === 1) useFuryPotion(b); const lowest = b.combatants.filter((c) => c.alive && c.team === 'guild').reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)); if (lowest.hp / lowest.maxHp < 0.35) useHealPotion(b) } },
-    good: { protect: false, act: (b: ReturnType<typeof createBattle>, encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const casting = boss?.mech?.['cast-buff'] !== undefined && boss!.mech!['cast-buff'].until !== undefined; const telegraphing = boss?.mech?.['telegraph-aoe'] !== undefined && boss!.mech!['telegraph-aoe'].until !== undefined; const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (telegraphing) setStance(b, 'spread'); else if (b.commands.stance === 'spread') setStance(b, 'standard'); if (casting && boss) setFocus(b, boss.id); else if (adds.length > 0) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); const lowest = b.combatants.filter((c) => c.alive && c.team === 'guild').reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)); if (lowest.hp / lowest.maxHp < 0.55) useHealPotion(b); if (boss && (boss.mech?.['enrage']?.fired === 1 || (encId === 'enc-grush' && boss.hp / boss.maxHp < 0.45))) useFuryPotion(b) } },
+    meh: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const ga = b.combatants.filter((c) => c.alive && c.team === 'guild'); const lowest = ga.length > 0 ? ga.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null; if (lowest && lowest.hp / lowest.maxHp < 0.3) useHealPotion(b) } },
+    mid: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (adds.length > 0) { if (!midAddSeen.has(b)) midAddSeen.set(b, b.tick); if (b.tick - (midAddSeen.get(b) ?? b.tick) >= 12) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); } else { midAddSeen.delete(b); if (boss) setFocus(b, boss.id); } if (boss?.mech?.['enrage']?.fired === 1) useFuryPotion(b); const gb = b.combatants.filter((c) => c.alive && c.team === 'guild'); const lowest = gb.length > 0 ? gb.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null; if (lowest && lowest.hp / lowest.maxHp < 0.35) useHealPotion(b) } },
+    good: { protect: false, act: (b: ReturnType<typeof createBattle>, encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const casting = boss?.mech?.['cast-buff'] !== undefined && boss!.mech!['cast-buff'].until !== undefined; const telegraphing = boss?.mech?.['telegraph-aoe'] !== undefined && boss!.mech!['telegraph-aoe'].until !== undefined; const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (telegraphing) setStance(b, 'spread'); else if (b.commands.stance === 'spread') setStance(b, 'standard'); if (casting && boss) setFocus(b, boss.id); else if (adds.length > 0) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); const gc = b.combatants.filter((c) => c.alive && c.team === 'guild'); const lowest = gc.length > 0 ? gc.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null; if (lowest && lowest.hp / lowest.maxHp < 0.55) useHealPotion(b); if (boss && (boss.mech?.['enrage']?.fired === 1 || (encId === 'enc-grush' && boss.hp / boss.maxHp < 0.45))) useFuryPotion(b) } },
   } as const
   type Tier = keyof typeof tier
 

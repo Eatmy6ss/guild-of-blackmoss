@@ -161,10 +161,29 @@ const DUNGEON_TIER: Record<string, number> = {
   thornhold: 2,
 }
 
-/** 杂兵小概率掉装备(8%),白/绿为主——稀有但不至于全程空手 */
+/** 副本特化装备池(试玩反馈④:装备多样性——在对应图刷会有专属掉落) */
+const DUNGEON_SIGNS: Record<string, string[]> = {
+  blackmoss: ['trk-sign-frogeye', 'wpn-line-guard', 'wpn-line-priest'],
+  rustmine: ['arm-sign-minershell', 'wpn-line-ranger', 'wpn-line-mage'],
+  ashfield: ['wpn-sign-warbrand', 'wpn-line-warrior', 'arm-line-guard'],
+  frostgrave: ['trk-sign-frostheart', 'wpn-line-mage', 'arm-line-priest'],
+  abyssaltar: ['wpn-sign-bloodletter', 'wpn-line-warlock', 'arm-line-warrior'],
+  thornhold: ['arm-sign-thornmail', 'wpn-line-ranger', 'arm-line-ranger'],
+}
+
+/** 杂兵小概率掉装备(8%),白/绿为主——稀有但不至于全程空手
+ *  特化加权:50% 先抽本图招牌池,刷对应副本有专属目标 */
 export function rollWaveDrop(dungeonId: string, rng: () => number): ItemInstance | null {
   if (rng() >= 0.08) return null
   const tier = DUNGEON_TIER[dungeonId] ?? 1
+  const signIds = DUNGEON_SIGNS[dungeonId] ?? []
+  const signPool = signIds
+    .map((id) => ITEM_BASES[id])
+    .filter((b) => b && b.tier === tier)
+  if (signPool.length > 0 && rng() < 0.5) {
+    const base = signPool[Math.floor(rng() * signPool.length)]
+    return rollDrop(base.id, rng, { qualityBias: -0.05 })
+  }
   const pool = Object.values(ITEM_BASES).filter((b) => b.tier === tier)
   if (pool.length === 0) return null
   const base = pool[Math.floor(rng() * pool.length)]
