@@ -28,6 +28,7 @@ import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE } from '../src/data/jobs'
 import { HYBRIDS } from '../src/data/vocations'
 import { TRAIT_INFO } from '../src/data/traits'
+import { MECH_INFO, mechanicBrief } from '../src/data/mech-docs'
 import { traitHint } from '../src/sim/combat'
 import { RACES } from '../src/data/races'
 import { grantExp, rollSpec, setRaceOverride } from '../src/sim/gen'
@@ -2334,4 +2335,52 @@ const towerFailures: string[] = []
   }
   if (fail37.length > 0) { console.log('✗ 特质图鉴未通过:', fail37); process.exit(1) }
   console.log('✓ 特质图鉴+首遇提示通过')
+}
+
+// ============================================================
+// ㊳ boss 机制图鉴:MECH_INFO 覆盖全部 MechanicKind + 全 boss 机制可读 + 掉落表可解析
+// ============================================================
+{
+  const fail38: string[] = []
+  // 38a:图鉴覆盖——MechanicKind 全集每种都有 MECH_INFO 条目(新机制漏文案会被抓住)
+  {
+    const kinds = [
+      'telegraph-aoe', 'cast-buff', 'cast-heal', 'slow-touch', 'pull',
+      'ground-zone', 'phase-invuln', 'summon', 'bind', 'enrage',
+    ] as const
+    for (const k of kinds) if (!MECH_INFO[k]) fail38.push(`㊳ MECH_INFO 缺 ${k}`)
+    console.log(`㊳ 图鉴:MechanicKind 全集 ${kinds.length} 种全部有条目`)
+  }
+  // 38b:全 boss 机制明细可读——mechanicBrief 非空且提到招式应对;boss 无机制视为异常
+  {
+    let mechCount = 0
+    for (const d of DUNGEONS) {
+      for (const boss of Object.values(d.bosses)) {
+        if (!boss.mechanics || boss.mechanics.length === 0) fail38.push(`㊳ ${boss.name} 无机制`)
+        for (const m of boss.mechanics) {
+          mechCount++
+          let brief = ''
+          try { brief = mechanicBrief(m) } catch (err) { fail38.push(`㊳ ${boss.name}.${m.name} brief 抛错:${err}`) }
+          if (!brief || brief.length < 10) fail38.push(`㊳ ${boss.name}.${m.name} brief 异常:「${brief}」`)
+          if (MECH_INFO[m.kind] && !brief.includes('——')) fail38.push(`㊳ ${boss.name}.${m.name} brief 缺应对段`)
+        }
+      }
+    }
+    console.log(`㊳ 明细:全 boss ${mechCount} 条机制 mechanicBrief 全部生成非空`)
+  }
+  // 38c:掉落表可解析——手册固定掉落行要能翻译成装备名
+  {
+    let dropCount = 0
+    for (const d of DUNGEONS) {
+      for (const boss of Object.values(d.bosses)) {
+        for (const dr of boss.dropTable) {
+          dropCount++
+          if (!ITEM_BASES[dr.baseId]) fail38.push(`㊳ ${boss.name} 掉落 ${dr.baseId} 无 ITEM_BASES 条目`)
+        }
+      }
+    }
+    console.log(`㊳ 掉落:全 boss ${dropCount} 条掉落全部可解析为装备名`)
+  }
+  if (fail38.length > 0) { console.log('✗ boss 机制图鉴未通过:', fail38); process.exit(1) }
+  console.log('✓ boss 机制图鉴通过')
 }

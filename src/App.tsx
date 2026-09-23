@@ -51,6 +51,7 @@ import { JOBS, specOf } from './data/jobs'
 import { HYBRIDS, isHybrid } from './data/vocations'
 import { REGIONS, dungeonLock, nextRegionLocked } from './data/regions'
 import { TRAIT_INFO } from './data/traits'
+import { MECH_INFO, mechanicBrief } from './data/mech-docs'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
 // 花名册 = 全体成员（含亡者记录）；远征队 = 花名册前三名幸存者。
@@ -1470,6 +1471,39 @@ export default function App() {
             >
               🛡 撤退保护：{protectOn ? '开（濒危自动撤离）' : '关（搏命模式）'}
             </button>
+            <div className="inv-panel">
+              <h2>☠ boss 机制图鉴(击败即研习,研习 boss 伤害 +5%)</h2>
+              {DUNGEONS.map((d) => (
+                <div key={d.id} className="inv-item">
+                  <b>🗺 {d.name}</b>
+                  {Object.values(d.bosses).map((boss) => {
+                    const learned = manual.includes(boss.id)
+                    return (
+                      <div key={boss.id} style={{ marginTop: 6 }}>
+                        {learned ? (
+                          <>
+                            <div>
+                              👹 <b>{boss.name}</b>
+                              <span className="hint">（{boss.maxHp} 血 / {boss.attack} 攻 / {boss.position === 'front' ? '前排' : '后排'}）</span>
+                            </div>
+                            {boss.mechanics.map((m) => (
+                              <div key={m.id} className="hint" style={{ marginLeft: 14, marginTop: 2 }}>
+                                ▸〔{MECH_INFO[m.kind]?.name ?? m.kind}〕<b>{m.name}</b> —— {mechanicBrief(m)}
+                              </div>
+                            ))}
+                            <div className="hint" style={{ marginLeft: 14, marginTop: 2 }}>
+                              🎁 固定掉落：{boss.dropTable.map((dr) => `${ITEM_BASES[dr.baseId]?.name ?? dr.baseId}（${Math.round(dr.chance * 100)}%）`).join('、')}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="hint" style={{ marginTop: 2 }}>🔒 ??? ——击败后研习其招式</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
             <div className="inv-panel">
               <h2>👹 小怪特性图鉴（首次遭遇会收到提示）</h2>
               {Object.values(TRAIT_INFO).map((tr) => (
