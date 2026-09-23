@@ -519,7 +519,7 @@ const cache = new Map<string, Texture>()
 
 /** 精灵显示缩放:素材包 32×32 与 HD 矩阵(≥20 行)原生 1:1;旧 12×14/16×18 矩阵保持 ×2 */
 export function spriteScale(key: string): number {
-  if (key.startsWith('mon-') || key.startsWith('/assets/')) return 2
+  if (key.startsWith('mon-') || key.startsWith('/assets/')) return 3
   const def = UNIT_SPRITES[key]
   if (!def) return 2
   return 2
