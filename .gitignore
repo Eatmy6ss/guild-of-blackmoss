@@ -5,3 +5,4 @@ dist/
 scripts/*.mjs
 dist-playtest/
 /黑苔公会-*.html
+.vite/
