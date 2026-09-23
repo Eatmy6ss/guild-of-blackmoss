@@ -210,6 +210,8 @@ export function createBattle(
   protectOn = true,
   potions?: { heal: number; fury: number },
   enemyScale = 1,
+  /** 远征内事件状态(反馈④事件大项):乘数,只作用于我方 */
+  mods?: { atk?: number; def?: number; hp?: number; heal?: number },
 ): BattleState {
   const power = (dungeon.enemyPower ?? 1) * enemyScale
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
@@ -224,6 +226,17 @@ export function createBattle(
   const hpFactor = hasCurve ? ENEMY_HP_MULT * (1 + Math.min(1.2, overLvl * 0.12)) : 1
   const atkFactor = hasCurve ? 1 + Math.min(0.6, overLvl * 0.06) : 1
   const combatants: Combatant[] = members.map(toCombatant)
+  if (mods) {
+    for (const c of combatants) {
+      if (mods.atk !== undefined) c.attack = Math.max(1, Math.round(c.attack * mods.atk))
+      if (mods.def !== undefined && c.defense !== undefined) c.defense = Math.max(0, Math.round(c.defense * mods.def))
+      if (mods.hp !== undefined) {
+        c.maxHp = Math.max(1, Math.round(c.maxHp * mods.hp))
+        c.hp = c.maxHp
+      }
+      if (mods.heal !== undefined) c.healReceived = (c.healReceived ?? 0) + mods.heal - 1
+    }
+  }
   for (const gid of enc.enemyGroupIds) {
     for (const e of dungeon.enemyGroups[gid] ?? []) {
       const raw = enemyToCombatant(e)

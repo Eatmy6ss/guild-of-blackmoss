@@ -1,4 +1,5 @@
 import type { BattleState, DeadHero, DungeonDef, Member, RouteNodeDef } from './types'
+import type { RunBuffDef } from '../data/guild-events'
 import { createBattle, POTION_STOCK, toCombatant } from './combat'
 import { grantExp } from './gen'
 
@@ -32,6 +33,8 @@ export interface DungeonRun {
   eliteNow?: boolean
   /** 精英场次索引(反馈④:路线内 2-4 只精英,×1.25) */
   eliteAt: number[]
+  /** 远征内持续状态(事件给予,整次远征;乘数制 mods) */
+  buffs: RunBuffDef[]
 }
 
 /** 岔路映射：险路打满全部遭遇（更多战斗=更多收获机会）；稳路跳过最后一段杂兵 */
@@ -82,7 +85,6 @@ export function createRun(
   const run: DungeonRun = {
     dungeon,
     steps: plan.steps,
-    eliteAt: plan.eliteAt,
     stepIdx: 0,
     phase: 'battle',
     battle: null,
@@ -93,6 +95,8 @@ export function createRun(
     potions,
     autoMode,
     nodeIds: [],
+    eliteAt: plan.eliteAt,
+    buffs: [],
   }
   startStep(run, seed)
   return run
@@ -100,6 +104,14 @@ export function createRun(
 
 export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void {
   const isElite = run.eliteAt.includes(run.stepIdx)
+  // 远征内事件状态聚合:乘数连乘(反馈④事件大项)
+  const mods: { atk?: number; def?: number; hp?: number; heal?: number } = {}
+  for (const b of run.buffs ?? []) {
+    for (const [k, v] of Object.entries(b.mods)) {
+      const key = k as 'atk' | 'def' | 'hp' | 'heal'
+      mods[key] = (mods[key] ?? 1) * (v as number)
+    }
+  }
   run.battle = createBattle(
     run.members.filter((m) => m.alive),
     run.dungeon,
@@ -110,6 +122,7 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     run.protectOn,
     run.potions,
     run.eliteNow || isElite ? 1.25 : 1,
+    Object.keys(mods).length > 0 ? mods : undefined,
   )
   run.eliteNow = false
   run.battle.commands.autoMode = !!run.autoMode

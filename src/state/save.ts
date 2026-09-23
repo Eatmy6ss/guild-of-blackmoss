@@ -10,7 +10,12 @@ import type { ChronicleEntry } from '../sim/chronicle'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 9
+export const SAVE_VERSION = 10
+
+export interface PendingConsequence {
+  eventId: string
+  dueDay: number
+}
 
 export interface GuildSave {
   version: number
@@ -38,6 +43,8 @@ export interface GuildSave {
   unlockedHybrids: string[]
   /** v9:副本熟练度(逐段选路迷雾揭示) */
   dungeonMastery: Record<string, number>
+  /** v10:延迟第二幕队列(巫师3式后果,dueDay 到期弹出) */
+  pendingConsequences?: PendingConsequence[]
 }
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
@@ -64,6 +71,8 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   7: (d) => ({ ...d, unlockedHybrids: [] }),
   // v8 → v9:副本熟练度
   8: (d) => ({ ...d, dungeonMastery: {} }),
+  // v9 → v10:延迟第二幕队列
+  9: (d) => ({ ...d, pendingConsequences: (d.pendingConsequences as unknown[] | undefined) ?? [] }),
 }
 
 /** 纯函数迁移:供 loadGuildSave 与 smoke 直接验证 */

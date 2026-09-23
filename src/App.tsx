@@ -32,7 +32,8 @@ import {
 import { powerScore } from './sim/combat'
 
 import { rollBossDrops, rollWaveDrop, describeItem, slotsOf } from './sim/loot'
-import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave } from './state/save'
+import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave, type PendingConsequence } from './state/save'
+import { GUILD_EVENTS } from './data/guild-events'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
 import { bossIntents } from './sim/mechanics'
@@ -139,6 +140,8 @@ export default function App() {
   const [unlockedHybrids, setUnlockedHybrids] = useState<string[]>(() => saved?.unlockedHybrids ?? [])
   // 副本熟练度(宪法 v3.3 修正案):迷雾揭示进度
   const [dungeonMastery, setDungeonMastery] = useState<Record<string, number>>(() => saved?.dungeonMastery ?? {})
+  // 延迟第二幕队列(反馈④事件大项):dueDay 到期后弹出后续事件
+  const [pendingConsequences, setPendingConsequences] = useState<PendingConsequence[]>(() => saved?.pendingConsequences ?? [])
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
 
   // 读档登记已用名字：新招募不与存档英雄/英灵重名
@@ -271,8 +274,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, run, towerRun])
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -500,6 +503,19 @@ export default function App() {
       return
     }
     setDay((d) => d + 1)
+    // 延迟第二幕(反馈④事件大项):dueDay 到期即弹出后续事件(队列里最早到期的先出)
+    setPendingConsequences((q) => {
+      if (!q || q.length === 0) return q
+      const newDay = day + 1
+      const due = q.find((c) => c.dueDay <= newDay)
+      if (!due) return q
+      const def = GUILD_EVENTS.find((e) => e.id === due.eventId)
+      if (def) {
+        window.setTimeout(() => setPendingEvent(def), 0)
+        return q.filter((c) => c !== due)
+      }
+      return q.filter((c) => c !== due)
+    })
     if (expedition.length < activeDungeon.size) return
     // M1 P0 成长快照:结算页要展示"这把你变强了什么"
     growthSnapshotRef.current = new Map(
@@ -710,8 +726,22 @@ export default function App() {
     resolveEventRef.current = resolveEvent
     undefined
     if (fx.potionFury) setPotions((p) => ({ ...p, fury: Math.max(0, p.fury + fx.potionFury!) }))
+    // 远征内持续状态(反馈④事件大项):仅副本内事件生效(挂到当前 run)
+    let buffNote = ''
+    if (fx.runBuff) {
+      const r = runRef.current
+      if (r) {
+        r.buffs = [...(r.buffs ?? []), fx.runBuff]
+        buffNote = `\n〔获得状态:${fx.runBuff.name}〕${fx.runBuff.desc}`
+      }
+    }
+    // 延迟第二幕:入队,dueDay 到期在出征日弹出
+    if (fx.delayed) {
+      setPendingConsequences((q) => [...(q ?? []), { eventId: fx.delayed!.eventId, dueDay: day + fx.delayed!.dueDays }])
+      buffNote = `\n〔这件事,还没有完……〕`
+    }
     logChronicle(chronicleRaw(day, ev.title + ':' + outcome.text))
-    setEventResult(outcome.text)
+    setEventResult(outcome.text + buffNote)
     setMembers([...membersRef.current])
     // 挂机连刷:远征途中触发的事件,代打结算后自动继续推进
     if (runRef.current?.autoMode && runRef.current.phase === 'rest') {

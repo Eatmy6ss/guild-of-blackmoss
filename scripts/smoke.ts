@@ -981,6 +981,62 @@ const towerFailures: string[] = []
   }
   console.log(`⑯ 事件池:${GUILD_EVENTS.length} 个事件,触发率 ${(EVENT_CHANCE * 100).toFixed(0)}%`)
   if (GUILD_EVENTS.length < 8) fail16.push('⑯ 事件池不足 8 个')
+  // 16a+:反馈④事件大项——id 唯一/延迟链完整/远征状态乘数合法/两难覆盖率
+  {
+    const ids = GUILD_EVENTS.map((e) => e.id)
+    if (new Set(ids).size !== ids.length) fail16.push('⑯ 事件 id 重复')
+    const hasNegative = (e: (typeof GUILD_EVENTS)[number]): boolean =>
+      e.choices.some((c) =>
+        c.outcomes.some((o) => {
+          const f = o.effects
+          if (!f) return false
+          if ((f.gold ?? 0) < 0 || (f.blessing ?? 0) < 0 || (f.moraleAll ?? 0) < 0 || (f.moraleRandom ?? 0) < 0) return true
+          if (f.injure || (f.potionHeal ?? 0) < 0 || (f.potionFury ?? 0) < 0) return true
+          if (f.runBuff && Object.values(f.runBuff.mods).some((v) => (v as number) < 1)) return true
+          return false
+        }),
+      )
+    let withTradeoff = 0
+    let withDelay = 0
+    let withBuff = 0
+    for (const ev of GUILD_EVENTS) {
+      if (ev.choices.some((c) => c.outcomes.some((o) => o.effects?.delayed))) withDelay++
+      if (ev.choices.some((c) => c.outcomes.some((o) => o.effects?.runBuff))) withBuff++
+      if (hasNegative(ev)) withTradeoff++
+      for (const o of ev.choices.flatMap((c) => c.outcomes)) {
+        const d = o.effects?.delayed
+        if (d) {
+          if (!GUILD_EVENTS.some((e) => e.id === d.eventId)) fail16.push(`⑯ ${ev.id} 延迟目标 ${d.eventId} 不在池中`)
+          if (d.dueDays < 1 || d.dueDays > 5) fail16.push(`⑯ ${ev.id} 延迟天数越界 ${d.dueDays}`)
+        }
+        const rb = o.effects?.runBuff
+        if (rb) {
+          for (const v of Object.values(rb.mods)) {
+            if ((v as number) < 0.5 || (v as number) > 2) fail16.push(`⑯ ${ev.id} 状态乘数越界 ${v}`)
+          }
+        }
+      }
+    }
+    if (withTradeoff < GUILD_EVENTS.length * 0.6) {
+      fail16.push(`⑯ 两难覆盖率不足:${withTradeoff}/${GUILD_EVENTS.length}(要求 ≥60% 事件含负面分支)`)
+    }
+    if (withDelay < 3) fail16.push(`⑯ 延迟后果事件不足:${withDelay}(要求 ≥3,巫师3式第二幕)`)
+    if (withBuff < 3) fail16.push(`⑯ 远征状态事件不足:${withBuff}(要求 ≥3)`)
+    console.log(`⑯ 大项:两难 ${withTradeoff}/${GUILD_EVENTS.length},延迟链 ${withDelay},远征状态 ${withBuff}`)
+  }
+  // 16a++:createBattle mods 接线——远征状态真实落到战斗属性
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 666000 + j))
+    const b1 = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242)
+    const b2 = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242, 0, 0, true, undefined, 1, { hp: 1.2, atk: 0.9, heal: 1.15 })
+    const g1 = b1.combatants.filter((c) => c.team === 'guild')
+    const g2 = b2.combatants.filter((c) => c.team === 'guild')
+    const hpOk = g2.every((c, i) => c.maxHp === Math.round(g1[i].maxHp * 1.2))
+    const atkOk = g2.every((c, i) => c.attack <= g1[i].attack)
+    const healOk = g2.every((c, i) => Math.abs((c.healReceived ?? 0) - (g1[i].healReceived ?? 0) - 0.15) < 1e-9)
+    if (!hpOk || !atkOk || !healOk) fail16.push(`⑯ 远征状态未生效:hp=${hpOk} atk=${atkOk} heal=${healOk}`)
+    console.log(`⑯ 远征状态接线:hp×1.2=${hpOk},atk×0.9=${atkOk},heal+15%=${healOk}`)
+  }
   // 16b:权重解析——rng=0.99 应命中最后一个(最高累计权重)分支;rng=0.01 应命中首个
   const ev0 = GUILD_EVENTS[0]
   const first = pickOutcome(ev0, 0, 0.01)
@@ -1292,7 +1348,7 @@ const towerFailures: string[] = []
   expect('grush-good', 95, 100)
   expect('talma-none', 0, 12) // 不参与指挥 = 打不过（指挥台存在的意义）
   expect('talma-meh', 0, 25) // 上限放宽：60-80 场样本的二项噪声约 ±9%，硬契约在"别太高"
-  expect('talma-mid', 55, 90) // 只会点怪的新手也应有约七成机会
+  expect('talma-mid', 60, 95) // 只会点怪的新手也应有约七成机会(K=30 装备硬化后中位体验改善,上限微调)
   expect('talma-good', 95, 100)
   expect('talma-geared', 95, 100) // T2 装备后稳赢（循环引力）
   if (balFailures.length > 0) {

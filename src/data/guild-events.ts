@@ -1,7 +1,22 @@
 // 公会大事事件池(M1 P2,巫师 3 式:选择即取舍,结果有权重分支——没有标准答案)
+// 灵感池(制作人指示:广泛搜集,不限于这几个):巫师3(两害取其轻/延迟后果)、杀戮尖塔(结构化取舍)、
+// 暗黑地牢(压力与代价)、黑暗之魂(悲凉托付/力量的诱惑)、博德之门3(遇险者与寄生之诱)、环世界(涌现)。
+// 改编纪律:只取骨架,不抄文本;全部落到黑苔世界观。
 // 效果键:gold 金币 / blessing 英灵祝福 / moraleAll 全员士气 / moraleRandom 随机一人士气 /
 //        expAll 全员经验 / item 获得装备(baseId)/ recruit 获得一位上门候选 / injure 随机一人重伤(HP 减半)
 //        potionHeal / potionFury 药水库存增减(负数=消耗,药水经济接入事件叙事)
+//        attrPoint 属性点(六维改革):全队每人 +N 点随机维
+// 反馈④事件大项新增:
+//        runBuff 远征内持续状态(乘数,仅副本内事件生效;hp=生命上限,heal=受疗,atk/def 直改)
+//        delayed 延迟第二幕:{ eventId, dueDays }——dueDay 后弹出的后续事件(巫师3式后果延迟)
+
+/** 远征内持续状态(整次远征,乘数制:<1 为减益) */
+export interface RunBuffDef {
+  id: string
+  name: string
+  desc: string
+  mods: { atk?: number; def?: number; hp?: number; heal?: number }
+}
 
 export interface EventOutcome {
   weight: number
@@ -19,6 +34,8 @@ export interface EventOutcome {
     potionFury?: number
     /** 属性点(六维改革):全队每人 +N 点随机维 */
     attrPoint?: number
+    runBuff?: RunBuffDef
+    delayed?: { eventId: string; dueDays: number }
   }
 }
 
@@ -909,6 +926,344 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         outcomes: [
           { weight: 6, text: '管家记下了拒绝,没有失态。三个月后,侯爵领地"肃清"的消息传来——接单的公会拿了钱,也拿进了墓碑一样的名声。', effects: { moraleAll: 5 } },
           { weight: 4, text: '拒绝的理由传开后,几个不安分的队员反倒觉得公会"怂了"。人心这东西,拒绝也是一种考题。', effects: { moraleAll: -3 } },
+        ],
+      },
+    ],
+  },
+  // ===== 事件大项第一批(反馈④:两难取舍+延迟后果;灵感池见文件头) =====
+  {
+    id: 'toll-bridge',
+    title: '断桥收费',
+    text: '去对岸的吊桥断了一半,一个抱着酒坛的渡翁躺在缆绳边:"五个金币,我背你过去。一个一个来,别晃。"',
+    choices: [
+      {
+        text: '付钱。专业的事交给专业的人,虽然他看着像刚从酒坛里捞出来的。',
+        outcomes: [
+          { weight: 7, text: '渡翁的背稳得像码头石阶。到了对岸他只说了一句:"回程免费。"', effects: { gold: -50, moraleAll: 2 } },
+          { weight: 3, text: '背到最后一人时老头打了个酒嗝。全队看着他晃了三晃,没人敢出声。钱付了,酒嗝的利息是全队的心跳。', effects: { gold: -50, moraleAll: -4 } },
+        ],
+      },
+      {
+        text: '绕浅滩。多走半里路,不把命拴在一个酒鬼的背上。',
+        outcomes: [
+          { weight: 6, text: '浅滩水冷,扎得骨头疼,但都过去了。渡翁在对岸冲你们举了举酒坛。', effects: { moraleRandom: -3 } },
+          { weight: 4, text: '暗流比看上去急。有人呛了水,装备也泡了汤——铜器还好,皮文书全毁了。', effects: { moraleRandom: -5, potionHeal: -1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'wounded-scout',
+    title: '沼泽里的斥候',
+    text: '灌木丛里有呻吟声。一个斥候打扮的年轻人被兽夹咬住小腿,已经两天了,伤口发黑。他看见你们,眼睛亮得吓人。',
+    choices: [
+      {
+        text: '救。撬开夹子,上药,把人背出去——这行的规矩比沼泽大。',
+        outcomes: [
+          { weight: 6, text: '斥候烧得迷糊,却始终攥着一张手绘的兽径图。他家人送来了谢礼,那张图的抄本也留在了公会。', effects: { potionHeal: -1, moraleAll: 5, expAll: 15 } },
+          { weight: 4, text: '人是救回来了,伤口的臭味却跟了你们三天。有人开始问:下次还救吗?没人回答。', effects: { potionHeal: -2, moraleRandom: -4 } },
+        ],
+      },
+      {
+        text: '给他留点水,夹子自己想办法。沼泽不原谅任何人的腿,包括你们的。',
+        outcomes: [
+          { weight: 7, text: '你们走出很远还能听见水声,和他不再呻吟后的安静。水壶空了一个,心口堵了一路。', effects: { potionHeal: -1, moraleAll: -6 } },
+          { weight: 3, text: '三天后回程,夹子空了,血迹拖向村子方向。他爬出去了。世界有时比想象中硬气。', effects: { moraleAll: 2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'fever-hamlet',
+    title: '烧还是不烧',
+    text: '一个村子在求救:热病倒了半村人。村长老泪纵横:"再没人帮,我们只能烧了村子断病根。"药铺就剩半间,药材没来得及糟蹋。',
+    choices: [
+      {
+        text: '进村。药材拿来救人,病来了再说。',
+        outcomes: [
+          { weight: 5, text: '药是真的,病也真的过了人。回程时队伍里多了两声咳嗽——但村里活下来的孩子记住了你们的招牌。', effects: { moraleAll: 6, runBuff: { id: 'plague-cough', name: '热病余波', desc: '咳嗽没停——受疗降低,直到本次远征结束', mods: { heal: 0.8 } } } },
+          { weight: 5, text: '药材搬完了,人群里却有人指着你们喊"带走病的"。恐惧不认好人。货是真的,委屈也是真的。', effects: { moraleAll: -4, runBuff: { id: 'plague-cough', name: '热病余波', desc: '咳嗽没停——受疗降低,直到本次远征结束', mods: { heal: 0.8 } } } },
+        ],
+      },
+      {
+        text: '帮他们烧。快刀斩病根,这是沼泽教的第一课。',
+        outcomes: [
+          { weight: 6, text: '火烧了一夜。药铺的存货被你们抢救出来一半,算是不幸中的万利。村民的眼睛在火光里看着你们,没人说话。', effects: { gold: 80, moraleAll: -5 } },
+          { weight: 4, text: '火里跑出来几个人,是自封的"病愈者"。拦,还是不拦?最后拦了。这事会在你们的酒里泡很多年。', effects: { gold: 60, moraleAll: -8 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'old-shrine',
+    title: '无名老祭坛',
+    text: '半塌的石祭坛,香灰是新的——荒地里不该有新的香灰。石头上刻着看不懂的旧字,只有一行通用语:"留者得,取者偿。"',
+    choices: [
+      {
+        text: '留下贡品,拜一拜。入乡随俗,尤其当"俗"看起来会咬人。',
+        outcomes: [
+          { weight: 6, text: '香灰忽然平了,像被什么舔过。一路无话,但所有人都觉得脚下轻了些。', effects: { gold: -30, runBuff: { id: 'shrine-light', name: '祭坛的注视', desc: '某种东西记下了你们的礼数——防御提升,直到本次远征结束', mods: { def: 1.15 } } } },
+          { weight: 4, text: '贡品收了,保佑没来。荒地就是荒地,香灰会平,是因为底下有白蚁。', effects: { gold: -30 } },
+        ],
+      },
+      {
+        text: '把供品取走。死人的规矩管不了活人的账。',
+        outcomes: [
+          { weight: 5, text: '供品是三枚旧金币和一把没锈的短刀——成色好得反常。手快的人已经揣上了。', effects: { gold: 70, item: 'wpn-t1-dagger' } },
+          { weight: 5, text: '刀是好的,但从拿起它开始,队里总有人半夜听见磨刀声。刀留在公会,磨刀声跟着人。', effects: { gold: 70, item: 'wpn-t1-dagger', runBuff: { id: 'shrine-grudge', name: '取者之偿', desc: '磨刀声在夜里跟着你们——受疗降低,直到本次远征结束', mods: { heal: 0.75 } } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'bonfire-ember',
+    title: '路人的篝火',
+    text: '沼泽高地有一堆没人看守的篝火,火苗白得反常,暖意却实实在在。火边插着一柄断剑,剑身刻着谁也不认识的名字。',
+    choices: [
+      {
+        text: '坐下烤火。暖意面前,来历先放一放。',
+        outcomes: [
+          { weight: 6, text: '火烤透了湿透的靴子,连旧伤都松快了。走时你们往火里添了自己的柴——礼尚往来,火才不灭。', effects: { moraleAll: 5, runBuff: { id: 'ember-warm', name: '白火的暖', desc: '骨头缝里的暖意——攻击提升,直到本次远征结束', mods: { atk: 1.1 } } } },
+          { weight: 4, text: '烤到后半夜,断剑"当啷"倒了。火瞬间矮了半截,像被抽走了什么。没人再睡得着。', effects: { moraleAll: -3 } },
+        ],
+      },
+      {
+        text: '拔剑走人。好铁在荒地里就是钱。',
+        outcomes: [
+          { weight: 5, text: '剑出火的瞬间,白火"呼"地熄了。从此那片高地再没有旅人敢走夜路——断剑卖了个好价钱。', effects: { gold: 90, moraleAll: -4 } },
+          { weight: 5, text: '断剑拔断了,手里只剩剑柄。火灭了,寒气从脚底漫上来,一路跟着你们到营地。', effects: { runBuff: { id: 'ember-cold', name: '熄火之寒', desc: '寒气入骨——防御降低,直到本次远征结束', mods: { def: 0.85 } } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'dying-knight',
+    title: '将死骑士的托付',
+    text: '一位锈甲骑士靠在界碑上,胸口插着不属于这片沼泽的细剑。他把手中的圣徽递过来:"把它送到北边的旧教堂……有人会等。别打开它。"他的眼睛已经在看别处了。',
+    choices: [
+      {
+        text: '接下,不打开。死人的托付比活人的合同重。',
+        outcomes: [
+          { weight: 6, text: '圣徽在行囊里沉甸甸的,像多带了一位同伴。全队走得不快,却走得齐。', effects: { moraleAll: 4, expAll: 20, delayed: { eventId: 'knight-pursuit', dueDays: 2 } } },
+          { weight: 4, text: '当夜,圣徽在行囊里发了烫。有人提议打开看看——被老兵一巴掌打回去。托付是托付,烫也是真烫。', effects: { moraleAll: 2, expAll: 20, runBuff: { id: 'knight-oath', name: '沉甸甸的托付', desc: '队伍走得更齐了——防御提升,直到本次远征结束', mods: { def: 1.12 } }, delayed: { eventId: 'knight-pursuit', dueDays: 2 } } },
+        ],
+      },
+      {
+        text: '不接。"别打开"这种话,等于里面装着麻烦。',
+        outcomes: [
+          { weight: 7, text: '你们走出百步,听见身后一声长出的气。回来时他已去了,手还保持着递东西的姿势。有人默默帮他合了眼。', effects: { moraleAll: -5 } },
+          { weight: 3, text: '你们没回头。第二天,几个披同样锈甲的人在打听"抬圣徽的佣兵"——幸好你们没拿。', effects: { moraleRandom: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'wine-cellar',
+    title: '战利品酒窖',
+    text: '塌了半边的庄园地窖里,几十桶酒码得整整齐齐——酒庄主人显然不是死于战乱,而是舍不得喝。桶上写着:"非贺功者勿开。"',
+    choices: [
+      {
+        text: '开一桶,就一桶。活着的功臣,先贺为敬。',
+        outcomes: [
+          { weight: 6, text: '酒是三十年的陈酿。全队就着干粮喝了个痛快,那晚的哨兵都哼着歌。', effects: { moraleAll: 8, runBuff: { id: 'wine-hangover', name: '宿醉', desc: '快乐是有账单的——攻击略降,直到本次远征结束', mods: { atk: 0.92 } } } },
+          { weight: 4, text: '酒是好酒,后劲是好酒的后劲。第二天的行军队伍走得像一条波浪线。', effects: { moraleAll: 6, runBuff: { id: 'wine-hangover', name: '宿醉', desc: '快乐是有账单的——攻击略降,直到本次远征结束', mods: { atk: 0.9 } } } },
+        ],
+      },
+      {
+        text: '全搬走,找城里识货的。贺功的事让买家自己来。',
+        outcomes: [
+          { weight: 6, text: '酒商眼睛都直了,现钱现结。只是"非贺功者勿开"的字样让搬运的人嘀咕了一路。', effects: { gold: 130, moraleAll: -2 } },
+          { weight: 4, text: '搬最后一桶时塌了半边地窖,两桶好酒埋了,一个人的腿差点也埋了。剩下的卖了不少。', effects: { gold: 100, moraleRandom: -4 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'dragon-cult',
+    title: '鳞音教的募捐',
+    text: '白袍信士拦在路口,衣角绣着鳞纹:"龙苏醒之日,捐资者可记名于鳞册,灾时得眷属之庇。多少是个心意。"',
+    choices: [
+      {
+        text: '捐。龙不龙的不急,眼下他们的刀是真的。',
+        outcomes: [
+          { weight: 6, text: '信士在鳞册上写下公会名,郑重盖印:"眷属之庇,必不落空。"至少他们的语气是真的。', effects: { gold: -60, runBuff: { id: 'scale-bless', name: '鳞册记名', desc: '白袍人的保票——受疗提升,直到本次远征结束', mods: { heal: 1.15 } } } },
+          { weight: 4, text: '捐完钱走出十里,才有人反应过来:"鳞册记名,记的是名字——他们知道我们叫什么了。"荒野里安静了一瞬。', effects: { gold: -60, moraleAll: -4, runBuff: { id: 'scale-bless', name: '鳞册记名', desc: '受疗提升,直到本次远征结束', mods: { heal: 1.15 } } } },
+        ],
+      },
+      {
+        text: '拒绝,顺便告诉他们龙是不存在的。听劝的信士会更信龙,不听劝的会更信刀——都试过了。',
+        outcomes: [
+          { weight: 5, text: '信士们让开了路,诵经声在背后跟了半里地。', effects: { moraleAll: 2 } },
+          { weight: 5, text: '夜里,营地周围多了几百个白袍人围成的圈,不攻,只是围着,齐声诵经到天亮。没人睡好。', effects: { moraleAll: -6, runBuff: { id: 'chant-night', name: '诵经之夜', desc: '一整夜的诵经声——精神疲惫,受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'lost-girl',
+    title: '迷路的小女孩',
+    text: '泥路上坐着个六七岁的女孩,裙角干净得不像走失的。她说要去外婆家,却连村名都说不清。她盯着你们的干粮袋,又飞快移开视线。',
+    choices: [
+      {
+        text: '派人送她回去。干粮分她吃,到了地方再走。',
+        outcomes: [
+          { weight: 6, text: '村子真找到了。她外婆是位独眼老妇,塞给你们一罐蜂蜜渍的药根:"沼泽里走的人,用得上。"', effects: { potionHeal: 2, moraleAll: 4 } },
+          { weight: 4, text: '送到地方,她爹却堵在门口骂了半天"拐子"。蜂蜜渍的药根最后还是塞过来了——大人的脸面和老人的心意,各是各的。', effects: { potionHeal: 1, moraleAll: -2 } },
+        ],
+      },
+      {
+        text: '给块干粮,让她自己回家。行程不等人,善意也要看里程。',
+        outcomes: [
+          { weight: 5, text: '她抱着干粮往岔路跑了,轻车熟路。至少这顿是饱的。', effects: { moraleRandom: -2 } },
+          { weight: 5, text: '她的视线一直挂在你们腰间的钱袋上——那手法不像孩子。走出二里地,队长摸了摸钱袋,庆幸自己多看了一眼。', effects: { moraleRandom: -3 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'blackmarket-healer',
+    title: '黑市医师',
+    text: '地下室里的医师干净得可疑:"正规治疗五十金。我这只要十金,不问来路,不留病历——就是缝线的针脚丑了点。"',
+    choices: [
+      {
+        text: '十金的。丑针脚总比没针脚强。',
+        outcomes: [
+          { weight: 5, text: '针脚丑,但真管用。第二天队伍活蹦乱跳,只有伤口痒得钻心。', effects: { gold: -10, runBuff: { id: 'itchy-stitch', name: '丑针脚', desc: '伤口在痒——受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
+          { weight: 5, text: '回去才发现他给缝的线会自己化掉——"不拆线,省事"。省事是真省事,吓人也是真吓人。', effects: { gold: -10, runBuff: { id: 'itchy-stitch', name: '化线', desc: '伤口痒且虚——受疗略降,直到本次远征结束', mods: { heal: 0.85 } } } },
+        ],
+      },
+      {
+        text: '五十金的正规医师。命只有一条,不赌针脚。',
+        outcomes: [
+          { weight: 7, text: '医师的手很稳,账单也很稳。队里有人嘀咕贵,嘀咕完也承认缝得漂亮。', effects: { gold: -50, moraleAll: 2 } },
+          { weight: 3, text: '正规医师检查完却说:"你们这伤,最好去找黑市那个老家伙——他这行干了四十年,整条街的疑难都是他缝的。"', effects: { gold: -20, moraleAll: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'levy-clerk',
+    title: '税吏的账本',
+    text: '税吏翻开账本:"黑苔公会,上季度「佣兵抚恤附加税」,欠缴六十金。"账本很新,税种也新——新得像昨晚才发明的。',
+    choices: [
+      {
+        text: '缴。六十金买个太平,比请律师便宜。',
+        outcomes: [
+          { weight: 7, text: '税吏盖章收钱,还教你们下季度怎么"合理规避"。官僚的善意,就是这么具体。', effects: { gold: -60, moraleAll: -2 } },
+          { weight: 3, text: '缴完钱,旁边商队的账房凑过来低声说:"这个税吏上周已经被免职了,他现在收的都是自己的。"你们看着他的背影, decided 不追了。', effects: { gold: -60, moraleAll: -6 } },
+        ],
+      },
+      {
+        text: '抗税。让他拿出税令原文,拿不出就请他吃泥。',
+        outcomes: [
+          { weight: 5, text: '税吏支吾半天,收起账本走了。队里响起口哨声——敢跟账本叫板的公会,名字传得比想象中快。', effects: { moraleAll: 6 } },
+          { weight: 5, text: '他真拿出了原文,盖着候补税官的私印。税补了,罚金也补了,还多了个"刺头公会"的备注。', effects: { gold: -90, moraleAll: -3, delayed: { eventId: 'tax-warrant', dueDays: 3 } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'mirror-lake',
+    title: '不照人的湖',
+    text: '湖水平得像镜子,但村里人从不照:"它照的不是脸,是你欠的账。"湖边只有一块洗衣石,和一句被磨了一半的旧话:"照见者……"后半句风化了。',
+    choices: [
+      {
+        text: '照。欠的账早晚要还,先看清是多少。',
+        outcomes: [
+          { weight: 5, text: '水面映出的比记忆里年轻,也比记忆里狠。看完的人都沉默了一会儿,然后更用力地赶路。', effects: { moraleAll: -3, expAll: 20 } },
+          { weight: 5, text: '湖面什么都没有——不是平静,是空白。有人腿软了三天。也许村人的话反着听才是忠告。', effects: { moraleAll: -5, runBuff: { id: 'lake-blank', name: '空白的湖面', desc: '那片空白总在眼前——受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
+        ],
+      },
+      {
+        text: '不照。有些账,让湖自己记着。',
+        outcomes: [
+          { weight: 7, text: '绕湖而过,洗衣石上坐着只青蛙,目送你们。世界偶尔会允许人不多事。', effects: { moraleAll: 3 } },
+          { weight: 3, text: '没照湖,却在村里被认出:"不照湖的佣兵?那湖照过的可都是大人物。"酒钱都被村民抢着付了。', effects: { gold: 25, moraleAll: 2 } },
+        ],
+      },
+    ],
+  },
+  // ===== 第二幕(延迟后果):由主事件的 delayed 触发,dueDay 后弹出 =====
+  {
+    id: 'knight-pursuit',
+    title: '第二幕·锈甲的来客',
+    text: '三名披同款锈甲的骑士堵在公会门口,为首的盯着柜台上那枚圣徽:"他临死前把东西给谁了?"他没有出示任何凭证。圣徽此刻不在柜台上——在你们挑中的远征队行囊里。',
+    choices: [
+      {
+        text: '交出去。"他只说送到,没说要陪着它死。"',
+        outcomes: [
+          { weight: 6, text: '为首的接过圣徽,久久没说话,最后留下一小袋钱:"替我们,给他立杯酒。"', effects: { gold: 70, moraleAll: 3 } },
+          { weight: 4, text: '他们收了圣徽,却记下了公会与那位远征队每个名字。是谢是忌,没人说得清。', effects: { gold: 40, moraleRandom: -3 } },
+        ],
+      },
+      {
+        text: '不交。托付是托付,徽在人在。',
+        outcomes: [
+          { weight: 5, text: '对峙到黄昏,骑士们退了。临走留话:"它会认主。它已经认了。"行囊里的圣徽,似乎更沉了。', effects: { moraleAll: 4, runBuff: { id: 'relic-kept', name: '守诺之重', desc: '全队背负着托付——防御提升,直到本次远征结束', mods: { def: 1.15 } } } },
+          { weight: 5, text: '谈崩了,动起手。三位骑士带走了话,也留下了伤——"下回在旧教堂见"。那地方你们早晚要去。', effects: { moraleAll: -3, delayed: { eventId: 'knight-pursuit', dueDays: 4 } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tax-warrant',
+    title: '第二幕·刺头的代价',
+    text: '公售所贴出新告示:"黑苔公会,抗税前科,此后各项执照费率上浮。"落款的印章是真的——上次那枚私印,竟也混在官方卷宗里盖了章。',
+    choices: [
+      {
+        text: '认了。上浮就上浮,以后按章缴税,做干净生意。',
+        outcomes: [
+          { weight: 6, text: '多缴的税像钝刀子。但半年后一场土地纠纷里,"干净生意"四个字救了公会的招牌。', effects: { gold: -40, moraleAll: 2 } },
+          { weight: 4, text: '费率上浮是上浮了,可卷宗里那枚私印也悄悄被撤了——有人替你们把尾巴收拾了。是谁,查不到。', effects: { gold: -25 } },
+        ],
+      },
+      {
+        text: '告回去。他们用假印在前,你们抗税在后,黑吃黑要看谁的纸更白。',
+        outcomes: [
+          { weight: 5, text: '讼师赚了一笔,公售所灰头土脸地把告示撕了。公会门口从此多了一句俚语:"别惹黑苔,他们连纸都翻得动。"', effects: { gold: -60, moraleAll: 6 } },
+          { weight: 5, text: '讼师赢了,案子也拖了。赢的那天全队喝了顿大酒——然后发现讼师的账单,比上浮的税贵了三倍。', effects: { gold: -80, moraleAll: 3 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'girl-debt',
+    title: '第二幕·小女孩的债主',
+    text: '一个精瘦的男人闯进公会,拍下一张画像——就是当初那个"迷路"的女孩:"她偷了我东家的东西,见过她的人都要作证。作证费,二十金。不作证……那就是同伙。"',
+    choices: [
+      {
+        text: '付钱,打发走。别让一个孩子背上一伙佣兵的麻烦。',
+        outcomes: [
+          { weight: 6, text: '他前脚走,后脚隔壁酒馆老板探头:"那骗子又来?他东家早倒了,专挑软柿子吓唬。"软柿子。你们把钱袋攥出了印子。', effects: { gold: -20, moraleAll: -4 } },
+          { weight: 4, text: '付完钱,老板娘多送了两盘下酒菜:"替那丫头谢谢你们。她爹是我们这儿的渔夫,去年走的。"', effects: { gold: -20, moraleAll: 4 } },
+        ],
+      },
+      {
+        text: '不作证,也不给钱。请他体会一下,被一群佣兵"作证"的滋味。',
+        outcomes: [
+          { weight: 5, text: '他跑得比女孩快多了。此后东区的地界上,"黑苔作证"成了句玩笑话,玩笑里带着三分敬。', effects: { moraleAll: 5 } },
+          { weight: 5, text: '他怂了,他东家的账房却没怂——一周后,公会收到了真正的传票。这次,是盖章的那种。', effects: { gold: -30, moraleAll: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'cult-wrath',
+    title: '第二幕·鳞册的批注',
+    text: '一封鳞纹封口的信送到公会:您的鳞册记名已作批注——"曾拒圣听,心意不诚"。附言:已为您在"眷属之庇"名单中除名,并移入"灾时顺延"名单。',
+    choices: [
+      {
+        text: '烧了信。龙要真醒,先烧的应该是这种名单。',
+        outcomes: [
+          { weight: 6, text: '烧信的火苗是白的,烧完连灰都不剩。全队看着那团火,默默决定今晚早睡。', effects: { moraleAll: -2 } },
+          { weight: 4, text: '信烧了,诵经声却在自己营地外响了一夜——不进,不散,天亮即去。荒野的心理战,他们玩得比龙熟练。', effects: { moraleAll: -5 } },
+        ],
+      },
+      {
+        text: '回信捐款,"补个心意"。有些名单,进比出便宜。',
+        outcomes: [
+          { weight: 6, text: '补捐次日,新鳞册寄到,名字端正,还多了一枚"诚心"鳞印。白袍人的账,比谁都清楚。', effects: { gold: -45, runBuff: { id: 'scale-bless2', name: '诚心鳞印', desc: '白袍人的保票升级——受疗提升,直到本次远征结束', mods: { heal: 1.18 } } } },
+          { weight: 4, text: '补捐的钱刚送出去,他们的募捐队伍就常驻到了公会街口——"诚心信士"的招牌,想摘都摘不掉了。', effects: { gold: -45, moraleAll: -3 } },
         ],
       },
     ],
