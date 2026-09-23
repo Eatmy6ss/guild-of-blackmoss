@@ -253,6 +253,14 @@ export interface Combatant {
   combo?: number
   /** 精神(六维投影):控制韧性计算用 */
   spr?: number
+  /** 被动特质(小怪三层):引擎特质库解释 */
+  traits?: string[]
+  /** 攻击计数(volley:每第 3 击必暴) */
+  atkCount?: number
+  /** 再生累积(regen) */
+  regenAcc?: number
+  /** 重甲:首次受击已消耗 */
+  plateUsed?: boolean
   /** 我方引导咏唱:到 tick 前引导,被打断阈值见 channelBreak */
   channelUntilTick?: number
   channelTaken?: number
@@ -279,6 +287,10 @@ export interface EnemyDef {
    * 'bruiser' 狂战:高速高攻中血,冲脸威胁       缺省 = 普通杂兵(均衡线)
    */
   archetype?: 'shield' | 'striker' | 'bruiser'
+  /** 被动特质(宪法 v3.4 小怪三层):杂兵 1 条,精锐 2 条——引擎特质库解释 */
+  traits?: string[]
+  /** 主动技能(三层融合·行动层):复用 SkillDef,敌方同样走 useSkill */
+  skills?: SkillDef[]
 }
 
 export type MechanicKind =
@@ -427,6 +439,8 @@ export interface BattleEvent {
 }
 
 export interface BattleState {
+  /** 首次遭遇提示:已提示过的特质(每场一次) */
+  traitSeen?: Record<string, boolean>
   tick: number
   combatants: Combatant[]
   log: BattleLogEntry[]

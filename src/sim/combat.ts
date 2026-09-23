@@ -10,6 +10,7 @@ import type {
   BattleCommands,
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
+import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
 import { RACES } from '../data/races'
 import type { SpecDef } from './types'
@@ -48,6 +49,9 @@ export const HEAL_PCT = 0.3
 export const FURY_TICKS = 150
 /** 撤离过程时长（Q32：免费下令 + 可被干扰的撤离过程） */
 export const EXTRACT_TICKS = 50
+/** 战斗硬上限(试玩反馈:tick 无限拖):软压力/强制撤离 */
+export const TICK_SOFT_CAP = 900
+export const TICK_HARD_CAP = 1200
 
 let combatantSeq = 0
 
@@ -183,7 +187,8 @@ export function enemyToCombatant(def: EnemyDef): Combatant {
     attackInterval: Math.max(6, Math.round(60 / def.speed)),
     cooldownLeft: 0,
     alive: true,
-    skills: [],
+    traits: def.traits,
+    skills: (def.skills ?? []).map((def2) => ({ def: def2, cooldownLeft: 0 })),
     tauntedTicks: 0,
     position: def.position,
     range: def.range,
@@ -386,6 +391,19 @@ export function applyHit(
   if (attacker.team === 'guild') {
     target.threat[attacker.id] = (target.threat[attacker.id] ?? 0) + amount
   }
+  // 特质·heavy-plate(重甲):首次受击减半
+  if (target.traits?.includes('heavy-plate') && !target.plateUsed) {
+    traitHint(state, 'heavy-plate')
+    target.plateUsed = true
+    amount = Math.max(1, Math.round(amount * 0.6))
+    state.events.push({ tick: state.tick, type: 'armorbreak', targetId: target.id })
+  }
+  // 特质·venom(淬毒):命中附加易伤
+  if (attacker.traits?.includes('venom') && target.alive) {
+    traitHint(state, 'venom')
+    target.vulnUntilTick = state.tick + 30
+    target.vulnMult = 1.15
+  }
   // 我方引导咏唱:被打的伤害累积,超过阈值即打断
   if (target.channelUntilTick && state.tick < target.channelUntilTick) {
     target.channelTaken = (target.channelTaken ?? 0) + amount
@@ -417,6 +435,36 @@ export function applyHit(
     target.alive = false
     state.events.push({ tick: state.tick, type: 'death', targetId: target.id })
     pushLog(state, 'system', `☠ ${target.name} 倒下了`)
+    // 死亡特质:湮灭自爆/冰封遗骸/临终呼援
+    if (target.traits?.includes('death-blast')) {
+      traitHint(state, 'death-blast')
+      for (const g of aliveOf(state, target.team === 'enemy' ? 'guild' : 'enemy')) {
+        applyHit(state, target, g, 12, '湮灭自爆')
+      }
+      pushLog(state, 'enemy', `💥 ${target.name} 的尸体轰然爆炸!`)
+    }
+    if (target.traits?.includes('death-zone') && attacker && attacker.alive) {
+      traitHint(state, 'death-zone')
+      const zt = controlResist(attacker, 20)
+      attacker.slowUntilTick = state.tick + zt
+      state.events.push({ tick: state.tick, type: 'slowed', targetId: attacker.id, amount: zt })
+      pushLog(state, 'enemy', `❄ ${target.name} 的遗骸冻住了 ${attacker.name} 的脚步!`)
+    }
+    if (target.traits?.includes('call-reinforce') && battleRandom(state) < 0.3) {
+      traitHint(state, 'call-reinforce')
+      const clone: Combatant = {
+        ...target,
+        id: `c${++combatantSeq}`,
+        hp: Math.max(1, Math.round(target.maxHp * 0.5)),
+        alive: true,
+        traits: target.traits?.filter((t2) => t2 !== 'call-reinforce'),
+        threat: {},
+        mech: {},
+      }
+      state.combatants.push(clone)
+      pushLog(state, 'enemy', `⚠ ${target.name} 临终呼来了增援!`)
+      state.events.push({ tick: state.tick, type: 'summoned', targetId: clone.id })
+    }
   }
 }
 
@@ -433,11 +481,28 @@ function dealDamage(
     pushLog(state, attacker.team, `${target.name} 处于相位之中,攻击无效!`)
     return
   }
-  const variance = 0.85 + nextRandom(state) * 0.3
-  const crit = nextRandom(state) < attacker.critChance
+  // 特质:volley(每第 3 击必暴)/pack-hunter(每存活同类 +8%)/last-stand(低血 ×1.4)
+  let forcedCrit = false
+  let packMult = 1
+  if (attacker.traits?.includes('volley')) traitHint(state, 'volley')
+  if (attacker.traits?.includes('pack-hunter')) traitHint(state, 'pack-hunter')
+  if (attacker.traits?.includes('last-stand') && attacker.hp / attacker.maxHp < 0.3) traitHint(state, 'last-stand')
+  if (attacker.traits?.includes('volley')) {
+    attacker.atkCount = (attacker.atkCount ?? 0) + 1
+    if (attacker.atkCount % 3 === 0) forcedCrit = true
+  }
+  if (attacker.traits?.includes('pack-hunter')) {
+    const kin = aliveOf(state, attacker.team).filter((a) => a.name === attacker.name).length
+    packMult *= 1 + Math.max(0, kin - 1) * 0.08
+  }
+  if (attacker.traits?.includes('last-stand') && attacker.hp / attacker.maxHp < 0.3) packMult *= 1.4
+  let variance = 0.85 + nextRandom(state) * 0.3
+  let crit = nextRandom(state) < attacker.critChance
+  if (forcedCrit) { crit = true; variance = Math.max(variance, 1.0) }
   let raw =
     effectiveAttack(state, attacker) *
     mult *
+    packMult *
     variance *
     (crit ? 1.5 : 1) *
     synergyDamageMult(state, attacker)
@@ -594,9 +659,9 @@ function useSkill(
       return true
     }
     case 'frost-nova': {
-      // 霜寒新星:全体敌人减速 + 轻伤
+      // 霜寒新星:全体敌方(按施放者阵营)减速 + 轻伤
       let hit = 0
-      for (const e of aliveOf(state, 'enemy')) {
+      for (const e of aliveOf(state, c.team === 'guild' ? 'enemy' : 'guild')) {
         e.slowUntilTick = state.tick + 80
         hit++
         dealDamage(state, c, e, 0.5, '被霜寒新星扫过')
@@ -692,6 +757,15 @@ function useSkill(
   }
 }
 
+/** 首次遭遇提示(宪法 v3.4):每场每特质只提示一次 */
+export function traitHint(state: BattleState, traitId: string): void {
+  if (!state.traitSeen) state.traitSeen = {}
+  if (state.traitSeen[traitId]) return
+  state.traitSeen[traitId] = true
+  const info = TRAIT_INFO[traitId]
+  if (info) pushLog(state, 'system', '⚠ 首次遭遇——' + info.name + ':' + info.hint)
+}
+
 /** 控制韧性(宪法 v3.3):我方精神缩短被控时长(至多 -40%) */
 export function controlResist(target: Combatant, ticks: number): number {
   if (target.team !== 'guild') return ticks
@@ -729,6 +803,39 @@ function summonPet(caster: Combatant): Combatant {
 export function stepBattle(state: BattleState): void {
   if (state.status !== 'running') return
   state.tick++
+  // 战斗硬上限:900 tick 敌人狂暴(软压力);1200 tick 强制撤离(被束缚者留下)
+  if (state.tick === TICK_SOFT_CAP) {
+    for (const c of state.combatants) {
+      if (!c.alive || c.team !== 'enemy') continue
+      c.attack = Math.round(c.attack * 1.5)
+    }
+    pushLog(state, 'system', '⏳ 战斗旷日持久——敌人陷入了疯狂!')
+  }
+  if (state.tick >= TICK_HARD_CAP) {
+    for (const c of state.combatants) {
+      if (!c.alive || c.team !== 'guild') continue
+      if (c.boundUntilTick && state.tick < c.boundUntilTick) {
+        c.alive = false
+        c.hp = 0
+        state.events.push({ tick: state.tick, type: 'death', targetId: c.id })
+      }
+    }
+    state.status = 'retreated'
+    pushLog(state, 'result', '⏳ 战斗超时——全队被迫撤离(无掉落)!')
+    return
+  }
+
+  // 特质·regen(沼泽再生):缓慢回血
+  for (const c of state.combatants) {
+    if (!c.alive || !c.traits?.includes('regen')) continue
+    traitHint(state, 'regen')
+    c.regenAcc = (c.regenAcc ?? 0) + 0.5
+    if (c.regenAcc >= 1) {
+      const pt = Math.floor(c.regenAcc)
+      c.regenAcc -= pt
+      c.hp = Math.min(c.maxHp, c.hp + pt)
+    }
+  }
 
   for (const c of state.combatants) {
     if (!c.alive) continue

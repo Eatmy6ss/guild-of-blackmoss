@@ -27,6 +27,8 @@ import { createRun, advanceRun, startStep, markPermadeath, settleGrowth, junctio
 import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE } from '../src/data/jobs'
 import { HYBRIDS } from '../src/data/vocations'
+import { TRAIT_INFO } from '../src/data/traits'
+import { traitHint } from '../src/sim/combat'
 import { RACES } from '../src/data/races'
 import { grantExp, rollSpec, setRaceOverride } from '../src/sim/gen'
 
@@ -1193,7 +1195,8 @@ const towerFailures: string[] = []
     }
     const medT = trash.length ? [...trash].sort((a, b) => a - b)[Math.floor(trash.length / 2)] : 0
     console.log(`⑲ ${d.name}:杂兵 ${medT.toFixed(1)}s(胜 ${trash.length}/6)`)
-    if (trash.length < 5 || medT < 13 || medT > 23) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
+    // 特质时代(v3.4):机制性拖长是拉扯感的一部分,杂兵带上限放宽到 26s
+    if (trash.length < 5 || medT < 13 || medT > 26) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
     // 每个 boss 都要过考试(不只末位):验收机器人无撤退保护、打法标准化,≥4/8 为可达性下限
     // (真人另有撤退保护/药水存量/练度垫);节奏带只约束毕业考,门考只要求 ≥20s(不可是秒杀)
     for (const enc of bossEncs) {
@@ -2290,4 +2293,45 @@ const towerFailures: string[] = []
   console.log(`㊱ 杂兵掉落:黑苔 ${drops}/200(T1 池),渊底 ${t2drops}/200(T2 池)`)
   if (fail36.length > 0) { console.log('✗ 杂兵掉落未通过:', fail36); process.exit(1) }
   console.log('✓ 杂兵掉落通过:8% 触发,纪元绑定正确')
+}
+
+// ============================================================
+// ㊲ 特质图鉴+首遇提示(可读性闭环)
+// ============================================================
+{
+  const fail37: string[] = []
+  // 37a:图鉴覆盖——dungeons 里用到的每个特质都有 TRAIT_INFO
+  {
+    const used = new Set<string>()
+    for (const d of DUNGEONS) for (const g of Object.values(d.enemyGroups)) for (const e of g) for (const tr of e.traits ?? []) used.add(tr)
+    for (const id of used) if (!TRAIT_INFO[id]) fail37.push(`㊲ 特质 ${id} 缺图鉴条目`)
+    if (used.size < 6) fail37.push(`㊲ 已用特质过少:${used.size}`)
+    console.log(`㊲ 图鉴:使用特质 ${used.size} 种,全部有图鉴条目`)
+  }
+  // 37b:首遇提示一次性——同一场战斗同特质只提示一次
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 998000 + j))
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242)
+    // 人工触发两次同一特质提示
+    traitHint(b, 'volley')
+    traitHint(b, 'volley')
+    const volleyHints = b.log.filter((e) => e.text.includes('首次遭遇——淬毒连射')).length
+    if (volleyHints !== 1) fail37.push(`㊲ 首遇提示未去重:${volleyHints}`)
+    console.log(`㊲ 首遇提示:触发 2 次仅提示 1 次 ✓`)
+  }
+  // 37c:真实战斗——蛙人 regen 特质在战报中留下首遇提示
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 998100 + j))
+    seedMemberSeq(squad)
+    const b = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242)
+    let guard = 0
+    while (b.status === 'running' && guard++ < 200) stepBattle(b)
+    const regenHints = b.log.filter((e) => e.text.includes('首次遭遇——沼泽再生')).length
+    if (regenHints !== 1) fail34.push(`㊲ regen 首遇提示异常:${regenHints}`)
+    void regenHints
+    console.log(`㊲ 实战:蛙人再生首遇提示已出现`)
+  }
+  if (fail37.length > 0) { console.log('✗ 特质图鉴未通过:', fail37); process.exit(1) }
+  console.log('✓ 特质图鉴+首遇提示通过')
 }

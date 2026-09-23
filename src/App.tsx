@@ -50,6 +50,7 @@ import { grantExp } from './sim/gen'
 import { JOBS, specOf } from './data/jobs'
 import { HYBRIDS, isHybrid } from './data/vocations'
 import { REGIONS, dungeonLock, nextRegionLocked } from './data/regions'
+import { TRAIT_INFO } from './data/traits'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
 // 花名册 = 全体成员（含亡者记录）；远征队 = 花名册前三名幸存者。
@@ -1469,6 +1470,15 @@ export default function App() {
             >
               🛡 撤退保护：{protectOn ? '开（濒危自动撤离）' : '关（搏命模式）'}
             </button>
+            <div className="inv-panel">
+              <h2>👹 小怪特性图鉴（首次遭遇会收到提示）</h2>
+              {Object.values(TRAIT_INFO).map((tr) => (
+                <div key={tr.id} className="inv-item">
+                  <b>{tr.name}</b> —— {tr.desc}
+                  <div className="hint">💡 {tr.hint}</div>
+                </div>
+              ))}
+            </div>
                 </div>
               </div>
               </div>

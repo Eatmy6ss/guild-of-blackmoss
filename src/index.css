@@ -431,3 +431,6 @@ button:disabled { opacity: 0.4; cursor: default; }
 .route-choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
 .route-choices button { flex: 1 1 30%; text-align: left; padding: 8px 12px; }
 .route-choices button small { display: block; color: #8a94a8; margin-top: 3px; }
+
+/* ===== 手册小怪图鉴 ===== */
+.inv-item .hint { margin-top: 3px; }
