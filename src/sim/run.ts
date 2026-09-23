@@ -211,7 +211,7 @@ export function revealLevel(mastery: number): RevealLevel {
 }
 
 /** 岔口选项:未踏过的节点抽 2-3 个(确定性);踏满 3 个节点后只剩 boss */
-export function junctionOptions(run: DungeonRun, seed: number, count = 3): RouteNodeDef[] {
+export function junctionOptions(run: DungeonRun, seed: number, count = 4): RouteNodeDef[] {
   const unvisited = run.dungeon.routeNodes.filter((n) => !run.nodeIds.includes(n.id))
   if (unvisited.length <= count) return [...unvisited]
   const picked: RouteNodeDef[] = []

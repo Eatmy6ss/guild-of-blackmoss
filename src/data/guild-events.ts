@@ -34,7 +34,8 @@ export interface GuildEventDef {
   choices: EventChoice[]
 }
 
-export const EVENT_CHANCE = 0.45
+// 试玩反馈④:回城事件率 0.45→0.3——"打完回城事件概率有点高";访客 roll 互斥不变
+export const EVENT_CHANCE = 0.3
 
 export const GUILD_EVENTS: GuildEventDef[] = [
   {

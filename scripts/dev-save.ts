@@ -11,8 +11,11 @@ import { SAVE_VERSION } from '../src/state/save'
 const T2 = { weapon: 'wpn-t2-bow', armor: 'arm-t2-plate', trinket: 'trk-t2-totem' } as const
 const SLOTS = ['weapon', 'armor', 'trinket'] as const
 
-// 6 人满编:2 守卫(坦)/2 牧师(奶)/2 游侠(输出),10 级,三槽全 T2
+// 6 人满编:2 守卫(坦)/2 牧师(奶)/2 游侠(输出),等级可配(默认 10),三槽全 T2
 const COMP = ['guard', 'priest', 'ranger', 'guard', 'ranger', 'priest'] as const
+
+// 试玩反馈④:等级配对——`node scripts/dev-save.ts [等级]`(如 5 = 推进黑苔/锈坑的进度档)
+const LEVEL = Math.max(1, Math.min(15, Number(process.argv[2]) || 10))
 
 let seed = 20260920
 const rng = () => {
@@ -20,10 +23,10 @@ const rng = () => {
   return seed / 4294967296
 }
 
-// 满配档:经典专精+人类(与门禁标准条件一致);Lv10 可自行精进
+// 满配档:经典专精+人类(与门禁标准条件一致);等级可自行精进
 const members = COMP.map((job, i) => {
-  const m = generateMember(job as keyof typeof JOBS, 10, 990000 + i * 17)
-  levelTo(m, 10)
+  const m = generateMember(job as keyof typeof JOBS, LEVEL, 990000 + i * 17)
+  levelTo(m, LEVEL)
   m.hp = -1 // 约定:进场按满血处理(toCombatant 的 hp<=0 分支)
   for (const slot of SLOTS) m.equipment[slot] = rollDrop(T2[slot], rng)
   return m
@@ -64,7 +67,7 @@ const save: GuildSave = {
 const problems: string[] = []
 if (save.members.length !== 6) problems.push('成员数不是 6')
 for (const m of save.members) {
-  if (m.level !== 10) problems.push(`${m.name} 等级不是 10`)
+  if (m.level !== LEVEL) problems.push(`${m.name} 等级不是 ${LEVEL}`)
   for (const slot of SLOTS) if (!m.equipment[slot]) problems.push(`${m.name} 缺 ${slot} 装备`)
 }
 if (Object.keys(buildings).length !== BUILDINGS.length) problems.push('建筑未满')
@@ -75,5 +78,5 @@ if (problems.length > 0) {
 
 const code = Buffer.from(JSON.stringify(save), 'utf8').toString('base64')
 writeFileSync(new URL('../docs/dev-save.txt', import.meta.url), code + '\n', 'utf8')
-console.log(`✓ 满配存档码已生成:docs/dev-save.txt(${code.length} 字符)`)
+console.log(`✓ 满配存档码已生成:docs/dev-save.txt(Lv${LEVEL},${code.length} 字符)`)
 console.log(`  成员:${save.members.map((m) => `${m.name}(${m.job}${m.level}级)`).join(' / ')}`)

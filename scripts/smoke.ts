@@ -983,8 +983,8 @@ const towerFailures: string[] = []
   const first = pickOutcome(ev0, 0, 0.01)
   const last = pickOutcome(ev0, 0, 0.999)
   if (first === last && ev0.choices[0].outcomes.length > 1) fail16.push('⑯ 权重解析不区分分支')
-  // 16c:rollGuildEvent——高 rng 必中事件,低 rng 必空
-  if (rollGuildEvent(() => 0.44) === null) fail16.push('⑯ 低于触发率应触发事件')
+  // 16c:rollGuildEvent——高 rng 必中事件,低 rng 必空(边界跟随 EVENT_CHANCE 常量,反馈④后 0.3)
+  if (rollGuildEvent(() => EVENT_CHANCE - 0.01) === null) fail16.push('⑯ 低于触发率应触发事件')
   if (rollGuildEvent(() => 0.99) !== null) fail16.push('⑯ 高于触发率不应触发事件')
   // 16d:效果应用——士气 delta 与金币真实落账
   {
@@ -2203,7 +2203,7 @@ const towerFailures: string[] = []
     const o1 = junctionOptions(run, 7)
     const o2 = junctionOptions(run, 7)
     if (JSON.stringify(o1.map((x) => x.id)) !== JSON.stringify(o2.map((x) => x.id))) fail34.push('㉞ 岔口选项非确定')
-    if (o1.length < 2 || o1.length > 3) fail34.push(`㉞ 岔口选项数异常:${o1.length}`)
+    if (o1.length < 2 || o1.length > 4) fail34.push(`㉞ 岔口选项数异常:${o1.length}`)
     for (const o of o1) if (run.nodeIds.includes(o.id)) fail34.push('㉞ 选项含已踏过节点')
     console.log(`㉞ 岔口:${o1.map((x) => x.name).join('/')}(${o1.length} 选,确定性 ✓)`)
   }

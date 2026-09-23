@@ -154,7 +154,6 @@ export const BLACKMOSS: DungeonDef = {
     { id: 'bm-quirrel', name: '混编伏击', kind: 'battle', encounterId: 'enc-quirrel', desc: '蛙人与狼联手设伏' },
     { id: 'bm-mire', name: '沼腹深处', kind: 'battle', encounterId: 'enc-mire', desc: '越往里,泥越深' },
     { id: 'bm-chest', name: '沉船货箱', kind: 'treasure', desc: '搁浅的货船残骸,货箱还封着蜡' },
-    { id: 'bm-wisp', name: '沼气鬼火', kind: 'event', desc: '鬼火引路,跟不跟?' },
   ],
   encounters: [
     { id: 'enc-frogs', name: '蛙人哨兵', kind: 'wave', enemyGroupIds: ['frogs'] },
@@ -273,7 +272,6 @@ export const RUSTMINE: DungeonDef = {
     { id: 'rm-miners', name: '主矿脉', kind: 'battle', encounterId: 'enc-miners', desc: '尸化矿工仍在凿壁' },
     { id: 'rm-bats', name: '穴蝠巢', kind: 'elite', encounterId: 'enc-bats', desc: '锈穴蝠成群,掉落翻倍' },
     { id: 'rm-spiders', name: '蛛网巷道', kind: 'battle', encounterId: 'enc-spiders', desc: '岩蛛与毒蛛后的领地' },
-    { id: 'rm-shed', name: '废弃工棚', kind: 'event', desc: '矿工们留下过东西' },
     { id: 'rm-cart', name: '矿车休息站', kind: 'rest', desc: '还能推动的矿车,正好歇脚' },
     { id: 'rm-batmix', name: '蝠蛛混巢', kind: 'battle', encounterId: 'enc-batmix', desc: '蝠群与蛛网在同一巷道' },
     { id: 'rm-deepvein', name: '深层矿脉', kind: 'battle', encounterId: 'enc-deepvein', desc: '越深,矿灯越暗' },
@@ -395,7 +393,6 @@ export const ASHFIELD: DungeonDef = {
     { id: 'af-skeletons', name: '白骨大道', kind: 'battle', encounterId: 'enc-skeletons', desc: '骸骨仍在列队行军' },
     { id: 'af-wraiths', name: '怨灵游荡', kind: 'elite', encounterId: 'enc-wraiths', desc: '游荡的怨灵,掉落翻倍' },
     { id: 'af-knights', name: '墓骑巡境', kind: 'battle', encounterId: 'enc-knights', desc: '墓骑的巡逻路线' },
-    { id: 'af-stone', name: '阵亡者纪念碑', kind: 'event', desc: '无名碑上刻满了名字' },
     { id: 'af-camp', name: '旧军营垒', kind: 'rest', desc: '半塌的营垒,还能挡风' },
     { id: 'af-bonemix', name: '骨怨混编', kind: 'battle', encounterId: 'enc-bonemix', desc: '骸骨与怨灵同行' },
     { id: 'af-funeral', name: '葬仪行列', kind: 'battle', encounterId: 'enc-funeral', desc: '墓骑开道,挽歌相随' },
@@ -512,7 +509,6 @@ export const FROSTGRAVE: DungeonDef = {
     { id: 'fg-frostmix', name: '墓卫鸦士混编', kind: 'battle', encounterId: 'enc-frostmix', desc: '墓卫与寒鸦同巡' },
     { id: 'fg-icetomb', name: '冰棺回廊', kind: 'battle', encounterId: 'enc-icetomb', desc: '冰棺排满回廊两侧' },
     { id: 'fg-cache', name: '陪葬冰窖', kind: 'treasure', desc: '冰层里封着陪葬品' },
-    { id: 'fg-icecrack', name: '冰面裂痕', kind: 'event', desc: '裂痕下有东西在动' },
   ],
   encounters: [
     { id: 'enc-wights', name: '墓卫列队', kind: 'wave', enemyGroupIds: ['wights'] },
@@ -630,7 +626,6 @@ export const ABYSSALTAR: DungeonDef = {
     { id: 'ab-cultists', name: '教徒环阵', kind: 'battle', encounterId: 'enc-cultists', desc: '血祭教徒的祷告环' },
     { id: 'ab-ghouls', name: '饿殍坑', kind: 'elite', encounterId: 'enc-ghouls', desc: '食尸鬼争食,掉落翻倍' },
     { id: 'ab-eyes', name: '观渊回廊', kind: 'battle', encounterId: 'enc-eyes', desc: '无数眼睛在黑暗里眨动' },
-    { id: 'ab-fire', name: '献祭残火', kind: 'event', desc: '残火里浮着未烧尽的契约' },
     { id: 'ab-stone', name: '暗河石台', kind: 'rest', desc: '暗河边干燥的石台' },
     { id: 'ab-abyssmix', name: '眼目咏叹混编', kind: 'battle', encounterId: 'enc-abyssmix', desc: '眼睛与祷声同行' },
     { id: 'ab-bloodfeast', name: '血宴残席', kind: 'battle', encounterId: 'enc-bloodfeast', desc: '宴席未散,饿殍未走' },
@@ -794,7 +789,6 @@ export const THORNHOLD: DungeonDef = {
   routeNodes: [
     { id: 'th-swords', name: '正门刀盾阵', kind: 'battle', encounterId: 'enc-swords', desc: '刀盾与弩手的正面阵' },
     { id: 'th-heavies', name: '重斧亲卫', kind: 'elite', encounterId: 'enc-heavies', desc: '重斧手成队,掉落翻倍' },
-    { id: 'th-honor', name: '旗卫营房', kind: 'event', desc: '亲卫们的营房灯火未熄' },
     { id: 'th-yard', name: '校场', kind: 'rest', desc: '空置的校场,正好整队' },
     { id: 'th-siege', name: '攻城混编', kind: 'battle', encounterId: 'enc-siege', desc: '围攻的完整编制' },
     { id: 'th-vanguard2', name: '前卫余部', kind: 'battle', encounterId: 'enc-vanguard2', desc: '败退的前卫重整再战' },
