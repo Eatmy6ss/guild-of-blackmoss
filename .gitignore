@@ -3,3 +3,5 @@ dist/
 *.local
 .DS_Store
 scripts/*.mjs
+dist-playtest/
+/黑苔公会-*.html
