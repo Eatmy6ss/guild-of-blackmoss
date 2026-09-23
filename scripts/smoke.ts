@@ -1015,6 +1015,18 @@ const towerFailures: string[] = []
             if ((v as number) < 0.5 || (v as number) > 2) fail16.push(`⑯ ${ev.id} 状态乘数越界 ${v}`)
           }
         }
+        // 事件二期:跨天公会状态与稀有猎杀的参数契约
+        const gb = o.effects?.guildBuff
+        if (gb) {
+          if (gb.days < 1 || gb.days > 5) fail16.push(`⑯ ${ev.id} 公会状态天数越界 ${gb.days}`)
+          for (const v of Object.values(gb.mods)) {
+            if ((v as number) < 0.5 || (v as number) > 2) fail16.push(`⑯ ${ev.id} 公会状态乘数越界 ${v}`)
+          }
+        }
+        const rh = o.effects?.rareHuntNext
+        if (rh && (rh.mult < 1.2 || rh.mult > 2.5 || rh.rewardMult < 1.2 || rh.rewardMult > 3)) {
+          fail16.push(`⑯ ${ev.id} 稀有猎杀倍率越界 ${JSON.stringify(rh)}`)
+        }
       }
     }
     if (withTradeoff < GUILD_EVENTS.length * 0.6) {

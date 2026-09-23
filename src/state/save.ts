@@ -10,11 +10,17 @@ import type { ChronicleEntry } from '../sim/chronicle'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 10
+export const SAVE_VERSION = 11
 
 export interface PendingConsequence {
   eventId: string
   dueDay: number
+}
+
+/** 公会层持续状态(事件二期:跨天传奇,出征时全队生效) */
+export interface StoredGuildBuff {
+  buff: { id: string; name: string; desc: string; mods: { atk?: number; def?: number; hp?: number; heal?: number } }
+  endDay: number
 }
 
 export interface GuildSave {
@@ -45,6 +51,9 @@ export interface GuildSave {
   dungeonMastery: Record<string, number>
   /** v10:延迟第二幕队列(巫师3式后果,dueDay 到期弹出) */
   pendingConsequences?: PendingConsequence[]
+  /** v11:事件图鉴(见过的事件 id)+ 公会层持续状态(跨天传奇) */
+  eventsSeen?: string[]
+  guildBuffs?: StoredGuildBuff[]
 }
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
@@ -73,6 +82,8 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   8: (d) => ({ ...d, dungeonMastery: {} }),
   // v9 → v10:延迟第二幕队列
   9: (d) => ({ ...d, pendingConsequences: (d.pendingConsequences as unknown[] | undefined) ?? [] }),
+  // v10 → v11:事件图鉴+公会层状态
+  10: (d) => ({ ...d, eventsSeen: (d.eventsSeen as string[] | undefined) ?? [], guildBuffs: (d.guildBuffs as unknown[] | undefined) ?? [] }),
 }
 
 /** 纯函数迁移:供 loadGuildSave 与 smoke 直接验证 */

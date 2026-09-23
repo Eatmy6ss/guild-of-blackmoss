@@ -32,7 +32,7 @@ import {
 import { powerScore } from './sim/combat'
 
 import { rollBossDrops, rollWaveDrop, describeItem, slotsOf } from './sim/loot'
-import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave, type PendingConsequence } from './state/save'
+import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
 import { GUILD_EVENTS } from './data/guild-events'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
@@ -142,6 +142,10 @@ export default function App() {
   const [dungeonMastery, setDungeonMastery] = useState<Record<string, number>>(() => saved?.dungeonMastery ?? {})
   // 延迟第二幕队列(反馈④事件大项):dueDay 到期后弹出后续事件
   const [pendingConsequences, setPendingConsequences] = useState<PendingConsequence[]>(() => saved?.pendingConsequences ?? [])
+  // 事件二期:图鉴(见过的事件)+ 公会层跨天状态 + 稀有猎杀(下次出征首场,用后即逝)
+  const [eventsSeen, setEventsSeen] = useState<string[]>(() => saved?.eventsSeen ?? [])
+  const [guildBuffs, setGuildBuffs] = useState<StoredGuildBuff[]>(() => saved?.guildBuffs ?? [])
+  const [rareHuntNext, setRareHuntNext] = useState<{ mult: number; rewardMult: number } | null>(null)
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
 
   // 读档登记已用名字：新招募不与存档英雄/英灵重名
@@ -274,8 +278,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, run, towerRun])
+    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
+  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -424,7 +428,9 @@ export default function App() {
     }
     // M1 P0 经济:胜场金币 / 通关奖励 / 阵亡祝福 / 招募冷却递减
     if (b.status === 'guild-win') {
-      setGold((g) => g + (enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave))
+      // 稀有猎杀:首战奖励加厚(事件二期,WoW 式)
+      const rhMult = r.rareHunt && r.stepIdx === 0 ? r.rareHunt.rewardMult : 1
+      setGold((g) => g + Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) * rhMult))
     }
     const endPhase = r.phase as DungeonRun['phase']
     if (endPhase === 'victory') { setGold((g) => g + ECONOMY.clearBonus); sfxVictory() }
@@ -516,6 +522,8 @@ export default function App() {
       }
       return q.filter((c) => c !== due)
     })
+    // 事件二期:过期的公会层状态自然消退
+    setGuildBuffs((q) => q.filter((g) => g.endDay > day + 1))
     if (expedition.length < activeDungeon.size) return
     // M1 P0 成长快照:结算页要展示"这把你变强了什么"
     growthSnapshotRef.current = new Map(
@@ -531,6 +539,14 @@ export default function App() {
       potions,
     )
     runRef.current.autoMode = autoLoopRef.current
+    // 事件二期:公会层跨天状态注入(未到期的)+ 稀有猎杀(首场,用后即逝)
+    for (const g of guildBuffs) {
+      if (g.endDay > day) runRef.current.buffs.push(g.buff)
+    }
+    if (rareHuntNext) {
+      runRef.current.rareHunt = rareHuntNext
+      setRareHuntNext(null)
+    }
     setLastDrops([])
     setRunning(true)
     syncAll()
@@ -735,6 +751,19 @@ export default function App() {
         buffNote = `\n〔获得状态:${fx.runBuff.name}〕${fx.runBuff.desc}`
       }
     }
+    // 事件二期:公会层跨天状态(传奇事件的诅咒/祝福带回公会,days 天内出征生效)
+    if (fx.guildBuff) {
+      const { days, ...buff } = fx.guildBuff
+      setGuildBuffs((q) => [...(q ?? []), { buff, endDay: day + days }])
+      buffNote = `\n〔公会蒙受:${buff.name}〕${buff.desc}(持续 ${days} 天)`
+    }
+    // 稀有猎杀(WoW 式):下次出征首场遭遇强化、奖励翻倍
+    if (fx.rareHuntNext) {
+      setRareHuntNext(fx.rareHuntNext)
+      buffNote = `\n〔稀有猎杀立约〕下次出征首战:敌更强,奖更厚。`
+    }
+    // 图鉴:见过的事件记名
+    setEventsSeen((s) => (s.includes(ev.id) ? s : [...s, ev.id]))
     // 延迟第二幕:入队,dueDay 到期在出征日弹出
     if (fx.delayed) {
       setPendingConsequences((q) => [...(q ?? []), { eventId: fx.delayed!.eventId, dueDay: day + fx.delayed!.dueDays }])
@@ -1533,6 +1562,24 @@ export default function App() {
                   })}
                 </div>
               ))}
+            </div>
+            <div className="inv-panel">
+              <h2>📜 事件图鉴（见过 {eventsSeen.length} / {GUILD_EVENTS.length}）</h2>
+              {GUILD_EVENTS.map((e) => {
+                const seen = eventsSeen.includes(e.id)
+                return (
+                  <div key={e.id} className="inv-item">
+                    {seen ? (
+                      <>
+                        <b>{e.title}</b>
+                        <div className="hint">{e.text}</div>
+                      </>
+                    ) : (
+                      <div className="hint">❓ ??? ——传闻里还没轮到你们的遭遇</div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
             <div className="inv-panel">
               <h2>👹 小怪特性图鉴（首次遭遇会收到提示）</h2>

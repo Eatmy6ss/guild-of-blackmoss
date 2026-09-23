@@ -35,6 +35,8 @@ export interface DungeonRun {
   eliteAt: number[]
   /** 远征内持续状态(事件给予,整次远征;乘数制 mods) */
   buffs: RunBuffDef[]
+  /** 稀有猎杀(事件二期,WoW 式):首场遭遇敌方强化,奖励加厚,用后即逝 */
+  rareHunt?: { mult: number; rewardMult: number }
 }
 
 /** 岔路映射：险路打满全部遭遇（更多战斗=更多收获机会）；稳路跳过最后一段杂兵 */
@@ -104,6 +106,8 @@ export function createRun(
 
 export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void {
   const isElite = run.eliteAt.includes(run.stepIdx)
+  // 稀有猎杀:首场遭遇敌方强化(奖励倍率由结算层消费)
+  const rareMult = run.rareHunt && run.stepIdx === 0 ? run.rareHunt.mult : 1
   // 远征内事件状态聚合:乘数连乘(反馈④事件大项)
   const mods: { atk?: number; def?: number; hp?: number; heal?: number } = {}
   for (const b of run.buffs ?? []) {
@@ -121,7 +125,7 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     manualBonus,
     run.protectOn,
     run.potions,
-    run.eliteNow || isElite ? 1.25 : 1,
+    (run.eliteNow || isElite ? 1.25 : 1) * rareMult,
     Object.keys(mods).length > 0 ? mods : undefined,
   )
   run.eliteNow = false
