@@ -451,6 +451,17 @@ const URL_SPRITES: Record<string, string> = {
   'mon-mummypriest': '/assets/mon/mummypriest.png',
   'mon-wolf': '/assets/mon/wolf.png',
   'mon-ogre': '/assets/mon/ogre.png',
+  // 全量替换批(版图一/二小怪与 boss 全 DCSS 帧)
+  'mon-goliathfrog': '/assets/mon/goliathfrog.png',
+  'mon-occultist': '/assets/mon/occultist.png',
+  'mon-ghoul': '/assets/mon/ghoul.png',
+  'mon-kobold': '/assets/mon/kobold.png',
+  'mon-wraith': '/assets/mon/wraith.png',
+  'mon-myrmidon': '/assets/mon/myrmidon.png',
+  'mon-hierophant': '/assets/mon/hierophant.png',
+  'mon-deathknight': '/assets/mon/deathknight.png',
+  'mon-arcanist': '/assets/mon/arcanist.png',
+  'mon-hellknight': '/assets/mon/hellknight.png',
 }
 
 /** 我方三职业分层(DCSS 分层系统:base+护甲+披风+武器,32×32 同网格叠加) */
@@ -477,19 +488,20 @@ const URL_LAYERS: Record<string, string[]> = {
 }
 
 /** 全部待预加载 URL(素材帧+职业分层) */
-const ALL_URLS: string[] = [
-  ...Object.values(URL_SPRITES),
-  ...Object.values(URL_LAYERS).flat(),
-]
 
 /** 预加载全部素材 PNG(mount 时 await;成功进同一 texture 缓存) */
 export async function preloadUrlSprites(): Promise<void> {
+  const jobs: [string, string][] = [
+    ...Object.entries(URL_SPRITES),
+    ...Object.values(URL_LAYERS).flat().map((url) => [url, url] as [string, string]),
+  ]
   await Promise.all(
-    ALL_URLS.map(async (url) => {
+    jobs.map(async ([key, url]) => {
       try {
         const tex = await Assets.load(url)
         tex.source.scaleMode = 'nearest'
         tex.source.style.scaleMode = 'nearest'
+        cache.set(key, tex)
         cache.set(url, tex)
       } catch (e) {
         console.warn('[pixelSprites] 素材加载失败:', url, e)
@@ -507,10 +519,10 @@ const cache = new Map<string, Texture>()
 
 /** 精灵显示缩放:素材包 32×32 与 HD 矩阵(≥20 行)原生 1:1;旧 12×14/16×18 矩阵保持 ×2 */
 export function spriteScale(key: string): number {
-  if (key.startsWith('mon-') || key.startsWith('/assets/')) return 1
+  if (key.startsWith('mon-') || key.startsWith('/assets/')) return 2
   const def = UNIT_SPRITES[key]
   if (!def) return 2
-  return def.rows.length >= 20 ? 1 : 2
+  return 2
 }
 
 /** ASCII 像素图 → nearest-neighbor 纹理(幂等,按 key 缓存;矩阵查 UNIT_SPRITES,素材/分层按 url 查缓存) */
@@ -577,18 +589,18 @@ export const UNIT_SPRITES: Record<string, PixelDef> = {
 export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; name?: string }): string {
   const n = c.name ?? ''
   if (c.boss) {
-    // 素材包优先(CC0 DCSS):龙形/食人魔/蠕虫/祭司形态
+    // 全量 DCSS 精细帧(素材包打底模仿+改造):14 只 boss 一个不落
     if (n.includes('瓦尔塞隆')) return 'mon-deathdrake'
     if (n.includes('瓦洛萨里斯')) return 'mon-firedragon'
     if (n.includes('格鲁什')) return 'mon-ogre'
     if (n.includes('掘锚')) return 'mon-lindwurm'
-    if (n.includes('马尔萨乌斯')) return 'mon-mummypriest'
-    if (n.includes('塔尔玛')) return 'talma'
-    if (n.includes('摩尔德雷克')) return 'boss-moldreke'
-    if (n.includes('薇尔霍拉')) return 'boss-velhola'
-    if (n.includes('科尔特')) return 'boss-coltfeld'
-    if (n.includes('荆棘') || n.includes('维克托')) return 'thorn'
-    return 'ogre'
+    if (n.includes('塔尔玛') || n.includes('马尔萨乌斯')) return 'mon-hierophant'
+    if (n.includes('摩尔德雷克')) return 'mon-deathknight'
+    if (n.includes('薇尔霍拉')) return 'mon-arcanist'
+    if (n.includes('科尔特')) return 'mon-hellknight'
+    if (n.includes('维克托')) return 'mon-myrmidon'
+    if (n.includes('荆棘')) return 'mon-myrmidon'
+    return 'mon-ogre'
   }
   if (c.team === 'enemy') {
     if (n.includes('龙裔鳞卫') || n.includes('狂信卫士') || n.includes('龙裔祭卫')) return 'mon-dracored'
@@ -596,16 +608,18 @@ export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; n
     if (n.includes('龙裔吐息手') || n.includes('龙裔驭火者') || n.includes('龙渊驭火者') || n.includes('焰背蜥后')) return 'mon-dracoscorcher'
     if (n.includes('朝圣者亡魂') || n.includes('提灯亡魂')) return 'mon-ghost'
     if (n.includes('山脊霜狼') || n.includes('头狼')) return 'mon-wolf'
+    if (n.includes('食尸鬼')) return 'mon-ghoul'
+    if (n.includes('火脊蜥蜴') || n.includes('焰背')) return 'mon-goliathfrog'
     if (n.includes('龙裔') || n.includes('龙渊') || n.includes('渊龙') || n.includes('幼龙') || n.includes('驭火')) return 'mon-dracored'
-    if (n.includes('朝圣') || n.includes('狂徒') || n.includes('教团') || n.includes('圣火祭司')) return 'cultist'
-    if (n.includes('锻偶') || n.includes('锻炉监工') || n.includes('刀盾') || n.includes('弩手') || n.includes('重斧') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'thorn'
-    if (n.includes('狼')) return n.includes('霜') || n.includes('山脊') ? 'frostwolf' : 'wolf'
-    if (n.includes('矿工') || n.includes('掘锚') || n.includes('蝠') || n.includes('蛛') || n.includes('矿灯')) return 'miner'
-    if (n.includes('骸骨') || n.includes('墓卫') || n.includes('掘墓') || n.includes('墓骑') || n.includes('冰棺')) return 'bone'
-    if (n.includes('怨灵') || n.includes('挽歌') || n.includes('观渊') || n.includes('亡魂') || n.includes('提灯') || n.includes('眼')) return 'wraith'
-    if (n.includes('教徒') || n.includes('食尸鬼') || n.includes('咏叹') || n.includes('主教') || n.includes('恶')) return 'cultist'
-    if (n.includes('火脊蜥蜴') || n.includes('焰背')) return 'frog'
-    if (n.includes('荆棘')) return 'thorn'
+    if (n.includes('朝圣') || n.includes('狂徒') || n.includes('教团') || n.includes('圣火祭司')) return 'mon-occultist'
+    if (n.includes('锻偶') || n.includes('锻炉监工')) return 'mon-myrmidon'
+    if (n.includes('刀盾') || n.includes('弩手') || n.includes('重斧') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'mon-myrmidon'
+    if (n.includes('狼')) return 'mon-wolf'
+    if (n.includes('矿工') || n.includes('蝠') || n.includes('蛛') || n.includes('矿灯')) return 'mon-kobold'
+    if (n.includes('骸骨') || n.includes('墓卫') || n.includes('掘墓') || n.includes('墓骑') || n.includes('冰棺')) return 'mon-skelwar'
+    if (n.includes('怨灵') || n.includes('挽歌') || n.includes('观渊') || n.includes('亡魂') || n.includes('提灯') || n.includes('眼')) return 'mon-wraith'
+    if (n.includes('教徒') || n.includes('咏叹') || n.includes('主教') || n.includes('恶')) return 'mon-occultist'
+    if (n.includes('荆棘')) return 'mon-myrmidon'
     return 'frog'
   }
   const ROLE_KEY: Record<string, string> = { tank: 'guard', healer: 'priest', dps: 'ranger' }
