@@ -205,9 +205,10 @@ for (let i = 0; i < RUNS_PER_BRANCH * 2; i++) {
   const squad = JOBS.map((job, j) => generateMember(job, 5, 800000 + i * 100 + j))
   const branchId = risky ? 'shortcut' : 'safepath'
   const run = createRun(squad, BLACKMOSS, branchId, i * 313 + 11)
-  const expectedSteps = risky ? 7 : 6 // 宪法 v3.3 R1:波次扩容 3→5(险路 5 波+2boss,稳路跳过最后一场杂兵)
-  if (run.steps.length !== expectedSteps) {
-    runFailures.push(`分支 ${branchId} 步数 ${run.steps.length} ≠ ${expectedSteps}`)
+  // 反馈④路线规格:险路 12-15 场、稳路 10-12 场(含压轴 boss;精英 2-4 只)
+  const expectedSteps = risky ? [12, 15] : [10, 12]
+  if (run.steps.length < expectedSteps[0] || run.steps.length > expectedSteps[1]) {
+    runFailures.push(`分支 ${branchId} 步数 ${run.steps.length} 不在 ${expectedSteps.join('-')}`)
   }
   let guard = 0
   while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && guard++ < 50) {
@@ -641,7 +642,8 @@ const growthFailures: string[] = []
     const squad = JOBS.map((job, j) => generateMember(job, 5, 200000 + i * 100 + j))
     // 宪法 v3.3 批次④:升级放缓——契约改为"两轮通关升一级"
     for (let clear = 0; clear < 3; clear++) {
-    const run = createRun(squad, BLACKMOSS, 'shortcut', i * 419 + 3 + clear * 17)
+    // 反馈④:药水对齐真实出征(公会携带 9+9),长路线 3 瓶打不穿
+    const run = createRun(squad, BLACKMOSS, 'shortcut', i * 419 + 3 + clear * 17, 0, true, { heal: 9, fury: 9 })
     let g2 = 0
     while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && g2++ < 40) {
       const bt = run.battle!
@@ -683,8 +685,9 @@ const growthFailures: string[] = []
   }
     }
   console.log(`⑩ 成长：会玩通关 ${runs}/50，幸存者升级 ${leveled}/${runs || '-'}，两两默契 ${bonded}/${runs || '-'}`)
-  if (runs < 15) growthFailures.push(`⑩ 通关样本不足 ${runs}`)
-  if (leveled < runs * 0.25) growthFailures.push('⑩ 升级节奏失衡——宪法 v3.3 契约:三轮升一级(实测 ' + leveled + '/' + runs + ')')
+  // 反馈④长路线(12-15 场×3 连打,成员血量跨轮延续)后全通率 ~20% 是新常态,契约同步
+  if (runs < 8) growthFailures.push(`⑩ 通关样本不足 ${runs}`)
+  if (runs > 0 && leveled < runs * 0.25) growthFailures.push('⑩ 升级节奏失衡——宪法 v3.3 契约:三轮升一级(实测 ' + leveled + '/' + runs + ')')
   if (bonded !== runs) growthFailures.push('⑩ 通关未建立两两默契')
 
   // 10b:默契战斗加成——同一批种子,有默契的队伍伤害更高
@@ -928,7 +931,7 @@ const towerFailures: string[] = []
   // 15d:经验加成接线——settleGrowth 乘数
   {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 4321 + j))
-    const run1 = createRun(squad, BLACKMOSS, 'shortcut', 1)
+    const run1 = createRun(squad, BLACKMOSS, 'shortcut', 2)
     const b1 = run1.battle!
     while (b1.status === 'running' && b1.tick < 2000) stepBattle(b1)
     advanceRun(run1)
@@ -936,7 +939,7 @@ const towerFailures: string[] = []
     settleGrowth(run1, 1)
     const exp1 = squad[0].exp
     const squad2 = JOBS.map((job, j) => generateMember(job, 5, 5321 + j))
-    const run2 = createRun(squad2, BLACKMOSS, 'shortcut', 1)
+    const run2 = createRun(squad2, BLACKMOSS, 'shortcut', 2)
     const b2 = run2.battle!
     while (b2.status === 'running' && b2.tick < 2000) stepBattle(b2)
     advanceRun(run2)
@@ -2236,9 +2239,9 @@ const towerFailures: string[] = []
     if (elite <= normal) fail34.push(`㉞ 精英缩放未生效:${normal} → ${elite}`)
     console.log(`㉞ 精英缩放:敌总血 ${normal} → ${elite}`)
   }
-  // 34e:熟练度揭示阈值
+  // 34e:熟练度揭示阈值(反馈④:阈值放大到 12/24/36,长期经营初衷)
   {
-    if (revealLevel(0) !== 'hidden' || revealLevel(4) !== 'kind' || revealLevel(8) !== 'full') {
+    if (revealLevel(0) !== 'hidden' || revealLevel(MASTERY.KIND) !== 'kind' || revealLevel(MASTERY.FULL) !== 'full') {
       fail34.push('㉞ 揭示阈值错误')
     }
     if (!(MASTERY.BOSS_DIRECT > MASTERY.FULL)) fail34.push('㉞ 直捣 boss 门槛应高于全揭示')

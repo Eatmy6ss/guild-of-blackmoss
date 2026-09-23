@@ -511,12 +511,13 @@ export const FROSTGRAVE: DungeonDef = {
     { id: 'fg-cache', name: '陪葬冰窖', kind: 'treasure', desc: '冰层里封着陪葬品' },
   ],
   encounters: [
+    // 反馈④ bug 修复:路线按数组顺序生成,boss 曾被排在中间(永远打不到)——压轴移末位
     { id: 'enc-wights', name: '墓卫列队', kind: 'wave', enemyGroupIds: ['wights'] },
     { id: 'enc-frostwolves', name: '霜狼游猎', kind: 'wave', enemyGroupIds: ['frostwolves'] },
     { id: 'enc-gravekeepers', name: '掘墓工棚', kind: 'wave', enemyGroupIds: ['gravekeepers'] },
-    { id: 'enc-velhola', name: '霜裔织法者·薇尔霍拉', kind: 'boss', enemyGroupIds: [], bossId: 'velhola' },
     { id: 'enc-frostmix', name: '墓卫鸦士混编', kind: 'wave', enemyGroupIds: ['wights-frail', 'gravekeepers'] },
     { id: 'enc-icetomb', name: '冰棺回廊', kind: 'wave', enemyGroupIds: ['gravekeepers'] },
+    { id: 'enc-velhola', name: '霜裔织法者·薇尔霍拉', kind: 'boss', enemyGroupIds: [], bossId: 'velhola' },
   ],
 }
 

@@ -30,16 +30,42 @@ export interface DungeonRun {
   autoMode?: boolean
   nodeIds: string[]
   eliteNow?: boolean
+  /** 精英场次索引(反馈④:路线内 2-4 只精英,×1.25) */
+  eliteAt: number[]
 }
 
 /** 岔路映射：险路打满全部遭遇（更多战斗=更多收获机会）；稳路跳过最后一段杂兵 */
-function routeSteps(dungeon: DungeonDef, branchId: string): string[] {
-  const all = dungeon.encounters.map((e) => e.id)
+/** 路线规格(试玩反馈④:路线要长,10-15 轮;精英 2-4 只;boss 恒压轴) */
+export const ROUTE_SPEC = { MIN: 10, MAX: 15, ELITE_MIN: 2, ELITE_MAX: 4 } as const
+
+/**
+ * 路线生成:wave 池循环抽取拉长到目标长度(险路 12-15/稳路 10-12),随机场次标记精英(×1.25),
+ * boss 恒压轴。此前按 encounters 数组顺序组路线,五张图的 boss 都曾被排在中途——远征永远打不到
+ * (制作人实测"白霜没 boss"暴露;门禁直连单场调用测不出,⑲ 保留直连层)。
+ */
+function routePlan(dungeon: DungeonDef, branchId: string, seed: number): { steps: string[]; eliteAt: number[] } {
   const branch = dungeon.branches.find((b) => b.id === branchId)
-  if (!branch || branch.risk >= 2) return all
+  const risky = branch ? branch.risk >= 2 : true
+  const bosses = dungeon.encounters.filter((e) => e.kind === 'boss')
   const waves = dungeon.encounters.filter((e) => e.kind === 'wave')
-  const dropped = waves[waves.length - 1]
-  return dropped ? all.filter((id) => id !== dropped.id) : all
+  if (waves.length === 0 || bosses.length === 0) {
+    // 数据异常兜底:原样全量(不应发生,⑲ 门禁把关)
+    return { steps: dungeon.encounters.map((e) => e.id), eliteAt: [] }
+  }
+  const target = risky ? 12 + (Math.abs(seed) % 4) : 10 + (Math.abs(seed) % 3)
+  const steps: string[] = []
+  for (let i = 0; i < target - bosses.length; i++) {
+    steps.push(waves[(Math.abs(seed) * 31 + i * 7) % waves.length].id)
+  }
+  // 精英标记:2-4 场(确定性抽取,分布在中前段)
+  const eliteCount = ROUTE_SPEC.ELITE_MIN + (Math.abs(seed * 17 + 3) % (ROUTE_SPEC.ELITE_MAX - ROUTE_SPEC.ELITE_MIN + 1))
+  const eliteAt: number[] = []
+  const cap = Math.min(eliteCount, steps.length - 1)
+  for (let i = 0; i < cap; i++) {
+    const at = (Math.abs(seed * 13 + i * 29) % (steps.length - 1))
+    if (!eliteAt.includes(at)) eliteAt.push(at)
+  }
+  return { steps: [...steps, ...bosses.map((b) => b.id)], eliteAt }
 }
 
 export function createRun(
@@ -52,9 +78,11 @@ export function createRun(
   potions = { heal: POTION_STOCK, fury: POTION_STOCK },
   autoMode = false,
 ): DungeonRun {
+  const plan = routePlan(dungeon, branchId, seed)
   const run: DungeonRun = {
     dungeon,
-    steps: routeSteps(dungeon, branchId),
+    steps: plan.steps,
+    eliteAt: plan.eliteAt,
     stepIdx: 0,
     phase: 'battle',
     battle: null,
@@ -71,6 +99,7 @@ export function createRun(
 }
 
 export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void {
+  const isElite = run.eliteAt.includes(run.stepIdx)
   run.battle = createBattle(
     run.members.filter((m) => m.alive),
     run.dungeon,
@@ -80,7 +109,7 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     manualBonus,
     run.protectOn,
     run.potions,
-    run.eliteNow ? 1.25 : 1,
+    run.eliteNow || isElite ? 1.25 : 1,
   )
   run.eliteNow = false
   run.battle.commands.autoMode = !!run.autoMode
@@ -153,10 +182,9 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
   if (!b) return
   if (b.status === 'guild-win') {
     const enc = run.dungeon.encounters.find((e) => e.id === run.steps[run.stepIdx])
-    // 宪法 v3.3 批次④:经验获取收紧
-    // 试玩反馈二轮:经验倍率再降——重复刷同一本是最优解
-    // 试玩反馈④:等级压制配套——高等级刷低图经验锐减(门槛收窄:当前进度的图不吃衰减)
-    const exp = enc?.kind === 'boss' ? 85 : 32
+    // 试玩反馈④:经验获取收紧——路线拉长到 10-15 场后 波16/boss90 保持"三轮通关升一级"总账
+    // (一轮 11 波×16+90=266,三轮 798 ≥ xpNeeded(5)=750,两轮 532 < 750)
+    const exp = enc?.kind === 'boss' ? 90 : 16
     const expected = run.dungeon.expectedLevel
     const over = expected !== undefined
       ? Math.max(0, run.members.reduce((s, m) => s + m.level, 0) / Math.max(1, run.members.length) - expected)
@@ -200,7 +228,9 @@ export function resetAfterRun(members: Member[]): void {
 // ===== 逐段选路(宪法 v3.3 修正案·熟练度迷雾)=====
 
 /** 熟练度阈值:类型揭示/全揭示/直捣 boss */
-export const MASTERY = { KIND: 4, FULL: 8, BOSS_DIRECT: 12 } as const
+/** 熟练度阈值(反馈④:一次远征 ~10-17 熟练,原 4/8/12 两三次就满——放大到 12/24/36,
+ *  约 3 次远征识类型、8 次全揭示、12 次直捣 boss,贴合"熟练度=长期经营"的设计初衷) */
+export const MASTERY = { KIND: 12, FULL: 24, BOSS_DIRECT: 36 } as const
 
 export type RevealLevel = 'hidden' | 'kind' | 'full'
 
