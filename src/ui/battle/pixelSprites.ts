@@ -1,4 +1,4 @@
-import { Texture } from 'pixi.js'
+import { Assets, Texture } from 'pixi.js'
 
 // 像素精灵管线(M1 演出验证切片):ASCII 像素图 → 离屏 canvas → nearest-neighbor 纹理。
 // 设计契约(D5-6):换皮只换这里的像素图与调色板,动画结构不动。
@@ -436,19 +436,54 @@ const WP_DRAGON: PixelDef = {
 
 // ---- 生成管线 ----
 
+// ---- 素材包精灵(CC0 Dungeon Crawl Stone Soup tiles,public/assets/mon/)----
+// 制作人指示:网上找素材包模仿/改造,不从零画。DCSS 32×32 手绘像素,质量远超手写矩阵。
+
+const URL_SPRITES: Record<string, string> = {
+  'mon-firedragon': '/assets/mon/firedragon.png',
+  'mon-deathdrake': '/assets/mon/deathdrake.png',
+  'mon-lindwurm': '/assets/mon/lindwurm.png',
+  'mon-dracored': '/assets/mon/dracored.png',
+  'mon-dracoknight': '/assets/mon/dracoknight.png',
+  'mon-dracoscorcher': '/assets/mon/dracoscorcher.png',
+  'mon-ghost': '/assets/mon/ghost.png',
+  'mon-skelwar': '/assets/mon/skelwar.png',
+  'mon-mummypriest': '/assets/mon/mummypriest.png',
+  'mon-wolf': '/assets/mon/wolf.png',
+  'mon-ogre': '/assets/mon/ogre.png',
+}
+
+/** 预加载全部素材包 PNG(mount 时 await;加载完成的纹理进同一 cache) */
+export async function preloadUrlSprites(): Promise<void> {
+  await Promise.all(
+    Object.entries(URL_SPRITES).map(async ([key, url]) => {
+      try {
+        const tex = await Assets.load(url)
+        tex.source.scaleMode = 'nearest'
+        tex.source.style.scaleMode = 'nearest'
+        cache.set(key, tex)
+      } catch {
+        // 单张失败静默降级(占位白块),不阻塞战斗
+      }
+    }),
+  )
+}
+
 const cache = new Map<string, Texture>()
 
-/** 精灵显示缩放:HD-2D 高精度矩阵(≥20 行)原生 1:1;旧 12×14/16×18 矩阵保持 ×2 视觉尺寸 */
+/** 精灵显示缩放:素材包 32×32 与 HD 矩阵(≥20 行)原生 1:1;旧 12×14/16×18 矩阵保持 ×2 */
 export function spriteScale(key: string): number {
+  if (key.startsWith('mon-')) return 1
   const def = UNIT_SPRITES[key]
   if (!def) return 2
   return def.rows.length >= 20 ? 1 : 2
 }
 
-/** ASCII 像素图 → nearest-neighbor 纹理(幂等,按 key 缓存;定义查 UNIT_SPRITES) */
+/** ASCII 像素图 → nearest-neighbor 纹理(幂等,按 key 缓存;矩阵查 UNIT_SPRITES,素材包查预加载缓存) */
 export function pixelTexture(key: string): Texture {
   const cached = cache.get(key)
   if (cached) return cached
+  if (key.startsWith('mon-')) return Texture.WHITE // 预加载未就绪/失败的占位
   const def = UNIT_SPRITES[key]
   if (!def) throw new Error(`未知像素精灵: ${key}`)
   const w = def.rows[0].length
@@ -508,18 +543,26 @@ export const UNIT_SPRITES: Record<string, PixelDef> = {
 export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; name?: string }): string {
   const n = c.name ?? ''
   if (c.boss) {
-    if (n.includes('格鲁什')) return 'boss-grush'
+    // 素材包优先(CC0 DCSS):龙形/食人魔/蠕虫/祭司形态
+    if (n.includes('瓦尔塞隆')) return 'mon-deathdrake'
+    if (n.includes('瓦洛萨里斯')) return 'mon-firedragon'
+    if (n.includes('格鲁什')) return 'mon-ogre'
+    if (n.includes('掘锚')) return 'mon-lindwurm'
+    if (n.includes('马尔萨乌斯')) return 'mon-mummypriest'
     if (n.includes('塔尔玛')) return 'talma'
-    if (n.includes('掘锚')) return 'boss-delveanchor'
     if (n.includes('摩尔德雷克')) return 'boss-moldreke'
     if (n.includes('薇尔霍拉')) return 'boss-velhola'
-    if (n.includes('马尔萨乌斯')) return 'boss-malsauus'
     if (n.includes('科尔特')) return 'boss-coltfeld'
     if (n.includes('荆棘') || n.includes('维克托')) return 'thorn'
     return 'ogre'
   }
   if (c.team === 'enemy') {
-    if (n.includes('龙裔') || n.includes('龙渊') || n.includes('渊龙') || n.includes('幼龙') || n.includes('驭火')) return 'ogre'
+    if (n.includes('龙裔鳞卫') || n.includes('狂信卫士') || n.includes('龙裔祭卫')) return 'mon-dracored'
+    if (n.includes('龙渊鳞卫') || n.includes('渊龙亲卫')) return 'mon-dracoknight'
+    if (n.includes('龙裔吐息手') || n.includes('龙裔驭火者') || n.includes('龙渊驭火者') || n.includes('焰背蜥后')) return 'mon-dracoscorcher'
+    if (n.includes('朝圣者亡魂') || n.includes('提灯亡魂')) return 'mon-ghost'
+    if (n.includes('山脊霜狼') || n.includes('头狼')) return 'mon-wolf'
+    if (n.includes('龙裔') || n.includes('龙渊') || n.includes('渊龙') || n.includes('幼龙') || n.includes('驭火')) return 'mon-dracored'
     if (n.includes('朝圣') || n.includes('狂徒') || n.includes('教团') || n.includes('圣火祭司')) return 'cultist'
     if (n.includes('锻偶') || n.includes('锻炉监工') || n.includes('刀盾') || n.includes('弩手') || n.includes('重斧') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'thorn'
     if (n.includes('狼')) return n.includes('霜') || n.includes('山脊') ? 'frostwolf' : 'wolf'

@@ -48,7 +48,8 @@ const save: GuildSave = {
   members,
   inventory,
   memorial: [],
-  manual: [],
+  // 试玩直达:研习版图一全部 boss(解锁龙脊山脉)——想从零体验请手动清空此数组
+  manual: ['grush', 'talma', 'delveanchor', 'moldreke', 'velhola', 'malsau', 'victor'],
   protectOn: true,
   gold: 2000,
   blessing: 40,

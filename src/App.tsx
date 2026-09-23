@@ -58,6 +58,20 @@ import { MECH_INFO, mechanicBrief } from './data/mech-docs'
 // 花名册 = 全体成员（含亡者记录）；远征队 = 花名册前三名幸存者。
 
 const START_JOBS = ['guard', 'priest', 'ranger'] as const
+
+/** 副本→战斗背景主题(版图二龙脊 heat 单独走 env) */
+const THEME_BY_DUNGEON: Record<string, string> = {
+  blackmoss: 'swamp',
+  rustmine: 'mine',
+  ashfield: 'ash',
+  frostgrave: 'frost',
+  'pilgrim-path': 'frost',
+  abyssaltar: 'abyss',
+  thornhold: 'thorn',
+  'forge-works': 'mine',
+  emberpass: 'default',
+  scalehaven: 'abyss',
+}
 const ROLE_NAME: Record<string, string> = { tank: '坦克', healer: '治疗', dps: '输出' }
 const SLOT_NAME: Record<Slot, string> = { weapon: '武器', armor: '护甲', trinket: '饰品' }
 const SLOTS: Slot[] = ['weapon', 'armor', 'trinket']
@@ -582,6 +596,10 @@ export default function App() {
       setRareHuntNext(null)
     }
     setLastDrops([])
+    // 战斗背景主题(按副本):灼热/冰雪/沼泽/矿道…
+    rendererRef.current?.setTheme(
+      activeDungeon.env === 'heat' ? 'heat' : THEME_BY_DUNGEON[activeDungeon.id] ?? 'default',
+    )
     setRunning(true)
     syncAll()
   }

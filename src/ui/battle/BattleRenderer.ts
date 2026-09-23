@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
-import { pixelTexture, spriteKeyFor, spriteScale } from './pixelSprites'
+import { pixelTexture, spriteKeyFor, spriteScale, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
@@ -184,9 +184,11 @@ export class BattleRenderer {
 
   async mount(container: HTMLElement): Promise<void> {
     const app = new Application()
+    // 反馈:战斗填满舞台——渲染分辨率翻倍(1520×600),root 整体 ×2,
+    // 内部逻辑坐标仍用 760×300 世界(槽位自动铺满,内部代码零改动)
     await app.init({
-      width: W,
-      height: H,
+      width: W * 2,
+      height: H * 2,
       background: 0x1c1410,
       antialias: true,
       resolution: window.devicePixelRatio || 1,
@@ -200,9 +202,11 @@ export class BattleRenderer {
       return
     }
     this.app = app
+    this.root.scale.set(2)
     container.appendChild(app.canvas)
+    await preloadUrlSprites() // 素材包 PNG 预加载(失败静默降级)
     app.stage.addChild(this.root)
-    this.drawBackdrop()
+    this.drawBackdrop(this.theme)
     app.ticker.add((t) => this.tick(t.deltaMS))
     if (this.battle) {
       this.syncUnits(this.battle)
@@ -260,11 +264,73 @@ export class BattleRenderer {
 
   // ---- 场景 ----
 
-  private drawBackdrop(): void {
+  /** 当前背景主题(按副本) */
+  private theme = 'default'
+
+  /** 战斗背景主题(按副本):heat 熔岩 / frost 冰雪 / swamp 沼泽 / mine 矿道 / ash 灰烬 / abyss 深渊 / thorn 军垒 / tower 高塔 / 默认暖黑石 */
+  setTheme(theme: string): void {
+    this.theme = theme
+    if (this.app) {
+      this.root.removeChildren().forEach((ch) => ch.destroy({ children: true }))
+      this.units.clear()
+      this.effects = []
+      this.focusMarker = null
+      this.castBars.clear()
+      this.drawBackdrop(theme)
+      if (this.battle) this.syncUnits(this.battle)
+    }
+  }
+
+  private drawBackdrop(theme = 'default'): void {
     const g = new Graphics()
-    g.rect(0, 0, W, H).fill(0x14161c)
-    g.rect(W * 0.5 - 1, 0, 2, H).fill(0x22262f) // 中轴线
-    g.rect(0, H * 0.86, W, 1).fill(0x22262f) // 地平线
+    // 主题色板:顶部光 / 中底 / 地面
+    const T: Record<string, { sky: number[]; ground: number; fog: number; crack: number }> = {
+      heat: { sky: [0x57180a, 0x2a0a04], ground: 0x3a0e06, fog: 0xff5a1a, crack: 0xff7a2a },
+      frost: { sky: [0x24405e, 0x0e1826], ground: 0x1a2a3c, fog: 0xa8c8e8, crack: 0x8ab8e0 },
+      swamp: { sky: [0x1e2e1a, 0x0c1408], ground: 0x182410, fog: 0x6a9a4a, crack: 0x4a7a34 },
+      mine: { sky: [0x2e2418, 0x140e08], ground: 0x241a10, fog: 0x8a6a42, crack: 0x6a5228 },
+      ash: { sky: [0x3a3a3e, 0x18181c], ground: 0x26262a, fog: 0x9a9aa4, crack: 0x6a6a74 },
+      abyss: { sky: [0x2e1430, 0x12060e], ground: 0x200a18, fog: 0x9a4a8a, crack: 0x7a3a6a },
+      thorn: { sky: [0x2a2a30, 0x121216], ground: 0x1e1e24, fog: 0x8a8a96, crack: 0x5a5a66 },
+      tower: { sky: [0x1a2030, 0x0a0c14], ground: 0x141824, fog: 0x6a7a9a, crack: 0x4a5a7a },
+      default: { sky: [0x2e2418, 0x140e08], ground: 0x201812, fog: 0x8a6a42, crack: 0x6a5228 },
+    }
+    const t = T[theme] ?? T.default
+    // 天幕:上亮下暗的横带渐变(8 段)
+    const bands = 8
+    for (let i = 0; i < bands; i++) {
+      const k = i / (bands - 1)
+      g.rect(0, (H * 0.86 * i) / bands, W, (H * 0.86) / bands + 1).fill({
+        color: t.sky[0],
+        alpha: (1 - k) * 0.9,
+      })
+    }
+    g.rect(0, 0, W, H * 0.86).fill({ color: t.sky[1], alpha: 0.55 })
+    // 地面
+    g.rect(0, H * 0.86, W, H * 0.14).fill(t.ground)
+    g.rect(0, H * 0.86, W, 2).fill(t.fog)
+    // 主题装饰:heat=熔岩裂痕与火星带;frost=霜纹;其余=主题色雾带
+    if (theme === 'heat') {
+      for (let i = 0; i < 10; i++) {
+        const x = W * (0.05 + 0.09 * i)
+        const w = W * 0.02 + ((i * 37) % 30)
+        g.rect(x, H * 0.88, w, 4).fill(0xff7a2a)
+        g.rect(x + w * 0.2, H * 0.88 + 8, w * 0.5, 3).fill({ color: 0xffb040, alpha: 0.8 })
+      }
+      g.rect(0, H * 0.97, W, H * 0.03).fill({ color: 0xff5a1a, alpha: 0.5 })
+    } else if (theme === 'frost') {
+      for (let i = 0; i < 12; i++) {
+        const x = W * (0.03 + 0.08 * i)
+        g.rect(x, H * (0.1 + (i % 4) * 0.12), 3, 3).fill({ color: 0xe8f4ff, alpha: 0.7 })
+      }
+    } else {
+      for (let i = 0; i < 6; i++) {
+        g.rect(0, H * (0.2 + i * 0.1), W, 2).fill({ color: t.fog, alpha: 0.12 })
+      }
+    }
+    // 中轴线与地平线(敌我分界)
+    g.rect(W * 0.5 - 1, 0, 2, H).fill({ color: 0x000000, alpha: 0.35 })
+    g.rect(0, H * 0.5 - 1, W, 2).fill({ color: 0x000000, alpha: 0.25 })
     this.root.addChild(g)
   }
 
