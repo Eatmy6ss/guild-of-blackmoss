@@ -1902,4 +1902,235 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       },
     ],
   },
+  // ===== 事件三期(版图二·龙脊山脉主题):龙蛋/教团清算/龙裔叛逃者/火雨夜等 =====
+  {
+    id: 'dragon-egg',
+    title: '龙蛋的困境',
+    text: '温泉眼边窝着三枚龙蛋,壳面温热,偶尔颤动——里面有活物。鳞音教的通缉令就贴在百里外的镇口:"私藏龙蛋者,株连雇主。"每个蛋,黑市开价两百金。',
+    choices: [
+      {
+        text: '全部抱走。两百一个,三个六百,这是行军财务上的正确决策。',
+        outcomes: [
+          { weight: 5, text: '蛋在行囊里一路发烫,夜里轮流抱睡。卖是卖了,可从那以后,队伍里总有人在半夜听见壳裂的声音。', effects: { gold: 200, moraleAll: -5, delayed: { eventId: 'egg-hatch', dueDays: 3 } } },
+          { weight: 5, text: '搬蛋的队员被突然破壳的一只咬了——那不是龙,是只认人的小蜥蜴。它赖上了背它的人,赶都赶不走。', effects: { gold: 120, injure: true, moraleAll: 2 } },
+        ],
+      },
+      {
+        text: '留下,再用温泉灰把窝盖回去。有些买卖做了,夜就睡不安稳。',
+        outcomes: [
+          { weight: 7, text: '离开半里地,身后传来极轻的一声脆响——是壳裂了,还是你脚下的枯枝?没人回头确认。', effects: { moraleAll: 3, blessing: 3 } },
+          { weight: 3, text: '盖灰的时候发现窝下压着半块教团圣牌——原来教团早找到了这里,只是没敢动。你们比教团有种,也可能比教团蠢。', effects: { moraleRandom: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'egg-hatch',
+    title: '第二幕·壳里的东西',
+    text: '卖掉龙蛋的第九天,营地水桶里发现一只巴掌大的小龙崽——湿漉漉的,是从你们行囊缝里掉进水桶的蛋里孵出来的。它谁也不认,只咬当初提议"抱走"的那位。',
+    choices: [
+      {
+        text: '养着。能咬雇佣兵的东西,将来能咬别的。',
+        outcomes: [
+          { weight: 6, text: '小龙崽在营地横着走了半个月,连最横的老兵都绕着它的食盆走。但它夜里会盘在火塘边——像收了个脾气差的战友。', effects: { gold: -30, moraleAll: 5, runBuff: { id: 'whelp-guard', name: '小龙崽', desc: '营地里多了条小恶龙——全队攻击提升,直到本次远征结束', mods: { atk: 1.1 } } } },
+          { weight: 4, text: '养到第三天,它顺着烟囱跑了,顺走了两件发亮的装备。账算不清——它给的快乐是真的,顺走的东西也是真的。', effects: { moraleAll: 2, gold: -40 } },
+        ],
+      },
+      {
+        text: '放归山里。它的牙印还留在谁的手上,就当学费。',
+        outcomes: [
+          { weight: 7, text: '放生那天它飞得很笨,像一片逆风的斗篷。全队目送——有人说看见它回头了,有人说没有。', effects: { moraleAll: 3, blessing: 4 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'cult-purge',
+    title: '教团的清算',
+    text: '鳞音教的执事团堵在营地外,展开一卷名单:"据鳞册批注,贵会曾于圣地带不敬。念贵会屡建战功,罚金三百金,或——交出当日带队的名字,由圣火净化其不敬。"',
+    choices: [
+      {
+        text: '交钱。三百金买个既往不咎,比背上人命便宜。',
+        outcomes: [
+          { weight: 6, text: '执事收钱划名,临走留下一句:"圣火看得见忠诚。"队伍里没人说话——被用钱定义的忠诚,总觉得哪里不对。', effects: { gold: -300, moraleAll: -4 } },
+          { weight: 4, text: '钱交了,名单上却多了一行小字:"已训诫,暂缓清算。"暂缓两个字,像根刺。', effects: { gold: -300, moraleRandom: -3 } },
+        ],
+      },
+      {
+        text: '抗到底。净化两个字冲着谁来的,谁就站出来——全队都会站出来。',
+        outcomes: [
+          { weight: 5, text: '对峙到深夜,执事团烧了自己的营帐走了——那是教团最烈的抗议。全队握刀握到天亮,手上是汗,心里是火。', effects: { moraleAll: 8, delayed: { eventId: 'cult-vengeance', dueDays: 2 } } },
+          { weight: 5, text: '冲突见血了。双方各伤了人,教团扛着伤员撤离时,老队长说了句谁都懂的话:"这下梁子结到龙了。"', effects: { moraleAll: 5, moraleRandom: -3, delayed: { eventId: 'cult-vengeance', dueDays: 2 } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'cult-vengeance',
+    title: '第二幕·圣火的回信',
+    text: '夜里,营地四周的火把无故自燃,火苗全是幽蓝色。火堆边留着一封烧了一半的信:"圣火已至,勿谓言之不预。"字迹是烧出来的,不是写出来的。',
+    choices: [
+      {
+        text: '灭火,加固岗哨,照常行军。吓唬人的火,烧不穿铁甲。',
+        outcomes: [
+          { weight: 6, text: '一夜平安。第二天路口多了具烧焦的稻草人,穿着公会的制服——恐吓的手艺,糟蹋了这么好的火。', effects: { moraleAll: 3 } },
+          { weight: 4, text: '岗哨加了两道,全队却还是一夜没合眼。第二天有个队员递了辞呈——他不怕刀,怕这种看不见的火。', effects: { moraleAll: -5 } },
+        ],
+      },
+      {
+        text: '回敬。把他们的圣像也点一把火,火对火,公平。',
+        outcomes: [
+          { weight: 5, text: '圣像烧塌的那刻,远处山脊上所有教团的火把同时熄灭——然后同时亮起。他们记住了。你们也记住了:这里没人敢惹黑苔。', effects: { moraleAll: 6, gold: -20, delayed: { eventId: 'cult-vengeance', dueDays: 4 } } },
+          { weight: 5, text: '火太大了,烧过了山脊的枯草——教团的营地没了,半片林子也没了。你们赢了这一局,输了一片林子,还有一份说不清的心安。', effects: { moraleAll: -3, gold: 40 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'dragon-defector',
+    title: '龙裔的叛逃者',
+    text: '一个龙裔鳞甲半褪、躲在溪水边发抖。他说自己是教团的锻奴,偷了火种图谱逃出来:"收留我,图谱归你们。被找到——你们和我是同罪。"',
+    choices: [
+      {
+        text: '收。图谱归公,人归队伍——教团的账,让教团自己头疼。',
+        outcomes: [
+          { weight: 6, text: '图谱是真的,人也是真的能干——他锻的箭头比铁匠铺的直。教团派来的说客被他一个人骂退了三回。', effects: { moraleAll: 4, recruit: true, runBuff: { id: 'forge-map', name: '火种图谱', desc: '图谱上的锻法全队受用——攻击提升,直到本次远征结束', mods: { atk: 1.08 } } } },
+          { weight: 4, text: '人是收了,教团的追踪者也是真的来了——接下来的一路,你们甩掉了三拨尾巴。图谱值这个险,但险就是险。', effects: { recruit: true, moraleRandom: -3 } },
+        ],
+      },
+      {
+        text: '给他干粮和盘缠,让他去投奔别处。这里的战火已经够多了。',
+        outcomes: [
+          { weight: 6, text: '他朝着自由城邦的方向走了。半个月后的消息说,他在那边开了间铁匠铺,铺子门口挂着块木牌:谢一位佣兵队长。没写名字,但你知道是你。', effects: { gold: -20, blessing: 5, moraleAll: 3 } },
+          { weight: 4, text: '盘缠给了,图谱他却没交——图谱是我的命,人可以走。这买卖不算亏,只是总觉得自己错过了什么。', effects: { gold: -20, moraleRandom: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'pilgrim-alms',
+    title: '朝圣者的众筹',
+    text: '一队衣衫褴褛的朝圣者在山道上支起木牌:众筹登龙脊,敬龙以止天罚。捐资者名入功德簿。他们的领袖是个瘸腿老妇,眼神却像鹰。',
+    choices: [
+      {
+        text: '捐,顺便护送他们一程。龙脊上他们比你们有用——他们知道哪块石头不塌。',
+        outcomes: [
+          { weight: 6, text: '老妇领路避开了两处塌方和一处不该看的地方。分别时她往你们每人手里塞了一枚平安鳞——不知是真是假,但磨得很亮。', effects: { gold: -40, moraleAll: 4, expAll: 15 } },
+          { weight: 4, text: '护送到半路,朝圣队伍里有人认出了你们中某个人的旧债。气氛僵了一路——江湖不大,旧账都在。', effects: { gold: -40, moraleRandom: -4 } },
+        ],
+      },
+      {
+        text: '不捐。天罚要真存在,黑苔的刀会先跟它谈谈。',
+        outcomes: [
+          { weight: 5, text: '老妇不怒反笑:好胆色。那祝你们刀快。队伍走远了,她还在原地盯着你们的方向——不知是敬意还是记仇。', effects: { moraleAll: 2 } },
+          { weight: 5, text: '当夜山道塌方,你们绕了半天冤枉路。有人嘀咕:早知道捐了。队长说:塌方和捐款没关系。没人接话。', effects: { moraleRandom: -3 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'whelp-poachers',
+    title: '盗猎幼龙者',
+    text: '岩架下三个盗猎者正往麻袋里塞幼龙崽,龙妈妈被网罩住奄奄一息。盗猎头子冲你们晃了晃钱袋:一人五十,当没看见。龙崽贩子出手比你们公会大方。',
+    choices: [
+      {
+        text: '动手。放龙,也放龙妈妈——钱他们留着买棺材。',
+        outcomes: [
+          { weight: 6, text: '盗猎者跑了,留下钱袋和满地绳网。龙妈妈挣脱后没有攻击你们,只是用头蹭了蹭每只龙崽,然后领着它们消失在岩雾里。', effects: { gold: 50, moraleAll: 6, blessing: 3 } },
+          { weight: 4, text: '交手时网里的龙妈妈暴起,烧了盗猎者也燎了你们的眉毛。龙崽得救了,你们的鬓角三个月后才长回来。', effects: { moraleAll: 4, moraleRandom: -2 } },
+        ],
+      },
+      {
+        text: '收钱,闭眼。龙崽贩子出的价,确实比良心值钱。',
+        outcomes: [
+          { weight: 5, text: '五十金一人,分账很痛快。回去的路上没人提这件事,但营地那晚特别安静——安静得能听见岩架下龙崽的叫声,其实早就听不见了。', effects: { gold: 150, moraleAll: -7 } },
+          { weight: 5, text: '收钱的时候,龙妈妈挣脱了网。盗猎者死了两个,你们因为在场被龙记住了脸——之后每次过那片岩架,天上都有影子跟着。', effects: { gold: 150, runBuff: { id: 'dragon-grudge', name: '母龙的注视', desc: '天上有影子在跟着你们——受疗略降,直到本次远征结束', mods: { heal: 0.88 } } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'fire-rain',
+    title: '火雨之夜',
+    text: '龙脊的夜空烧起来了——火山的碎屑随雨落下,火星打在帐篷上滋滋作响。老向导蹲在岩下:往南走能躲,往北走是猎场。但火雨后的猎场,会露出平时看不见的东西。',
+    choices: [
+      {
+        text: '南撤避雨。命比宝物值钱,这句是老兵教的。',
+        outcomes: [
+          { weight: 7, text: '南边一夜无事,只有远处的山被火雨染成剪影。有人半夜醒来两次,确认自己不在梦里。', effects: { moraleAll: 2 } },
+          { weight: 3, text: '南撤的路上,火雨点着了一片枯草,队伍帮着扑了半夜火——帮的是山,也是山里不认识的猎户。', effects: { moraleAll: 3, blessing: 3 } },
+        ],
+      },
+      {
+        text: '北上。火雨后猎场露出的东西,值得赌这一夜。',
+        outcomes: [
+          { weight: 4, text: '火雨浇透了地表,冲出的岩缝里卡着一条星铁矿脉——还有一具抱着矿镐的先驱者遗骨。你们取矿,也葬了骨。', effects: { item: 'wpn-dragon-brand', moraleAll: 3, expAll: 20 } },
+          { weight: 6, text: '北上代价惨重:火雨灼伤了半队人,露出的宝贝是一堆教团的废铁。老向导说得对,但没人喜欢听我说了吧。', effects: { moraleAll: -5, runBuff: { id: 'fire-rain-burn', name: '火雨灼伤', desc: '火星燎过的伤口在发烫——受疗降低,直到本次远征结束', mods: { heal: 0.85 } } } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'cult-recruiter',
+    title: '教团的征募官',
+    text: '征募官的文书摊开在桌上:加入鳞音教,享受眷属庇护、圣火抚恤、龙裔锻武优先权。条件:宣誓、纳贡、以及——必要的时候,替圣火做点小事。',
+    choices: [
+      {
+        text: '加入。教团的小事再多,也比没有庇护强。',
+        outcomes: [
+          { weight: 5, text: '宣誓那天发了圣徽和抚恤册。第一件小事三天后就来了——帮教团运一口绝对不能打开的箱子。你们没打开,但箱子在夜里发出过声音。', effects: { gold: 80, runBuff: { id: 'cult-member', name: '教团编内', desc: '眷属庇护是真的——受疗提升,直到本次远征结束', mods: { heal: 1.15 } }, delayed: { eventId: 'cult-errand', dueDays: 3 } } },
+          { weight: 5, text: '加入容易,宣誓的措辞却很讲究——效忠圣火,永不背弃。签字画押后,队里识字的那位脸色发白:这条款,退不出去了。', effects: { gold: 80, moraleAll: -3, runBuff: { id: 'cult-member', name: '教团编内', desc: '受疗提升,直到本次远征结束', mods: { heal: 1.15 } } } },
+        ],
+      },
+      {
+        text: '拒绝。佣兵只效忠钱和兄弟,不效忠火。',
+        outcomes: [
+          { weight: 6, text: '征募官收起文书,不怒自威:圣火记性好。他走后,酒馆老板免费送了一轮酒——跟教团说不的人,酒钱我出。', effects: { moraleAll: 5 } },
+          { weight: 4, text: '拒了之后一切如常——直到下次进城,铁匠铺恰好没了你们订的货,粮商恰好涨价了。没有明枪,全是暗箭。', effects: { gold: -40, moraleRandom: -3 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'cult-errand',
+    title: '第二幕·那口箱子',
+    text: '教团的传令官追上来:上次那口箱子,收件人说里面少了东西——少了一只会唱歌的石头。他盯着你们:开箱验货是规矩,赔也是规矩。你们自己选。',
+    choices: [
+      {
+        text: '赔。唱歌的石头值多少,照价赔——别再纠缠。',
+        outcomes: [
+          { weight: 6, text: '赔完钱,传令官递了张清讫的红印条。事毕,你们才想起:从头到尾,没人打开过那口箱子验货——包括收件人。这行水深,教团的更甚。', effects: { gold: -60, moraleRandom: -2 } },
+          { weight: 4, text: '照价赔了,可石头半夜真的在货栈里唱起了歌——呜呜的,像哭。伙计们连夜把箱子扔进了河里。歌停了。', effects: { gold: -60, moraleAll: -3 } },
+        ],
+      },
+      {
+        text: '要求开箱。当着传令官的面——箱子是你们运的,也是你们封的,封条完好无损。',
+        outcomes: [
+          { weight: 5, text: '封条完好,当众开箱:里面根本没有石头,只有一袋教团私运的赈灾粮——他们走私赈灾粮!传令官脸色铁青地收了箱子走了,再没提赔偿。', effects: { moraleAll: 6, gold: -10 } },
+          { weight: 5, text: '开箱瞬间,一只唱歌的石头跳了出来——真是只石头,一种会共鸣的鸣石,教团用它传讯。石头当众唱了一段教团的密令。传令官下令当场销毁——你们白捡了一段情报。', effects: { expAll: 20, moraleAll: 3 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'dragon-blood-spring',
+    title: '龙血泉',
+    text: '山岩缝里渗出一泓暗红的泉水,附近草木疯长,泉水边伏着一具巨兽骸骨——骸骨的心口位置,泉水正对着一枚心脏形状的凹坑。喝,还是不喝?',
+    choices: [
+      {
+        text: '喝。龙脊的东西,进了肚才算数。',
+        outcomes: [
+          { weight: 5, text: '泉水灼烧喉咙后化作热流散遍四肢——当天的行军快得反常,连伤疤都在发烫。好东西,烫也是真的好。', effects: { moraleAll: 4, runBuff: { id: 'blood-spring', name: '龙血热', desc: '血在烧——攻击大幅提升,直到本次远征结束', mods: { atk: 1.18 } } } },
+          { weight: 5, text: '喝完一夜高烧,全队轮流说了胡话。烧退之后人人神清气爽——但那晚的胡话里,有人喊了一个死去多年的名字。', effects: { moraleAll: 2, expAll: 25, runBuff: { id: 'blood-spring', name: '龙血热', desc: '血在烧——攻击大幅提升,直到本次远征结束', mods: { atk: 1.15 } } } },
+        ],
+      },
+      {
+        text: '不喝,灌进水囊带回去卖。龙脊的疯货,城里有的是人抢。',
+        outcomes: [
+          { weight: 6, text: '炼金商人抢着收购,当场现结。他灌装时手抖得厉害——这东西,喝过的人都说好。但我不喝,你也别再喝。', effects: { gold: 90 } },
+          { weight: 4, text: '水囊漏了。一路红痕,引来了两头循血而来的岩狼。打退狼,丢了泉,账面上不亏,心里堵得慌。', effects: { gold: 40, moraleRandom: -4, expAll: 10 } },
+        ],
+      },
+    ],
+  },
 ]
