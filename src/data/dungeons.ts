@@ -1,4 +1,5 @@
 import type { DungeonDef } from '../sim/types'
+import { EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW } from './dungeons-r2'
 
 // M0 唯一副本：3 人本，2 boss，覆盖全部 5 种机制（机制引擎 D8-9 实装）
 export const BLACKMOSS: DungeonDef = {
@@ -807,4 +808,8 @@ export const THORNHOLD: DungeonDef = {
 }
 
 /** 副本注册表(UI 选择/完整性校验用)——新副本在这里登记 */
-export const DUNGEONS: DungeonDef[] = [BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD]
+export const DUNGEONS: DungeonDef[] = [
+  BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD,
+  // 版图二 · 龙脊山脉(鳞音圣战)
+  EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW,
+]

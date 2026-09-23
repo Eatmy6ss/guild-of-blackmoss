@@ -1235,7 +1235,9 @@ const towerFailures: string[] = []
   const RAID5_JOBS = ['guard', 'priest', 'ranger', 'ranger', 'guard'] as const
   const probe = (dungeon: typeof DUNGEONS[number], encId: string, seed: number): number => {
     const comp = dungeon.size >= 5 ? RAID5_JOBS : JOBS
-    const squad = comp.map((job, j) => generateMember(job, 5, 980000 + seed * 100 + j))
+    // 版图二:probe 按副本预期等级出阵(龙脊山脉对 L5 是碾压局,验收无意义)
+    const lvl = Math.min(15, (dungeon.expectedLevel ?? 5) + 1)
+    const squad = comp.map((job, j) => generateMember(job, lvl, 980000 + seed * 100 + j))
     const b = createBattle(squad, dungeon, encId, seed * 31 + 7, 0, 0, false)
     while (b.status === 'running' && b.tick < MAX_TICK) {
       if (b.tick % 5 === 0) {
@@ -2418,6 +2420,7 @@ const towerFailures: string[] = []
     const kinds = [
       'telegraph-aoe', 'cast-buff', 'cast-heal', 'slow-touch', 'pull',
       'ground-zone', 'phase-invuln', 'summon', 'bind', 'enrage',
+      'breath-charge', 'fear-aura',
     ] as const
     for (const k of kinds) if (!MECH_INFO[k]) fail38.push(`㊳ MECH_INFO 缺 ${k}`)
     console.log(`㊳ 图鉴:MechanicKind 全集 ${kinds.length} 种全部有条目`)

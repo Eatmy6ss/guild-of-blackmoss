@@ -22,6 +22,14 @@ export const REGIONS: RegionDef[] = [
     side: ['frostgrave', 'abyssaltar'],
     finale: 'thornhold',
   },
+  {
+    id: 'dragonridge',
+    name: '龙脊山脉',
+    order: 2,
+    main: ['emberpass', 'scalehaven', 'fireridge'],
+    side: ['pilgrim-path', 'forge-works'],
+    finale: 'dragonmaw',
+  },
 ]
 
 /** 每个副本的"通关"标志 = 末位 boss 首杀 */
@@ -32,6 +40,12 @@ export const DUNGEON_FINAL_BOSS: Record<string, string> = {
   frostgrave: 'velhola',
   abyssaltar: 'malsau',
   thornhold: 'victor',
+  emberpass: 'kazraxes',
+  scalehaven: 'ignathos',
+  fireridge: 'valselon',
+  'pilgrim-path': 'oengus',
+  'forge-works': 'gramas',
+  dragonmaw: 'valosaris',
 }
 
 /** 副本锁定检查:返回 null = 可进,否则为锁定原因 */

@@ -21,6 +21,8 @@ export const MECH_INFO: Record<MechanicKind, MechInfo> = {
   summon: { kind: 'summon', name: '召唤增援', counter: '增援出现及时切火,别让它们围住治疗' },
   bind: { kind: 'bind', name: '束缚', counter: '被点名者无法行动——治疗药与减伤备好' },
   enrage: { kind: 'enrage', name: '狂暴软墙', counter: '拖延即灾难——尽快压血,别和它耗' },
+  'breath-charge': { kind: 'breath-charge', name: '蓄力吐息', counter: '只烧前排——坦克开减伤顶住,后排安心输出' },
+  'fear-aura': { kind: 'fear-aura', name: '龙威光环', counter: '集火打断咏唱,否则全队出伤下降' },
 }
 
 function n(v: number | string | undefined, fb: number): number {
@@ -97,6 +99,18 @@ export function mechanicBrief(m: BossMechanicDef): string {
       const at = n(p.atTick, 280)
       const mult = n(p.attackMult, 2)
       return `战斗拖过 ${sec(at)} 后狂暴,攻击 ×${mult}——拖延即灾难,全力压血`
+    }
+    case 'breath-charge': {
+      const tele = n(p.telegraphTicks, 30)
+      const dmg = n(p.damage, 30)
+      const every = n(p.everyTicks, 160)
+      return `每 ${sec(every)} 蓄力 ${sec(tele)} 后重创前排(${dmg} 伤)——【分散】无效,前排开减伤/换坦顶住`
+    }
+    case 'fear-aura': {
+      const cast = n(p.castTicks, 30)
+      const dur = n(p.durationTicks, 200)
+      const brk = n(p.breakDamage, 110)
+      return `周期咏唱 ${sec(cast)}:完成则全队出伤 ×0.85(持续 ${sec(dur)})——咏唱期间累计打出 ${brk} 伤即可打断`
     }
   }
 }

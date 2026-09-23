@@ -208,7 +208,52 @@ export function processBossMechanics(state: BattleState): void {
             rt.fired = 1
             c.attack = Math.round(c.attack * num(m.params.attackMult, 2))
             state.events.push({ tick: state.tick, type: 'enraged', targetId: c.id })
-            pushLog(state, 'enemy', `☠ ${c.name} 陷入狂暴，攻击力大幅提升！`)
+            pushLog(state, 'enemy', `☠ ${c.name} 陷入狂暴,攻击力大幅提升!`)
+          }
+          break
+        }
+        case 'breath-charge': {
+          // 蓄力吐息(版图二):telegraph 后重击【前排】——分散无效,坦克减伤/换位才是答案
+          if (rt.until !== undefined) {
+            if (state.tick >= rt.until) {
+              delete rt.until
+              rt.next = state.tick + num(m.params.everyTicks, 160)
+              const front = state.combatants.filter((x) => x.alive && x.team === 'guild' && x.position === 'front')
+              const dmg = num(m.params.damage, 30)
+              for (const f of front) applyHit(state, c, f, dmg, m.name)
+              state.events.push({ tick: state.tick, type: 'damage', attackerId: c.id, targetId: front[0]?.id ?? '', amount: dmg })
+              pushLog(state, 'enemy', front.length > 0 ? `${c.name} 的【${m.name}】吞没了前排!` : `${c.name} 的【${m.name}】喷了个空。`)
+            }
+          } else if ((rt.next ?? 120) <= state.tick) {
+            rt.until = state.tick + num(m.params.telegraphTicks, 30)
+            state.events.push({ tick: state.tick, type: 'telegraph', targetId: c.id, amount: num(m.params.telegraphTicks, 30) })
+            pushLog(state, 'enemy', `${c.name} 深吸一口气,喉间亮起熔光——【${m.name}】要来了,前排顶住!`)
+          }
+          break
+        }
+        case 'fear-aura': {
+          // 龙威光环(版图二):咏唱完成则全队出伤 ×0.85 持续两轮——打断 or 硬吃的新取舍
+          if (rt.until !== undefined) {
+            if (state.tick >= rt.until) {
+              delete rt.until
+              rt.next = state.tick + num(m.params.everyTicks, 240)
+              for (const g of state.combatants) {
+                if (g.alive && g.team === 'guild') g.fearUntilTick = state.tick + num(m.params.durationTicks, 200)
+              }
+              state.events.push({ tick: state.tick, type: 'enraged', targetId: c.id })
+              pushLog(state, 'enemy', `${c.name} 的【${m.name}】扩散开来——队伍的手脚变沉了!`)
+            } else if ((rt.taken ?? 0) >= num(m.params.breakDamage, 110)) {
+              delete rt.until
+              rt.taken = 0
+              rt.next = state.tick + num(m.params.everyTicks, 240)
+              state.events.push({ tick: state.tick, type: 'interrupted', targetId: c.id })
+              pushLog(state, 'guild', `集火奏效!${c.name} 的【${m.name}】被打断了!`)
+            }
+          } else if ((rt.next ?? 180) <= state.tick) {
+            rt.until = state.tick + num(m.params.castTicks, 30)
+            rt.taken = 0
+            state.events.push({ tick: state.tick, type: 'casting', targetId: c.id, amount: num(m.params.castTicks, 30) })
+            pushLog(state, 'enemy', `${c.name} 开始咏唱【${m.name}】——打断它,别让龙威压过来!`)
           }
           break
         }

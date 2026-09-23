@@ -436,12 +436,16 @@ export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; n
     return 'ogre'
   }
   if (c.team === 'enemy') {
-    if (n.includes('狼')) return n.includes('霜') ? 'frostwolf' : 'wolf'
+    if (n.includes('龙裔') || n.includes('龙渊') || n.includes('渊龙') || n.includes('幼龙') || n.includes('驭火')) return 'ogre'
+    if (n.includes('朝圣') || n.includes('狂徒') || n.includes('教团') || n.includes('圣火祭司')) return 'cultist'
+    if (n.includes('锻偶') || n.includes('锻炉监工') || n.includes('刀盾') || n.includes('弩手') || n.includes('重斧') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'thorn'
+    if (n.includes('狼')) return n.includes('霜') || n.includes('山脊') ? 'frostwolf' : 'wolf'
     if (n.includes('矿工') || n.includes('掘锚') || n.includes('蝠') || n.includes('蛛') || n.includes('矿灯')) return 'miner'
     if (n.includes('骸骨') || n.includes('墓卫') || n.includes('掘墓') || n.includes('墓骑') || n.includes('冰棺')) return 'bone'
-    if (n.includes('怨灵') || n.includes('挽歌') || n.includes('观渊') || n.includes('眼')) return 'wraith'
+    if (n.includes('怨灵') || n.includes('挽歌') || n.includes('观渊') || n.includes('亡魂') || n.includes('提灯') || n.includes('眼')) return 'wraith'
     if (n.includes('教徒') || n.includes('食尸鬼') || n.includes('咏叹') || n.includes('主教') || n.includes('恶')) return 'cultist'
-    if (n.includes('荆棘') || n.includes('刀盾') || n.includes('弩手') || n.includes('重斧') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'thorn'
+    if (n.includes('火脊蜥蜴') || n.includes('焰背')) return 'frog'
+    if (n.includes('荆棘')) return 'thorn'
     return 'frog'
   }
   const ROLE_KEY: Record<string, string> = { tank: 'guard', healer: 'priest', dps: 'ranger' }

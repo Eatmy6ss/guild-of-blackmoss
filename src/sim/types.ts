@@ -246,6 +246,11 @@ export interface Combatant {
   healReceived?: number
   /** 火抗(0-0.75,装备聚合):灼热地形与环境火伤减免(版图二) */
   fireResist?: number
+  /** 灼息(版图二 ember-breath 特质):被点燃,期间持续掉血 */
+  burnUntilTick?: number
+  burnFrom?: string
+  /** 龙威(版图二 dragon-fear 特质/龙威光环):被压制,出伤 ×0.85 */
+  fearUntilTick?: number
   /** 被拉拽(敌人侧机制):到 tick 前站位被强制为前排 */
   pulledUntilTick?: number
   originalPosition?: Position
@@ -308,6 +313,10 @@ export type MechanicKind =
   | 'summon'
   | 'bind'
   | 'enrage'
+  /** 蓄力吐息(版图二):telegraph 后重击前排——分散无效,坦克减伤是答案 */
+  | 'breath-charge'
+  /** 龙威光环(版图二):咏唱完成则全队出伤 ×0.85 数轮,可打断 */
+  | 'fear-aura'
 
 export interface BossMechanicDef {
   id: string

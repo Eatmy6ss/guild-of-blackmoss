@@ -19,6 +19,10 @@ export const TRAIT_INFO: Record<string, TraitInfo> = {
   'death-zone': { id: 'death-zone', name: '冰封遗骸', desc: '死亡时冻住击杀者', hint: '杀了它的人会被冻在原地!' },
   'call-reinforce': { id: 'call-reinforce', name: '临终呼援', desc: '死亡时 30% 概率呼唤半血增援', hint: '它的呼喊可能引来同伴!' },
   regen: { id: 'regen', name: '沼泽再生', desc: '持续缓慢恢复生命', hint: '它在回血——尽快压上输出!' },
+  // 版图二·龙脊山脉:龙裔特质
+  'dragon-scale': { id: 'dragon-scale', name: '龙鳞', desc: '受到的暴击伤害减半', hint: '鳞片弹开了暴击——对它别指望幸运一击!' },
+  'ember-breath': { id: 'ember-breath', name: '灼息', desc: '命中后点燃目标,持续灼烧', hint: '被它喷到了会一直烧——治疗留意火伤!' },
+  'dragon-fear': { id: 'dragon-fear', name: '龙威', desc: '命中后压制目标,攻击力暂时降低', hint: '它的威压让人手脚发软——被压住就先退后!' },
 }
 
 /** 全部已用特质 id(校验用) */

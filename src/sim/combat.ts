@@ -440,6 +440,22 @@ export function applyHit(
     target.vulnUntilTick = state.tick + 30
     target.vulnMult = 1.15
   }
+  // 特质·dragon-scale(龙鳞,版图二):暴击伤害减半——会玩暴击流的针对性克星
+  if (opts?.crit && target.traits?.includes('dragon-scale')) {
+    traitHint(state, 'dragon-scale')
+    amount = Math.max(1, Math.round(amount * 0.5))
+  }
+  // 特质·ember-breath(灼息,版图二):命中点燃目标,持续灼烧
+  if (attacker.traits?.includes('ember-breath') && target.alive) {
+    traitHint(state, 'ember-breath')
+    target.burnUntilTick = state.tick + 40
+    target.burnFrom = attacker.id
+  }
+  // 特质·dragon-fear(龙威,版图二):命中压制目标,攻击暂降
+  if (attacker.traits?.includes('dragon-fear') && target.alive) {
+    traitHint(state, 'dragon-fear')
+    target.fearUntilTick = state.tick + 40
+  }
   // 我方引导咏唱:被打的伤害累积,超过阈值即打断
   if (target.channelUntilTick && state.tick < target.channelUntilTick) {
     target.channelTaken = (target.channelTaken ?? 0) + amount
@@ -532,6 +548,8 @@ function dealDamage(
     packMult *= 1 + Math.max(0, kin - 1) * 0.08
   }
   if (attacker.traits?.includes('last-stand') && attacker.hp / attacker.maxHp < 0.3) packMult *= 1.4
+  // 龙威压制(版图二 dragon-fear 特质/龙威光环):被压制的单位出伤 ×0.85
+  const fearMult = attacker.fearUntilTick && state.tick < attacker.fearUntilTick ? 0.85 : 1
   let variance = 0.85 + nextRandom(state) * 0.3
   let crit = nextRandom(state) < attacker.critChance
   if (forcedCrit) { crit = true; variance = Math.max(variance, 1.0) }
@@ -540,6 +558,7 @@ function dealDamage(
     mult *
     packMult *
     variance *
+    fearMult *
     (crit ? 1.5 : 1) *
     synergyDamageMult(state, attacker)
   if (attacker.team === 'guild' && state.commands.focusId === target.id) {
@@ -853,6 +872,17 @@ export function stepBattle(state: BattleState): void {
       }
     }
     if (state.tick % 300 === 0) pushLog(state, 'system', '🔥 热浪翻涌,队伍在灼热的地面上持续失血!')
+  }
+  // 灼息点燃(版图二 ember-breath):被点燃者每 10 tick 灼烧 3 血
+  for (const c of state.combatants) {
+    if (!c.alive || !c.burnUntilTick || state.tick >= c.burnUntilTick) continue
+    if (state.tick % 10 === 0) {
+      c.hp = Math.max(0, c.hp - 3)
+      if (c.hp === 0) {
+        c.alive = false
+        pushLog(state, 'system', `🔥 ${c.name} 被灼息吞没!`)
+      }
+    }
   }
   // 战斗硬上限:900 tick 敌人狂暴(软压力);1200 tick 强制撤离(被束缚者留下)
   if (state.tick === TICK_SOFT_CAP) {
