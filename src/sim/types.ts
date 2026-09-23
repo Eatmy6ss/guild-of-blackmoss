@@ -120,6 +120,8 @@ export type StatKey =
   | 'critChance'
   | 'lifesteal'
   | 'healReceived'
+  /** 火抗(0-1):灼热地形与环境火伤按此减免(版图二·龙脊山脉) */
+  | 'fireResist'
 
 export interface AffixDef {
   id: string
@@ -242,6 +244,8 @@ export interface Combatant {
   petOf?: string
   /** 受疗加成(忠诚性格/血精灵/受疗词条):治疗量 ×(1+healReceived) */
   healReceived?: number
+  /** 火抗(0-0.75,装备聚合):灼热地形与环境火伤减免(版图二) */
+  fireResist?: number
   /** 被拉拽(敌人侧机制):到 tick 前站位被强制为前排 */
   pulledUntilTick?: number
   originalPosition?: Position
@@ -362,6 +366,8 @@ export interface DungeonDef {
   enemyPower?: number
   /** 副本预期等级(节奏系数+等级压制的锚;未注册=高塔等临时内容不吃补正) */
   expectedLevel?: number
+  /** 副本环境(版图二):heat=灼热地形,战斗中周期性全队火伤(可被火抗减免) */
+  env?: 'heat'
 }
 
 // ===== 战斗状态 =====
@@ -443,6 +449,8 @@ export interface BattleEvent {
 export interface BattleState {
   /** 首次遭遇提示:已提示过的特质(每场一次) */
   traitSeen?: Record<string, boolean>
+  /** 灼热地形(版图二·heat 环境):everyTicks 周期全队火伤,火抗减免 */
+  envHeat?: { everyTicks: number; damage: number; next: number }
   tick: number
   combatants: Combatant[]
   log: BattleLogEntry[]

@@ -131,7 +131,7 @@ export function describeItem(item: ItemInstance): string {
 }
 
 function fmt(stat: StatKey, v: number): string {
-  return stat === 'critChance' || stat === 'lifesteal'
+  return stat === 'critChance' || stat === 'lifesteal' || stat === 'fireResist'
     ? `${Math.round(v * 100)}%`
     : `${Math.round(v * 10) / 10}`
 }
@@ -143,6 +143,7 @@ export const STAT_NAME: Record<StatKey, string> = {
   speed: '攻速',
   critChance: '暴击',
   lifesteal: '吸血', healReceived: '受疗',
+  fireResist: '火抗',
 }
 
 export function slotsOf(item: ItemInstance): Slot {

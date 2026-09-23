@@ -200,6 +200,158 @@ const THORN: PixelDef = { rows: GUARD.rows, palette: { s: '#c8a078', e: '#2a2a34
 const FROSTWOLF: PixelDef = { rows: WOLF.rows, palette: { s: '#a8c4d4', e: '#2a3a4a', a: '#7a98ac', l: '#5a7a90' } }
 const WRAITH: PixelDef = { rows: PRIEST.rows, palette: { s: '#b8c8d8', e: '#3a4a6a', a: '#5a6a8a', l: '#42506a' } }
 
+// ---- boss 专属像素(反馈:不同 boss 不同像素样子——每只独立造型,16×18,剪影优先) ----
+
+// 沼泽食人魔·格鲁什:大肚独眼,腰布木棒,沼泽巨物
+const BOSS_GRUSH: PixelDef = {
+  rows: [
+    '................',
+    '.....kkkkkk.....',
+    '....kssssssk....',
+    '...kssssssssk...',
+    '...ks.ee.ss.k...',
+    '...ksseesssk....',
+    '...kssmmsssk....',
+    '....kssssk......',
+    '..kkkkkkkkkk....',
+    '.kslllllllssk.w.',
+    '.kslllllllsskww.',
+    '.kslllllllsskww.',
+    '..klllllllsk.ww.',
+    '..klllllllk..w..',
+    '..kll..lllk.ww..',
+    '..kll..lllk.....',
+    '..kll..lllk.....',
+    '................',
+  ],
+  palette: { k: P.dark, s: P.ogreSkin, e: P.eye, m: P.blood, l: P.ogreSkinDark, w: P.wood },
+}
+
+// 矿脉吞噬者·掘锚:分节巨虫,环状矿甲,锚颚
+const BOSS_DELVEANCHOR: PixelDef = {
+  rows: [
+    '................',
+    '...........kkk..',
+    '....kkkkkkdmmmk.',
+    '..kkdddddddmmmK.',
+    '.kdddddddddddk..',
+    '.kdd.ggdddddK...',
+    'kddgggggdddk....',
+    'kdd.ggdddddK....',
+    '.kdddddddddddk..',
+    '.kdd.ggdddddmmk.',
+    'kddgggggdddddK..',
+    'kdd.ggddddddk...',
+    '.kdddddddddddk..',
+    '..kkdddddddk....',
+    '....kkkkkkk.....',
+    '................',
+    '................',
+    '................',
+  ],
+  palette: { k: P.dark, d: '#8a6a42', g: P.gold, m: '#c8ccd8', K: '#5a4a30' },
+}
+
+// 破誓大公·摩尔德雷克:黑甲堕落骑士,断剑披风,裂盔
+const BOSS_MOLDREKE: PixelDef = {
+  rows: [
+    '......kkkk......',
+    '.....kbbbbsk....',
+    '.....kbvrvsk....',
+    '.....kbbbbbs....',
+    '......kbbs......',
+    '...kkkbbbbsss...',
+    '..kbbbbbbbbsss..',
+    '.kbb.bbbbbb.s.s.',
+    '.kbk.bbbbbb.s...',
+    '.kbk.bbbbbb.....',
+    '.kbk.bbbbbb..s..',
+    '.kbk.kbbbk...s..',
+    '.kkk.kkkkk......',
+    '.....kb.kb......',
+    '.....kb.kb......',
+    '.....kk.kk......',
+    '................',
+    '................',
+  ],
+  palette: { k: P.dark, b: '#3a3444', v: '#c05a5a', r: '#e8c87a', s: '#8a8a9a' },
+}
+
+// 霜裔织法者·薇尔霍拉:兜帽冰法,冰晶法杖,寒雾长裙
+const BOSS_VELHOLA: PixelDef = {
+  rows: [
+    '................',
+    '.....kkkkk...w..',
+    '....kiiiiik..w..',
+    '....kieeeik..w..',
+    '....kiiiiikww...',
+    '...kiiwwiiikw...',
+    '..kiiiwwiiiww...',
+    '..kiiiiiiiii.w..',
+    '..kiiiiiiiii.w..',
+    '.kiiiiiiiiii.w..',
+    '.kiiiiiiiiii.w..',
+    '.kiiiiiiiiii.w..',
+    '.kiiiiiiiiii.w..',
+    'kiiiiiiiiiii.w..',
+    'k.iiiiiiiii..w..',
+    '..iiiiiiiii..w..',
+    '...kkkkkkk...w..',
+    '................',
+  ],
+  palette: { k: P.dark, i: '#a8c4d4', e: '#3a6aa4', w: '#e8f4ff' },
+}
+
+// 深渊主教·马尔萨乌斯:红黑高帽法袍,深渊权杖,祭纹
+const BOSS_MALSAUUS: PixelDef = {
+  rows: [
+    '................',
+    '.....kkkkk......',
+    '....krrrrrk.....',
+    '....krrrrrk.....',
+    '...krrrrrrrk....',
+    '...kr.bb.rrk....',
+    '...krrrrrrrk..g.',
+    '..krrrrrrrrk..g.',
+    '..krrbbbrrrk..g.',
+    '..krrbbbrrrk.gg.',
+    '.krrrrrrrrrk..g.',
+    '.krrrrrrrrrkgg..',
+    '.krrrrrrrrrkg...',
+    'krrrrrrrrrrkg...',
+    'k.rrrrrrrrr.....',
+    '..rrrrrrrrr.....',
+    '..kkkkkkkkk.....',
+    '................',
+  ],
+  palette: { k: P.dark, r: '#6a2a2a', b: '#c05a5a', g: P.gold },
+}
+
+// 掌旗官·科尔特:荆棘军团旗手,战旗+重甲+披风
+const BOSS_COLTFELD: PixelDef = {
+  rows: [
+    '....k...g.......',
+    '....k...gg......',
+    '....k...gggg....',
+    '....k...gggg....',
+    '...kkkk.g.......',
+    '..kssssssk......',
+    '..kseeeeskk.....',
+    '..ksssssskkg....',
+    '.ksskkkssk.g....',
+    '.kssk.kssk......',
+    '.kssk.kssk......',
+    '.kssk.kssk...k..',
+    '.kssk.kssk..kk..',
+    '..ksk.ksk...k...',
+    '..ksk.ksk.......',
+    '..kkk.kkk.......',
+    '................',
+    '................',
+  ],
+  palette: { k: P.dark, s: P.steel, e: P.eye, g: P.gold },
+}
+
 // ---- 武器贴图(试玩反馈④:换装可见——按装备武器基底切换外形) ----
 const WP_SWORD: PixelDef = { rows: ['.ww', 'ww.', 'ww.', 'ww.', 'ww.', '.ll'], palette: { w: '#c8ccd8', l: '#8a6a42' } }
 const WP_BOW: PixelDef = { rows: ['.w.', 'w..', 'w..', 'w..', 'w..', '.w.'], palette: { w: '#a8824f' } }
@@ -261,14 +413,26 @@ export const UNIT_SPRITES: Record<string, PixelDef> = {
   'wpn-axe': WP_AXE,
   'wpn-staff': WP_STAFF,
   'wpn-dagger': WP_DAGGER,
+  'boss-grush': BOSS_GRUSH,
+  'boss-delveanchor': BOSS_DELVEANCHOR,
+  'boss-moldreke': BOSS_MOLDREKE,
+  'boss-velhola': BOSS_VELHOLA,
+  'boss-malsauus': BOSS_MALSAUUS,
+  'boss-coltfeld': BOSS_COLTFELD,
 }
 
 /** 按战斗实体挑精灵 key(阵营/职业/boss 名) */
 export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; name?: string }): string {
   const n = c.name ?? ''
   if (c.boss) {
+    if (n.includes('格鲁什')) return 'boss-grush'
     if (n.includes('塔尔玛')) return 'talma'
-    if (n.includes('荆棘') || n.includes('维克托') || n.includes('科尔特')) return 'thorn'
+    if (n.includes('掘锚')) return 'boss-delveanchor'
+    if (n.includes('摩尔德雷克')) return 'boss-moldreke'
+    if (n.includes('薇尔霍拉')) return 'boss-velhola'
+    if (n.includes('马尔萨乌斯')) return 'boss-malsauus'
+    if (n.includes('科尔特')) return 'boss-coltfeld'
+    if (n.includes('荆棘') || n.includes('维克托')) return 'thorn'
     return 'ogre'
   }
   if (c.team === 'enemy') {

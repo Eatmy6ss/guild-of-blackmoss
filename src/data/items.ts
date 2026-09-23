@@ -174,4 +174,17 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     id: 'arm-sign-thornmail', name: '荆棘重铠', slot: 'armor', tier: 2,
     stat: 'defense', value: 10, affixCount: [1, 3],
   },
+  // ===== 版图二·龙脊山脉:火抗装备线(灼热地形逼迫的套装取舍,制作人拍板) =====
+  'arm-dragon-scalemail': {
+    id: 'arm-dragon-scalemail', name: '龙鳞锁甲', slot: 'armor', tier: 2,
+    stat: 'fireResist', value: 0.18, affixCount: [2, 3],
+  },
+  'trk-dragon-talisman': {
+    id: 'trk-dragon-talisman', name: '驭火者坠', slot: 'trinket', tier: 2,
+    stat: 'fireResist', value: 0.15, affixCount: [1, 2],
+  },
+  'wpn-dragon-brand': {
+    id: 'wpn-dragon-brand', name: '烙焰长剑', slot: 'weapon', tier: 2,
+    stat: 'attack', value: 14, affixCount: [2, 3],
+  },
 }

@@ -19,4 +19,7 @@ export const AFFIXES: Record<string, AffixDef> = {
   'aff-guard': { id: 'aff-guard', name: '御守', stat: 'defense', range: [3, 6] },
   'aff-brutal': { id: 'aff-brutal', name: '残暴', stat: 'attack', range: [6, 11] },
   'aff-vital': { id: 'aff-vital', name: '生气', stat: 'maxHp', range: [40, 80] },
+  // 版图二·龙脊山脉:火抗词缀(灼热地形减免,0-1)
+  'aff-fireguard': { id: 'aff-fireguard', name: '驭火', stat: 'fireResist', range: [0.08, 0.18] },
+  'aff-emberproof': { id: 'aff-emberproof', name: '烬甲', stat: 'fireResist', range: [0.15, 0.28] },
 }

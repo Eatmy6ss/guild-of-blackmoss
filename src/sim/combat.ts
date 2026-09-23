@@ -166,6 +166,7 @@ export function toCombatant(member: Member): Combatant {
     spr: eff.spr,
     counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
     healReceived: loyaltyHeal + (race.passive.healReceived ?? 0) + eff.spr * 0.004 + (eq.healReceived ?? 0),
+    fireResist: Math.min(0.75, eq.fireResist ?? 0),
     tauntedTicks: 0,
     position: hy ? hy.position : job.position,
     range: hy ? hy.range : job.range,
@@ -303,6 +304,11 @@ export function createBattle(
   }
   // 公会层面的撤退保护开关（D13 修复：此前面板开关不生效）——战斗内仍可临时切换
   state.commands.protectRetreat = protectOn
+  // 灼热地形(版图二·龙脊山脉):dungeon.env==='heat' 时战斗中周期性全队火伤,火抗减免
+  if (dungeon.env === 'heat') {
+    state.envHeat = { everyTicks: 150, damage: 8, next: 150 }
+    pushLog(state, 'system', '地面滚烫,热浪灼人——没有火抗的队伍会一直流血汗。')
+  }
   pushLog(state, 'system', `—— ${enc.name} 战斗开始 ——`)
   return state
 }
@@ -834,6 +840,20 @@ function summonPet(caster: Combatant): Combatant {
 export function stepBattle(state: BattleState): void {
   if (state.status !== 'running') return
   state.tick++
+  // 灼热地形(版图二):周期性全队火伤,火抗按比例减免——逼装备取舍的环境压力
+  if (state.envHeat && state.tick >= state.envHeat.next) {
+    state.envHeat.next = state.tick + state.envHeat.everyTicks
+    for (const c of state.combatants) {
+      if (!c.alive || c.team !== 'guild') continue
+      const dmg = Math.max(1, Math.round(state.envHeat.damage * (1 - (c.fireResist ?? 0))))
+      c.hp = Math.max(0, c.hp - dmg)
+      if (c.hp === 0) {
+        c.alive = false
+        pushLog(state, 'system', `🔥 ${c.name} 倒在了灼热的地面上!`)
+      }
+    }
+    if (state.tick % 300 === 0) pushLog(state, 'system', '🔥 热浪翻涌,队伍在灼热的地面上持续失血!')
+  }
   // 战斗硬上限:900 tick 敌人狂暴(软压力);1200 tick 强制撤离(被束缚者留下)
   if (state.tick === TICK_SOFT_CAP) {
     for (const c of state.combatants) {
