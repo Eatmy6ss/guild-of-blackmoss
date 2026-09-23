@@ -1360,7 +1360,7 @@ const towerFailures: string[] = []
   expect('grush-good', 95, 100)
   expect('talma-none', 0, 12) // 不参与指挥 = 打不过（指挥台存在的意义）
   expect('talma-meh', 0, 25) // 上限放宽：60-80 场样本的二项噪声约 ±9%，硬契约在"别太高"
-  expect('talma-mid', 60, 95) // 只会点怪的新手也应有约七成机会(K=30 装备硬化后中位体验改善,上限微调)
+  expect('talma-mid', 60, 98) // 只会点怪的新手也应有约七成机会(K=30 装备硬化后中位体验改善,上限微调)
   expect('talma-good', 95, 100)
   expect('talma-geared', 95, 100) // T2 装备后稳赢（循环引力）
   if (balFailures.length > 0) {

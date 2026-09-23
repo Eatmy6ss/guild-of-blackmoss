@@ -80,7 +80,13 @@ const HUB_DOCK: { key: UIScreen; icon: string; label: string; hotkey: string }[]
 ]
 
 function newRoster(): Member[] {
-  return START_JOBS.map((job) => generateMember(job, 5))
+  // 新档反馈①修复:开局送三件传家 T1(实测裸装开局全操作档通关率 0%,装备是前期唯一杠杆)
+  return START_JOBS.map((job) => {
+    const m = generateMember(job, 5)
+    const baseId = job === 'guard' ? 'arm-t1-mail' : job === 'priest' ? 'wpn-t1-sword' : 'wpn-t1-dagger'
+    m.equipment[job === 'guard' ? 'armor' : 'weapon'] = rollDrop(baseId, Math.random)
+    return m
+  })
 }
 
 function attrsLine(m: Member): string {
@@ -238,6 +244,20 @@ export default function App() {
     if (b.status === 'running') return
     const dead = towerMarkPermadeath(t, '黑苔高塔')
     if (dead.length > 0) {
+      // 遗物安葬(反馈②):塔中阵亡同样装备入库
+      const relics: ItemInstance[] = []
+      for (const d of dead) {
+        const m = membersRef.current.find((x) => x.id === d.id)
+        if (!m) continue
+        for (const slot of ['weapon', 'armor', 'trinket'] as const) {
+          const it = m.equipment[slot]
+          if (it) {
+            relics.push(it)
+            m.equipment[slot] = undefined
+          }
+        }
+      }
+      if (relics.length > 0) setInventory((inv) => [...inv, ...relics])
       setMemorial((m) => [...m, ...dead])
       setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
       setMembers([...membersRef.current])
@@ -396,6 +416,20 @@ export default function App() {
     advanceRun(r)
     const dead = markPermadeath(r)
     if (dead.length > 0) {
+      // 遗物安葬(反馈②):阵亡者的装备随遗体归队入库——人没了,家伙什留下
+      const relics: ItemInstance[] = []
+      for (const d of dead) {
+        const m = r.members.find((x) => x.id === d.id)
+        if (!m) continue
+        for (const slot of ['weapon', 'armor', 'trinket'] as const) {
+          const it = m.equipment[slot]
+          if (it) {
+            relics.push(it)
+            m.equipment[slot] = undefined
+          }
+        }
+      }
+      if (relics.length > 0) setInventory((inv) => [...inv, ...relics])
       const witnesses = r.members.filter((m) => m.alive)
       applyDeathShock(dead[0].id, witnesses)
       for (const d of dead) logChronicle(chronicleHeroFall(day, d.name, JOBS[d.job].name, r.dungeon.name))

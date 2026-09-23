@@ -171,10 +171,10 @@ const DUNGEON_SIGNS: Record<string, string[]> = {
   thornhold: ['arm-sign-thornmail', 'wpn-line-ranger', 'arm-line-ranger'],
 }
 
-/** 杂兵小概率掉装备(8%),白/绿为主——稀有但不至于全程空手
+/** 杂兵小概率掉装备(反馈②:8%→12%,阵亡损耗与装备获取对齐)——白/绿为主
  *  特化加权:50% 先抽本图招牌池,刷对应副本有专属目标 */
 export function rollWaveDrop(dungeonId: string, rng: () => number): ItemInstance | null {
-  if (rng() >= 0.08) return null
+  if (rng() >= 0.12) return null
   const tier = DUNGEON_TIER[dungeonId] ?? 1
   const signIds = DUNGEON_SIGNS[dungeonId] ?? []
   const signPool = signIds
