@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
-import { pixelTexture, spriteKeyFor, spriteScale, spriteLayersFor, preloadUrlSprites } from './pixelSprites'
+import { pixelTexture, spriteKeyFor, spriteScale, spriteLayersFor, tryGetTex, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
@@ -63,6 +63,8 @@ class UnitView {
   bobPhase: number
   private weapon: Sprite | null = null
   private lastWeapon = ''
+  /** 素材帧待就绪替换:非空且 tryGetTex 命中时,替换占位纹理 */
+  texKey: string | null = null
   nameText: Text
   /** 单位被点击（指挥台：点击敌人 = 集火） */
   onClick?: (c: Combatant) => void
@@ -97,6 +99,7 @@ class UnitView {
       bodySprites.push(s)
     }
     const body = bodySprites[0]
+    if (!tryGetTex(bodyKey)) this.texKey = bodyKey // 占位中,加载完成后自愈替换
     this.bodyGroup = bodyGroup
     this.bodySprites = bodySprites
     this.body = body
@@ -231,7 +234,7 @@ export class BattleRenderer {
       const cw = Math.max(320, container.clientWidth || W * 2)
       const ch = Math.max(240, container.clientHeight || H * 2)
       this.app?.renderer.resize(cw, ch)
-      const s = Math.max(cw / W, ch / H) * 2
+      const s = Math.max(cw / W, ch / H)
       this.root.scale.set(s)
       this.root.position.set((cw - W * s) / 2, (ch - H * s) / 2)
     }
@@ -954,6 +957,16 @@ export class BattleRenderer {
     this.lastTickAt = performance.now()
     const k = 1 - Math.exp(-dt / 80)
     const nowT = performance.now()
+    // 素材帧自愈:预加载晚于单位创建时,占位纹理就绪后自动替换
+    for (const u of this.units.values()) {
+      if (u.texKey) {
+        const t = tryGetTex(u.texKey)
+        if (t) {
+          for (const s of u.bodySprites) s.texture = t
+          u.texKey = null
+        }
+      }
+    }
     for (const u of this.units.values()) {
       // 死亡单位永久退出回位插值：尸体留在倒下的地方，绝不拖拽滑动
       if (u.lockCount > 0 || !u.combatant.alive) continue

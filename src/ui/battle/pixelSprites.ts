@@ -534,12 +534,15 @@ export function spriteLayersFor(key: string): string[] | undefined {
 
 const cache = new Map<string, Texture>()
 
-/** 精灵显示缩放:素材包 32×32 与 HD 矩阵(≥20 行)原生 1:1;旧 12×14/16×18 矩阵保持 ×2 */
-export function spriteScale(key: string): number {
-  if (key.startsWith('mon-') || key.startsWith('/assets/')) return 2.4
-  const def = UNIT_SPRITES[key]
-  if (!def) return 2
+/** 精灵显示缩放:root ×2 后全部 ×2 显示(素材帧/HD/旧矩阵视觉尺寸统一) */
+export function spriteScale(_key: string): number {
   return 2
+}
+
+/** 纹理就绪探测(素材帧异步加载完成后由渲染层自愈替换;未就绪返回 undefined) */
+export function tryGetTex(key: string): Texture | undefined {
+  if (key.startsWith('mon-') || key.startsWith('/assets/')) return cache.get(key)
+  return undefined
 }
 
 /** ASCII 像素图 → nearest-neighbor 纹理(幂等,按 key 缓存;矩阵查 UNIT_SPRITES,素材/分层按 url 查缓存) */
