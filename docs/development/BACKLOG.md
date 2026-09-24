@@ -8,8 +8,8 @@
 
 | ID | 任务 | 证据/主要区域 | 最小验收 | 状态 |
 |---|---|---|---|---|
-| D00 | 长期开发接续文件 | AGENTS、HANDOFF、BACKLOG、DECISIONS | 文件存在、链接可用、事实与建议分开；随K01纳入本地提交 | 已交付（未推送） |
-| K01 | 王国委托与关系奖励 | data/kingdom、sim/kingdom、KingdomPanel、App、save、SaveTransferPanel | 10份来函、奖励二选一、防重复领取、折扣采购、旧档迁移；10项定向测试与UI试玩通过，详见[专题](kingdom-commissions.md) | 用户验收；已交付（本文件所在提交 `功能：新增王国委托与公会成长奖励`，未推送） |
+| D00 | 长期开发接续文件 | AGENTS、HANDOFF、BACKLOG、DECISIONS | 文件存在、链接可用、事实与建议分开；随K01提交 | 已交付并推送（0ce078e） |
+| K01 | 王国委托与关系奖励 | data/kingdom、sim/kingdom、KingdomPanel、App、save、SaveTransferPanel | 10份来函、奖励二选一、防重复领取、折扣采购、旧档迁移；10项定向测试与UI试玩通过，详见[专题](kingdom-commissions.md) | 用户验收；已交付并推送（[0ce078e](https://github.com/Eatmy6ss/guild-of-blackmoss/commit/0ce078e)，未合并主线） |
 | D01 | 恢复可共享的验证入口 | package.json、scripts、.gitignore | 干净检出可安装并运行声明的检查；真实失败可被捕获；不造“空通过”脚本 | 待处理 |
 | F01 | 跨版图解锁 | data/regions、App作战板 | 无首版团本首杀时第二版图锁定；达成后开放；锁定提示准确 | 待处理 |
 | F02 | 下一段选路错位 | sim/run、App休整 | 选定节点准确控制下一步；战斗/事件/休整/宝箱均保持正确索引和压轴Boss | 待处理 |
