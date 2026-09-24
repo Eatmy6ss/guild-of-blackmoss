@@ -152,7 +152,9 @@ export function slotsOf(item: ItemInstance): Slot {
 
 // ===== 杂兵掉落(试玩三轮:刷图过程要有装备反馈,不然长草)=====
 
-/** 各副本杂兵的装备纪元:版图一前两图 T1,后三图 T2,团本杂兵 T2 */
+/** 各副本杂兵的装备纪元:版图一前两图 T1,后三图 T2,团本杂兵 T2;版图二全 T2
+ *  (F11 修复 2026-09-25:此前未登记版图二,`?? 1` 回退让龙脊杂兵掉 T1 铁剑;
+ *   U09 融合方案的 T3 纪元池为独立任务,不阻塞本修复) */
 const DUNGEON_TIER: Record<string, number> = {
   blackmoss: 1,
   rustmine: 1,
@@ -160,6 +162,12 @@ const DUNGEON_TIER: Record<string, number> = {
   frostgrave: 2,
   abyssaltar: 2,
   thornhold: 2,
+  emberpass: 2,
+  scalehaven: 2,
+  fireridge: 2,
+  'pilgrim-path': 2,
+  'forge-works': 2,
+  dragonmaw: 2,
 }
 
 /** 副本特化装备池(试玩反馈④:装备多样性——在对应图刷会有专属掉落) */
@@ -173,9 +181,10 @@ const DUNGEON_SIGNS: Record<string, string[]> = {
 }
 
 /** 杂兵小概率掉装备(反馈②:8%→12%,阵亡损耗与装备获取对齐)——白/绿为主
- *  特化加权:50% 先抽本图招牌池,刷对应副本有专属目标 */
-export function rollWaveDrop(dungeonId: string, rng: () => number): ItemInstance | null {
-  if (rng() >= 0.12) return null
+ *  特化加权:50% 先抽本图招牌池,刷对应副本有专属目标
+ *  F10 修复(2026-09-25):精英节点兑现「掉落翻倍」承诺——概率 ×2(24%),品质略优 */
+export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false): ItemInstance | null {
+  if (rng() >= (elite ? 0.24 : 0.12)) return null
   const tier = DUNGEON_TIER[dungeonId] ?? 1
   const signIds = DUNGEON_SIGNS[dungeonId] ?? []
   const signPool = signIds
@@ -183,10 +192,10 @@ export function rollWaveDrop(dungeonId: string, rng: () => number): ItemInstance
     .filter((b) => b && b.tier === tier)
   if (signPool.length > 0 && rng() < 0.5) {
     const base = signPool[Math.floor(rng() * signPool.length)]
-    return rollDrop(base.id, rng, { qualityBias: -0.05 })
+    return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05 })
   }
   const pool = Object.values(ITEM_BASES).filter((b) => b.tier === tier)
   if (pool.length === 0) return null
   const base = pool[Math.floor(rng() * pool.length)]
-  return rollDrop(base.id, rng, { qualityBias: -0.05 })
+  return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05 })
 }

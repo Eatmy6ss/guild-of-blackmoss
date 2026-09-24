@@ -432,9 +432,9 @@ export default function App() {
         logChronicle(chronicleFirstKill(day, r.dungeon.bosses[bossId].name, r.members.find((m) => m.alive) ?? r.members[0]))
       }
     }
-    // 杂兵掉落(试玩三轮):小概率装备,刷图过程有反馈
+    // 杂兵掉落(试玩三轮):小概率装备,刷图过程有反馈;F10:精英场次兑现「掉落翻倍」
     else if (b.status === 'guild-win') {
-      const waveDrop = rollWaveDrop(r.dungeon.id, Math.random)
+      const waveDrop = rollWaveDrop(r.dungeon.id, Math.random, r.eliteAt.includes(r.stepIdx))
       if (waveDrop) {
         setInventory((inv) => [...inv, waveDrop])
         setLastDrops((d2) => [...d2, waveDrop])

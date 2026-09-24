@@ -2430,7 +2430,19 @@ const towerFailures: string[] = []
     }
   }
   if (wrongTier > 0) fail36.push(`㊱ T2 池混入非 T2 装备`)
-  console.log(`㊱ 杂兵掉落:黑苔 ${drops}/200(T1 池),渊底 ${t2drops}/200(T2 池)`)
+  // F11:版图二不掉 T1(此前未登记回退);F10:精英概率翻倍(~24%,200 抽期望 48)
+  let r2wrongTier = 0
+  for (let i = 0; i < 120; i++) {
+    const w = rollWaveDrop('emberpass', createLootRng(950000 + i * 41))
+    if (w && ITEM_BASES[w.baseId].tier !== 2) r2wrongTier++
+  }
+  if (r2wrongTier > 0) fail36.push(`㊱ F11 烬石隘口(版图二)掉出了 T1 装备 ${r2wrongTier} 件`)
+  let eliteDrops = 0
+  for (let i = 0; i < 200; i++) {
+    if (rollWaveDrop('blackmoss', createLootRng(970000 + i * 53), true)) eliteDrops++
+  }
+  if (eliteDrops < drops) fail36.push(`㊱ F10 精英翻倍未生效:普通 ${drops}/200 vs 精英 ${eliteDrops}/200`)
+  console.log(`㊱ 杂兵掉落:黑苔 ${drops}/200(T1 池),渊底 ${t2drops}/200(T2 池),烬石纪元✓,精英 ${eliteDrops}/200(翻倍✓)`)
   if (fail36.length > 0) { console.log('✗ 杂兵掉落未通过:', fail36); process.exit(1) }
   console.log('✓ 杂兵掉落通过:8% 触发,纪元绑定正确')
 }
