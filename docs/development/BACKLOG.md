@@ -21,8 +21,8 @@
 | F01 | 跨版图解锁 | data/regions、App作战板 | 无首版团本首杀时第二版图锁定；达成后开放；锁定提示准确 | **已修复（2b38d26）**：dungeonLock 补版图间门槛(版图N首图需版图N-1团本首杀);smoke ㉞ 回归;王国委托 emberpass 目标与新锁自洽 |
 | F02 | 下一段选路错位 | sim/run、App休整 | 选定节点准确控制下一步；战斗/事件/休整/宝箱均保持正确索引和压轴Boss | **已修复（9d31450）**：applyNodeChoice 改写/消耗对齐 rest 相 stepIdx 本位；smoke ㉞ 定向回归；isBossNext off-by-one 同步修正 |
 | F03 | 直达Boss仍打首场 | App直捣Boss | 达到熟练度后进入目标Boss；无重复旧战；不足阈值不能使用 | **已修复（9d31450）**：路线只留 boss 一场，不再重建两段重打首场 |
-| F04 | 高塔血量连续性 | sim/tower、App塔结算 | 255最大血、战末10血、20%休整后应61；死亡不恢复；进下一层保持正确值 | 待处理 |
-| F05 | 建筑效果未应用 | data/base、morale、tower、App | 疗养所治疗和祠堂宴会加成都能观察到；0级与升级值均核对 | 待处理 |
+| F04 | 高塔血量连续性 | sim/tower、App塔结算 | 255最大血、战末10血、20%休整后应61；死亡不恢复；进下一层保持正确值 | **已修复（本地，未推送）**：settleTowerFloor 战末血量写回 member;smoke ⑫12d 算例回归 |
+| F05 | 建筑效果未应用 | data/base、morale、tower、App | 疗养所治疗和祠堂宴会加成都能观察到；0级与升级值均核对 | **已修复（本地，未推送）**：towerRest 接 towerRestHealPct;applyFeast 接 feastBoost(参数化) |
 | F06 | 招募候选与入职不一致 | gen、tavern、App hire | 预览和入职的专精一致；混合不丢失；各招募途径规则明确 | **已修复（eeeb402）**：generateMember 生成即定默认专精(预览=入职);hire 保留候选已带专精(三选一混合职阶不再被覆盖);smoke ㉞ 断言 |
 | F07 | 治疗药事件未应用 | App事件执行器 | 正负药水效果实际到账/扣除；远征携带与公会库存不互相覆盖 | **主线已部分修复（41b2a8b，先于本分支，合并自带）**：resolveEvent 已结算 potionHeal 并在结果面板显示影响明细；**残余=远征中触发事件的药水增减是否被"回城退回"覆盖**（run.potions 同步链），验收时按原标准复测 |
 | F08 | 事件前置与后续幕混池 | data/guild-events、sim/guild-events、save | 后续幕只由合法前因进入；前置/地域策略先对齐；旧档兼容 | 待处理 |
