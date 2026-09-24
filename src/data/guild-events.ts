@@ -211,7 +211,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
     text: '三更天,酒馆后窗被轻轻敲响。窗外的人压着嗓子说:"他们在追我,开开窗。"',
     choices: [
       {
-        text: '开门。',
+        text: '开窗。',
         outcomes: [
           { weight: 6, text: '是个浑身湿透的佣兵,天亮前讲完了自己的故事,然后加入了你们。', effects: { recruit: true } },
           { weight: 4, text: '追进来的人不依不饶。混乱中窗框碎了一地,还赔了邻居家 30 金。', effects: { gold: -30, moraleAll: -8 } },
@@ -1155,7 +1155,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '缴。六十金买个太平,比请律师便宜。',
         outcomes: [
           { weight: 7, text: '税吏盖章收钱,还教你们下季度怎么"合理规避"。官僚的善意,就是这么具体。', effects: { gold: -60, moraleAll: -2 } },
-          { weight: 3, text: '缴完钱,旁边商队的账房凑过来低声说:"这个税吏上周已经被免职了,他现在收的都是自己的。"你们看着他的背影, decided 不追了。', effects: { gold: -60, moraleAll: -6 } },
+          { weight: 3, text: '缴完钱,旁边商队的账房凑过来低声说:"这个税吏上周已经被免职了,他现在收的都是自己的。"你们看着他的背影,谁都没动——追这种钱,比追债还丢人。', effects: { gold: -60, moraleAll: -6 } },
         ],
       },
       {
@@ -1198,7 +1198,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '交出去。"他只说送到,没说要陪着它死。"',
         outcomes: [
           { weight: 6, text: '为首的接过圣徽,久久没说话,最后留下一小袋钱:"替我们,给他立杯酒。"', effects: { gold: 70, moraleAll: 3 } },
-          { weight: 4, text: '他们收了圣徽,却记下了公会与那位远征队每个名字。是谢是忌,没人说得清。', effects: { gold: 40, moraleRandom: -3 } },
+          { weight: 4, text: '他们收了圣徽,却记下了公会和那支远征队每个人的名字。是谢是忌,没人说得清。', effects: { gold: 40, moraleRandom: -3 } },
         ],
       },
       {
@@ -1373,7 +1373,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '不应。跟人斗气,不如跟怪斗智。',
         outcomes: [
           { weight: 6, text: '挑战书被用来生火。铁棘会等了三天没等来回音,自己先乱了阵脚——原来他们缺的是名头,不是猎物。', effects: { moraleAll: 2 } },
-          { weight: 4, text: "'黑苔怕了铁棘'的顺口溜在酒馆传开。花了很久才明白:不理流言需要的心力,比应战还多。", effects: { moraleAll: -4 } },
+          { weight: 4, text: '「黑苔怕了铁棘」的顺口溜在酒馆传开。花了很久才明白:不理流言需要的心力,比应战还多。', effects: { moraleAll: -4 } },
         ],
       },
     ],
@@ -1450,7 +1450,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '追。稀有物配稀有胆——下一战,冲它去。',
         outcomes: [
           { weight: 6, text: '老猎人指了路,收了杯酒钱:"活着回来,告诉我它长什么样。"', effects: { gold: -10, rareHuntNext: { mult: 1.5, rewardMult: 2 } } },
-          { weight: 4, text: "'三沼之灾'的名号在沼泽有几个版本——三头、双尾、拖尾锤。不管哪个版本,老猎人都说:'都比传闻里凶。'", effects: { gold: -10, rareHuntNext: { mult: 1.5, rewardMult: 2 } } },
+          { weight: 4, text: '「三沼之灾」的名号在沼泽有几个版本——三头、双尾、拖尾锤。不管哪个版本,老猎人都说:「都比传闻里凶。」', effects: { gold: -10, rareHuntNext: { mult: 1.5, rewardMult: 2 } } },
         ],
       },
       {
@@ -1593,7 +1593,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
     text: '捕兽夹旁边,一只狼崽在装死——装得很差,耳朵一直抖。母狼不在,血迹却是母狼的。它盯着你们,喉咙里滚着不成样子的小小咆哮。',
     choices: [
       {
-        text: '解开夹子,放它走。它的獠牙还没长成,仇倒是先记下了——记仇的是你们这边。',
+        text: '解开夹子,放它走。它的獠牙还没长成,脾气倒已经不小——当心手。',
         outcomes: [
           { weight: 7, text: '狼崽一瘸一拐钻进灌木,三步一回头。半个月后,远征队常在沼泽边看见一头年轻的狼远远跟着——不近,也不走。', effects: { moraleAll: 5, runBuff: { id: 'wolf-shadow', name: '沼泽之影', desc: '有一头狼在暗处同行——攻击提升,直到本次远征结束', mods: { atk: 1.08 } } } },
           { weight: 3, text: '解开夹子时它咬了你一口——不重,是警告的力道。跑出去老远,它停下来舔了舔那道自己留下的牙印。', effects: { moraleAll: 3, moraleRandom: -2 } },
@@ -1658,7 +1658,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '挂在公会门口最显眼处,等失主来认。',
         outcomes: [
-          { weight: 6, text: '第十天,一个眼睛通红的汉子冲进来,看到戒指当场嚎啕——那是他战死的兄长留给嫂子的,丢了不敢回家。谢礼是一坛好酒。', effects: { moraleAll: 5, gold: 30 } },
+          { weight: 6, text: '第十天,一个眼睛通红的汉子冲进来,看到戒指当场嚎啕大哭——那是他战死的兄长留给嫂子的,丢了不敢回家。谢礼是一坛好酒。', effects: { moraleAll: 5, gold: 30 } },
           { weight: 4, text: '一直没人来认。戒指在门口挂成了一个安静的标志:这行里,有人还在等东西回家。', effects: { moraleAll: 2 } },
         ],
       },
@@ -1894,7 +1894,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
       {
-        text: '挖掉。虫子的"预言"让渡得干脆点——连虫带窝一起算我的。',
+        text: '挖掉。想要预言就干脆点——连虫带窝,一起算我的。',
         outcomes: [
           { weight: 5, text: '兜帽人居然没拦,反而鼓掌:"每年就等一个敢挖的。"白虫的窝里藏着一枚旧戒指——那是他"去年敢挖的那位"留下的定金。', effects: { gold: 55, moraleRandom: -2 } },
           { weight: 5, text: '挖是挖下来了,虫却顺着刀爬上了手腕,钻进袖口不见了。兜帽人摊手:"它自己挑地方。祝你好运。"那一整周,手腕都痒。', effects: { moraleRandom: -4, runBuff: { id: 'tongue-itch', name: '腕上之痒', desc: '总感觉袖子里有什么——受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
@@ -1981,7 +1981,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '回敬。把他们的圣像也点一把火,火对火,公平。',
         outcomes: [
           { weight: 5, text: '圣像烧塌的那刻,远处山脊上所有教团的火把同时熄灭——然后同时亮起。他们记住了。你们也记住了:这里没人敢惹黑苔。', effects: { moraleAll: 6, gold: -20, delayed: { eventId: 'cult-vengeance', dueDays: 4 } } },
-          { weight: 5, text: '火太大了,烧过了山脊的枯草——教团的营地没了,半片林子也没了。你们赢了这一局,输了一片林子,还有一份说不清的心安。', effects: { moraleAll: -3, gold: 40 } },
+          { weight: 5, text: '火太大了,烧过了山脊的枯草——教团的营地没了,半片林子也没了。你们赢了这一局,输了一片林子,也输掉了说"我们只是自卫"的底气。', effects: { moraleAll: -3, gold: 40 } },
         ],
       },
     ],
@@ -2023,7 +2023,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '不捐。天罚要真存在,黑苔的刀会先跟它谈谈。',
         outcomes: [
           { weight: 5, text: '老妇不怒反笑:好胆色。那祝你们刀快。队伍走远了,她还在原地盯着你们的方向——不知是敬意还是记仇。', effects: { moraleAll: 2 } },
-          { weight: 5, text: '当夜山道塌方,你们绕了半天冤枉路。有人嘀咕:早知道捐了。队长说:塌方和捐款没关系。没人接话。', effects: { moraleRandom: -3 } },
+          { weight: 5, text: '当夜山道塌方,你们绕了半天冤枉路。有人嘀咕:早知道捐了。队长说:「塌方和捐款没关系。」没人接话。', effects: { moraleRandom: -3 } },
         ],
       },
     ],
@@ -2065,7 +2065,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '北上。火雨后猎场露出的东西,值得赌这一夜。',
         outcomes: [
           { weight: 4, text: '火雨浇透了地表,冲出的岩缝里卡着一条星铁矿脉——还有一具抱着矿镐的先驱者遗骨。你们取矿,也葬了骨。', effects: { item: 'wpn-dragon-brand', moraleAll: 3, expAll: 20 } },
-          { weight: 6, text: '北上代价惨重:火雨灼伤了半队人,露出的宝贝是一堆教团的废铁。老向导说得对,但没人喜欢听我说了吧。', effects: { moraleAll: -5, runBuff: { id: 'fire-rain-burn', name: '火雨灼伤', desc: '火星燎过的伤口在发烫——受疗降低,直到本次远征结束', mods: { heal: 0.85 } } } },
+          { weight: 6, text: '北上代价惨重:火雨灼伤了半队人,露出的宝贝是一堆教团的废铁。老向导说得对,但这种话没人爱听。', effects: { moraleAll: -5, runBuff: { id: 'fire-rain-burn', name: '火雨灼伤', desc: '火星燎过的伤口在发烫——受疗降低,直到本次远征结束', mods: { heal: 0.85 } } } },
         ],
       },
     ],
@@ -2085,7 +2085,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '拒绝。佣兵只效忠钱和兄弟,不效忠火。',
         outcomes: [
-          { weight: 6, text: '征募官收起文书,不怒自威:圣火记性好。他走后,酒馆老板免费送了一轮酒——跟教团说不的人,酒钱我出。', effects: { moraleAll: 5 } },
+          { weight: 6, text: '征募官收起文书,不怒自威:"圣火记性好。"他走后,酒馆老板免费送了一轮酒——跟教团说不的人,酒钱我出。', effects: { moraleAll: 5 } },
           { weight: 4, text: '拒了之后一切如常——直到下次进城,铁匠铺恰好没了你们订的货,粮商恰好涨价了。没有明枪,全是暗箭。', effects: { gold: -40, moraleRandom: -3 } },
         ],
       },
@@ -2127,7 +2127,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '不喝,灌进水囊带回去卖。龙脊的疯货,城里有的是人抢。',
         outcomes: [
-          { weight: 6, text: '炼金商人抢着收购,当场现结。他灌装时手抖得厉害——这东西,喝过的人都说好。但我不喝,你也别再喝。', effects: { gold: 90 } },
+          { weight: 6, text: '炼金商人抢着收购,当场现结。他灌装时手抖得厉害,嘴里念叨:"喝过的人都说好——但我不喝,你们最好也别喝。"', effects: { gold: 90 } },
           { weight: 4, text: '水囊漏了。一路红痕,引来了两头循血而来的岩狼。打退狼,丢了泉,账面上不亏,心里堵得慌。', effects: { gold: 40, moraleRandom: -4, expAll: 10 } },
         ],
       },
