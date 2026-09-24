@@ -302,7 +302,7 @@ export default function App() {
         window.setTimeout(() => {
           const t2 = towerRunRef.current
           if (!t2 || t2.phase !== 'rest') return
-          towerRest(t2)
+          towerRest(t2, baseEffects(buildings).towerRestHealPct)
           towerNext(t2, ++seedRef.current * 9973)
           setTowerRun({ ...t2 })
           setTowerRunning(true)
@@ -968,7 +968,7 @@ export default function App() {
   const towerNextFloor = () => {
     const t = towerRunRef.current
     if (!t || t.phase !== 'rest') return
-    towerRest(t)
+    towerRest(t, baseEffects(buildings).towerRestHealPct)
     towerNext(t, ++seedRef.current * 9973)
     setTowerRun({ ...t })
     setTowerRunning(true)
@@ -1432,7 +1432,7 @@ export default function App() {
             <div className="tavern-row">
               <button
                 disabled={!!run || gold < 60}
-                onClick={() => { setGold((g) => g - 60); applyFeast(membersRef.current); setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
+                onClick={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
               >
                 🍻 庆功宴（60 金）：全员士气 +30
               </button>

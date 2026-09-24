@@ -58,11 +58,11 @@ export function applyAbandon(left: Member[], abandoners: Member[]): void {
   }
 }
 
-/** 庆功宴(酒馆,花金币):全员士气回升 */
-export function applyFeast(members: Member[]): void {
+/** 庆功宴(酒馆,花金币):全员士气回升(F05:接通祠堂加成 boost) */
+export function applyFeast(members: Member[], boost: number = MORALE.feastBoost): void {
   for (const m of members) {
     if (!m.alive) continue
-    m.morale = clamp((m.morale ?? 60) + MORALE.feastBoost)
+    m.morale = clamp((m.morale ?? 60) + boost)
   }
 }
 

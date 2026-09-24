@@ -151,6 +151,13 @@ export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolea
   run.goldEarned += gold
   // 未用完的药水退回携带量(团灭也一样:没喝掉的还在袋子里)
   run.potions = { heal: run.potions.heal + b.commands.healStock, fury: run.potions.fury + b.commands.furyStock }
+  // F04 修复(2026-09-25):战末血量写回 member——否则层间休整/下一层都拿进层时的旧值,
+  // 每层满血开局,跨层消耗的紧张感完全失效(审查算例:255max 战末 10,休整 20% 应 61)
+  for (const c of b.combatants) {
+    if (!c.memberId) continue
+    const m = run.members.find((x) => x.id === c.memberId)
+    if (m) m.hp = c.alive ? c.hp : 0
+  }
   if (b.status === 'guild-win') {
     run.phase = 'rest'
     return { gold, cleared: true }
@@ -160,13 +167,14 @@ export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolea
   return { gold, cleared: false }
 }
 
-/** 层间休整:幸存者回复(塔内比副本更紧);不推进层数——推进由 towerNext */
-export function towerRest(run: TowerRun): void {
+/** 层间休整:幸存者回复(塔内比副本更紧);不推进层数——推进由 towerNext
+ *  F05 修复(2026-09-25):接通疗养所加成(towerRestHealPct),不再吃固定常量 */
+export function towerRest(run: TowerRun, healPct: number = TOWER.restHealPct): void {
   for (const m of run.members) {
     if (!m.alive) continue
     const c = run.battle?.combatants.find((x) => x.memberId === m.id)
     const max = c?.maxHp ?? m.hp
-    m.hp = Math.min(max, Math.max(m.hp, 0) + Math.round(max * TOWER.restHealPct))
+    m.hp = Math.min(max, Math.max(m.hp, 0) + Math.round(max * healPct))
   }
 }
 
