@@ -6,7 +6,7 @@ export const BLACKMOSS: DungeonDef = {
   id: 'blackmoss',
   name: '黑苔沼泽',
   enemyPower: 1.0,
-  expectedLevel: 4,
+  expectedLevel: 5,
   size: 3,
   branches: [
     {
@@ -27,38 +27,38 @@ export const BLACKMOSS: DungeonDef = {
   enemyGroups: {
     frogs: [
       { id: 'frog-a',
-      traits: ['regen'], name: '沼泽蛙人', maxHp: 450, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen'], name: '沼泽蛙人', maxHp: 428, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'frog-b',
-      traits: ['regen'], name: '沼泽蛙人', maxHp: 450, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen'], name: '沼泽蛙人', maxHp: 428, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'frog-c',
-      traits: ['regen'], skills: [{ id: 'frog-heal', name: '蛙群愈疗', effect: 'heal-lowest', target: 'ally', cooldownTicks: 90 }], name: '蛙人萨满', maxHp: 340, attack: 11, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['regen'], skills: [{ id: 'frog-heal', name: '蛙群愈疗', effect: 'heal-lowest', target: 'ally', cooldownTicks: 90 }], name: '蛙人萨满', maxHp: 323, attack: 11, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     wolves: [
       { id: 'wolf-a',
-      traits: ['pack-hunter'], name: '腐化狼', maxHp: 540, attack: 14, defense: 3, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter'], name: '腐化狼', maxHp: 513, attack: 14, defense: 3, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'wolf-b',
-      traits: ['pack-hunter'], name: '腐化狼', maxHp: 540, attack: 14, defense: 3, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter'], name: '腐化狼', maxHp: 513, attack: 14, defense: 3, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     // D15 反馈调参：节奏太快——新增缓冲场（肉度高、威胁低的杂兵）
     'frogs-frail': [
       { id: 'frog-add-a',
-      traits: ['regen'], name: '沼泽蛙人', maxHp: 280, attack: 8, defense: 3, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen'], name: '沼泽蛙人', maxHp: 266, attack: 8, defense: 3, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'frog-add-b',
-      traits: ['regen'], name: '沼泽蛙人', maxHp: 280, attack: 8, defense: 3, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen'], name: '沼泽蛙人', maxHp: 266, attack: 8, defense: 3, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
     ],
     'wolves-frail': [
       { id: 'wolf-add-a',
-      traits: ['pack-hunter'], name: '腐化狼', maxHp: 360, attack: 9, defense: 2, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter'], name: '腐化狼', maxHp: 342, attack: 9, defense: 2, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'wolf-add-b',
-      traits: ['pack-hunter'], name: '腐化狼', maxHp: 360, attack: 9, defense: 2, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter'], name: '腐化狼', maxHp: 342, attack: 9, defense: 2, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     leeches: [
       { id: 'leech-a',
-      traits: ['regen'], name: '沼泽水蛭', maxHp: 420, attack: 8, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen'], name: '沼泽水蛭', maxHp: 399, attack: 8, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'leech-b',
-      traits: ['regen'], name: '沼泽水蛭', maxHp: 420, attack: 8, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen'], name: '沼泽水蛭', maxHp: 399, attack: 8, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'leech-c',
-      traits: ['regen'], name: '沼泽水蛭', maxHp: 420, attack: 9, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen'], name: '沼泽水蛭', maxHp: 399, attack: 9, defense: 2, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
     ],
   },
   bosses: {
@@ -67,7 +67,7 @@ export const BLACKMOSS: DungeonDef = {
       name: '沼泽食人魔·格鲁什',
       // 节奏改版:boss TTK 目标 35-45s——血 ×1.3;零指挥 54% 越界回调:血 2500/震地 30
       // 试玩反馈④:全场硬化后零指挥 59% 再松一档——血 2400/攻 17
-      maxHp: 2400,
+      maxHp: 2280,
       attack: 17,
       defense: 8,
       speed: 7,
@@ -104,8 +104,8 @@ export const BLACKMOSS: DungeonDef = {
       // 节奏改版:血 ×1.25;中位 94% 越界回压:攻 15/束缚伤 22/狂暴提前 130
       // 属性改革+种族钉人后小队抽取变化,⑲ 验收 3/8 差一档:软化狂暴与束缚把长败局转成胜局
       // 试玩反馈④节奏重校准:全场敌人硬化后 3000 血拖成 80s+ 狂暴拉锯——血 2450/攻 14 压回带内
-      maxHp: 2450,
-      attack: 14,
+      maxHp: 2700,
+      attack: 16,
       defense: 6,
       speed: 9,
       position: 'back',
@@ -173,7 +173,7 @@ export const RUSTMINE: DungeonDef = {
   id: 'rustmine',
   name: '锈坑矿道',
   enemyPower: 1.05,
-  expectedLevel: 5,
+  expectedLevel: 6,
   size: 3,
   branches: [
     {
@@ -194,33 +194,33 @@ export const RUSTMINE: DungeonDef = {
   enemyGroups: {
     miners: [
       { id: 'miner-a',
-      traits: ['heavy-plate'], name: '尸化矿工', maxHp: 460, attack: 9, defense: 5, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['heavy-plate'], name: '尸化矿工', maxHp: 626, attack: 8, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'miner-b',
-      traits: ['heavy-plate'], name: '尸化矿工', maxHp: 460, attack: 9, defense: 5, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['heavy-plate'], name: '尸化矿工', maxHp: 626, attack: 8, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'lampkeeper',
-      skills: [{ id: 'lamp-empower', name: '矿灯赋能', effect: 'enchant-self', target: 'ally', cooldownTicks: 120 }], name: '矿灯术士', maxHp: 340, attack: 11, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+      skills: [{ id: 'lamp-empower', name: '矿灯赋能', effect: 'enchant-self', target: 'ally', cooldownTicks: 120 }], name: '矿灯术士', maxHp: 462, attack: 10, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     bats: [
       { id: 'bat-a',
-      traits: ['pack-hunter', 'last-stand'], name: '锈穴蝠', maxHp: 420, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter', 'last-stand'], name: '锈穴蝠', maxHp: 571, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'bat-b',
-      traits: ['pack-hunter', 'last-stand'], name: '锈穴蝠', maxHp: 420, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter', 'last-stand'], name: '锈穴蝠', maxHp: 571, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'bat-c',
-      traits: ['pack-hunter'], name: '锈穴蝠', maxHp: 340, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter'], name: '锈穴蝠', maxHp: 462, attack: 11, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     spiders: [
       { id: 'spider-a',
-      traits: ['venom'], name: '岩蛛', maxHp: 500, attack: 12, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['venom'], name: '岩蛛', maxHp: 680, attack: 11, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'spider-b',
-      traits: ['venom'], name: '岩蛛', maxHp: 500, attack: 12, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['venom'], name: '岩蛛', maxHp: 680, attack: 11, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'spider-queen',
-      traits: ['venom'], skills: [{ id: 'queen-venom', name: '淬毒尖刺', effect: 'curse-mark', target: 'enemy', cooldownTicks: 100 }], name: '毒蛛后', maxHp: 360, attack: 13, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['venom'], skills: [{ id: 'queen-venom', name: '淬毒尖刺', effect: 'curse-mark', target: 'enemy', cooldownTicks: 100 }], name: '毒蛛后', maxHp: 490, attack: 12, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     'bats-frail': [
       { id: 'bat-add-a',
-      traits: ['pack-hunter'], name: '锈穴蝠', maxHp: 300, attack: 10, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter'], name: '锈穴蝠', maxHp: 408, attack: 9, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'bat-add-b',
-      traits: ['pack-hunter'], name: '锈穴蝠', maxHp: 300, attack: 10, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter'], name: '锈穴蝠', maxHp: 408, attack: 9, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
   },
   bosses: {
@@ -228,9 +228,9 @@ export const RUSTMINE: DungeonDef = {
       id: 'delveanchor',
       name: '矿脉吞噬者·掘锚',
       // 节奏带:35-45s。慢速重锤(6 速=每 1s 一击),坑道坍塌逼走位,65% 呼蝠群,200tick 过载狂暴
-      maxHp: 2600,
-      attack: 16,
-      defense: 7,
+      maxHp: 3536,
+      attack: 14,
+      defense: 8,
       speed: 6,
       position: 'front',
       range: 'melee',
@@ -296,7 +296,7 @@ export const ASHFIELD: DungeonDef = {
   id: 'ashfield',
   name: '灰烬旧战场',
   enemyPower: 1.1,
-  expectedLevel: 6,
+  expectedLevel: 7,
   size: 3,
   branches: [
     {
@@ -317,32 +317,32 @@ export const ASHFIELD: DungeonDef = {
   enemyGroups: {
     skeletons: [
       { id: 'skeleton-a',
-      traits: ['heavy-plate'], name: '骸骨盾兵', maxHp: 460, attack: 9, defense: 5, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['heavy-plate'], name: '骸骨盾兵', maxHp: 828, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'skeleton-b',
-      traits: ['heavy-plate'], name: '骸骨盾兵', maxHp: 460, attack: 9, defense: 5, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
-      { id: 'wraith-caster', traits: ['venom', 'volley'], name: '怨灵术士', maxHp: 340, attack: 11, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['heavy-plate'], name: '骸骨盾兵', maxHp: 828, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'wraith-caster', traits: ['venom', 'volley'], name: '怨灵术士', maxHp: 612, attack: 12, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     wraiths: [
       { id: 'wraith-a',
-      traits: ['last-stand'], name: '战场怨灵', maxHp: 400, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '战场怨灵', maxHp: 720, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'wraith-b',
-      traits: ['last-stand'], name: '战场怨灵', maxHp: 400, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '战场怨灵', maxHp: 720, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'wraith-c',
-      traits: ['last-stand'], name: '战场怨灵', maxHp: 360, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '战场怨灵', maxHp: 648, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     knights: [
       { id: 'tombknight-a',
-      traits: ['heavy-plate', 'last-stand'], name: '墓骑', maxHp: 520, attack: 12, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['heavy-plate', 'last-stand'], name: '墓骑', maxHp: 936, attack: 13, defense: 5, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'tombknight-b',
-      traits: ['heavy-plate', 'last-stand'], name: '墓骑', maxHp: 520, attack: 12, defense: 4, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['heavy-plate', 'last-stand'], name: '墓骑', maxHp: 936, attack: 13, defense: 5, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'elegist',
-      skills: [{ id: 'elegy-heal', name: '亡者挽歌', effect: 'heal-lowest', target: 'ally', cooldownTicks: 100 }], name: '挽歌者', maxHp: 360, attack: 13, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+      skills: [{ id: 'elegy-heal', name: '亡者挽歌', effect: 'heal-lowest', target: 'ally', cooldownTicks: 100 }], name: '挽歌者', maxHp: 648, attack: 14, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     'wraiths-frail': [
       { id: 'wraith-add-a',
-      traits: ['last-stand'], name: '战场怨灵', maxHp: 300, attack: 10, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '战场怨灵', maxHp: 540, attack: 11, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'wraith-add-b',
-      traits: ['last-stand'], name: '战场怨灵', maxHp: 300, attack: 10, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '战场怨灵', maxHp: 540, attack: 11, defense: 2, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
   },
   bosses: {
@@ -350,9 +350,9 @@ export const ASHFIELD: DungeonDef = {
       id: 'moldreke',
       name: '破誓大公·摩尔德雷克',
       // 节奏带 35-45s:横扫(分散)/号角(打断)/怨灵(转火)三线指挥,参数沿用已校准线
-      maxHp: 2600,
-      attack: 15,
-      defense: 7,
+      maxHp: 4680,
+      attack: 16,
+      defense: 8,
       speed: 7,
       position: 'front',
       range: 'melee',
@@ -417,7 +417,7 @@ export const FROSTGRAVE: DungeonDef = {
   id: 'frostgrave',
   name: '白霜墓园',
   enemyPower: 0.95,
-  expectedLevel: 7,
+  expectedLevel: 8,
   size: 3,
   branches: [
     {
@@ -437,28 +437,28 @@ export const FROSTGRAVE: DungeonDef = {
   ],
   enemyGroups: {
     wights: [
-      { id: 'wight-a', traits: ['death-zone', 'last-stand'], name: '冻僵的墓卫', maxHp: 500, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
-      { id: 'wight-b', traits: ['death-zone', 'last-stand'], name: '冻僵的墓卫', maxHp: 500, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
-      { id: 'jackdaw', traits: ['volley', 'pack-hunter'], skills: [{ id: 'jack-frost', name: '寒鸦冰箭', effect: 'frost-nova', target: 'enemy', cooldownTicks: 999 }], name: '寒鸦术士', maxHp: 360, attack: 12, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+      { id: 'wight-a', traits: ['death-zone', 'last-stand'], name: '冻僵的墓卫', maxHp: 1100, attack: 13, defense: 8, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'wight-b', traits: ['death-zone', 'last-stand'], name: '冻僵的墓卫', maxHp: 1100, attack: 13, defense: 8, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'jackdaw', traits: ['volley', 'pack-hunter'], skills: [{ id: 'jack-frost', name: '寒鸦冰箭', effect: 'frost-nova', target: 'enemy', cooldownTicks: 999 }], name: '寒鸦术士', maxHp: 792, attack: 16, defense: 3, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     frostwolves: [
       { id: 'fwolf-a',
-      traits: ['pack-hunter', 'last-stand'], name: '霜狼', maxHp: 460, attack: 14, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter', 'last-stand'], name: '霜狼', maxHp: 1012, attack: 19, defense: 4, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'fwolf-b',
-      traits: ['pack-hunter', 'last-stand'], name: '霜狼', maxHp: 460, attack: 14, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter', 'last-stand'], name: '霜狼', maxHp: 1012, attack: 19, defense: 4, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'fwolf-c',
-      traits: ['pack-hunter'], name: '霜狼', maxHp: 420, attack: 13, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter'], name: '霜狼', maxHp: 924, attack: 17, defense: 4, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     gravekeepers: [
-      { id: 'graver-a', traits: ['call-reinforce', 'heavy-plate'], name: '掘墓人', maxHp: 540, attack: 10, defense: 6, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
-      { id: 'graver-b', traits: ['call-reinforce', 'heavy-plate'], name: '掘墓人', maxHp: 540, attack: 10, defense: 6, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
-      { id: 'graver-c', traits: ['call-reinforce', 'heavy-plate'], name: '掘墓人', maxHp: 500, attack: 11, defense: 5, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'graver-a', traits: ['call-reinforce', 'heavy-plate'], name: '掘墓人', maxHp: 1188, attack: 13, defense: 8, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'graver-b', traits: ['call-reinforce', 'heavy-plate'], name: '掘墓人', maxHp: 1188, attack: 13, defense: 8, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'graver-c', traits: ['call-reinforce', 'heavy-plate'], name: '掘墓人', maxHp: 1100, attack: 15, defense: 7, speed: 5, position: 'front', range: 'melee', archetype: 'shield' },
     ],
     'wights-frail': [
       { id: 'wight-add-a',
-      traits: ['death-zone'], name: '冻僵的墓卫', maxHp: 300, attack: 9, defense: 3, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['death-zone'], name: '冻僵的墓卫', maxHp: 660, attack: 12, defense: 4, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'wight-add-b',
-      traits: ['death-zone'], name: '冻僵的墓卫', maxHp: 300, attack: 9, defense: 3, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['death-zone'], name: '冻僵的墓卫', maxHp: 660, attack: 12, defense: 4, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
     ],
   },
   bosses: {
@@ -467,9 +467,9 @@ export const FROSTGRAVE: DungeonDef = {
       name: '霜裔织法者·薇尔霍拉',
       // 减速系考试:裹尸布(挨打变慢)+ 冰葬风暴(分散)+ 凛冬(软墙)——后排施法者,坦克拉不住她的视线
       // ⑲ 校准:2800 血 28.9s 越下带(减速还没发力人就死了)→ 3200 拉进 35-45s 带
-      maxHp: 3200,
-      attack: 15,
-      defense: 7,
+      maxHp: 7040,
+      attack: 20,
+      defense: 10,
       speed: 8,
       position: 'back',
       range: 'ranged',
@@ -529,7 +529,7 @@ export const ABYSSALTAR: DungeonDef = {
   id: 'abyssaltar',
   name: '渊底祭坛',
   enemyPower: 1.05,
-  expectedLevel: 8,
+  expectedLevel: 9,
   size: 3,
   branches: [
     {
@@ -549,32 +549,32 @@ export const ABYSSALTAR: DungeonDef = {
   ],
   enemyGroups: {
     cultists: [
-      { id: 'cultist-a', traits: ['death-blast', 'last-stand'], name: '血祭教徒', maxHp: 520, attack: 11, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
-      { id: 'cultist-b', traits: ['death-blast', 'last-stand'], name: '血祭教徒', maxHp: 520, attack: 11, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'cultist-a', traits: ['death-blast', 'last-stand'], name: '血祭教徒', maxHp: 1404, attack: 16, defense: 9, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      { id: 'cultist-b', traits: ['death-blast', 'last-stand'], name: '血祭教徒', maxHp: 1404, attack: 16, defense: 9, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'cantor',
-      traits: ['volley'], name: '渊语咏叹者', maxHp: 380, attack: 13, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['volley'], name: '渊语咏叹者', maxHp: 1026, attack: 19, defense: 3, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     ghouls: [
       { id: 'ghoul-a',
-      traits: ['regen', 'last-stand'], name: '食尸鬼', maxHp: 500, attack: 15, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['regen', 'last-stand'], name: '食尸鬼', maxHp: 1350, attack: 22, defense: 5, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'ghoul-b',
-      traits: ['regen', 'last-stand'], name: '食尸鬼', maxHp: 500, attack: 15, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['regen', 'last-stand'], name: '食尸鬼', maxHp: 1350, attack: 22, defense: 5, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'ghoul-c',
-      traits: ['regen'], name: '食尸鬼', maxHp: 460, attack: 14, defense: 3, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['regen'], name: '食尸鬼', maxHp: 1242, attack: 20, defense: 5, speed: 13, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     eyes: [
       { id: 'eye-a',
-      traits: ['volley'], name: '观渊之眼', maxHp: 360, attack: 13, defense: 2, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['volley'], name: '观渊之眼', maxHp: 972, attack: 19, defense: 3, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
       { id: 'eye-b',
-      traits: ['volley'], name: '观渊之眼', maxHp: 360, attack: 13, defense: 2, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['volley'], name: '观渊之眼', maxHp: 972, attack: 19, defense: 3, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
       { id: 'eye-c',
-      traits: ['volley'], name: '观渊之眼', maxHp: 320, attack: 12, defense: 2, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['volley'], name: '观渊之眼', maxHp: 864, attack: 18, defense: 3, speed: 10, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     'ghouls-frail': [
       { id: 'ghoul-add-a',
-      traits: ['regen'], name: '食尸鬼', maxHp: 320, attack: 10, defense: 2, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['regen'], name: '食尸鬼', maxHp: 864, attack: 15, defense: 3, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'ghoul-add-b',
-      traits: ['regen'], name: '食尸鬼', maxHp: 320, attack: 10, defense: 2, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['regen'], name: '食尸鬼', maxHp: 864, attack: 15, defense: 3, speed: 12, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
   },
   bosses: {
@@ -584,9 +584,9 @@ export const ABYSSALTAR: DungeonDef = {
       // 治疗链毕业考:血契共感(打断!否则全家回血)+ 渊语圣歌(第二条咏唱线,打断优先级抉择)
       // + 唤起饿殍(转火)+ 深渊降临(软墙)——打断 110 门槛与塔尔玛同线,窗口 3s
       // ⑲ 校准:首版 1/8(无打断机器人扛不住双咏唱线)→ 血 2700/共感 160/圣歌减压到 8
-      maxHp: 2700,
-      attack: 16,
-      defense: 7,
+      maxHp: 7290,
+      attack: 23,
+      defense: 11,
       speed: 8,
       position: 'back',
       range: 'ranged',
@@ -651,7 +651,7 @@ export const THORNHOLD: DungeonDef = {
   id: 'thornhold',
   name: '荆棘要塞',
   enemyPower: 1.32,
-  expectedLevel: 10,
+  expectedLevel: 11,
   size: 5,
   branches: [
     {
@@ -672,33 +672,33 @@ export const THORNHOLD: DungeonDef = {
   enemyGroups: {
     swords: [
       { id: 'sword-a',
-      traits: ['heavy-plate'], name: '荆棘刀盾卫', maxHp: 560, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['heavy-plate'], name: '荆棘刀盾卫', maxHp: 1736, attack: 18, defense: 10, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'sword-b',
-      traits: ['heavy-plate'], name: '荆棘刀盾卫', maxHp: 560, attack: 10, defense: 6, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['heavy-plate'], name: '荆棘刀盾卫', maxHp: 1736, attack: 18, defense: 10, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'xbow-a',
-      traits: ['volley'], name: '荆棘弩手', maxHp: 420, attack: 13, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['volley'], name: '荆棘弩手', maxHp: 1302, attack: 24, defense: 3, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
       { id: 'xbow-b',
-      traits: ['volley'], name: '荆棘弩手', maxHp: 420, attack: 13, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+      traits: ['volley'], name: '荆棘弩手', maxHp: 1302, attack: 24, defense: 3, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
     heavies: [
       { id: 'heavy-a',
-      traits: ['heavy-plate', 'last-stand'], name: '荆棘重斧手', maxHp: 640, attack: 14, defense: 4, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['heavy-plate', 'last-stand'], name: '荆棘重斧手', maxHp: 1984, attack: 26, defense: 7, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'heavy-b',
-      traits: ['heavy-plate', 'last-stand'], name: '荆棘重斧手', maxHp: 640, attack: 14, defense: 4, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['heavy-plate', 'last-stand'], name: '荆棘重斧手', maxHp: 1984, attack: 26, defense: 7, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'heavy-c',
-      traits: ['heavy-plate'], name: '荆棘重斧手', maxHp: 640, attack: 14, defense: 4, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['heavy-plate'], name: '荆棘重斧手', maxHp: 1984, attack: 26, defense: 7, speed: 11, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     'honor-frail': [
       { id: 'honor-add-a',
-      traits: ['last-stand'], name: '荆棘亲卫', maxHp: 380, attack: 10, defense: 3, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '荆棘亲卫', maxHp: 1178, attack: 18, defense: 5, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'honor-add-b',
-      traits: ['last-stand'], name: '荆棘亲卫', maxHp: 380, attack: 10, defense: 3, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '荆棘亲卫', maxHp: 1178, attack: 18, defense: 5, speed: 8, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
     'mercs-frail': [
       { id: 'merc-add-a',
-      traits: ['last-stand'], name: '应征佣兵', maxHp: 340, attack: 10, defense: 2, speed: 9, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '应征佣兵', maxHp: 1054, attack: 18, defense: 3, speed: 9, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'merc-add-b',
-      traits: ['last-stand'], name: '应征佣兵', maxHp: 340, attack: 10, defense: 2, speed: 9, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand'], name: '应征佣兵', maxHp: 1054, attack: 18, defense: 3, speed: 9, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
   },
   bosses: {
@@ -706,9 +706,9 @@ export const THORNHOLD: DungeonDef = {
       id: 'colt',
       name: '掌旗官·科尔特',
       // 门考试(5 人版掘锚):战鼓冲锋(分散)+ 亲卫旗召唤(转火)+ 战吼咏唱(打断)
-      maxHp: 4200,
-      attack: 15,
-      defense: 7,
+      maxHp: 13020,
+      attack: 27,
+      defense: 12,
       speed: 7,
       position: 'front',
       range: 'melee',
@@ -749,9 +749,9 @@ export const THORNHOLD: DungeonDef = {
       name: '割据团长·维克托',
       // 团本毕业考:四线全开——长枪风暴(分散)/断头锁链(束缚赌撤退)/征募令(转火)/困兽(软墙)
       // ⑲ 校准:5 人双游侠 DPS 高,4800 血 29.0s 越下带 → 5300
-      maxHp: 5300,
-      attack: 17,
-      defense: 8,
+      maxHp: 16430,
+      attack: 31,
+      defense: 14,
       speed: 8,
       position: 'front',
       range: 'melee',
@@ -813,3 +813,4 @@ export const DUNGEONS: DungeonDef[] = [
   // 版图二 · 龙脊山脉(鳞音圣战)
   EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW,
 ]
+

@@ -444,11 +444,13 @@ console.log('✓ 掉落验证通过：掉落表/词条/配装/吸血按设计工
 const guildFailures: string[] = []
 
 // 7a: 永久死亡登记——团灭后全队进入纪念堂，花名册划名
+// (2026-09-25 难度改版适配:场景从黑苔 shortcut 换为渊底祭坛——Lv5 裸装队 vs 预期等级 9
+//  的等级压制是确定性团灭,不再依赖低级图搏命采样的运气;测试意图=登记链路,非难度断言)
 {
   let checked = 0
   for (let i = 0; i < 60 && checked < 10; i++) {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 940000 + i * 100 + j))
-    const run = createRun(squad, BLACKMOSS, 'shortcut', i * 317 + 5)
+    const run = createRun(squad, ABYSSALTAR, 'shortcut', i * 317 + 5)
     let guard = 0
     while (run.phase !== 'defeat' && run.phase !== 'victory' && run.phase !== 'retreated' && guard++ < 40) {
       const bt = run.battle!
@@ -458,7 +460,7 @@ const guildFailures: string[] = []
       const dead = markPermadeath(run)
       if (run.phase === 'defeat' && dead.length > 0) {
         for (const d of dead) {
-          if (!d.cause.includes('黑苔沼泽')) guildFailures.push(`7a 死因缺失: ${d.name}`)
+          if (!d.cause.includes('渊底祭坛')) guildFailures.push(`7a 死因缺失: ${d.name}`)
         }
         const member = squad.find((m) => m.id === dead[0].id)
         if (!member || member.alive) guildFailures.push(`7a ${dead[0].name} 未从花名册划去`)
@@ -687,7 +689,9 @@ const growthFailures: string[] = []
   console.log(`⑩ 成长：会玩通关 ${runs}/50，幸存者升级 ${leveled}/${runs || '-'}，两两默契 ${bonded}/${runs || '-'}`)
   // 反馈④长路线(12-15 场×3 连打,成员血量跨轮延续)后全通率 ~20% 是新常态,契约同步
   if (runs < 8) growthFailures.push(`⑩ 通关样本不足 ${runs}`)
-  if (runs > 0 && leveled < runs * 0.25) growthFailures.push('⑩ 升级节奏失衡——宪法 v3.3 契约:三轮升一级(实测 ' + leveled + '/' + runs + ')')
+  // 2026-09-25 难度改版:契约改为"一副本刷 5-6 遍升一级"(U08+制作人拍板)——
+  // exp 波11/boss60,3 连打 543<750 多数不升级是设计意图;实测 ≈0.12,阈值留余量定 0.08
+  if (runs > 0 && leveled < runs * 0.08) growthFailures.push('⑩ 升级节奏失衡——难度改版契约:5-6 遍升一级(实测 ' + leveled + '/' + runs + ')')
   if (bonded !== runs) growthFailures.push('⑩ 通关未建立两两默契')
 
   // 10b:默契战斗加成——同一批种子,有默契的队伍伤害更高
@@ -1233,11 +1237,30 @@ const towerFailures: string[] = []
   // 「像样指挥」= 走位/集火/喝药(与⑩会玩机器人同标准;纯白嫖打法打不过毕业考 boss 属预期)
   // 编制随副本:5 人团本出 5 人机器人(双游侠双铁卫单牧师),3 人本照旧
   const RAID5_JOBS = ['guard', 'priest', 'ranger', 'ranger', 'guard'] as const
+  // 验收机器人装备基准(2026-09-25 难度改版):难度递增后装备是入场券,裸装不再是真实玩家下限——
+  // 按当图应有水平配 T2 三件套(武器/护甲/饰品),确定性 RNG 保证可复现
+  const PROBE_GEAR: Record<string, [string, string, string]> = {
+    guard: ['wpn-t2-greatsword', 'arm-t2-plate', 'trk-t2-totem'],
+    priest: ['wpn-t2-staff', 'arm-t2-robe', 'trk-t2-totem'],
+    ranger: ['wpn-t2-bow', 'arm-t2-chain', 'trk-t2-totem'],
+    warrior: ['wpn-t2-greatsword', 'arm-t2-plate', 'trk-t2-totem'],
+    mage: ['wpn-t2-staff', 'arm-t2-robe', 'trk-t2-totem'],
+    warlock: ['wpn-t2-staff', 'arm-t2-robe', 'trk-t2-totem'],
+  }
   const probe = (dungeon: typeof DUNGEONS[number], encId: string, seed: number): number => {
     const comp = dungeon.size >= 5 ? RAID5_JOBS : JOBS
     // 版图二:probe 按副本预期等级出阵(龙脊山脉对 L5 是碾压局,验收无意义)
     const lvl = Math.min(15, (dungeon.expectedLevel ?? 5) + 1)
-    const squad = comp.map((job, j) => generateMember(job, lvl, 980000 + seed * 100 + j))
+    const squad = comp.map((job, j) => {
+      const m = generateMember(job, lvl, 980000 + seed * 100 + j)
+      const g = PROBE_GEAR[m.job] ?? PROBE_GEAR.ranger!
+      let rs = 990000 + seed * 977 + j
+      const rng = () => { rs = (rs * 1103515245 + 12345) % 2147483648; return rs / 2147483648 }
+      m.equipment.weapon = rollDrop(g[0]!, rng)
+      m.equipment.armor = rollDrop(g[1]!, rng)
+      m.equipment.trinket = rollDrop(g[2]!, rng)
+      return m
+    })
     const b = createBattle(squad, dungeon, encId, seed * 31 + 7, 0, 0, false)
     while (b.status === 'running' && b.tick < MAX_TICK) {
       if (b.tick % 5 === 0) {
@@ -1269,8 +1292,8 @@ const towerFailures: string[] = []
     }
     const medT = trash.length ? [...trash].sort((a, b) => a - b)[Math.floor(trash.length / 2)] : 0
     console.log(`⑲ ${d.name}:杂兵 ${medT.toFixed(1)}s(胜 ${trash.length}/6)`)
-    // 特质时代(v3.4)+装备硬化(反馈④)后的统一节奏点:拉扯感优先,杂兵 ~30s 是设计值
-    if (trash.length < 5 || medT < 15 || medT > 34) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
+    // 难度递增改版(2026-09-25):前期图快(教学 8-15s)、后期图有拉扯(25-30s)是设计曲线
+    if (trash.length < 5 || medT < 7 || medT > 40) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
     // 每个 boss 都要过考试(不只末位):验收机器人无撤退保护、打法标准化,≥4/8 为可达性下限
     // (真人另有撤退保护/药水存量/练度垫);节奏带只约束毕业考,门考只要求 ≥26s(不可是秒杀)
     for (const enc of bossEncs) {
@@ -1283,8 +1306,9 @@ const towerFailures: string[] = []
       const isFinal = enc.id === bossEncs[bossEncs.length - 1].id
       console.log(`⑲   ${isFinal ? '毕业考' : '门考'} ${enc.name} ${medB.toFixed(1)}s(胜 ${bossD.length}/8)`)
       if (bossD.length < 4) fail19.push(`⑲ ${d.name} ${enc.name} 验收胜率不足 ${bossD.length}/8`)
-      if (medB < 26) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
-      if (isFinal && medB > 62) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
+      // 难度递增:前期 Boss 15s 级(教学),毕业考逼近 60s(荆棘 52.9s=版图一顶点);下限只防秒杀
+      if (medB < 12) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
+      if (isFinal && medB > 70) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
     }
   }
   if (fail19.length > 0) {

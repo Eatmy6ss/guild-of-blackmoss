@@ -201,7 +201,9 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
     const enc = run.dungeon.encounters.find((e) => e.id === run.steps[run.stepIdx])
     // 试玩反馈④:经验获取收紧——路线拉长到 10-15 场后 波16/boss90 保持"三轮通关升一级"总账
     // (一轮 11 波×16+90=266,三轮 798 ≥ xpNeeded(5)=750,两轮 532 < 750)
-    const exp = enc?.kind === 'boss' ? 90 : 16
+    // 难度递增改版(2026-09-25,U08+制作人拍板):经验降档锚定"一副本刷 5-6 遍升一级"
+    // 一轮 ~11 波×11+60=181;xpNeeded 750→1200 → 每级 4.1-6.6 遍,前期稍快上手、后期自然放缓
+    const exp = enc?.kind === 'boss' ? 60 : 11
     const expected = run.dungeon.expectedLevel
     const over = expected !== undefined
       ? Math.max(0, run.members.reduce((s, m) => s + m.level, 0) / Math.max(1, run.members.length) - expected)
@@ -245,9 +247,9 @@ export function resetAfterRun(members: Member[]): void {
 // ===== 逐段选路(宪法 v3.3 修正案·熟练度迷雾)=====
 
 /** 熟练度阈值:类型揭示/全揭示/直捣 boss */
-/** 熟练度阈值(反馈④:一次远征 ~10-17 熟练,原 4/8/12 两三次就满——放大到 12/24/36,
- *  约 3 次远征识类型、8 次全揭示、12 次直捣 boss,贴合"熟练度=长期经营"的设计初衷) */
-export const MASTERY = { KIND: 12, FULL: 24, BOSS_DIRECT: 36 } as const
+/** 熟练度阈值(2026-09-25 难度递增改版:一次远征 ~10-17 熟练,制作人定调"一副本刷 5-6 遍最好"——
+ *  35≈2.5-3 遍识类型、60≈4.5-6 遍全揭示、80≈5-8 遍直捣 boss;熟练度=长期经营,快不得) */
+export const MASTERY = { KIND: 35, FULL: 60, BOSS_DIRECT: 80 } as const
 
 export type RevealLevel = 'hidden' | 'kind' | 'full'
 
