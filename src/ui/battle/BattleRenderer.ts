@@ -301,6 +301,62 @@ export class BattleRenderer {
 
   /** 当前背景主题(按副本) */
   private theme = 'default'
+  private envSpawnAcc = 0
+
+  /** 环境粒子:heat 火星(底部上浮)/ frost 落雪(顶部飘落) */
+  private spawnEmber(): void {
+    const g = new Graphics()
+    const size = 2 + Math.random() * 2
+    g.rect(-size / 2, -size / 2, size, size).fill(Math.random() < 0.5 ? 0xff7a2a : 0xffb040)
+    const x = W * (0.05 + Math.random() * 0.9)
+    const y = H * (0.86 + Math.random() * 0.1)
+    g.position.set(x, y)
+    this.root.addChild(g)
+    const drift = (Math.random() - 0.5) * 0.02
+    const rise = 0.03 + Math.random() * 0.03
+    let life = 0
+    const dur = 2200 + Math.random() * 1500
+    this.effects.push({
+      update: (dt) => {
+        life += dt
+        g.y -= rise * dt
+        g.x += drift * dt
+        g.alpha = Math.max(0, 1 - life / dur)
+        if (life >= dur) {
+          g.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
+
+  private spawnSnow(): void {
+    const g = new Graphics()
+    const size = 1.5 + Math.random() * 1.5
+    g.rect(-size / 2, -size / 2, size, size).fill(0xe8f4ff)
+    const x = W * Math.random()
+    const y = -4
+    g.position.set(x, y)
+    g.alpha = 0.85
+    this.root.addChild(g)
+    const drift = (Math.random() - 0.5) * 0.03
+    const fall = 0.02 + Math.random() * 0.02
+    let life = 0
+    const dur = 6000 + Math.random() * 4000
+    this.effects.push({
+      update: (dt) => {
+        life += dt
+        g.y += fall * dt
+        g.x += drift * dt
+        if (life >= dur || g.y > H) {
+          g.destroy()
+          return false
+        }
+        return true
+      },
+    })
+  }
 
   /** 战斗背景主题(按副本):heat 熔岩 / frost 冰雪 / swamp 沼泽 / mine 矿道 / ash 灰烬 / abyss 深渊 / thorn 军垒 / tower 高塔 / 默认暖黑石 */
   setTheme(theme: string): void {
@@ -974,6 +1030,13 @@ export class BattleRenderer {
       u.container.y += (u.slot.y - u.container.y) * k
       // 待机呼吸:像素小人轻轻起伏(活着才有生命)
       u.bodyGroup.y = 6 + Math.sin(nowT / 320 + u.bobPhase) * 1.2
+    }
+    // 环境粒子(版图二观感:heat 火星上浮 / frost 落雪)——主题背景的"动"的部分
+    this.envSpawnAcc += dt
+    if (this.envSpawnAcc > 140 && this.effects.length < 200) {
+      this.envSpawnAcc = 0
+      if (this.theme === 'heat') this.spawnEmber()
+      else if (this.theme === 'frost') this.spawnSnow()
     }
     // 手动循环而非 filter：弹道命中的 onHit 会在迭代期间向 this.effects
     // 推入新效果——filter 按初始长度迭代，会把它们遗弃在旧数组里永不更新
