@@ -3,6 +3,7 @@ import { JOBS } from '../data/jobs'
 import { RACES } from '../data/races'
 import { isHybrid } from '../data/vocations'
 import type { ChronicleEntry } from '../sim/chronicle'
+import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kingdom'
 
 // 公会存档(save-systems:版本号 + 迁移链 + 防御式加载)
 // 只在公会阶段落盘(远征中不写):刷新/关闭浏览器后恢复公会资产,
@@ -10,7 +11,7 @@ import type { ChronicleEntry } from '../sim/chronicle'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 11
+export const SAVE_VERSION = 12
 
 export interface PendingConsequence {
   eventId: string
@@ -24,6 +25,8 @@ export interface StoredGuildBuff {
 }
 
 export interface GuildSave {
+  /** v12: 王国委托、进度和一次性领取记录 */
+  kingdom: KingdomState
   version: number
   members: Member[]
   inventory: ItemInstance[]
@@ -58,6 +61,7 @@ export interface GuildSave {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  11: (d) => ({ ...d, kingdom: newKingdomState() }),
   // v1 → v2:补经济三字段(exp/bonds 的补齐也在这一级做,老档一次迁移到位)
   1: (d) => {
     const members = (d.members as Member[] | undefined)?.map((m) => ({
@@ -96,6 +100,7 @@ export function migrate(data: Record<string, unknown>): GuildSave {
     v += 1
     d.version = v
   }
+  d.kingdom = normalizeKingdom(d.kingdom)
   return d as unknown as GuildSave
 }
 

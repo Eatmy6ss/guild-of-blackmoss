@@ -33,6 +33,73 @@
   font-family: var(--font-pixel);
 }
 
+/* 王国官契：沿用石框、羊皮纸与鎏金，目标和报酬留在同一张来函内。 */
+.screen-panel.royal-panel { width: min(960px, 100%); }
+.royal-header { display: flex; align-items: center; gap: 18px; padding: 18px 0; }
+.royal-seal { flex: 0 0 60px; height: 68px; display: grid; place-items: center; font-size: 40px; color: var(--gold); border: 1px solid var(--edge-gold); background: #352c25; }
+.royal-header h3 { font-size: 22px; color: var(--gold); margin: 6px 0; }
+.royal-header p { line-height: 1.7; }
+.royal-kicker { color: var(--ink-dim); font-size: 12px; letter-spacing: .12em; }
+.royal-standing { margin-left: auto; text-align: center; flex: 0 0 76px; }
+.royal-standing strong { display: block; font-size: 32px; color: var(--gold); }
+.royal-standing span { font-size: 12px; }
+.royal-rank-progress { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.royal-panel progress { height: 7px; border: 0; border-radius: 0; accent-color: #a7823d; background: #17131b; }
+.royal-panel progress::-webkit-progress-bar { background: #17131b; }
+.royal-panel progress::-webkit-progress-value { background: #aa8744; }
+.royal-rank-progress progress { flex: 1; min-width: 50px; }
+.royal-rules { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 16px 0 8px; color: var(--gold); font-size: 12px; }
+.royal-help { color: var(--ink-dim); line-height: 1.8; font-size: 12px; }
+.royal-notice { margin: 16px 0; padding: 12px; border: 1px solid #64794b; background: #253024; color: #e2edc8; line-height: 1.8; }
+.royal-panel .royal-section-title { margin: 22px 0 10px; font-size: 15px; color: var(--gold); }
+.royal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.royal-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 18px; color: #49351f; background: linear-gradient(125deg, var(--parch), var(--parch-lo)); border: 1px solid var(--parch-edge); box-shadow: inset 0 0 0 3px #d6c59f; }
+.royal-card.ready { border-color: #9cad66; box-shadow: inset 0 0 0 3px #c0c38d; }
+.royal-card-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #715832; }
+.royal-card.ready .royal-card-top span:last-child { color: #375321; font-weight: bold; }
+.royal-card h3 { font-size: 19px; line-height: 1.4; }
+.royal-issuer { font-size: 12px; color: #76603b; }
+.royal-letter { line-height: 1.9; flex: 1; }
+.royal-objective { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid #b6a177; border-bottom: 1px solid #b6a177; line-height: 1.6; }
+.royal-objective b { flex-shrink: 0; }
+.royal-progress { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.royal-progress progress { flex: 1; min-width: 40px; }
+.royal-common, .royal-card .hint { color: #624925; font-size: 12px; line-height: 1.7; }
+.royal-reward-preview { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #6a4a20; }
+.royal-rewards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.royal-rewards button { white-space: normal; line-height: 1.5; }
+.royal-rewards span { display: block; font-size: 11px; font-weight: normal; margin-top: 5px; }
+.royal-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; }
+.royal-card .royal-abandon { background: transparent; box-shadow: none; color: #725236; border: 1px solid #b6a177; }
+.royal-confirm { padding-top: 10px; border-top: 1px solid #b6a177; line-height: 1.7; font-size: 12px; }
+.royal-confirm button { margin: 8px 8px 0 0; }
+.royal-empty { padding: 18px; border: 1px dashed var(--edge-gold); line-height: 1.8; color: var(--ink-dim); }
+.royal-archive { margin-top: 22px; border-top: 1px solid var(--edge-gold); }
+.royal-archive summary { cursor: pointer; padding: 14px 0; color: var(--gold); }
+.royal-locked, .royal-receipt { padding: 12px 0; border-top: 1px solid #504439; line-height: 1.8; }
+.royal-locked p, .royal-receipt small { color: var(--ink-dim); }
+.royal-receipt h4 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; color: var(--gold); }
+.royal-receipt h4 span { font-weight: normal; color: var(--ink-dim); font-size: 12px; }
+.royal-hub-link { display: flex; flex-wrap: wrap; width: 100%; justify-content: space-between; gap: 8px; margin: 12px 0; text-align: left; line-height: 1.6; }
+.royal-hub-link span:last-child { color: var(--gold); font-size: 12px; }
+.royal-field-status { margin: 10px 0; padding: 10px 12px; border-left: 2px solid var(--edge-gold); background: #292824; color: var(--gold); font-size: 12px; line-height: 1.9; }
+.royal-panel button:focus-visible, .royal-panel summary:focus-visible { outline: 2px solid #7da7c0; outline-offset: 3px; }
+.screen-panel.save-transfer { width: min(620px, 100%); line-height: 1.8; }
+.save-transfer label { display: block; margin-top: 16px; color: var(--gold); }
+.save-transfer textarea { width: 100%; min-height: 140px; margin: 8px 0 14px; padding: 10px; resize: vertical; background: #18151c; border: 1px solid var(--edge-gold); color: var(--ink); font-family: monospace; overflow-wrap: anywhere; }
+.save-preview { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--edge-gold); }
+.save-preview button { margin-top: 12px; white-space: normal; }
+@media (max-width: 640px) {
+  .royal-grid { grid-template-columns: 1fr; }
+  .royal-header { gap: 10px; }
+  .royal-seal { display: none; }
+  .royal-header h3 { font-size: 19px; }
+  .royal-rank-progress { flex-wrap: wrap; }
+  .royal-rank-progress progress { flex-basis: 100%; }
+  .royal-card { padding: 14px; }
+  .royal-panel .screen-head { flex-wrap: wrap; gap: 10px; }
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

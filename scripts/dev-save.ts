@@ -45,6 +45,7 @@ for (const b of BUILDINGS) buildings[b.id] = b.maxLevel
 
 const save: GuildSave = {
   version: SAVE_VERSION,
+  kingdom: { active: [], completed: [] },
   members,
   inventory,
   memorial: [],

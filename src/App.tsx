@@ -1,3 +1,7 @@
+import { KingdomPanel } from './ui/KingdomPanel'
+import { SaveTransferPanel } from './ui/SaveTransferPanel'
+import { COMMISSIONS, type CommissionDef } from './data/kingdom'
+import { acceptCommission, abandonCommission, advanceCommissions, settleKingdomBattle, claimCommission, newKingdomState, kingdomRank, kingdomTrust, royalPotionCost, type RoyalRewardChoice } from './sim/kingdom'
 import { useEffect, useRef, useState } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames, rollSpec } from './sim/gen'
@@ -32,7 +36,7 @@ import {
 import { powerScore } from './sim/combat'
 
 import { rollBossDrops, rollWaveDrop, describeItem, slotsOf } from './sim/loot'
-import { loadGuildSave, saveGuild, clearGuildSave, exportSave, importSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
+import { loadGuildSave, saveGuild, clearGuildSave, exportSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
 import { GUILD_EVENTS } from './data/guild-events'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
@@ -81,9 +85,10 @@ const MEMORIAL_AURA = 0.02 // 每位英灵全队伤害 +2%
 const MANUAL_BONUS = 0.05 // 已研习 boss 全队对其伤害 +5%
 
 // UI 2.0 屏幕栈:公会大厅(hub) + 功能界面覆盖层。快捷键呼出,Esc/再按关闭。
-type UIScreen = 'roster' | 'tavern' | 'warehouse' | 'base' | 'chronicle' | 'memorial' | 'manual' | 'expedition'
+type UIScreen = 'kingdom' | 'roster' | 'tavern' | 'warehouse' | 'base' | 'chronicle' | 'memorial' | 'manual' | 'expedition'
 // 大厅功能坞:图标 + 名称 + 快捷键(顺序即展示顺序)
 const HUB_DOCK: { key: UIScreen; icon: string; label: string; hotkey: string }[] = [
+  { key: 'kingdom', icon: '♜', label: '王国委托', hotkey: 'Q' },
   { key: 'roster', icon: '🛡', label: '花名册', hotkey: 'C' },
   { key: 'tavern', icon: '🍺', label: '酒馆', hotkey: 'T' },
   { key: 'warehouse', icon: '🎒', label: '仓库', hotkey: 'B' },
@@ -131,6 +136,12 @@ export default function App() {
   useEffect(() => {
     membersRef.current = members
   }, [members])
+
+  const [kingdom, setKingdom] = useState(() => saved?.kingdom ?? newKingdomState())
+  const kingdomRef = useRef(kingdom)
+  const [royalNotice, setRoyalNotice] = useState('')
+  const [saveTransfer, setSaveTransfer] = useState<{ mode: 'import' | 'export'; code: string } | null>(null)
+  const updateKingdom = (next: typeof kingdom) => { kingdomRef.current = next; setKingdom(next) }
 
   const [inventory, setInventory] = useState<ItemInstance[]>(() => saved?.inventory ?? [])
   const [lastDrops, setLastDrops] = useState<ItemInstance[]>([])
@@ -312,8 +323,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
-  }, [members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
+    saveGuild({ kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
+  }, [kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -427,6 +438,8 @@ export default function App() {
         setLastDrops((d2) => [...d2, waveDrop])
       }
     }
+    // Capture this encounter before advanceRun moves its index. The phase guard above makes settlement idempotent.
+    updateKingdom(settleKingdomBattle(kingdomRef.current, r))
     advanceRun(r)
     const dead = markPermadeath(r)
     if (dead.length > 0) {
@@ -711,6 +724,9 @@ export default function App() {
     setBlessing(0)
     setRecruitCooldown(0)
     setPotions({ ...ECONOMY.startingPotions })
+    updateKingdom(newKingdomState())
+    setRoyalNotice('')
+    setHubScreen(null)
     setUnlockedHybrids([])
     setDungeonMastery({})
     setMembers(newRoster())
@@ -950,14 +966,15 @@ export default function App() {
     setGold((g) => g - cost.gold)
     if (cost.blessing) setBlessing((b) => b - cost.blessing!)
     setBuildings((bs) => ({ ...bs, [id]: lv + 1 }))
+    updateKingdom(advanceCommissions(kingdomRef.current, { kind: 'building', buildingId: id, level: lv + 1 }))
     logChronicle(chronicleBuilding(day, def.name, lv + 1))
     sfxCoin()
   }
 
   // 药水经济:仓库金币补货(远征中不卖货)
   const buyPotion = (kind: 'heal' | 'fury') => {
-    const cost = ECONOMY.potionCost[kind]
-    if (run || gold < cost) return
+    const cost = royalPotionCost(kind, kingdomRef.current)
+    if (runRef.current || towerRunRef.current || gold < cost) return
     setGold((g) => g - cost)
     setPotions((p) => ({ ...p, [kind]: p[kind] + 1 }))
     sfxCoin()
@@ -1051,6 +1068,41 @@ export default function App() {
   }, [])
   const finished = run != null && (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated')
   const canExpedition = !run && !towerRun && expedition.length >= activeDungeon.size
+
+  const royalContext = { manual, buildings, day }
+  const acceptRoyal = (id: string) => {
+    if (runRef.current || towerRunRef.current) return
+    const next = acceptCommission(kingdomRef.current, id, royalContext)
+    if (next === kingdomRef.current) return
+    updateKingdom(next)
+    const title = COMMISSIONS.find((q) => q.id === id)!.title
+    setRoyalNotice(`已接下「${title}」。目标已登记，完成后回公会交付。`)
+    logChronicle(chronicleRaw(day, `公会接下了灰冠王国的委托「${title}」。`))
+  }
+  const claimRoyal = (id: string, choice: RoyalRewardChoice) => {
+    if (runRef.current || towerRunRef.current) return
+    const previousRank = kingdomRank(kingdomRef.current)
+    const result = claimCommission(kingdomRef.current, id, choice, day)
+    if (!result) return
+    // Reserve the receipt synchronously: rapid clicks cannot award both options.
+    updateKingdom(result.state)
+    const r = result.reward
+    setGold((g) => g + r.gold)
+    setBlessing((b) => b + r.blessing)
+    setPotions((p) => ({ heal: p.heal + r.heal, fury: p.fury + r.fury }))
+    if (r.item) setInventory((inv) => [...inv, r.item!])
+    const nextRank = kingdomRank(result.state)
+    const promotion = nextRank.name !== previousRank.name ? ` 晋升「${nextRank.name}」，补给优惠${Math.round(nextRank.discount * 100)}%。` : ''
+    const rewardLine = `${r.gold}金${r.blessing ? `、祝福×${r.blessing}` : ''}${r.heal ? `、治疗药×${r.heal}` : ''}${r.fury ? `、爆发药×${r.fury}` : ''}${r.item ? `、${describeItem(r.item)}` : ''}`
+    setRoyalNotice(`「${result.commission.title}」已结案：${rewardLine}；信任+${r.trust}。${promotion}`)
+    logChronicle(chronicleRaw(day, `王国委托「${result.commission.title}」结案，获得${rewardLine}，王国信任+${r.trust}。${promotion}`))
+    sfxCoin()
+  }
+  const travelRoyal = (q: CommissionDef) => {
+    if (runRef.current || towerRunRef.current) return
+    if (q.objective.kind === 'building') setHubScreen('base')
+    else { setDungeonId(q.objective.dungeonId); setHubScreen(null) }
+  }
 
   const memberCard = (m: Member) => {
     const c = battle?.combatants.find((x) => x.memberId === m.id)
@@ -1152,22 +1204,15 @@ export default function App() {
             M1 · 内部构建 · 暂定名《黑苔公会》
             <span className="title-saveops">
               <button className="mini-btn" onClick={() => {
-                const code = exportSave(loadGuildSave()!)
-                void navigator.clipboard?.writeText(code).catch(() => {})
-                window.prompt('已导出当前存档,复制这段代码备份:', code)
+                const current = loadGuildSave()
+                if (current) setSaveTransfer({ mode: 'export', code: exportSave(current) })
               }}>📤 导出存档</button>
-              <button className="mini-btn" onClick={() => {
-                const code = window.prompt('粘贴要导入的存档代码(将覆盖当前进度):')
-                if (!code) return
-                const imported = importSave(code)
-                if (!imported) { window.alert('存档代码无效'); return }
-                saveGuild({ ...imported, members: imported.members })
-                window.location.reload()
-              }}>📥 导入存档</button>
+              <button className="mini-btn" onClick={() => setSaveTransfer({ mode: 'import', code: '' })}>📥 导入存档</button>
             </span>
           </div>
         </div>
       )}
+      {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
       <button
         className="mute-btn"
         onClick={() => { initAudio(); setMuted(toggleMute()) }}
@@ -1213,6 +1258,14 @@ export default function App() {
               </p>
             )
           })()}
+          <button className="royal-hub-link" disabled={!!run || !!towerRun} onClick={() => setHubScreen('kingdom')}>
+            <span>♜ {kingdomRank(kingdom).name} · 信任 {kingdomTrust(kingdom)}</span>
+            <span>{kingdom.active.some((r) => r.progress >= COMMISSIONS.find((q) => q.id === r.id)!.objective.target)
+              ? '有委托可交付 →' : kingdom.active.length ? `在办委托 ${kingdom.active.length}/2 · 查看进度 →` : kingdom.completed.length === COMMISSIONS.length ? '本批委托已结案 · 回信档案 →' : '王国来函 · 查看委托 →'}</span>
+          </button>
+          {hubScreen === 'kingdom' && !run && !towerRun && <KingdomPanel state={kingdom} context={royalContext} notice={royalNotice}
+            onClose={() => setHubScreen(null)} onAccept={acceptRoyal} onClaim={claimRoyal} onTravel={travelRoyal}
+            onAbandon={(id) => { if (runRef.current || towerRunRef.current) return; updateKingdom(abandonCommission(kingdomRef.current, id)); setRoyalNotice('委托已撤销，可重新接取。王国信任不变。') }} />}
           <div className="inv-panel tower-entry">
             <h2>🗼 黑苔高塔 —— 最高纪录 第 {towerBest} 层</h2>
             <p className="hint">
@@ -1228,7 +1281,7 @@ export default function App() {
             )}
           </div>
           <p className="hint hub-keys">
-            快捷键:C 花名册 · T 酒馆 · B 仓库 · N 基地 · J 大事记 · H 名人堂 · K 手册 · Esc 关闭
+            快捷键:Q 王国委托 · C 花名册 · T 酒馆 · B 仓库 · N 基地 · J 大事记 · H 名人堂 · K 手册 · Esc 关闭
           </p>
           <div className="end-actions">
             <button onClick={restartGuild}>☠ 重开公会</button>
@@ -1376,13 +1429,14 @@ export default function App() {
             <div className="potion-supply">
               <span className="hint">
                 🧪 治疗药 ×{potions.heal} · ⚡ 爆发药 ×{potions.fury} —— 出征携带,战斗消耗,回城退回
+                {kingdomRank(kingdom).discount > 0 && ` · 王国补给优惠${Math.round(kingdomRank(kingdom).discount * 100)}%已计入售价`}
               </span>
               <div className="tavern-row">
-                <button disabled={!!run || gold < ECONOMY.potionCost.heal} onClick={() => buyPotion('heal')}>
-                  🧪 补充治疗药（{ECONOMY.potionCost.heal} 金）
+                <button disabled={!!run || !!towerRun || gold < royalPotionCost('heal', kingdom)} onClick={() => buyPotion('heal')}>
+                  🧪 补充治疗药（{royalPotionCost('heal', kingdom)} 金）
                 </button>
-                <button disabled={!!run || gold < ECONOMY.potionCost.fury} onClick={() => buyPotion('fury')}>
-                  ⚡ 补充爆发药（{ECONOMY.potionCost.fury} 金）
+                <button disabled={!!run || !!towerRun || gold < royalPotionCost('fury', kingdom)} onClick={() => buyPotion('fury')}>
+                  ⚡ 补充爆发药（{royalPotionCost('fury', kingdom)} 金）
                 </button>
               </div>
             </div>
@@ -2021,6 +2075,13 @@ export default function App() {
             </>
           )}
 
+          {run && (run.phase === 'rest' || finished) && kingdom.active.length > 0 && <div className="royal-field-status" role="status">
+            <b>♜ 王国委托</b>
+            {kingdom.active.map((record) => {
+              const q = COMMISSIONS.find((entry) => entry.id === record.id)!
+              return <div key={record.id}>{q.title} · {record.progress}/{q.objective.target}{record.progress >= q.objective.target ? ' · 已达成，返回公会交付' : ''}</div>
+            })}
+          </div>}
           {run && run.phase === 'rest' && (
             <>
               <h2>战斗胜利 · 原地休整</h2>
