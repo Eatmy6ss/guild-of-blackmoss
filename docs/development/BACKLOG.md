@@ -19,8 +19,8 @@
 | K01 | 王国委托与关系奖励 | data/kingdom、sim/kingdom、KingdomPanel、App、save、SaveTransferPanel | 10份来函、奖励二选一、防重复领取、折扣采购、旧档迁移；10项定向测试与UI试玩通过，详见[专题](kingdom-commissions.md) | 已合并主线（de6d2a1，PR#1）+已部署线上（gh-pages 8612f60）；制作人试玩中，反馈走此清单 |
 | D01 | 恢复可共享的验证入口 | package.json、scripts、.gitignore | 干净检出可安装并运行声明的检查；真实失败可被捕获；不造“空通过”脚本 | **已交付（7d441de）**：verify.mjs/E2E 三脚本/qa-playthrough/diag 三件套/inline-assets 已入库，gitignore 加白名单；残余=钩子本地安装（见上"发布管线"） |
 | F01 | 跨版图解锁 | data/regions、App作战板 | 无首版团本首杀时第二版图锁定；达成后开放；锁定提示准确 | 待处理 |
-| F02 | 下一段选路错位 | sim/run、App休整 | 选定节点准确控制下一步；战斗/事件/休整/宝箱均保持正确索引和压轴Boss | 待处理 |
-| F03 | 直达Boss仍打首场 | App直捣Boss | 达到熟练度后进入目标Boss；无重复旧战；不足阈值不能使用 | 待处理 |
+| F02 | 下一段选路错位 | sim/run、App休整 | 选定节点准确控制下一步；战斗/事件/休整/宝箱均保持正确索引和压轴Boss | **已修复（9d31450）**：applyNodeChoice 改写/消耗对齐 rest 相 stepIdx 本位；smoke ㉞ 定向回归；isBossNext off-by-one 同步修正 |
+| F03 | 直达Boss仍打首场 | App直捣Boss | 达到熟练度后进入目标Boss；无重复旧战；不足阈值不能使用 | **已修复（9d31450）**：路线只留 boss 一场，不再重建两段重打首场 |
 | F04 | 高塔血量连续性 | sim/tower、App塔结算 | 255最大血、战末10血、20%休整后应61；死亡不恢复；进下一层保持正确值 | 待处理 |
 | F05 | 建筑效果未应用 | data/base、morale、tower、App | 疗养所治疗和祠堂宴会加成都能观察到；0级与升级值均核对 | 待处理 |
 | F06 | 招募候选与入职不一致 | gen、tavern、App hire | 预览和入职的专精一致；混合不丢失；各招募途径规则明确 | 待处理 |
