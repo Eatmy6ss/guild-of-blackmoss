@@ -480,6 +480,7 @@ const URL_SPRITES: Record<string, string> = {
   'mon-bat': '/assets/mon/bat.png',
   'mon-spider': '/assets/mon/spider.png',
   'mon-gnoll': '/assets/mon/gnoll.png',
+  'mon-martyredshade': '/assets/mon/martyredshade.png',
 }
 
 /** 我方三职业分层(DCSS 分层系统:base+护甲+披风+武器,32×32 同网格叠加) */
@@ -676,14 +677,16 @@ export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; n
     if (n.includes('龙裔鳞卫') || n.includes('狂信卫士') || n.includes('龙裔祭卫')) return 'mon-dracored'
     if (n.includes('龙渊鳞卫') || n.includes('渊龙亲卫')) return 'mon-dracoknight'
     if (n.includes('龙裔吐息手') || n.includes('龙裔驭火者') || n.includes('龙渊驭火者') || n.includes('焰背蜥后')) return 'mon-dracoscorcher'
-    if (n.includes('朝圣者亡魂') || n.includes('提灯亡魂')) return 'mon-ghost'
+    if (n.includes('提灯亡魂')) return 'mon-martyredshade' // 橙焰提灯魂
+    if (n.includes('朝圣者亡魂')) return 'mon-ghost'
     if (n.includes('山脊霜狼') || n.includes('头狼')) return 'mon-wolf'
     if (n.includes('食尸鬼')) return 'mon-ghoul'
     if (n.includes('火脊蜥蜴') || n.includes('焰背')) return 'mon-goliathfrog'
     if (n.includes('龙裔') || n.includes('龙渊') || n.includes('渊龙') || n.includes('幼龙') || n.includes('驭火')) return 'mon-dracored'
     if (n.includes('朝圣') || n.includes('狂徒') || n.includes('教团') || n.includes('圣火祭司')) return 'mon-occultist'
     if (n.includes('锻偶') || n.includes('锻炉监工')) return 'mon-myrmidon'
-    if (n.includes('刀盾') || n.includes('弩手') || n.includes('重斧') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'mon-myrmidon'
+    if (n.includes('重斧')) return 'mon-gnoll' // 持斧豺狼人
+    if (n.includes('刀盾') || n.includes('弩手') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'mon-myrmidon'
     if (n.includes('狼')) return 'mon-wolf'
     if (n.includes('矿工') || n.includes('蝠') || n.includes('蛛') || n.includes('矿灯')) return 'mon-kobold'
     if (n.includes('骸骨') || n.includes('墓卫') || n.includes('掘墓') || n.includes('墓骑') || n.includes('冰棺')) return 'mon-skelwar'
