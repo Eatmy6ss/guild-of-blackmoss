@@ -558,6 +558,7 @@ button.primary:hover:not(:disabled) {
 }
 .title-sub { color: var(--ink-dim); letter-spacing: 0.5em; font-size: 14px; }
 .title-tagline { color: var(--ink-faint); font-size: 13px; margin-top: -6px; }
+.title-version { color: var(--ink-faint); font-size: 11px; opacity: 0.75; letter-spacing: 0.08em; }
 .title-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 /* 主行动按钮 = 鎏金实体(样张 .btn-enter) */
 .title-actions button {

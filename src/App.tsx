@@ -1220,6 +1220,7 @@ export default function App() {
           <div className="title-logo">黑苔公会</div>
           <div className="title-sub">GUILD OF BLACKMOSS</div>
           <div className="title-tagline">英雄会死，故事不会。</div>
+          <div className="title-version">build {__BUILD_DATE__} · 熟练度/难度以本版为准</div>
           {offlineNote && <div className="title-offline">{offlineNote}</div>}
           <div className="title-actions">
             <button onClick={() => { initAudio(); setScreen('game') }}>
@@ -1261,6 +1262,7 @@ export default function App() {
       <div className="app-header">
         <h1>黑 苔 公 会</h1>
         <span className="slice-tag">佣兵纪元 · 任务板上的公会 —— 爬塔 / 招募 / 成长 / 演出</span>
+        <span className="slice-tag" style={{ opacity: 0.55 }}>build {__BUILD_DATE__}</span>
       </div>
       <div className={`layout${inBattle ? ' battle-mode' : ''}`}>
         <div className="panel hub-panel">

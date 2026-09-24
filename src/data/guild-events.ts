@@ -108,29 +108,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
     ],
-  },
-  {
-    id: 'drunk-map',
-    title: '醉汉的地图',
-    text: '一个烂醉的瘦子兜售一张「藏宝图」,开价五十金。图上的字迹一半是酒嗝。',
-    choices: [
-      {
-        text: '买下。万一是真的呢。',
-        outcomes: [
-          { weight: 5, text: '图是真的。你们在枯树第三根杈下挖出一只铁箱——里面的东西成色不错。', effects: { item: 'wpn-t2-bow' } },
-          { weight: 5, text: '挖了三个坑,只有一具骸骨和半块铭牌。骸骨手边有一小罐英灵香灰,倒也算个念想。', effects: { blessing: 2 } },
-        ],
-      },
-      {
-        text: '揭穿他。全酒馆都看着呢。',
-        outcomes: [
-          { weight: 6, text: '瘦子被赶了出去。掌柜的暗暗竖了个拇指——这酒馆的风气,公会有份儿。', effects: {} },
-          { weight: 4, text: '瘦子被赶了出去。角落里有老客嘀咕:「那图……去年我见过,是真的。」', effects: { moraleAll: -3 } },
-        ],
-      },
-    ],
-  },
-  {
+  },  {
     id: 'deserter',
     title: '逃兵入伍',
     text: '一个逃兵想加入公会。他的剑法很扎实,但眼神一直在往门口飘。',
@@ -177,35 +155,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
     ],
-  },
-  {
-    id: 'healer-ointment',
-    title: '郎中的药膏',
-    text: '走方郎中兜售「必愈药膏」,宣称敷哪儿好哪儿。他推车上的瓶瓶罐罐确实不少。',
-    choices: [
-      {
-        text: '全员一人一罐。',
-        outcomes: [
-          { weight: 5, text: '药膏奇效。连旧伤都好了,酒馆里此起彼伏的是舒坦的呻吟。', effects: { gold: -50, moraleAll: 15 } },
-          { weight: 5, text: '是猪油混薄荷。除了清凉一无是处,那郎中已经跑没影了。', effects: { gold: -50, moraleAll: -10 } },
-        ],
-      },
-      {
-        text: '只买一罐,给伤最重的人。',
-        outcomes: [
-          { weight: 7, text: '伤最重的那个人敷了,确实好了大半。值。', effects: { gold: -10, moraleRandom: 20 } },
-          { weight: 3, text: '那罐是清水。运气不好,赶上了骗子批次的头一罐。', effects: { gold: -10 } },
-        ],
-      },
-      {
-        text: '赶走郎中。装神弄鬼。',
-        outcomes: [
-          { weight: 10, text: '郎中推着车骂骂咧咧地走了。若干天后,有人在邻镇见他把同一套说辞卖了个好价钱。', effects: {} },
-        ],
-      },
-    ],
-  },
-  {
+  },  {
     id: 'night-knock',
     title: '夜半敲窗',
     text: '三更天,酒馆后窗被轻轻敲响。窗外的人压着嗓子说:「他们在追我,开开窗。」',
@@ -441,35 +391,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
     ],
-  },
-  {
-    id: 'tax-collector',
-    title: '税吏的算盘',
-    text: '王国税吏抱着账册上门,说公会去年的「战利品折算」少报了,补缴六十金——数目他「大概估的」。',
-    choices: [
-      {
-        text: '如数补缴,买个清净。',
-        outcomes: [
-          { weight: 10, text: '税吏盖章走人,临走压低声音:「其实还有三家没你们痛快。」', effects: { gold: -60 } },
-        ],
-      },
-      {
-        text: '请他喝酒,慢慢「核对」。',
-        outcomes: [
-          { weight: 6, text: '三坛酒下肚,数目变成了二十金,还附赠一条消息:下季度要开新税。', effects: { gold: -20 } },
-          { weight: 4, text: '酒喝了不少,账却越核越多——他把酒钱也算了进去。', effects: { gold: -80, moraleAll: -3 } },
-        ],
-      },
-      {
-        text: '藏起账本,就说烧了。',
-        outcomes: [
-          { weight: 5, text: '他信了,或者懒得深究,记了笔「凭证灭失」便走了。', effects: {} },
-          { weight: 5, text: '王法不讲情面:罚金一百三十金,外加满酒馆的围观。公会的脸面和金袋一起瘪了。', effects: { gold: -130, moraleAll: -6 } },
-        ],
-      },
-    ],
-  },
-  {
+  },  {
     id: 'moonshine-still',
     title: '山那边的私酿',
     text: '酒馆掌柜私下抱怨:山里的私酿坊抢了他三成生意,愿出四十金请公会「顺路举报」。而弟兄们上周刚喝过那私酿——确实好酒。',
@@ -829,29 +751,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
     ],
-  },
-  {
-    id: 'wandering-bard',
-    title: '写歌的人',
-    text: '一个吟游诗人愿意为公会写一首长歌,代价是食宿一个月,「和讲真话的权利」。他说歌要是写成了,黑苔的名声能传到公国边境。',
-    choices: [
-      {
-        text: '管吃管住,随他写。',
-        outcomes: [
-          { weight: 5, text: '歌写成了,连你们卖过命又被人赖账的破事都写了。奇怪的是,听过的没人嘲笑——真话有真话的分量。', effects: { gold: -40, moraleAll: 8 } },
-          { weight: 5, text: '歌写成了,把某位阵亡队员唱成了「被公会辜负的英雄」。客人们听得眼眶发红,队员们听得脸色发青。', effects: { gold: -40, moraleAll: -4, expAll: 20 } },
-        ],
-      },
-      {
-        text: '付费定制:只写光荣的部分。',
-        outcomes: [
-          { weight: 6, text: '定制的颂歌朗朗上口,就是没什么人记第二句。名声这东西,含金量果然和价钱成正比。', effects: { gold: -70 } },
-          { weight: 4, text: '诗人收了定金,写出一首完美的颂歌。临走时他说:「好的部分我写得很好。别的那部分,总会有人写的。」', effects: { gold: -70, moraleAll: -2 } },
-        ],
-      },
-    ],
-  },
-  {
+  },  {
     id: 'snow-caravan',
     title: '雪困的商队',
     text: '急报:一支商队困在白霜墓园外的雪坡上,看守的人手被「会走路的冰雕」冲散。货主开出的救援价很高——高到说明他清楚那些冰雕是什么。',
@@ -1145,29 +1045,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
     ],
-  },
-  {
-    id: 'levy-clerk',
-    title: '税吏的账本',
-    text: '税吏翻开账本:「黑苔公会,上季度「佣兵抚恤附加税」,欠缴六十金。」账本很新,税种也新——新得像昨晚才发明的。',
-    choices: [
-      {
-        text: '缴。六十金买个太平,比请律师便宜。',
-        outcomes: [
-          { weight: 7, text: '税吏盖章收钱,还教你们下季度怎么「合理规避」。官僚的善意,就是这么具体。', effects: { gold: -60, moraleAll: -2 } },
-          { weight: 3, text: '缴完钱,旁边商队的账房凑过来低声说:「这个税吏上周已经被免职了,他现在收的都是自己的。」你们看着他的背影,谁都没动——追这种钱,比追债还丢人。', effects: { gold: -60, moraleAll: -6 } },
-        ],
-      },
-      {
-        text: '抗税。让他拿出税令原文,拿不出就请他吃泥。',
-        outcomes: [
-          { weight: 5, text: '税吏支吾半天,收起账本走了。队里响起口哨声——敢跟账本叫板的公会,名字传得比想象中快。', effects: { moraleAll: 6 } },
-          { weight: 5, text: '他真拿出了原文,盖着候补税官的私印。税补了,罚金也补了,还多了个「刺头公会」的备注。', effects: { gold: -90, moraleAll: -3, delayed: { eventId: 'tax-warrant', dueDays: 3 } } },
-        ],
-      },
-    ],
-  },
-  {
+  },  {
     id: 'mirror-lake',
     title: '不照人的湖',
     text: '湖水平得像镜子,但村里人从不照:「它照的不是脸,是你欠的账。」湖边只有一块洗衣石,和一句被磨了一半的旧话:「照见者……」后半句风化了。',
@@ -1209,29 +1087,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
     ],
-  },
-  {
-    id: 'tax-warrant',
-    title: '第二幕·刺头的代价',
-    text: '公售所贴出新告示:「黑苔公会,抗税前科,此后各项执照费率上浮。」落款的印章是真的——上次那枚私印,竟也混在官方卷宗里盖了章。',
-    choices: [
-      {
-        text: '认了。上浮就上浮,以后按章缴税,做干净生意。',
-        outcomes: [
-          { weight: 6, text: '多缴的税像钝刀子。但半年后一场土地纠纷里,「干净生意」四个字救了公会的招牌。', effects: { gold: -40, moraleAll: 2 } },
-          { weight: 4, text: '费率上浮是上浮了,可卷宗里那枚私印也悄悄被撤了——有人替你们把尾巴收拾了。是谁,查不到。', effects: { gold: -25 } },
-        ],
-      },
-      {
-        text: '告回去。他们用假印在前,你们抗税在后,黑吃黑要看谁的纸更白。',
-        outcomes: [
-          { weight: 5, text: '讼师赚了一笔,公售所灰头土脸地把告示撕了。公会门口从此多了一句俚语:「别惹黑苔,他们连纸都翻得动。」', effects: { gold: -60, moraleAll: 6 } },
-          { weight: 5, text: '讼师赢了,案子也拖了。赢的那天全队喝了顿大酒——然后发现讼师的账单,比上浮的税贵了三倍。', effects: { gold: -80, moraleAll: 3 } },
-        ],
-      },
-    ],
-  },
-  {
+  },  {
     id: 'girl-debt',
     title: '第二幕·小女孩的债主',
     text: '一个精瘦的男人闯进公会,拍下一张画像——就是当初那个「迷路」的女孩:「她偷了我东家的东西,见过她的人都要作证。作证费,二十金。不作证……那就是同伙。」',

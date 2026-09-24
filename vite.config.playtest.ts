@@ -7,6 +7,8 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 
 export default defineConfig({
   plugins: [react(), viteSingleFile()],
+  // 构建日期注入(2026-09-25):页面显示版本,「是不是最新版」一眼可见
+  define: { __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)) },
   build: {
     outDir: 'dist-playtest',
     // 字体等资产全部内联为 data URI,消除一切外部请求
