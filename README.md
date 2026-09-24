@@ -61,3 +61,17 @@ docs/       设计文档(DESIGN.md 宪法/boss 提案流程/验收截图)
 ## License
 
 代码与原创内容归项目所有。像素素材含 CC0 公共领域成分(见上文来源),字体按其上游授权分发。
+
+## 协作开发(Collaborators)
+
+受邀协作者上手三步:
+
+```bash
+git clone https://github.com/Eatmy6ss/guild-of-blackmoss.git
+cd guild-of-blackmoss
+npm install && npm run dev   # http://localhost:5173
+```
+
+- push 需要认证:推荐安装 [gh CLI](https://cli.github.com/) 后 `gh auth login`,或配置 Personal Access Token
+- 约定:改动先在本地验证 `npm run verify`(37 项门禁),绿了再 push
+- 大改动建议开分支(`git switch -c feature/xxx`),小修可直接推 main
