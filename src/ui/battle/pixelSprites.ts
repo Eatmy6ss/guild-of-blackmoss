@@ -483,6 +483,32 @@ const URL_SPRITES: Record<string, string> = {
 }
 
 /** 我方三职业分层(DCSS 分层系统:base+护甲+披风+武器,32×32 同网格叠加) */
+const URL_WEAPONS: Record<string, string> = {
+  'w-sword': '/assets/layers/w-sword.png',
+  'w-axe': '/assets/layers/w-axe.png',
+  'w-bow': '/assets/layers/w-bow.png',
+  'w-staff': '/assets/layers/w-staff.png',
+  'w-dagger': '/assets/layers/w-dagger.png',
+  'w-rapier': '/assets/layers/w-rapier.png',
+  'w-mace': '/assets/layers/w-mace.png',
+  'w-katana': '/assets/layers/w-katana.png',
+}
+
+/** 武器 baseId → 素材帧 key(装备联动:换装即换手持) */
+export function weaponSpriteKey(baseId: string): string | null {
+  const id = baseId
+  if (id.includes('dragon-brand')) return 'w-katana' // 烙焰长剑:焰纹长刃
+  if (id.includes('greatsword') || id.includes('line-warrior')) return 'w-sword'
+  if (id.includes('katana') || id.includes('rapier')) return 'w-rapier'
+  if (id.includes('axe')) return 'w-axe'
+  if (id.includes('bow') || id.includes('line-ranger')) return 'w-bow'
+  if (id.includes('staff') || id.includes('line-priest') || id.includes('line-mage') || id.includes('line-warlock')) return 'w-staff'
+  if (id.includes('dagger')) return 'w-dagger'
+  if (id.includes('mace') || id.includes('hammer')) return 'w-mace'
+  if (id.includes('sword') || id.includes('line-guard')) return 'w-sword'
+  return null
+}
+
 const URL_LAYERS: Record<string, string[]> = {
   'hero-guard': [
     '/assets/layers/human_m.png',
@@ -511,6 +537,7 @@ const URL_LAYERS: Record<string, string[]> = {
 export async function preloadUrlSprites(): Promise<void> {
   const jobs: [string, string][] = [
     ...Object.entries(URL_TILES),
+    ...Object.entries(URL_WEAPONS),
     ...Object.entries(URL_SPRITES),
     ...Object.values(URL_LAYERS).flat().map((url) => [url, url] as [string, string]),
   ]

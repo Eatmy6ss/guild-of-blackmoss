@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture, TilingSprite } from 'pixi.js'
-import { pixelTexture, spriteKeyFor, spriteScale, spriteLayersFor, tryGetTex, cache_get, preloadUrlSprites } from './pixelSprites'
+import { pixelTexture, spriteKeyFor, spriteScale, spriteLayersFor, tryGetTex, weaponSpriteKey, cache_get, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
@@ -144,19 +144,19 @@ class UnitView {
     if (id === this.lastWeapon) return
     this.lastWeapon = id
     if (!id) { this.weapon.visible = false; return }
-    let key = 'wpn-sword'
-    let tint = 0xe8c67a
-    if (id.includes('dragon-brand')) { key = 'wpn-dragon'; tint = 0xffffff }
-    else if (id.includes('greatsword') || id.includes('line-warrior')) { key = 'wpn-axe'; tint = 0xb89ad4 }
-    else if (id.includes('axe')) { key = 'wpn-axe'; tint = 0xd8d5c8 }
-    else if (id.includes('bow') || id.includes('line-ranger')) { key = 'wpn-bow'; tint = id.includes('line-') ? 0xb89ad4 : 0xe8c67a }
-    else if (id.includes('staff') || id.includes('line-priest') || id.includes('line-mage') || id.includes('line-warlock')) { key = 'wpn-staff'; tint = id.includes('line-') ? 0xb89ad4 : 0x7ad4c8 }
-    else if (id.includes('dagger')) { key = 'wpn-dagger'; tint = 0xe8c67a }
-    else if (id.includes('line-guard')) { key = 'wpn-sword'; tint = 0xb89ad4 }
-    else if (id.includes('-t3-')) tint = 0xb89ad4
-    this.weapon.texture = pixelTexture(key)
-    this.weapon.tint = tint
-    this.weapon.scale.set(spriteScale(key))
+    // DCSS 分层武器帧(手持级细节);品级 tint 区分普装/精良/史诗
+    const wkey = weaponSpriteKey(id)
+    if (wkey) {
+      this.weapon.texture = pixelTexture(wkey)
+      this.weapon.tint = id.includes('dragon-brand') ? 0xffd0a0 : id.includes('line-') ? 0xb89ad4 : 0xffffff
+      this.weapon.scale.set(1.6)
+      this.weapon.position.set(14, -2)
+    } else {
+      this.weapon.texture = pixelTexture('wpn-sword')
+      this.weapon.tint = 0xe8c67a
+      this.weapon.scale.set(2)
+      this.weapon.position.set(10, -6)
+    }
     this.weapon.visible = true
   }
 
