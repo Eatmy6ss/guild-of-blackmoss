@@ -439,6 +439,19 @@ const WP_DRAGON: PixelDef = {
 // ---- 素材包精灵(CC0 Dungeon Crawl Stone Soup tiles,public/assets/mon/)----
 // 制作人指示:网上找素材包模仿/改造,不从零画。DCSS 32×32 手绘像素,质量远超手写矩阵。
 
+const URL_TILES: Record<string, string> = {
+  'tile-floor-swamp': '/assets/tiles/floor-swamp.png',
+  'tile-floor-lava': '/assets/tiles/floor-lava.png',
+  'tile-floor-lava2': '/assets/tiles/floor-lava2.png',
+  'tile-floor-ice': '/assets/tiles/floor-ice.png',
+  'tile-floor-pebble': '/assets/tiles/floor-pebble.png',
+  'tile-floor-pebble2': '/assets/tiles/floor-pebble2.png',
+  'tile-floor-ash': '/assets/tiles/floor-ash.png',
+  'tile-floor-cobalt': '/assets/tiles/floor-cobalt.png',
+  'tile-wall-brick': '/assets/tiles/wall-brick.png',
+  'tile-wall-gray': '/assets/tiles/wall-gray.png'
+}
+
 const URL_SPRITES: Record<string, string> = {
   'mon-firedragon': '/assets/mon/firedragon.png',
   'mon-deathdrake': '/assets/mon/deathdrake.png',
@@ -497,6 +510,7 @@ const URL_LAYERS: Record<string, string[]> = {
 /** 预加载全部素材 PNG(mount 时 await;成功进同一 texture 缓存) */
 export async function preloadUrlSprites(): Promise<void> {
   const jobs: [string, string][] = [
+    ...Object.entries(URL_TILES),
     ...Object.entries(URL_SPRITES),
     ...Object.values(URL_LAYERS).flat().map((url) => [url, url] as [string, string]),
   ]
@@ -525,6 +539,11 @@ export async function preloadUrlSprites(): Promise<void> {
         }),
     ),
   )
+}
+
+/** 纹理缓存直读(渲染器 TilingSprite 用;未加载返回 undefined) */
+export function cache_get(key: string): Texture | undefined {
+  return cache.get(key)
 }
 
 /** 职业分层帧列表(渲染器逐层叠加);非分层 key 返回 undefined */

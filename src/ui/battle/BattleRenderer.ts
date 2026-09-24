@@ -1,5 +1,5 @@
-import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
-import { pixelTexture, spriteKeyFor, spriteScale, spriteLayersFor, tryGetTex, preloadUrlSprites } from './pixelSprites'
+import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture, TilingSprite } from 'pixi.js'
+import { pixelTexture, spriteKeyFor, spriteScale, spriteLayersFor, tryGetTex, cache_get, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
@@ -297,6 +297,20 @@ export class BattleRenderer {
     this.app = null
   }
 
+
+  /** 主题→地砖/墙砖(素材包 DCSS dngn tiles) */
+  private static THEME_TILES: Record<string, { floor: string; wall: string; tint: number; tintAlpha: number }> = {
+    heat: { floor: 'tile-floor-lava', wall: 'tile-wall-brick', tint: 0xff4a1a, tintAlpha: 0.22 },
+    frost: { floor: 'tile-floor-ice', wall: 'tile-wall-gray', tint: 0x8ab8e0, tintAlpha: 0.16 },
+    swamp: { floor: 'tile-floor-swamp', wall: 'tile-wall-brick', tint: 0x6a9a4a, tintAlpha: 0.14 },
+    mine: { floor: 'tile-floor-pebble2', wall: 'tile-wall-gray', tint: 0x8a6a42, tintAlpha: 0.16 },
+    ash: { floor: 'tile-floor-ash', wall: 'tile-wall-brick', tint: 0x9a9aa4, tintAlpha: 0.2 },
+    abyss: { floor: 'tile-floor-cobalt', wall: 'tile-wall-gray', tint: 0x4a2a6a, tintAlpha: 0.24 },
+    thorn: { floor: 'tile-floor-pebble', wall: 'tile-wall-brick', tint: 0x8a8a96, tintAlpha: 0.16 },
+    tower: { floor: 'tile-floor-pebble2', wall: 'tile-wall-gray', tint: 0x6a7a9a, tintAlpha: 0.18 },
+    default: { floor: 'tile-floor-pebble', wall: 'tile-wall-brick', tint: 0x8a6a42, tintAlpha: 0.14 },
+  }
+
   // ---- 场景 ----
 
   /** 当前背景主题(按副本) */
@@ -373,62 +387,26 @@ export class BattleRenderer {
   }
 
   private drawBackdrop(theme = 'default'): void {
+    const t = (this.constructor as typeof BattleRenderer).THEME_TILES[theme] ?? (this.constructor as typeof BattleRenderer).THEME_TILES.default
+    const floorTex = cache_get(t.floor)
+    const wallTex = cache_get(t.wall)
+    // 上半:墙砖带(远景,压暗)
+    const wall = new TilingSprite({ texture: wallTex ?? Texture.WHITE, width: W, height: H * 0.42 })
+    wall.alpha = 0.9
+    this.root.addChild(wall)
+    // 下半:石地板平铺(战斗发生地)
+    const floor = new TilingSprite({ texture: floorTex ?? Texture.WHITE, width: W, height: H * 0.58 })
+    floor.position.set(0, H * 0.42)
+    this.root.addChild(floor)
+    // 主题氛围罩(全屏轻染)
+    const tint = new Graphics()
+    tint.rect(0, 0, W, H).fill({ color: t.tint, alpha: t.tintAlpha })
+    this.root.addChild(tint)
+    // 分界线与中轴
     const g = new Graphics()
-    // 主题色板:顶部光 / 中底 / 地面
-    const T: Record<string, { sky: number[]; ground: number; fog: number; crack: number }> = {
-      heat: { sky: [0x57180a, 0x2a0a04], ground: 0x3a0e06, fog: 0xff5a1a, crack: 0xff7a2a },
-      frost: { sky: [0x24405e, 0x0e1826], ground: 0x1a2a3c, fog: 0xa8c8e8, crack: 0x8ab8e0 },
-      swamp: { sky: [0x1e2e1a, 0x0c1408], ground: 0x182410, fog: 0x6a9a4a, crack: 0x4a7a34 },
-      mine: { sky: [0x2e2418, 0x140e08], ground: 0x241a10, fog: 0x8a6a42, crack: 0x6a5228 },
-      ash: { sky: [0x3a3a3e, 0x18181c], ground: 0x26262a, fog: 0x9a9aa4, crack: 0x6a6a74 },
-      abyss: { sky: [0x2e1430, 0x12060e], ground: 0x200a18, fog: 0x9a4a8a, crack: 0x7a3a6a },
-      thorn: { sky: [0x2a2a30, 0x121216], ground: 0x1e1e24, fog: 0x8a8a96, crack: 0x5a5a66 },
-      tower: { sky: [0x1a2030, 0x0a0c14], ground: 0x141824, fog: 0x6a7a9a, crack: 0x4a5a7a },
-      default: { sky: [0x2e2418, 0x140e08], ground: 0x201812, fog: 0x8a6a42, crack: 0x6a5228 },
-    }
-    const t = T[theme] ?? T.default
-    // 天幕:上亮下暗的横带渐变(8 段)
-    const bands = 8
-    for (let i = 0; i < bands; i++) {
-      const k = i / (bands - 1)
-      g.rect(0, (H * 0.86 * i) / bands, W, (H * 0.86) / bands + 1).fill({
-        color: t.sky[0],
-        alpha: 1 - k * 0.82,
-      })
-    }
-    g.rect(0, 0, W, H * 0.86).fill({ color: t.sky[1], alpha: 0.72 })
-    // 地面
-    g.rect(0, H * 0.86, W, H * 0.14).fill(t.ground)
-    g.rect(0, H * 0.86, W, 2).fill(t.fog)
-    // 主题装饰:heat=熔岩裂痕与火星带;frost=霜纹;其余=主题色雾带
-    if (theme === 'heat') {
-      for (let i = 0; i < 10; i++) {
-        const x = W * (0.05 + 0.09 * i)
-        const w = W * 0.02 + ((i * 37) % 30)
-        g.rect(x, H * 0.88, w, 4).fill(0xff7a2a)
-        g.rect(x + w * 0.2, H * 0.88 + 8, w * 0.5, 3).fill({ color: 0xffb040, alpha: 0.8 })
-      }
-      g.rect(0, H * 0.97, W, H * 0.03).fill({ color: 0xff5a1a, alpha: 0.5 })
-    } else if (theme === 'frost') {
-      for (let i = 0; i < 12; i++) {
-        const x = W * (0.03 + 0.08 * i)
-        g.rect(x, H * (0.1 + (i % 4) * 0.12), 3, 3).fill({ color: 0xe8f4ff, alpha: 0.7 })
-      }
-    } else {
-      for (let i = 0; i < 9; i++) {
-        g.rect(0, H * (0.12 + i * 0.09), W, 3).fill({ color: t.fog, alpha: 0.3 })
-      }
-    }
-    if (theme === 'swamp') {
-      for (let i = 0; i < 14; i++) {
-        const x = W * (0.02 + 0.07 * i)
-        const h = H * (0.12 + ((i * 13) % 5) * 0.03)
-        g.rect(x, H * 0.86 - h, 4, h).fill({ color: 0x0e1a08, alpha: 0.9 })
-      }
-    }
-    // 中轴线与地平线(敌我分界)
-    g.rect(W * 0.5 - 1, 0, 2, H).fill({ color: 0x000000, alpha: 0.35 })
-    g.rect(0, H * 0.5 - 1, W, 2).fill({ color: 0x000000, alpha: 0.25 })
+    g.rect(0, H * 0.42 - 2, W, 4).fill({ color: 0x0f0c12, alpha: 0.9 })
+    g.rect(0, H * 0.42 - 1, W, 1).fill(t.tint)
+    g.rect(W * 0.5 - 1, 0, 2, H).fill({ color: 0x0f0c12, alpha: 0.6 })
     this.root.addChild(g)
   }
 
