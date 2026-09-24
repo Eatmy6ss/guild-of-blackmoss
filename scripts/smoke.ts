@@ -17,8 +17,9 @@ import { BUILDINGS, baseEffects } from '../src/data/base'
 import { refusesToMarch, applyDeathShock, applyFeast, MORALE, clamp } from '../src/sim/morale'
 import { chronicleRefusal } from '../src/sim/chronicle'
 import { seedMemberSeq } from '../src/sim/gen'
-import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, towerEnemyScale, towerGold, TOWER } from '../src/sim/tower'
+import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, towerEnemyScale, towerGold, towerExp, towerItemTier, TOWER } from '../src/sim/tower'
 import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
+import { computeLegacy, memorialAura, legacyQuality, legacyCounts, LEGACY_AURA_CAP } from '../src/sim/memorial'
 import { pickOutcome, rollGuildEvent } from '../src/sim/guild-events'
 import { bossIntents } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
@@ -26,7 +27,7 @@ import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
 import { createRun, advanceRun, startStep, markPermadeath, settleGrowth, junctionOptions, revealLevel, applyNodeChoice, MASTERY } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
-import { JOBS as JOB_TABLE } from '../src/data/jobs'
+import { JOBS as JOB_TABLE, type JobId } from '../src/data/jobs'
 import { HYBRIDS } from '../src/data/vocations'
 import { TRAIT_INFO } from '../src/data/traits'
 import { MECH_INFO, mechanicBrief } from '../src/data/mech-docs'
@@ -2468,6 +2469,51 @@ const towerFailures: string[] = []
   console.log(`㊱ 杂兵掉落:黑苔 ${drops}/200(T1 池),渊底 ${t2drops}/200(T2 池),烬石纪元✓,精英 ${eliteDrops}/200(翻倍✓)`)
   if (fail36.length > 0) { console.log('✗ 杂兵掉落未通过:', fail36); process.exit(1) }
   console.log('✓ 杂兵掉落通过:8% 触发,纪元绑定正确')
+}
+
+// ============================================================
+// ㊷ K02 纪念品质光环 + K03 大秘境奖励(2026-09-25,U10/U11)
+// ============================================================
+{
+  const fail42: string[] = []
+  // K02:生平分→品质分档(凡逝<14≤青史<25≤传奇)
+  const mk = (lv: number, kills: number, tower: number, comm: number, chron: number) =>
+    computeLegacy({ id: 'x', name: '测试', job: 'guard', level: lv, cause: '陨落于黑苔沼泽' }, { bossKills: kills, towerBest: tower, commissionsDone: comm, chronicleCount: chron })
+  const rookie = mk(5, 0, 0, 0, 0)
+  const veteran = mk(8, 3, 6, 1, 15)
+  const legend = mk(13, 10, 20, 8, 60)
+  if (rookie.quality !== 'common') fail42.push(`㊷ 新兵应凡逝:${rookie.quality}(${rookie.score})`)
+  if (veteran.quality !== 'honored') fail42.push(`㊷ 老兵应青史:${veteran.quality}(${veteran.score})`)
+  if (legend.quality !== 'legendary') fail42.push(`㊷ 传奇应传奇:${legend.quality}(${legend.score})`)
+  if (veteran.deeds.length < 2) fail42.push('㊷ 生平事迹未生成')
+  // K02:光环封顶——8 位传奇也只 +6%
+  const eightLegends: DeadHero[] = Array.from({ length: 8 }, (_, i) => ({
+    id: `d${i}`, name: `阵亡${i}`, job: 'guard' as JobId, level: 13, cause: '陨落',
+    legacy: { quality: 'legendary' as const, score: 40, deeds: [] },
+  }))
+  const aura = memorialAura(eightLegends)
+  if (Math.abs(aura - LEGACY_AURA_CAP) > 1e-9) fail42.push(`㊷ 光环封顶失效:${aura}(期望 ${LEGACY_AURA_CAP})`)
+  // K02:老档兼容——无 legacy 字段按凡逝 +1%
+  const oldHero: DeadHero = { id: 'o', name: '旧档', job: 'priest', level: 7, cause: '陨落' }
+  if (legacyQuality(oldHero) !== 'common' || memorialAura([oldHero]) !== 0.01) fail42.push('㊷ 老档兼容失效')
+  // K03:经验曲线单调 + 纪元分档
+  if (!(towerExp(1) < towerExp(5) && towerExp(5) < towerExp(12))) fail42.push('㊷ 塔经验曲线不单调')
+  if (towerItemTier(5) !== 1 || towerItemTier(6) !== 2) fail42.push('㊷ 塔装备纪元分档错误')
+  // K03:boss 层必掉一件(5 个不同种子全掉)
+  let bossDrops = 0
+  for (let i = 0; i < 5; i++) {
+    const tr = startTower(JOBS.map((job, j) => generateMember(job, 9, 993000 + i * 100 + j)), 4242 + i)
+    // 推进到第 3 层(boss 层)
+    for (let f = 1; f < 3; f++) { settleTowerFloor(tr); towerRest(tr); towerNext(tr, 999 + f) }
+    const bt = tr.battle!
+    while (bt.status === 'running' && bt.tick < 4000) stepBattle(bt)
+    const r = settleTowerFloor(tr)
+    if (r.cleared && r.drops.length >= 1) bossDrops++
+  }
+  if (bossDrops < 4) fail42.push(`㊷ K03 boss 层必掉未兑现:${bossDrops}/5`)
+  console.log(`㊷ K02/K03:品质 凡逝/青史(${veteran.score})/传奇(${legend.score})✓ 封顶 ${Math.round(aura * 100)}%✓ 老档✓;塔经验 ${towerExp(1)}→${towerExp(12)}✓ boss 必掉 ${bossDrops}/5✓`)
+  if (fail42.length > 0) { console.log('✗ K02/K03 未通过:', fail42); process.exit(1) }
+  console.log('✓ K02 纪念品质+K03 大秘境奖励通过')
 }
 
 // ============================================================

@@ -418,6 +418,8 @@ export interface DeadHero {
   job: JobId
   level: number
   cause: string
+  /** K02 纪念品质(U11):生平成就生成的品质记录;老档无此字段 = 凡逝 */
+  legacy?: import('./memorial').LegacyRecord
 }
 
 /** 结构化战斗事件：演出层（Pixi）消费这个，不解析文本日志 */

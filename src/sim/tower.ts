@@ -1,4 +1,6 @@
-import type { BossDef, DungeonDef, EnemyDef, Member } from './types'
+import { rollDrop } from './loot'
+import { ITEM_BASES } from '../data/items'
+import type { BossDef, DungeonDef, EnemyDef, ItemInstance, Member } from './types'
 import { createBattle, POTION_STOCK } from './combat'
 import type { BattleState } from './types'
 
@@ -22,7 +24,20 @@ export const TOWER = {
   goldScalingPerFloor: 0.25,
   /** 层间休整回复(比副本的 30% 更紧) */
   restHealPct: 0.2,
+  /** K03 大秘境(2026-09-25):每层胜利经验 = 20 + 8 × 层 */
+  expPerFloorBase: 20,
+  expScalingPerFloor: 8,
 } as const
+
+/** 每层胜利经验(K03):奖励曲线随层数增长,贴合「装等到位去刷大秘境」的挑战循环 */
+export function towerExp(floor: number): number {
+  return TOWER.expPerFloorBase + TOWER.expScalingPerFloor * (floor - 1)
+}
+
+/** 塔掉落装备的纪元:前 5 层 T1,6 层起 T2(挂 K03;U09 的 T3 池落地后此处跟进) */
+export function towerItemTier(floor: number): number {
+  return floor >= 6 ? 2 : 1
+}
 
 export type TowerPhase = 'battle' | 'rest' | 'ended'
 
@@ -144,9 +159,9 @@ export function startTower(members: Member[], seed: number, potions = { heal: PO
  *   撤退 → 塔结束(带着收益离开);团灭 → 塔结束(阵亡全款,由 markPermadeath 同款逻辑在外层登记)。
  * 返回 { gold, cleared }:gold 为本层入账金币;cleared 表示本层打通(可继续深入)。
  */
-export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolean } {
+export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolean; exp: number; drops: ItemInstance[] } {
   const b = run.battle
-  if (!b || b.status === 'running') return { gold: 0, cleared: false }
+  if (!b || b.status === 'running') return { gold: 0, cleared: false, exp: 0, drops: [] }
   const gold = b.status === 'guild-win' ? towerGold(run.floor) : 0
   run.goldEarned += gold
   // 未用完的药水退回携带量(团灭也一样:没喝掉的还在袋子里)
@@ -160,11 +175,24 @@ export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolea
   }
   if (b.status === 'guild-win') {
     run.phase = 'rest'
-    return { gold, cleared: true }
+    // K03 大秘境奖励(2026-09-25):经验曲线+装备掉落——boss 层必掉,普通层 10%;
+    // 奖励厚于普通本是「装等到位来挑战」的循环锚
+    const exp = towerExp(run.floor)
+    const drops: ItemInstance[] = []
+    const isBoss = towerFloorIsBoss(run.floor)
+    if (isBoss || Math.random() < 0.1) {
+      const tier = towerItemTier(run.floor)
+      const pool = Object.values(ITEM_BASES).filter((x) => x.tier === tier)
+      if (pool.length > 0) {
+        const base = pool[Math.floor(Math.random() * pool.length)]!
+        drops.push(rollDrop(base.id, Math.random, { qualityBias: isBoss ? 0.15 : 0 }))
+      }
+    }
+    return { gold, cleared: true, exp, drops }
   }
   run.phase = 'ended'
   run.result = b.status === 'retreated' ? 'left' : 'defeated'
-  return { gold, cleared: false }
+  return { gold, cleared: false, exp: 0, drops: [] }
 }
 
 /** 层间休整:幸存者回复(塔内比副本更紧);不推进层数——推进由 towerNext

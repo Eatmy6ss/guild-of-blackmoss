@@ -47,6 +47,7 @@ import { junctionOptions, revealLevel, applyNodeChoice, MASTERY } from './sim/ru
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
+import { memorialAura, computeLegacy, legacyQuality, legacyCounts, type LegacyContext } from './sim/memorial'
 import { rollGuildEvent, pickOutcome } from './sim/guild-events'
 import { applyMoraleDelta } from './sim/morale'
 import { rollDrop } from './sim/loot'
@@ -81,7 +82,6 @@ const SLOT_NAME: Record<Slot, string> = { weapon: '武器', armor: '护甲', tri
 const SLOTS: Slot[] = ['weapon', 'armor', 'trinket']
 const SEED_BASE = 7777
 const ROSTER_CAP = 6
-const MEMORIAL_AURA = 0.02 // 每位英灵全队伤害 +2%
 const MANUAL_BONUS = 0.05 // 已研习 boss 全队对其伤害 +5%
 
 // UI 2.0 屏幕栈:公会大厅(hub) + 功能界面覆盖层。快捷键呼出,Esc/再按关闭。
@@ -138,6 +138,14 @@ export default function App() {
   }, [members])
 
   const [kingdom, setKingdom] = useState(() => saved?.kingdom ?? newKingdomState())
+  // K02 纪念品质(U11):阵亡登记时的公会上下文快照→生平事迹→品质→光环(封顶,替代旧人头 2%)
+  const legacyContext = (): LegacyContext => ({
+    bossKills: manual.length,
+    towerBest,
+    commissionsDone: kingdom.completed.length,
+    chronicleCount: chronicle.length,
+  })
+  const withLegacy = (dead: DeadHero[]): DeadHero[] => dead.map((d) => ({ ...d, legacy: computeLegacy(d, legacyContext()) }))
   const kingdomRef = useRef(kingdom)
   const [royalNotice, setRoyalNotice] = useState('')
   const [saveTransfer, setSaveTransfer] = useState<{ mode: 'import' | 'export'; code: string } | null>(null)
@@ -287,16 +295,25 @@ export default function App() {
         }
       }
       if (relics.length > 0) setInventory((inv) => [...inv, ...relics])
-      setMemorial((m) => [...m, ...dead])
+      setMemorial((m) => [...m, ...withLegacy(dead)])
       setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
       setMembers([...membersRef.current])
     }
-    const { gold } = settleTowerFloor(t)
+    const { gold, exp, drops } = settleTowerFloor(t)
     if (gold > 0) setGold((g) => g + gold)
+    // K03 大秘境奖励:经验全队发放,装备入库(来源=塔, boss 层必掉)
+    if (exp > 0) for (const m of t.members) if (m.alive) grantExp(m, exp)
+    if (drops.length > 0) {
+      setInventory((inv) => [...inv, ...drops])
+      setLastDrops((d2) => [...d2, ...drops])
+    }
     const endPhase = t.phase as TowerRun['phase']
     if (endPhase === 'rest') {
-      if (t.floor > towerBest) logChronicle(chronicleTowerRecord(day, t.floor))
-      setTowerBest((best) => Math.max(best, t.floor))
+      // K03(U10):挂机不代刷塔荣誉——纪录只认手动挑战;金币/经验/掉落照常
+      if (!t.autoMode) {
+        if (t.floor > towerBest) logChronicle(chronicleTowerRecord(day, t.floor))
+        setTowerBest((best) => Math.max(best, t.floor))
+      }
       setTowerRunning(false)
       setTowerRun({ ...t })
       // 挂机连刷:rest 自动休整并深入下一层
@@ -469,7 +486,7 @@ export default function App() {
       applyVictory(r.members.filter((m) => m.alive))
       logChronicle(chronicleBattleVictory(day, r.dungeon.name, r.members.filter((m) => m.alive)))
     }
-    if (dead.length > 0) setMemorial((m) => [...m, ...dead])
+    if (dead.length > 0) setMemorial((m) => [...m, ...withLegacy(dead)])
     // M1 P0 成长:经验 + 默契的发放下沉在 sim 层(可被 smoke 直接验证)
     settleGrowth(r, fx.expMult)
     // M1 P2 编年史:升级与默契升星(出击前快照对比)
@@ -602,7 +619,7 @@ export default function App() {
       activeDungeon,
       branchId,
       ++seedRef.current * SEED_BASE,
-      memorial.length * MEMORIAL_AURA,
+      memorialAura(memorial),
       protectOn,
       potions,
     )
@@ -1350,6 +1367,9 @@ export default function App() {
               逐层深入，敌人逐层变强；每 3 层遭遇守塔 boss。第 5 层起药水减半，
               <b style={{ color: '#d48f8f' }}>第 9 层起撤退保护失效</b>。奖励逐层立即入账，随时可带着离开。
             </p>
+            <p className="hint">
+              ⚔ 大秘境：守塔 boss 必掉装备，层数越深奖励越厚。纪录只认亲手挑战——挂机者不受青史留名。
+            </p>
             {towerUnlocked ? (
               <button className="branch-btn primary" disabled={!canExpedition} onClick={enterTower}>
                 🗼 进入高塔（从第 1 层开始）
@@ -1688,16 +1708,27 @@ export default function App() {
           <div className="inv-panel">
             <h2>
               🕯 纪念堂（{memorial.length} 位英灵 · 全队伤害 +
-              {Math.round(memorial.length * MEMORIAL_AURA * 100)}%）
+              {Math.round(memorialAura(memorial) * 100)}%，封顶 6%）
             </h2>
+            {memorial.length > 0 && (
+              <p className="hint">{(() => { const c = legacyCounts(memorial); return `传奇 ${c.legendary} · 青史 ${c.honored} · 凡逝 ${c.common}` })()}</p>
+            )}
             {memorial.length === 0 ? (
               <p className="hint">还没有人牺牲。愿它一直空着。</p>
             ) : (
-              memorial.map((h) => (
-                <div key={h.id} className="inv-item memorial-item">
-                  ⚰ {h.name}（{JOBS[h.job].name} Lv{h.level}）——{h.cause}
-                </div>
-              ))
+              memorial.map((h) => {
+                const q = legacyQuality(h)
+                const qLabel = q === 'legendary' ? '【传奇】' : q === 'honored' ? '【青史】' : '【凡逝】'
+                const pct = q === 'legendary' ? 3 : q === 'honored' ? 2 : 1
+                return (
+                  <div key={h.id} className="inv-item memorial-item">
+                    ⚰ {h.name}（{JOBS[h.job].name} Lv{h.level}）——{h.cause}
+                    <div className="hint" style={{ fontSize: 12 }}>
+                      {qLabel} 光环 +{pct}%{h.legacy?.deeds?.length ? ` · ${h.legacy.deeds.join(' · ')}` : ''}
+                    </div>
+                  </div>
+                )
+              })
             )}
                 </div>
               </div>
