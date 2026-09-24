@@ -393,6 +393,16 @@ button.primary:hover:not(:disabled) {
   pointer-events: none;
 }
 .event-modal .event-text { font-size: 14px; line-height: 1.9; color: var(--parch-ink); }
+/* 影响明细 chips(反馈:选完要看得见改变):正=墨绿/负=赭红/引子=鎏金虚线 */
+.event-impacts { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 2px; }
+.impact-chip {
+  font-size: 12px; line-height: 1.5; padding: 3px 9px;
+  border: 1px solid rgba(140, 100, 40, 0.55); border-radius: 3px;
+  background: rgba(255, 250, 235, 0.5); color: var(--parch-ink); letter-spacing: 0.02em;
+}
+.impact-chip.impact-pos { color: #4e7a2e; border-color: rgba(90, 130, 50, 0.75); }
+.impact-chip.impact-neg { color: #a8432e; border-color: rgba(168, 67, 46, 0.65); }
+.impact-chip.impact-hook { color: #8a6415; border-style: dashed; background: rgba(232, 200, 122, 0.3); }
 /* 事件弹层内的控件 = 羊皮纸文书按钮(样张 .choice) */
 .event-modal button {
   background: rgba(255, 250, 235, 0.55);

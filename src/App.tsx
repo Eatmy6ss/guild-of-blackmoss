@@ -149,6 +149,8 @@ export default function App() {
   const [visitor, setVisitor] = useState<ReturnType<typeof rollVisitor> | null>(null)
   const [pendingEvent, setPendingEvent] = useState<ReturnType<typeof rollGuildEvent> | null>(null)
   const [eventResult, setEventResult] = useState<string | null>(null)
+  // 事件影响明细(反馈:选完要看得见改变)——chips 逐条列出本次结算的实际变化
+  const [eventImpacts, setEventImpacts] = useState<{ t: string; tone?: 'pos' | 'neg' | 'hook' }[]>([])
   const [offlineNote, setOfflineNote] = useState<string | null>(null)
   const [chronicle, setChronicle] = useState<ChronicleEntry[]>(() => saved?.chronicle ?? [])
   const [buildings, setBuildings] = useState<Record<string, number>>(() => saved?.buildings ?? {})
@@ -760,18 +762,42 @@ export default function App() {
     if (!ev) return
     const outcome = pickOutcome(ev, choiceIdx, Math.random())
     const fx = outcome.effects ?? {}
+    // 影响明细:每项结算同步登记 chip,结果面板逐条可见(反馈:选完要看得见改变)
+    const impacts: { t: string; tone?: 'pos' | 'neg' | 'hook' }[] = []
+    const chip = (t: string, tone?: 'pos' | 'neg' | 'hook') => impacts.push({ t, tone })
+    const sgn = (n: number) => (n > 0 ? `+${n}` : `${n}`)
     const gold2 = fx.gold
-    if (gold2) setGold((g) => Math.max(0, g + gold2))
+    if (gold2) {
+      setGold((g) => Math.max(0, g + gold2))
+      chip(`金币 ${sgn(gold2)}`, gold2 > 0 ? 'pos' : 'neg')
+    }
     const blessing2 = fx.blessing
-    if (blessing2) setBlessing((b) => Math.max(0, b + blessing2))
-    if (fx.moraleAll) applyMoraleDelta(membersRef.current.filter((m) => m.alive), fx.moraleAll)
+    if (blessing2) {
+      setBlessing((b) => Math.max(0, b + blessing2))
+      chip(`英灵祝福 ${sgn(blessing2)}`, blessing2 > 0 ? 'pos' : 'neg')
+    }
+    if (fx.moraleAll) {
+      applyMoraleDelta(membersRef.current.filter((m) => m.alive), fx.moraleAll)
+      chip(`全员士气 ${sgn(fx.moraleAll)}`, fx.moraleAll > 0 ? 'pos' : 'neg')
+    }
     if (fx.moraleRandom) {
       const alive = membersRef.current.filter((m) => m.alive)
       if (alive.length > 0) applyMoraleDelta([alive[Math.floor(Math.random() * alive.length)]], fx.moraleRandom)
+      chip(`一人士气 ${sgn(fx.moraleRandom)}`, fx.moraleRandom > 0 ? 'pos' : 'neg')
     }
-    if (fx.expAll) for (const m of membersRef.current) if (m.alive) grantExp(m, fx.expAll)
-    if (fx.item) setInventory((inv) => [...inv, rollDrop(fx.item!, Math.random)])
-    if (fx.recruit) setVisitor(rollVisitor(Math.random, membersRef.current))
+    if (fx.expAll) {
+      for (const m of membersRef.current) if (m.alive) grantExp(m, fx.expAll)
+      chip(`全员经验 +${fx.expAll}`, 'pos')
+    }
+    if (fx.item) {
+      const d = rollDrop(fx.item!, Math.random)
+      setInventory((inv) => [...inv, d])
+      chip(`获得装备:${describeItem(d)}`, 'pos')
+    }
+    if (fx.recruit) {
+      setVisitor(rollVisitor(Math.random, membersRef.current))
+      chip('有访客上门', 'pos')
+    }
     if (fx.injure) {
       const alive = membersRef.current.filter((m) => m.alive)
       if (alive.length > 0) {
@@ -779,6 +805,7 @@ export default function App() {
         hurt.hp = Math.max(1, Math.floor(hurt.hp / 2))
         setMembers([...membersRef.current])
       }
+      chip('一人负伤(生命减半)', 'neg')
     }
     // 属性点(六维改革):全队每人 +N 随机维
     if (fx.attrPoint) {
@@ -789,40 +816,50 @@ export default function App() {
         m.attrs[dim] += fx.attrPoint
       }
       setMembers([...membersRef.current])
+      chip(`全队属性点 +${fx.attrPoint}`, 'pos')
     }
-    // 药水经济接入事件叙事:补给/失窃/赠礼直接改公会库存
+    // 药水经济接入事件叙事:补给/失窃/赠礼直接改公会库存(potionHeal 此前漏结算,顺手修复)
     resolveEventRef.current = resolveEvent
     undefined
-    if (fx.potionFury) setPotions((p) => ({ ...p, fury: Math.max(0, p.fury + fx.potionFury!) }))
+    if (fx.potionHeal) {
+      setPotions((p) => ({ ...p, heal: Math.max(0, p.heal + fx.potionHeal!) }))
+      chip(`治疗药水 ${sgn(fx.potionHeal)}`, fx.potionHeal > 0 ? 'pos' : 'neg')
+    }
+    if (fx.potionFury) {
+      setPotions((p) => ({ ...p, fury: Math.max(0, p.fury + fx.potionFury!) }))
+      chip(`爆发药水 ${sgn(fx.potionFury)}`, fx.potionFury > 0 ? 'pos' : 'neg')
+    }
     // 远征内持续状态(反馈④事件大项):仅副本内事件生效(挂到当前 run)
-    let buffNote = ''
+    const buffNeg = (mods: { atk?: number; def?: number; hp?: number; heal?: number }) =>
+      [mods.atk, mods.def, mods.hp, mods.heal].some((v) => v !== undefined && v < 1)
     if (fx.runBuff) {
       const r = runRef.current
       if (r) {
         r.buffs = [...(r.buffs ?? []), fx.runBuff]
-        buffNote = `\n〔获得状态:${fx.runBuff.name}〕${fx.runBuff.desc}`
+        chip(`获得状态:${fx.runBuff.name}(${fx.runBuff.desc})`, buffNeg(fx.runBuff.mods) ? 'neg' : 'pos')
       }
     }
     // 事件二期:公会层跨天状态(传奇事件的诅咒/祝福带回公会,days 天内出征生效)
     if (fx.guildBuff) {
       const { days, ...buff } = fx.guildBuff
       setGuildBuffs((q) => [...(q ?? []), { buff, endDay: day + days }])
-      buffNote = `\n〔公会蒙受:${buff.name}〕${buff.desc}(持续 ${days} 天)`
+      chip(`公会状态:${buff.name}(${buff.desc},持续 ${days} 天)`, buffNeg(buff.mods) ? 'neg' : 'pos')
     }
     // 稀有猎杀(WoW 式):下次出征首场遭遇强化、奖励翻倍
     if (fx.rareHuntNext) {
       setRareHuntNext(fx.rareHuntNext)
-      buffNote = `\n〔稀有猎杀立约〕下次出征首战:敌更强,奖更厚。`
+      chip('稀有猎杀立约:下次出征首战,敌更强、奖更厚', 'pos')
     }
     // 图鉴:见过的事件记名
     setEventsSeen((s) => (s.includes(ev.id) ? s : [...s, ev.id]))
-    // 延迟第二幕:入队,dueDay 到期在出征日弹出
+    // 延迟第二幕:入队,dueDay 到期在出征日弹出;引子当场可见(反馈:后续事件要留钩子)
     if (fx.delayed) {
       setPendingConsequences((q) => [...(q ?? []), { eventId: fx.delayed!.eventId, dueDay: day + fx.delayed!.dueDays }])
-      buffNote = `\n〔这件事,还没有完……〕`
+      chip('这件事,还没有完……', 'hook')
     }
     logChronicle(chronicleRaw(day, ev.title + ':' + outcome.text))
-    setEventResult(outcome.text + buffNote)
+    setEventResult(outcome.text)
+    setEventImpacts(impacts)
     setMembers([...membersRef.current])
     // 挂机连刷:远征途中触发的事件,代打结算后自动继续推进
     if (runRef.current?.autoMode && runRef.current.phase === 'rest') {
@@ -833,6 +870,7 @@ export default function App() {
   const dismissEvent = () => {
     setPendingEvent(null)
     setEventResult(null)
+    setEventImpacts([])
   }
   dismissEventRef.current = dismissEvent
 
@@ -1242,6 +1280,13 @@ export default function App() {
                 {eventResult ? (
                   <>
                     <p className="event-result">{eventResult}</p>
+                    {eventImpacts.length > 0 && (
+                      <div className="event-impacts">
+                        {eventImpacts.map((im, i) => (
+                          <span key={i} className={`impact-chip${im.tone ? ` impact-${im.tone}` : ''}`}>{im.t}</span>
+                        ))}
+                      </div>
+                    )}
                     <button onClick={dismissEvent}>知道了</button>
                   </>
                 ) : (
