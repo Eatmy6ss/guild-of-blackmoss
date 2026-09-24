@@ -2376,6 +2376,12 @@ const towerFailures: string[] = []
       if (withKill !== null) fail34.push(`㉞ F01 荆棘首杀后应开放:${withKill}`)
       console.log(`㉞ F01 版图门槛:空记录→「${noKill}」/荆棘首杀→开放`)
     }
+    // 34h:F06 招募一致性(2026-09-25)——生成即定专精(默认线),候选卡所见=入职所得
+    {
+      const m = generateMember('priest', 5, 991000)
+      if (m.spec !== JOB_TABLE.priest.defaultSpec) fail34.push(`㉞ F06 生成应带默认专精:${m.spec}`)
+      console.log(`㉞ F06 生成专精:priest→${m.spec}(预览=入职)`)
+    }
   }
   if (fail34.length > 0) { console.log('✗ 熟练度迷雾未通过:', fail34); process.exit(1) }
 

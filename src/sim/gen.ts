@@ -196,6 +196,9 @@ export function generateMember(job: JobId, level: number, seed: number = Date.no
     race: raceId,
     job,
     level: 1,
+    // F06(2026-09-25):生成即定专精=默认线——预览=入职=战斗行为一致;混合职阶候选由招募
+    // 路径(三选一等)显式覆盖,候选卡看到的专精就是入职的专精
+    spec: JOBS[job].defaultSpec,
     nature: rollNature(rng, job),
     personality: rollPersonality(rng),
     attrs: { str: 0, agi: 0, int: 0, vit: 0, spr: 0, lck: 0 },

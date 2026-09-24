@@ -765,8 +765,9 @@ export default function App() {
   }
 
   const hire = (m: Member) => {
-    // 宪法 v3:招募即带专精(三专精随机);种族在生成时已定
-    const recruited = { ...m, spec: rollSpec(m.job, Math.random) }
+    // 宪法 v3:招募即带专精;F06(2026-09-25):候选已定专精(生成时默认线/三选一可能混合线)——
+    // 入职保留之,不再重 roll(否则玩家看中的专精在入职瞬间被替换)
+    const recruited = m.spec ? m : { ...m, spec: rollSpec(m.job, Math.random) }
     setMembers((roster) => [...roster, recruited])
     logChronicle(chronicleRecruit(day, recruited, '酒馆传闻'))
     setCandidates([])
