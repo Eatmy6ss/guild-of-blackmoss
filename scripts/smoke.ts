@@ -9,6 +9,7 @@ import { rollBossDrops, rollDrop, rollWaveDrop, describeItem, itemStats, createL
 import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
+import { dungeonLock } from '../src/data/regions'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded, taleCandidates } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, sanitizeMembers, SAVE_VERSION } from '../src/state/save'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
@@ -2366,6 +2367,15 @@ const towerFailures: string[] = []
     }
     if (!(MASTERY.BOSS_DIRECT > MASTERY.FULL)) fail34.push('㉞ 直捣 boss 门槛应高于全揭示')
     console.log(`㉞ 阈值:hidden<${MASTERY.KIND} ≤ kind<${MASTERY.FULL} ≤ full<${MASTERY.BOSS_DIRECT}≤直捣`)
+    // 34g:F01 跨版图解锁回归(2026-09-25)——版图二入口需版图一团本(荆棘)首杀
+    {
+      const noKill = dungeonLock('emberpass', [])
+      const withKill = dungeonLock('emberpass', ['victor'])
+      if (!noKill) fail34.push('㉞ F01 版图二入口应被锁定(空首杀记录)')
+      if (noKill && !noKill.includes('团本')) fail34.push(`㉞ F01 锁定提示应指向团本:${noKill}`)
+      if (withKill !== null) fail34.push(`㉞ F01 荆棘首杀后应开放:${withKill}`)
+      console.log(`㉞ F01 版图门槛:空记录→「${noKill}」/荆棘首杀→开放`)
+    }
   }
   if (fail34.length > 0) { console.log('✗ 熟练度迷雾未通过:', fail34); process.exit(1) }
 

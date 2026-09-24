@@ -52,6 +52,12 @@ export const DUNGEON_FINAL_BOSS: Record<string, string> = {
 export function dungeonLock(dungeonId: string, killed: string[]): string | null {
   const region = REGIONS.find((r) => [...r.main, ...r.side, r.finale].includes(dungeonId))
   if (!region) return null
+  // F01 修复(2026-09-25):补上版图间门槛——RegionDef 注释里的"通关=下一版图钥匙"此前未实现,
+  // 新档可直接进版图二入口;现要求前一版图的团本(毕业考)首杀
+  const regionIdx = REGIONS.indexOf(region)
+  if (regionIdx > 0 && dungeonId === region.main[0] && !killed.includes(DUNGEON_FINAL_BOSS[REGIONS[regionIdx - 1]!.finale])) {
+    return `通关${REGIONS[regionIdx - 1]!.name}·团本后开放`
+  }
   const mainCleared = region.main.filter((id) => killed.includes(DUNGEON_FINAL_BOSS[id])).length
   const idx = region.main.indexOf(dungeonId)
   if (idx >= 0) {
