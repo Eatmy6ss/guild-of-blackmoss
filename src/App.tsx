@@ -153,6 +153,8 @@ export default function App() {
   const [protectOn, setProtectOn] = useState(() => saved?.protectOn ?? true)
   const [candidates, setCandidates] = useState<Member[]>([])
   const [screen, setScreen] = useState<'title' | 'game'>('title')
+  // F13(2026-09-25):内置确认弹窗——微信等内置浏览器不支持 window.confirm/prompt,破坏性操作改游戏内弹窗
+  const [confirmAsk, setConfirmAsk] = useState<{ text: string; okLabel?: string; onOk: () => void } | null>(null)
   const [muted, setMuted] = useState(isMuted())
   const [gold, setGold] = useState(() => saved?.gold ?? 150)
   const [blessing, setBlessing] = useState(() => saved?.blessing ?? 0)
@@ -716,8 +718,7 @@ export default function App() {
   }
 
   const restartGuild = () => {
-    // 破坏性操作加确认（D14：手滑清档太疼）
-    if (!window.confirm('确定重开公会？所有英雄、装备与纪念堂记录将全部清空。')) return
+    // 破坏性操作加确认（D14：手滑清档太疼）;F13:确认弹窗内置化,入口处 setConfirmAsk
     clearGuildSave()
     runRef.current = null
     setRunning(false)
@@ -1236,6 +1237,18 @@ export default function App() {
 
   return (
     <div>
+      {confirmAsk && (
+        <div className="screen-overlay" style={{ zIndex: 120 }}>
+          <div className="screen-panel" style={{ width: 'min(420px, 90vw)' }}>
+            <div className="screen-head"><h2>⚠ 确认操作</h2></div>
+            <p className="event-text">{confirmAsk.text}</p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button className="primary" onClick={() => { confirmAsk.onOk(); setConfirmAsk(null) }}>{confirmAsk.okLabel ?? '确定'}</button>
+              <button onClick={() => setConfirmAsk(null)}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
       {screen === 'title' && (
         <div className="title-overlay">
           <div className="title-logo">黑苔公会</div>
@@ -1249,13 +1262,16 @@ export default function App() {
             </button>
             {saved && (
               <button
-                onClick={() => {
-                  if (!window.confirm('重新开始将清空当前进度，确定？')) return
-                  initAudio()
-                  clearGuildSave()
-                  restartGuild()
-                  setScreen('game')
-                }}
+                onClick={() => setConfirmAsk({
+                  text: '重新开始将清空当前进度，确定？',
+                  okLabel: '✦ 清空并重新开始',
+                  onOk: () => {
+                    initAudio()
+                    clearGuildSave()
+                    restartGuild()
+                    setScreen('game')
+                  },
+                })}
               >
                 ✦ 开始新公会
               </button>
@@ -1346,7 +1362,7 @@ export default function App() {
             快捷键:Q 王国委托 · C 花名册 · T 酒馆 · B 仓库 · N 基地 · J 大事记 · H 名人堂 · K 手册 · Esc 关闭
           </p>
           <div className="end-actions">
-            <button onClick={restartGuild}>☠ 重开公会</button>
+            <button onClick={() => setConfirmAsk({ text: '确定重开公会？所有英雄、装备与纪念堂记录将全部清空。', okLabel: '☠ 确认清空', onOk: () => restartGuild() })}>☠ 重开公会</button>
           </div>
           {pendingEvent && (
             <div className="screen-overlay event-overlay">
@@ -1393,7 +1409,7 @@ export default function App() {
                   </p>
             <p className="hint">
               {effectiveCooldown > 0
-                ? `招募冷却：完成 ${effectiveCooldown} 次远征后解除（上门访客不受影响）`
+                ? `招募冷却：完成 ${effectiveCooldown} 场战斗后解除（上门访客不受影响）`
                 : members.filter((m) => m.alive).length < 3
                   ? '⚠ 人手不足：紧急招募免冷却'
                   : '可招募'}
