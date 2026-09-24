@@ -56,7 +56,7 @@ export interface GuildEventDef {
   choices: EventChoice[]
 }
 
-// 试玩反馈④:回城事件率 0.45→0.3——"打完回城事件概率有点高";访客 roll 互斥不变
+// 试玩反馈④:回城事件率 0.45→0.3——「打完回城事件概率有点高」;访客 roll 互斥不变
 export const EVENT_CHANCE = 0.3
 
 export const GUILD_EVENTS: GuildEventDef[] = [
@@ -112,7 +112,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'drunk-map',
     title: '醉汉的地图',
-    text: '一个烂醉的瘦子兜售一张"藏宝图",开价 50 金。图上的字迹一半是酒嗝。',
+    text: '一个烂醉的瘦子兜售一张「藏宝图」,开价五十金。图上的字迹一半是酒嗝。',
     choices: [
       {
         text: '买下。万一是真的呢。',
@@ -125,7 +125,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '揭穿他。全酒馆都看着呢。',
         outcomes: [
           { weight: 6, text: '瘦子被赶了出去。掌柜的暗暗竖了个拇指——这酒馆的风气,公会有份儿。', effects: {} },
-          { weight: 4, text: '瘦子被赶了出去。角落里有老客嘀咕:"那图……去年我见过,是真的。"', effects: { moraleAll: -3 } },
+          { weight: 4, text: '瘦子被赶了出去。角落里有老客嘀咕:「那图……去年我见过,是真的。」', effects: { moraleAll: -3 } },
         ],
       },
     ],
@@ -145,8 +145,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '扭送军镇,领那份赏格。',
         outcomes: [
-          { weight: 6, text: '军镇付了 40 金的赏。他路过酒馆时看了你们一眼,什么也没说。', effects: { gold: 40, moraleAll: -5 } },
-          { weight: 4, text: '军镇加付了酒钱,感谢公会"维持了体面"。', effects: { gold: 55 } },
+          { weight: 6, text: '军镇付了四十金的赏。他路过酒馆时看了你们一眼,什么也没说。', effects: { gold: 40, moraleAll: -5 } },
+          { weight: 4, text: '军镇加付了酒钱,感谢公会「维持了体面」。', effects: { gold: 55 } },
         ],
       },
       {
@@ -160,19 +160,19 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'relic-escort',
     title: '祭司的圣物',
-    text: '修道院请你护送一件圣物回祠堂供奉,工钱之外,他们承诺"英灵会记得善行"。',
+    text: '修道院请你护送一件圣物回祠堂供奉,工钱之外,他们承诺「英灵会记得善行」。',
     choices: [
       {
         text: '接下,亲自护送。',
         outcomes: [
           { weight: 9, text: '圣物入祠那天,烛火无风自动。修道院没有食言。', effects: { blessing: 3, gold: 30 } },
-          { weight: 1, text: '圣物在半路摔裂了。修道院认为这是"英灵收下了它",照付不误。', effects: { blessing: 3 } },
+          { weight: 1, text: '圣物在半路摔裂了。修道院认为这是「英灵收下了它」,照付不误。', effects: { blessing: 3 } },
         ],
       },
       {
-        text: '接下,但把它"复刻"一份卖给收藏家。',
+        text: '接下,但把它「复刻」一份卖给收藏家。',
         outcomes: [
-          { weight: 5, text: '收藏家没验出来。120 金入账,祠堂里的蜡烛长得一模一样。', effects: { gold: 120 } },
+          { weight: 5, text: '收藏家没验出来。一百二十金入账,祠堂里的蜡烛长得一模一样。', effects: { gold: 120 } },
           { weight: 5, text: '收藏家是个行家。交易黄了,消息却传开了——最近酒馆的客人少了两桌。', effects: { gold: 40, moraleAll: -5 } },
         ],
       },
@@ -181,7 +181,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'healer-ointment',
     title: '郎中的药膏',
-    text: '走方郎中兜售"必愈药膏",宣称敷哪儿好哪儿。他推车上的瓶瓶罐罐确实不少。',
+    text: '走方郎中兜售「必愈药膏」,宣称敷哪儿好哪儿。他推车上的瓶瓶罐罐确实不少。',
     choices: [
       {
         text: '全员一人一罐。',
@@ -208,13 +208,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'night-knock',
     title: '夜半敲窗',
-    text: '三更天,酒馆后窗被轻轻敲响。窗外的人压着嗓子说:"他们在追我,开开窗。"',
+    text: '三更天,酒馆后窗被轻轻敲响。窗外的人压着嗓子说:「他们在追我,开开窗。」',
     choices: [
       {
         text: '开窗。',
         outcomes: [
           { weight: 6, text: '是个浑身湿透的佣兵,天亮前讲完了自己的故事,然后加入了你们。', effects: { recruit: true } },
-          { weight: 4, text: '追进来的人不依不饶。混乱中窗框碎了一地,还赔了邻居家 30 金。', effects: { gold: -30, moraleAll: -8 } },
+          { weight: 4, text: '追进来的人不依不饶。混乱中窗框碎了一地,还赔了邻居家三十金。', effects: { gold: -30, moraleAll: -8 } },
         ],
       },
       {
@@ -225,9 +225,9 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
       {
-        text: '报官,领一份"夜警"的辛苦钱。',
+        text: '报官,领一份「夜警」的辛苦钱。',
         outcomes: [
-          { weight: 10, text: '官差收了线报,丢下 20 金辛苦钱,没说抓没抓到。', effects: { gold: 20 } },
+          { weight: 10, text: '官差收了线报,丢下二十金辛苦钱,没说抓没抓到。', effects: { gold: 20 } },
         ],
       },
     ],
@@ -235,27 +235,27 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'old-debt',
     title: '旧识讨债',
-    text: '一位旧识拍着账本上门:公会初创时他垫过的账,连本带利 60 金,今天要个说法。',
+    text: '一位旧识拍着账本上门:公会初创时他垫过的账,连本带利六十金,今天要个说法。',
     choices: [
       {
         text: '还。有借有还,公会立身之本。',
         outcomes: [
-          { weight: 9, text: '账本合上,他反而没全拿,抽回两张说:"利息我不要,情我收下。"', effects: { gold: -40, moraleAll: 3 } },
-          { weight: 1, text: '全款结清。他在账本上盖了个"讫"字印,深藏功与名。', effects: { gold: -60 } },
+          { weight: 9, text: '账本合上,他反而没全拿,抽回两张说:「利息我不要,情我收下。」', effects: { gold: -40, moraleAll: 3 } },
+          { weight: 1, text: '全款结清。他在账本上盖了个「讫」字印,深藏功与名。', effects: { gold: -60 } },
         ],
       },
       {
         text: '赖。哪来的账?拿字据来。',
         outcomes: [
-          { weight: 6, text: '他真拿不出字据,骂骂咧咧走了。酒馆里有人小声说:"会长这样,啧。"', effects: { blessing: -2 } },
+          { weight: 6, text: '他真拿不出字据,骂骂咧咧走了。酒馆里有人小声说:「会长这样,啧。」', effects: { blessing: -2 } },
           { weight: 4, text: '他还真有字据。当着满堂酒客被按着还了钱,公会的脸面挂不住了。', effects: { gold: -60, moraleAll: -8 } },
         ],
       },
       {
-        text: '让最能打的去"谈谈"。',
+        text: '让最能打的去「谈谈」。',
         outcomes: [
           { weight: 5, text: '谈得很好。非常非常好。他撕了账本,鞠了一躬。', effects: {} },
-          { weight: 5, text: '"谈谈"变成了动手,公会被罚 100 金赔药费——这事传得比什么都快。', effects: { gold: -100, moraleAll: -6 } },
+          { weight: 5, text: '「谈谈」变成了动手,公会被罚一百金赔药费——这事传得比什么都快。', effects: { gold: -100, moraleAll: -6 } },
         ],
       },
     ],
@@ -290,12 +290,12 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'noble-duel',
     title: '贵族的决斗',
-    text: '一位贵族出 80 金,请公会派一人作为他决斗的"护卫替补"。明眼人都知道,替补就是挨刀的。',
+    text: '一位贵族出八十金,请公会派一人作为他决斗的「护卫替补」。明眼人都知道,替补就是挨刀的。',
     choices: [
       {
         text: '派人去。挨刀也拿钱。',
         outcomes: [
-          { weight: 7, text: '贵族的对手技不如人,替补全程没挨一下,80 金到手还看了场好戏。', effects: { gold: 80, moraleAll: 3 } },
+          { weight: 7, text: '贵族的对手技不如人,替补全程没挨一下,八十金到手还看了场好戏。', effects: { gold: 80, moraleAll: 3 } },
           { weight: 3, text: '对面是个疯子。替补挂了彩回来,金子倒是没少。', effects: { gold: 80, injure: true } },
         ],
       },
@@ -315,7 +315,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '让牧师查查——这事邪性,得用正路子对。',
         outcomes: [
-          { weight: 6, text: '牧师寻着味找到一丛"眠妄花",一把火烧了。那晚之后,营地前所未有地安稳。', effects: { blessing: 2, moraleAll: 5 } },
+          { weight: 6, text: '牧师寻着味找到一丛「眠妄花」,一把火烧了。那晚之后,营地前所未有地安稳。', effects: { blessing: 2, moraleAll: 5 } },
           { weight: 4, text: '花丛深处盘着一条白花花的蛇皮。牧师说,烧它的时候,林子里有什么叹了口气。', effects: { blessing: 1 } },
         ],
       },
@@ -329,7 +329,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '换营地。惹不起,躲得起。',
         outcomes: [
-          { weight: 10, text: '新营地的蚊子比异香难缠得多,但至少能睡着觉。20 金的酒洒在了搬家路上。', effects: { gold: -20 } },
+          { weight: 10, text: '新营地的蚊子比异香难缠得多,但至少能睡着觉。二十金的酒洒在了搬家路上。', effects: { gold: -20 } },
         ],
       },
     ],
@@ -337,13 +337,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'cursed-statue',
     title: '遗迹的雕像',
-    text: '遗迹深处立着一尊石像,无论站在哪个角度,它都在"注视"你。石像底座刻着:"携我者,偿我愿。"',
+    text: '遗迹深处立着一尊石像,无论站在哪个角度,它都在「注视」你。石像底座刻着:「携我者,偿我愿。」',
     choices: [
       {
-        text: '带回公会。它的"愿"说不定值钱。',
+        text: '带回公会。它的「愿」说不定值钱。',
         outcomes: [
-          { weight: 5, text: '收藏家当场开出 150 金。搬运的兄弟们全程汗毛倒竖,但钱是真的。', effects: { gold: 150 } },
-          { weight: 5, text: '石像入夜后发出磨牙般的声响。祠堂长老看了一眼,连夜让人沉了塘,还收了 3 缕香灰"压惊"。', effects: { blessing: -3 } },
+          { weight: 5, text: '收藏家当场开出一百五十金。搬运的兄弟们全程汗毛倒竖,但钱是真的。', effects: { gold: 150 } },
+          { weight: 5, text: '石像入夜后发出磨牙般的声响。祠堂长老看了一眼,连夜让人沉了塘,还收了三缕香灰「压惊」。', effects: { blessing: -3 } },
         ],
       },
       {
@@ -364,7 +364,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'fisherman-tribute',
     title: '河湾的水鬼',
-    text: '渔村凑了 60 金请公会除掉河湾里的"水鬼"——半年来它拖走了三张渔网,和一个醉汉。',
+    text: '渔村凑了六十金请公会除掉河湾里的「水鬼」——半年来它拖走了三张渔网,和一个醉汉。',
     choices: [
       {
         text: '先潜下去看清楚再动手。',
@@ -377,7 +377,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '把河湾围了,箭雨伺候。',
         outcomes: [
           { weight: 7, text: '箭雨过后,河面浮起来的东西让渔村集体噤了声——那不是水獭。尾款照付,只是没人再提这件事。', effects: { gold: 60, blessing: 1 } },
-          { weight: 3, text: '箭矢白白消耗了一下午,什么也没打中。渔村觉得 60 金花得冤,砍成了 30。', effects: { gold: 30 } },
+          { weight: 3, text: '箭矢白白消耗了一下午,什么也没打中。渔村觉得六十金花得冤,砍成了 30。', effects: { gold: 30 } },
         ],
       },
       {
@@ -391,7 +391,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'twin-bounties',
     title: '一颗头的两份悬赏',
-    text: '军镇贴出 100 金悬赏捉拿逃犯"独眼科尔"。当晚,死者的遗孀也找上门,出 80 金,只求"再也见不到他"。要的是同一个人。',
+    text: '军镇贴出一百金悬赏捉拿逃犯「独眼科尔」。当晚,死者的遗孀也找上门,出八十金,只求「再也见不到他」。要的是同一个人。',
     choices: [
       {
         text: '交给军镇。王法归王法。',
@@ -403,7 +403,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '交给遗孀。恩怨归恩怨。',
         outcomes: [
-          { weight: 6, text: '她只问了一句话,然后在雪地里哭到天亮。80 金用旧布包着,还带着灶台的温度。', effects: { gold: 80, moraleAll: 5 } },
+          { weight: 6, text: '她只问了一句话,然后在雪地里哭到天亮。八十金用旧布包着,还带着灶台的温度。', effects: { gold: 80, moraleAll: 5 } },
           { weight: 4, text: '军镇嗅出了味道:悬赏作废不说,公会的名字被记进了某本册子。', effects: { gold: 80, moraleAll: -2 } },
         ],
       },
@@ -424,7 +424,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '给酒钱,再给个火炉边的位置。',
         outcomes: [
           { weight: 7, text: '他喝完酒,用断刀在泥地上给新兵比划了一套防身架势。行家,是行家。', effects: { gold: -10, expAll: 30 } },
-          { weight: 3, text: '酒钱他收了,架势没比划。第二天人走了,泥地上留着半截刀,和一行歪歪扭扭的"多谢"。', effects: { gold: -10, moraleAll: 3 } },
+          { weight: 3, text: '酒钱他收了,架势没比划。第二天人走了,泥地上留着半截刀,和一行歪歪扭扭的「多谢」。', effects: { gold: -10, moraleAll: 3 } },
         ],
       },
       {
@@ -445,26 +445,26 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'tax-collector',
     title: '税吏的算盘',
-    text: '王国税吏抱着账册上门,说公会去年的"战利品折算"少报了,补缴 60 金——数目他"大概估的"。',
+    text: '王国税吏抱着账册上门,说公会去年的「战利品折算」少报了,补缴六十金——数目他「大概估的」。',
     choices: [
       {
         text: '如数补缴,买个清净。',
         outcomes: [
-          { weight: 10, text: '税吏盖章走人,临走压低声音:"其实还有三家没你们痛快。"', effects: { gold: -60 } },
+          { weight: 10, text: '税吏盖章走人,临走压低声音:「其实还有三家没你们痛快。」', effects: { gold: -60 } },
         ],
       },
       {
-        text: '请他喝酒,慢慢"核对"。',
+        text: '请他喝酒,慢慢「核对」。',
         outcomes: [
-          { weight: 6, text: '三坛酒下肚,数目变成了 20 金,还附赠一条消息:下季度要开新税。', effects: { gold: -20 } },
+          { weight: 6, text: '三坛酒下肚,数目变成了二十金,还附赠一条消息:下季度要开新税。', effects: { gold: -20 } },
           { weight: 4, text: '酒喝了不少,账却越核越多——他把酒钱也算了进去。', effects: { gold: -80, moraleAll: -3 } },
         ],
       },
       {
         text: '藏起账本,就说烧了。',
         outcomes: [
-          { weight: 5, text: '他信了,或者懒得深究,记了笔"凭证灭失"便走了。', effects: {} },
-          { weight: 5, text: '王法不讲情面:罚金 130 金,外加满酒馆的围观。公会的脸面和金袋一起瘪了。', effects: { gold: -130, moraleAll: -6 } },
+          { weight: 5, text: '他信了,或者懒得深究,记了笔「凭证灭失」便走了。', effects: {} },
+          { weight: 5, text: '王法不讲情面:罚金一百三十金,外加满酒馆的围观。公会的脸面和金袋一起瘪了。', effects: { gold: -130, moraleAll: -6 } },
         ],
       },
     ],
@@ -472,7 +472,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'moonshine-still',
     title: '山那边的私酿',
-    text: '酒馆掌柜私下抱怨:山里的私酿坊抢了他三成生意,愿出 40 金请公会"顺路举报"。而弟兄们上周刚喝过那私酿——确实好酒。',
+    text: '酒馆掌柜私下抱怨:山里的私酿坊抢了他三成生意,愿出四十金请公会「顺路举报」。而弟兄们上周刚喝过那私酿——确实好酒。',
     choices: [
       {
         text: '收钱办事,举报。',
@@ -483,13 +483,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '不掺和,再买两坛。',
         outcomes: [
-          { weight: 10, text: '私酿坊听闻风声,给公会送了两坛"封口酒"。酒好,话少。', effects: { gold: -20, moraleAll: 6 } },
+          { weight: 10, text: '私酿坊听闻风声,给公会送了两坛「封口酒」。酒好,话少。', effects: { gold: -20, moraleAll: 6 } },
         ],
       },
       {
         text: '劝掌柜和酿坊合营。',
         outcomes: [
-          { weight: 5, text: '谈成了。掌柜管卖,酿坊管酿,公会拿了笔"引荐费",三方都请了客。', effects: { gold: 70, moraleAll: 3 } },
+          { weight: 5, text: '谈成了。掌柜管卖,酿坊管酿,公会拿了笔「引荐费」,三方都请了客。', effects: { gold: 70, moraleAll: 3 } },
           { weight: 5, text: '两家当场翻脸,连带着都觉得公会多事。这个月的酒钱,两边都不肯赊了。', effects: { moraleAll: -3 } },
         ],
       },
@@ -503,8 +503,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '卖给收藏家。',
         outcomes: [
-          { weight: 7, text: '收藏家翻来覆去看了半天,痛快付了 130 金。据说他往后的夜里也睡不好,但那不关我们的事了。', effects: { gold: 130 } },
-          { weight: 3, text: '买家是行家,验出剑上"缠着旧誓"。钱给得少,话还难听——"公会不挑食啊。"', effects: { gold: 60, moraleAll: -3 } },
+          { weight: 7, text: '收藏家翻来覆去看了半天,痛快付了一百三十金。据说他往后的夜里也睡不好,但那不关我们的事了。', effects: { gold: 130 } },
+          { weight: 3, text: '买家是行家,验出剑上「缠着旧誓」。钱给得少,话还难听——「公会不挑食啊。」', effects: { gold: 60, moraleAll: -3 } },
         ],
       },
       {
@@ -517,7 +517,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '熔了打农具,卖给开春的村子。',
         outcomes: [
-          { weight: 10, text: '炉火正旺,那点嗡嗡声再也没人听见。农具卖了 45 金,村里开春的犁也有着落了。', effects: { gold: 45, moraleAll: 3 } },
+          { weight: 10, text: '炉火正旺,那点嗡嗡声再也没人听见。农具卖了四十五金,村里开春的犁也有着落了。', effects: { gold: 45, moraleAll: 3 } },
         ],
       },
     ],
@@ -538,14 +538,14 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '只取回公会寄存的那部分,其余烧了省事。',
         outcomes: [
           { weight: 7, text: '火烧起来的时候,山道上狼嚎一片。尾款折半,省下的脚钱也算钱。', effects: { gold: 30 } },
-          { weight: 3, text: '烧货的烟引来一支巡山税队,好说歹说才解释清"不是走私"。30 金辛苦钱全填了"通融费"。', effects: {} },
+          { weight: 3, text: '烧货的烟引来一支巡山税队,好说歹说才解释清「不是走私」。三十金辛苦钱全填了「通融费」。', effects: {} },
         ],
       },
       {
         text: '不管了,就当喂了狼。',
         outcomes: [
-          { weight: 4, text: '半个月后,失联的雇主自己找上门,不光付清尾款还加了两成"赔罪钱"——他躲进山里,躲过了仇家。', effects: { gold: 75, moraleAll: 3 } },
-          { weight: 6, text: '货和尾款一起喂了狼。酒馆里有人替你们惋惜,也有人觉得"早说了那老板不靠谱"。', effects: {} },
+          { weight: 4, text: '半个月后,失联的雇主自己找上门,不光付清尾款还加了两成「赔罪钱」——他躲进山里,躲过了仇家。', effects: { gold: 75, moraleAll: 3 } },
+          { weight: 6, text: '货和尾款一起喂了狼。酒馆里有人替你们惋惜,也有人觉得「早说了那老板不靠谱」。', effects: {} },
         ],
       },
     ],
@@ -553,26 +553,26 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'rival-defector',
     title: '灰隼的副团长',
-    text: '死对头"灰隼佣团"的副团长深夜到访,想带着账册和两名老兵投奔你们——"灰隼克扣抚恤,弟兄们寒了心。"',
+    text: '死对头「灰隼佣团」的副团长深夜到访,想带着账册和两名老兵投奔你们——「灰隼克扣抚恤,弟兄们寒了心。」',
     choices: [
       {
         text: '收下,人和账册都要。',
         outcomes: [
           { weight: 6, text: '老兵能打,账册干净,副团长交了投名状。灰隼那边气得跳脚。', effects: { gold: -30, recruit: true, moraleAll: 3 } },
-          { weight: 4, text: '灰隼的团长找上门,指着鼻子骂"收留叛徒"。人是留下了——只是账册怎么都对不上总账。', effects: { gold: -30, recruit: true, moraleAll: -3 } },
+          { weight: 4, text: '灰隼的团长找上门,指着鼻子骂「收留叛徒」。人是留下了——只是账册怎么都对不上总账。', effects: { gold: -30, recruit: true, moraleAll: -3 } },
         ],
       },
       {
-        text: '送走人,把"克扣抚恤"捅给军镇。',
+        text: '送走人,把「克扣抚恤」捅给军镇。',
         outcomes: [
-          { weight: 8, text: '军镇立案,灰隼被罚得肉疼,公会在佣兵堆里的名声悄悄涨了一截。线人赏 60 金。', effects: { gold: 60, moraleAll: 4 } },
-          { weight: 4, text: '军镇收了状子,转头把消息卖回给灰隼。副团长连夜逃去南边,临走托人留话:"黑苔,也不过如此。"', effects: { moraleAll: -4 } },
+          { weight: 8, text: '军镇立案,灰隼被罚得肉疼,公会在佣兵堆里的名声悄悄涨了一截。线人赏六十金。', effects: { gold: 60, moraleAll: 4 } },
+          { weight: 4, text: '军镇收了状子,转头把消息卖回给灰隼。副团长连夜逃去南边,临走托人留话:「黑苔,也不过如此。」', effects: { moraleAll: -4 } },
         ],
       },
       {
         text: '拒之门外,是非别沾。',
         outcomes: [
-          { weight: 10, text: '他在门外的雨里站了一会儿,压低头巾走进雨幕。会长关上门时说了句"对不住"——也可能只是心里说说。', effects: { moraleAll: 2 } },
+          { weight: 10, text: '他在门外的雨里站了一会儿,压低头巾走进雨幕。会长关上门时说了句「对不住」——也可能只是心里说说。', effects: { moraleAll: 2 } },
         ],
       },
     ],
@@ -580,19 +580,19 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'midwife-night',
     title: '雪夜三十金',
-    text: '后半夜砸门:村里产婆难产,丈夫跪在雪里,掏出全部家当 30 金,只求有人翻山去邻镇取药——单程两个时辰,风雪没停。',
+    text: '后半夜砸门:村里产婆难产,丈夫跪在雪里,掏出全部家当三十金,只求有人翻山去邻镇取药——单程两个时辰,风雪没停。',
     choices: [
       {
         text: '让脚最快的去,火把多带两支。',
         outcomes: [
-          { weight: 8, text: '药在鸡叫头遍前赶到了。孩子落地时的哭声,据说半个村子都听见了。30 金他们非要塞,收了。', effects: { gold: 30, moraleAll: 8, expAll: 20 } },
+          { weight: 8, text: '药在鸡叫头遍前赶到了。孩子落地时的哭声,据说半个村子都听见了。三十金他们非要塞,收了。', effects: { gold: 30, moraleAll: 8, expAll: 20 } },
           { weight: 2, text: '风雪太急,取药的人在山脊上滚了一跤,药瓶碎了两支——剩下的刚好够用。人和药都到了。', effects: { gold: 30, injure: true, moraleAll: 5 } },
         ],
       },
       {
         text: '全队点起火把,护送着去。',
         outcomes: [
-          { weight: 10, text: '火把在雪山上排成一条线。药到了,人也都回来了。那晚之后,"黑苔"在村里是个带着热气的词。', effects: { gold: 30, moraleAll: 5 } },
+          { weight: 10, text: '火把在雪山上排成一条线。药到了,人也都回来了。那晚之后,「黑苔」在村里是个带着热气的词。', effects: { gold: 30, moraleAll: 5 } },
         ],
       },
       {
@@ -607,13 +607,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'tower-shard',
     title: '会发光的碎片',
-    text: '一个山人兜售从黑苔高塔外围捡的"碎片",说贴身戴着,夜夜梦见战死的袍泽对自己笑。碎片确实在微光里一明一暗。',
+    text: '一个山人兜售从黑苔高塔外围捡的「碎片」,说贴身戴着,夜夜梦见战死的袍泽对自己笑。碎片确实在微光里一明一暗。',
     choices: [
       {
         text: '买下来,送修道院鉴定。',
         outcomes: [
-          { weight: 6, text: '长老看了一眼就用黄布裹住:"这是塔里没走完的人留下的东西。"鉴定费 20 金,换回一句"英灵安了"。', effects: { gold: -20, blessing: 2 } },
-          { weight: 4, text: '碎片在祠堂过夜时哭了一宿。长老把它沉了塘,没收钱,只说"这钱留着买香"。', effects: { gold: -20, moraleAll: -4 } },
+          { weight: 6, text: '长老看了一眼就用黄布裹住:「这是塔里没走完的人留下的东西。」鉴定费二十金,换回一句「英灵安了」。', effects: { gold: -20, blessing: 2 } },
+          { weight: 4, text: '碎片在祠堂过夜时哭了一宿。长老把它沉了塘,没收钱,只说「这钱留着买香」。', effects: { gold: -20, moraleAll: -4 } },
         ],
       },
       {
@@ -626,7 +626,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '买下来,自己戴。',
         outcomes: [
           { weight: 5, text: '连着一周,你梦见高塔每一层的门都开着。第七天,碎片不亮了——你莫名松了口气。', effects: { gold: -50, blessing: 3 } },
-          { weight: 5, text: '噩梦缠了半个月,酒馆里都说会长"脸色比塔还青"。碎片最后沉了塘,50 金打了个水漂。', effects: { gold: -50, moraleAll: -6 } },
+          { weight: 5, text: '噩梦缠了半个月,酒馆里都说会长「脸色比塔还青」。碎片最后沉了塘,五十金打了个水漂。', effects: { gold: -50, moraleAll: -6 } },
         ],
       },
     ],
@@ -634,7 +634,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'harvest-hands',
     title: '收割的三天',
-    text: '秋收正忙,村长来问:公会能否派几个人帮工三天?工钱微薄,但"管饭,管饱,新米酿的酒管够"。',
+    text: '秋收正忙,村长来问:公会能否派几个人帮工三天?工钱微薄,但「管饭,管饱,新米酿的酒管够」。',
     choices: [
       {
         text: '派新兵去,就当操练。',
@@ -651,7 +651,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '把库房旧农具打包送去,抵个情分。',
         outcomes: [
-          { weight: 10, text: '村长扛着农具连声道谢。修道院听说了此事,罕见地主动送来 2 缕英灵香灰:"善行,英灵记得。"', effects: { gold: -20, blessing: 2 } },
+          { weight: 10, text: '村长扛着农具连声道谢。修道院听说了此事,罕见地主动送来 2 缕英灵香灰:「善行,英灵记得。」', effects: { gold: -20, blessing: 2 } },
         ],
       },
     ],
@@ -659,7 +659,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'plague-village',
     title: '疫病村的门',
-    text: '邻村发热病蔓延。修道院征人手去隔离区协助,承诺"英灵会记得";药商同时开出高价:去收购病人家贱卖的田产地契。',
+    text: '邻村发热病蔓延。修道院征人手去隔离区协助,承诺「英灵会记得」;药商同时开出高价:去收购病人家贱卖的田产地契。',
     choices: [
       {
         text: '接修道院的活,派人进隔离区。',
@@ -671,7 +671,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '接药商的活,收地契。',
         outcomes: [
-          { weight: 6, text: '低价吃进的田产转手赚了 140 金。只是后来路过那个村,弟兄们都不肯多看路边一眼。', effects: { gold: 140, moraleAll: -6 } },
+          { weight: 6, text: '低价吃进的田产转手赚了一百四十金。只是后来路过那个村,弟兄们都不肯多看路边一眼。', effects: { gold: 140, moraleAll: -6 } },
           { weight: 4, text: '热病蔓延得比想象快,收上来的地契一半成了废纸——村子没了,地还在,可没人敢去种。', effects: { gold: 40, moraleAll: -3 } },
         ],
       },
@@ -686,7 +686,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'peddler-potions',
     title: '行脚药贩',
-    text: '一个背着半人高木箱的行脚药贩在酒馆门口支起摊子,嗓音沙哑:"行军药膏,亲测有效——便宜一半,别问来路。"木箱上爬着细小的白霜,在秋日里不化。',
+    text: '一个背着半人高木箱的行脚药贩在酒馆门口支起摊子,嗓音沙哑:「行军药膏,亲测有效——便宜一半,别问来路。」木箱上爬着细小的白霜,在秋日里不化。',
     choices: [
       {
         text: '便宜一半,要了。药效才是硬道理。',
@@ -699,7 +699,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '不买来路不明的东西,把他轰走。',
         outcomes: [
           { weight: 7, text: '药贩骂骂咧咧地收拾摊子。他的木箱在门槛上磕了一下,洒出的霜粉把地砖蚀出一个小坑。', effects: {} },
-          { weight: 3, text: '轰走药贩的当晚,有队员偷偷溜出去追他。回来时手里多了两罐正经药,和一句"他其实人不坏"。', effects: { potionHeal: 2 } },
+          { weight: 3, text: '轰走药贩的当晚,有队员偷偷溜出去追他。回来时手里多了两罐正经药,和一句「他其实人不坏」。', effects: { potionHeal: 2 } },
         ],
       },
     ],
@@ -720,7 +720,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '药还回来,放她走,再送她一瓶。',
         outcomes: [
           { weight: 6, text: '女人磕了个头,抱着药跑了。一周后矿道镇捎来消息:孩子的烧退了。公会的药柜里,少的那一瓶有了去处。', effects: { potionHeal: -1, moraleAll: 6 } },
-          { weight: 4, text: '女人走后,守夜队员嘀咕:"下回别人有样学样怎么办?"你发现他说得对——当月仓库又少了两瓶。', effects: { potionHeal: -2, moraleAll: -2 } },
+          { weight: 4, text: '女人走后,守夜队员嘀咕:「下回别人有样学样怎么办?」你发现他说得对——当月仓库又少了两瓶。', effects: { potionHeal: -2, moraleAll: -2 } },
         ],
       },
     ],
@@ -728,20 +728,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'frost-envoy',
     title: '白霜的信使',
-    text: '一个嘴唇冻成青色的信使带来了白霜墓园的信:织法者们愿意付钱,只求公会不要再接去墓园的委托。"死者需要安静。"信纸落款处的名字,全是你葬送在那里的旧敌。',
+    text: '一个嘴唇冻成青色的信使带来了白霜墓园的信:织法者们愿意付钱,只求公会不要再接去墓园的委托。「死者需要安静。」信纸落款处的名字,全是你葬送在那里的旧敌。',
     choices: [
       {
         text: '收钱,暂停墓园委托。',
         outcomes: [
           { weight: 6, text: '金子是真的,而且很沉。但下一个来委托扫墓的遗族,你们没脸接。', effects: { gold: 150, moraleAll: -4 } },
-          { weight: 4, text: '收钱的事被酒馆传成"黑苔收了死人的封口费"。来的委托少了一半,来的目光重了一倍。', effects: { gold: 150, moraleAll: -8 } },
+          { weight: 4, text: '收钱的事被酒馆传成「黑苔收了死人的封口费」。来的委托少了一半,来的目光重了一倍。', effects: { gold: 150, moraleAll: -8 } },
         ],
       },
       {
         text: '把信原样退回。佣兵不看死人的脸色。',
         outcomes: [
           { weight: 7, text: '信退回去的当夜,公会屋檐挂了一层不合时令的霜。早上化了,什么也没发生——大概。', effects: { moraleAll: 3 } },
-          { weight: 3, text: '一周后,常客里最沉默的游侠不告而别,只留下一句"我不想葬在那种地方"。', effects: { moraleAll: -6 } },
+          { weight: 3, text: '一周后,常客里最沉默的游侠不告而别,只留下一句「我不想葬在那种地方」。', effects: { moraleAll: -6 } },
         ],
       },
     ],
@@ -749,20 +749,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'abyss-preacher',
     title: '渊底的传教士',
-    text: '一个穿深袍的传教士在酒馆后巷布道,听众多是输光了的佣兵。他说渊底能让人"忘掉输掉的一切"。有人劝你们管管——也有人已经在问他入教的事。',
+    text: '一个穿深袍的传教士在酒馆后巷布道,听众多是输光了的佣兵。他说渊底能让人「忘掉输掉的一切」。有人劝你们管管——也有人已经在问他入教的事。',
     choices: [
       {
         text: '赶人。输光的人不该输掉别的。',
         outcomes: [
           { weight: 6, text: '传教士被请走了。听讲的佣兵们骂骂咧咧,但三天后,有两个人回来问你还有没有活干。', effects: { moraleAll: 5 } },
-          { weight: 4, text: '传教士临走留下一句:"主教会记住这份热情。"渊底祭坛方向的夜空,此后总有一线暗红。', effects: {} },
+          { weight: 4, text: '传教士临走留下一句:「主教会记住这份热情。」渊底祭坛方向的夜空,此后总有一线暗红。', effects: {} },
         ],
       },
       {
-        text: '睁一只眼闭一只眼,收下他留的"香火钱"。',
+        text: '睁一只眼闭一只眼,收下他留的「香火钱」。',
         outcomes: [
           { weight: 5, text: '香火钱很厚。酒馆照常开门,只是角落里多了几个眼睛发直的人,他们后来委托时也不再多问价钱。', effects: { gold: 100, moraleAll: -4 } },
-          { weight: 5, text: '香火钱很厚。但当月公会的工资桌上,有人开始把酬金分出一半"献给渊底"。', effects: { gold: 100, moraleAll: -6 } },
+          { weight: 5, text: '香火钱很厚。但当月公会的工资桌上,有人开始把酬金分出一半「献给渊底」。', effects: { gold: 100, moraleAll: -6 } },
         ],
       },
     ],
@@ -770,7 +770,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'veteran-legacy',
     title: '老兵的遗产',
-    text: '一个拄拐的退役佣兵被邻居发现死在屋里。邻居说,老人临终前一直念叨"黑苔"——三十年前他在这里当过队长。他没有任何亲人。',
+    text: '一个拄拐的退役佣兵被邻居发现死在屋里。邻居说,老人临终前一直念叨「黑苔」——三十年前他在这里当过队长。他没有任何亲人。',
     choices: [
       {
         text: '出钱办丧事,把他的旧剑挂在堂前。',
@@ -783,7 +783,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '公会是做生意的地方。让镇上收容所料理吧。',
         outcomes: [
           { weight: 8, text: '收容所草草葬了他。没人怪公会——佣兵死在床上已经是福气。只是酒馆那面挂剑的墙,一直空着。', effects: {} },
-          { weight: 2, text: '老人队里活到最后的一个人找上门来,把一枚旧徽章拍在桌上:"他要是知道,会比死了更难受。"说完就走了。', effects: { moraleAll: -6 } },
+          { weight: 2, text: '老人队里活到最后的一个人找上门来,把一枚旧徽章拍在桌上:「他要是知道,会比死了更难受。」说完就走了。', effects: { moraleAll: -6 } },
         ],
       },
     ],
@@ -791,10 +791,10 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'tax-convoy',
     title: '税官的车队',
-    text: '河湾村的村长找上门:税官的车队后天经过,课的是"灾年免不了"的重税。村里凑不出钱,凑得出二十个壮丁——和一份体面的报酬。',
+    text: '河湾村的村长找上门:税官的车队后天经过,课的是「灾年免不了」的重税。村里凑不出钱,凑得出二十个壮丁——和一份体面的报酬。',
     choices: [
       {
-        text: '接下。车队在渡口"遇上山洪"。',
+        text: '接下。车队在渡口「遇上山洪」。',
         outcomes: [
           { weight: 5, text: '车队折返,税册泡烂了。村长付的钱里混着嫁妆银镯,你们谁也没说破。', effects: { gold: 110, moraleAll: 6 } },
           { weight: 5, text: '车队折返,但护卫里有行家,认出了斧口的走向。镇上传言税官在攒一支讨伐队。', effects: { gold: 110, moraleAll: -3 } },
@@ -804,7 +804,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '反过来接税官的镖:灾年是灾年,规矩是规矩。',
         outcomes: [
           { weight: 6, text: '车队平安过境。税官多付了酬金,村长在你们路过时往地上啐了一口。', effects: { gold: 80, moraleAll: -5 } },
-          { weight: 4, text: '车队平安过境。一个月后税官荐来一桩肥活——护送秋税。"墙头草"的名声,有时候也值钱。', effects: { gold: 130 } },
+          { weight: 4, text: '车队平安过境。一个月后税官荐来一桩肥活——护送秋税。「墙头草」的名声,有时候也值钱。', effects: { gold: 130 } },
         ],
       },
     ],
@@ -812,12 +812,12 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'mining-strike',
     title: '矿工的请愿',
-    text: '锈坑矿道的矿工们联名请愿:公会一直在给"换掉他们"的裸井队做护卫。他们不求公会倒戈,只求别再接那种活。',
+    text: '锈坑矿道的矿工们联名请愿:公会一直在给「换掉他们」的裸井队做护卫。他们不求公会倒戈,只求别再接那种活。',
     choices: [
       {
         text: '答应。矿道的死人已经够多了。',
         outcomes: [
-          { weight: 6, text: '矿工们凑了份子钱,还把矿道深处一条"没被掘锚啃过"的支脉画给了你们。', effects: { gold: 60, moraleAll: 6 } },
+          { weight: 6, text: '矿工们凑了份子钱,还把矿道深处一条「没被掘锚啃过」的支脉画给了你们。', effects: { gold: 60, moraleAll: 6 } },
           { weight: 4, text: '裸井队转头雇了别家护卫,矿上打死人的事当月就出了。矿工们的感谢是真的,却救不了谁。', effects: { moraleAll: 3 } },
         ],
       },
@@ -833,20 +833,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'wandering-bard',
     title: '写歌的人',
-    text: '一个吟游诗人愿意为公会写一首长歌,代价是食宿一个月,"和讲真话的权利"。他说歌要是写成了,黑苔的名声能传到公国边境。',
+    text: '一个吟游诗人愿意为公会写一首长歌,代价是食宿一个月,「和讲真话的权利」。他说歌要是写成了,黑苔的名声能传到公国边境。',
     choices: [
       {
         text: '管吃管住,随他写。',
         outcomes: [
           { weight: 5, text: '歌写成了,连你们卖过命又被人赖账的破事都写了。奇怪的是,听过的没人嘲笑——真话有真话的分量。', effects: { gold: -40, moraleAll: 8 } },
-          { weight: 5, text: '歌写成了,把某位阵亡队员唱成了"被公会辜负的英雄"。客人们听得眼眶发红,队员们听得脸色发青。', effects: { gold: -40, moraleAll: -4, expAll: 20 } },
+          { weight: 5, text: '歌写成了,把某位阵亡队员唱成了「被公会辜负的英雄」。客人们听得眼眶发红,队员们听得脸色发青。', effects: { gold: -40, moraleAll: -4, expAll: 20 } },
         ],
       },
       {
         text: '付费定制:只写光荣的部分。',
         outcomes: [
           { weight: 6, text: '定制的颂歌朗朗上口,就是没什么人记第二句。名声这东西,含金量果然和价钱成正比。', effects: { gold: -70 } },
-          { weight: 4, text: '诗人收了定金,写出一首完美的颂歌。临走时他说:"好的部分我写得很好。别的那部分,总会有人写的。"', effects: { gold: -70, moraleAll: -2 } },
+          { weight: 4, text: '诗人收了定金,写出一首完美的颂歌。临走时他说:「好的部分我写得很好。别的那部分,总会有人写的。」', effects: { gold: -70, moraleAll: -2 } },
         ],
       },
     ],
@@ -854,12 +854,12 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'snow-caravan',
     title: '雪困的商队',
-    text: '急报:一支商队困在白霜墓园外的雪坡上,看守的人手被"会走路的冰雕"冲散。货主开出的救援价很高——高到说明他清楚那些冰雕是什么。',
+    text: '急报:一支商队困在白霜墓园外的雪坡上,看守的人手被「会走路的冰雕」冲散。货主开出的救援价很高——高到说明他清楚那些冰雕是什么。',
     choices: [
       {
         text: '连夜出发。人是真的会冻死。',
         outcomes: [
-          { weight: 5, text: '人救回来了,货也带回来了。货主按约付钱,还多给了一箱"路上驱寒"的药酒。', effects: { gold: 120, potionHeal: 1, moraleAll: 6 } },
+          { weight: 5, text: '人救回来了,货也带回来了。货主按约付钱,还多给了一箱「路上驱寒」的药酒。', effects: { gold: 120, potionHeal: 1, moraleAll: 6 } },
           { weight: 5, text: '人救回来了。归途中队伍被霜狼盯了两天两夜,回城时每个人都瘦了一圈。货主只按货付钱。', effects: { gold: 120, moraleAll: -3, injure: true } },
         ],
       },
@@ -875,7 +875,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'cursed-grimoire',
     title: '拾来的经书',
-    text: '一个采药孩子挖到一本用皮封面的书,拿到公会想换两个面包。识字的队员翻了两页就合上了:那不是经书,是"说明书"——教你如何给伤口做"不会好的包扎"。',
+    text: '一个采药孩子挖到一本用皮封面的书,拿到公会想换两个面包。识字的队员翻了两页就合上了:那不是经书,是「说明书」——教你如何给伤口做「不会好的包扎」。',
     choices: [
       {
         text: '烧掉,给孩子两个面包和一句夸奖。',
@@ -896,7 +896,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'arena-invite',
     title: '斗技场的请柬',
-    text: '邻镇斗技场送来烫金请柬:邀请"黑苔的勇士们"参加表演赛,胜方奖金丰厚,观众就爱看真佣兵。请柬背面用小字写着:死伤自负。',
+    text: '邻镇斗技场送来烫金请柬:邀请「黑苔的勇士们」参加表演赛,胜方奖金丰厚,观众就爱看真佣兵。请柬背面用小字写着:死伤自负。',
     choices: [
       {
         text: '去。赚钱和扬名,一趟全有了。',
@@ -908,7 +908,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '不去。佣兵的剑不为取悦人出鞘。',
         outcomes: [
-          { weight: 6, text: '请柬退了回去。斗技场后来办的那场,主演的是"黑苔风格的佣兵"——一群舞台武行。听说票卖得不错。', effects: { moraleAll: 3 } },
+          { weight: 6, text: '请柬退了回去。斗技场后来办的那场,主演的是「黑苔风格的佣兵」——一群舞台武行。听说票卖得不错。', effects: { moraleAll: 3 } },
           { weight: 4, text: '请柬退了回去。年轻队员们私下嘀咕了一阵子,但下次操练,没人缺席。', effects: { expAll: 15 } },
         ],
       },
@@ -917,20 +917,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'great-contract',
     title: '压垮桌子的大单',
-    text: '一位侯爵的管家带来一份长约:全公会整编听调三个月,扫清领地内所有"不安定因素"。报酬是一年的进项。管家补了一句:"包括那些不方便走法庭的。"',
+    text: '一位侯爵的管家带来一份长约:全公会整编听调三个月,扫清领地内所有「不安定因素」。报酬是一年的进项。管家补了一句:「包括那些不方便走法庭的。」',
     choices: [
       {
         text: '接。一年进项,三个月脏活,公道自在人心。',
         outcomes: [
           { weight: 4, text: '活干完了,钱货两清。只是这三个月里干的事,队员们在酒桌上换了个讲法,又换了个讲法。', effects: { gold: 220, moraleAll: -6 } },
-          { weight: 6, text: '干到第二个月,队里最好的人来交辞职信:"我入这行不是为了这个。"管家催得紧,单还得干完。', effects: { gold: 160, moraleAll: -9 } },
+          { weight: 6, text: '干到第二个月,队里最好的人来交辞职信:「我入这行不是为了这个。」管家催得紧,单还得干完。', effects: { gold: 160, moraleAll: -9 } },
         ],
       },
       {
-        text: '拒。"不安定因素"这五个字,太像会给公会招麻烦的说法。',
+        text: '拒。「不安定因素」这五个字,太像会给公会招麻烦的说法。',
         outcomes: [
-          { weight: 6, text: '管家记下了拒绝,没有失态。三个月后,侯爵领地"肃清"的消息传来——接单的公会拿了钱,也拿进了墓碑一样的名声。', effects: { moraleAll: 5 } },
-          { weight: 4, text: '拒绝的理由传开后,几个不安分的队员反倒觉得公会"怂了"。人心这东西,拒绝也是一种考题。', effects: { moraleAll: -3 } },
+          { weight: 6, text: '管家记下了拒绝,没有失态。三个月后,侯爵领地「肃清」的消息传来——接单的公会拿了钱,也拿进了墓碑一样的名声。', effects: { moraleAll: 5 } },
+          { weight: 4, text: '拒绝的理由传开后,几个不安分的队员反倒觉得公会「怂了」。人心这东西,拒绝也是一种考题。', effects: { moraleAll: -3 } },
         ],
       },
     ],
@@ -939,12 +939,12 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'toll-bridge',
     title: '断桥收费',
-    text: '去对岸的吊桥断了一半,一个抱着酒坛的渡翁躺在缆绳边:"五个金币,我背你过去。一个一个来,别晃。"',
+    text: '去对岸的吊桥断了一半,一个抱着酒坛的渡翁躺在缆绳边:「五个金币,我背你过去。一个一个来,别晃。」',
     choices: [
       {
         text: '付钱。专业的事交给专业的人,虽然他看着像刚从酒坛里捞出来的。',
         outcomes: [
-          { weight: 7, text: '渡翁的背稳得像码头石阶。到了对岸他只说了一句:"回程免费。"', effects: { gold: -50, moraleAll: 2 } },
+          { weight: 7, text: '渡翁的背稳得像码头石阶。到了对岸他只说了一句:「回程免费。」', effects: { gold: -50, moraleAll: 2 } },
           { weight: 3, text: '背到最后一人时老头打了个酒嗝。全队看着他晃了三晃,没人敢出声。钱付了,酒嗝的利息是全队的心跳。', effects: { gold: -50, moraleAll: -4 } },
         ],
       },
@@ -981,20 +981,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'fever-hamlet',
     title: '烧还是不烧',
-    text: '一个村子在求救:热病倒了半村人。村长老泪纵横:"再没人帮,我们只能烧了村子断病根。"药铺就剩半间,药材没来得及糟蹋。',
+    text: '一个村子在求救:热病倒了半村人。村长老泪纵横:「再没人帮,我们只能烧了村子断病根。」药铺就剩半间,药材没来得及糟蹋。',
     choices: [
       {
         text: '进村。药材拿来救人,病来了再说。',
         outcomes: [
           { weight: 5, text: '药是真的,病也真的过了人。回程时队伍里多了两声咳嗽——但村里活下来的孩子记住了你们的招牌。', effects: { moraleAll: 6, runBuff: { id: 'plague-cough', name: '热病余波', desc: '咳嗽没停——受疗降低,直到本次远征结束', mods: { heal: 0.8 } } } },
-          { weight: 5, text: '药材搬完了,人群里却有人指着你们喊"带走病的"。恐惧不认好人。货是真的,委屈也是真的。', effects: { moraleAll: -4, runBuff: { id: 'plague-cough', name: '热病余波', desc: '咳嗽没停——受疗降低,直到本次远征结束', mods: { heal: 0.8 } } } },
+          { weight: 5, text: '药材搬完了,人群里却有人指着你们喊「带走病的」。恐惧不认好人。货是真的,委屈也是真的。', effects: { moraleAll: -4, runBuff: { id: 'plague-cough', name: '热病余波', desc: '咳嗽没停——受疗降低,直到本次远征结束', mods: { heal: 0.8 } } } },
         ],
       },
       {
         text: '帮他们烧。快刀斩病根,这是沼泽教的第一课。',
         outcomes: [
           { weight: 6, text: '火烧了一夜。药铺的存货被你们抢救出来一半,算是不幸中的万利。村民的眼睛在火光里看着你们,没人说话。', effects: { gold: 80, moraleAll: -5 } },
-          { weight: 4, text: '火里跑出来几个人,是自封的"病愈者"。拦,还是不拦?最后拦了。这事会在你们的酒里泡很多年。', effects: { gold: 60, moraleAll: -8 } },
+          { weight: 4, text: '火里跑出来几个人,是自封的「病愈者」。拦,还是不拦?最后拦了。这事会在你们的酒里泡很多年。', effects: { gold: 60, moraleAll: -8 } },
         ],
       },
     ],
@@ -1002,10 +1002,10 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'old-shrine',
     title: '无名老祭坛',
-    text: '半塌的石祭坛,香灰是新的——荒地里不该有新的香灰。石头上刻着看不懂的旧字,只有一行通用语:"留者得,取者偿。"',
+    text: '半塌的石祭坛,香灰是新的——荒地里不该有新的香灰。石头上刻着看不懂的旧字,只有一行通用语:「留者得,取者偿。」',
     choices: [
       {
-        text: '留下贡品,拜一拜。入乡随俗,尤其当"俗"看起来会咬人。',
+        text: '留下贡品,拜一拜。入乡随俗,尤其当「俗」看起来会咬人。',
         outcomes: [
           { weight: 6, text: '香灰忽然平了,像被什么舔过。一路无话,但所有人都觉得脚下轻了些。', effects: { gold: -30, runBuff: { id: 'shrine-light', name: '祭坛的注视', desc: '某种东西记下了你们的礼数——防御提升,直到本次远征结束', mods: { def: 1.15 } } } },
           { weight: 4, text: '贡品收了,保佑没来。荒地就是荒地,香灰会平,是因为底下有白蚁。', effects: { gold: -30 } },
@@ -1029,13 +1029,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '坐下烤火。暖意面前,来历先放一放。',
         outcomes: [
           { weight: 6, text: '火烤透了湿透的靴子,连旧伤都松快了。走时你们往火里添了自己的柴——礼尚往来,火才不灭。', effects: { moraleAll: 5, runBuff: { id: 'ember-warm', name: '白火的暖', desc: '骨头缝里的暖意——攻击提升,直到本次远征结束', mods: { atk: 1.1 } } } },
-          { weight: 4, text: '烤到后半夜,断剑"当啷"倒了。火瞬间矮了半截,像被抽走了什么。没人再睡得着。', effects: { moraleAll: -3 } },
+          { weight: 4, text: '烤到后半夜,断剑「当啷」倒了。火瞬间矮了半截,像被抽走了什么。没人再睡得着。', effects: { moraleAll: -3 } },
         ],
       },
       {
         text: '拔剑走人。好铁在荒地里就是钱。',
         outcomes: [
-          { weight: 5, text: '剑出火的瞬间,白火"呼"地熄了。从此那片高地再没有旅人敢走夜路——断剑卖了个好价钱。', effects: { gold: 90, moraleAll: -4 } },
+          { weight: 5, text: '剑出火的瞬间,白火「呼」地熄了。从此那片高地再没有旅人敢走夜路——断剑卖了个好价钱。', effects: { gold: 90, moraleAll: -4 } },
           { weight: 5, text: '断剑拔断了,手里只剩剑柄。火灭了,寒气从脚底漫上来,一路跟着你们到营地。', effects: { runBuff: { id: 'ember-cold', name: '熄火之寒', desc: '寒气入骨——防御降低,直到本次远征结束', mods: { def: 0.85 } } } },
         ],
       },
@@ -1044,7 +1044,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'dying-knight',
     title: '将死骑士的托付',
-    text: '一位锈甲骑士靠在界碑上,胸口插着不属于这片沼泽的细剑。他把手中的圣徽递过来:"把它送到北边的旧教堂……有人会等。别打开它。"他的眼睛已经在看别处了。',
+    text: '一位锈甲骑士靠在界碑上,胸口插着不属于这片沼泽的细剑。他把手中的圣徽递过来:「把它送到北边的旧教堂……有人会等。别打开它。」他的眼睛已经在看别处了。',
     choices: [
       {
         text: '接下,不打开。死人的托付比活人的合同重。',
@@ -1054,10 +1054,10 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
       {
-        text: '不接。"别打开"这种话,等于里面装着麻烦。',
+        text: '不接。「别打开」这种话,等于里面装着麻烦。',
         outcomes: [
           { weight: 7, text: '你们走出百步,听见身后一声长出的气。回来时他已去了,手还保持着递东西的姿势。有人默默帮他合了眼。', effects: { moraleAll: -5 } },
-          { weight: 3, text: '你们没回头。第二天,几个披同样锈甲的人在打听"抬圣徽的佣兵"——幸好你们没拿。', effects: { moraleRandom: -2 } },
+          { weight: 3, text: '你们没回头。第二天,几个披同样锈甲的人在打听「抬圣徽的佣兵」——幸好你们没拿。', effects: { moraleRandom: -2 } },
         ],
       },
     ],
@@ -1065,7 +1065,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'wine-cellar',
     title: '战利品酒窖',
-    text: '塌了半边的庄园地窖里,几十桶酒码得整整齐齐——酒庄主人显然不是死于战乱,而是舍不得喝。桶上写着:"非贺功者勿开。"',
+    text: '塌了半边的庄园地窖里,几十桶酒码得整整齐齐——酒庄主人显然不是死于战乱,而是舍不得喝。桶上写着:「非贺功者勿开。」',
     choices: [
       {
         text: '开一桶,就一桶。活着的功臣,先贺为敬。',
@@ -1077,7 +1077,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '全搬走,找城里识货的。贺功的事让买家自己来。',
         outcomes: [
-          { weight: 6, text: '酒商眼睛都直了,现钱现结。只是"非贺功者勿开"的字样让搬运的人嘀咕了一路。', effects: { gold: 130, moraleAll: -2 } },
+          { weight: 6, text: '酒商眼睛都直了,现钱现结。只是「非贺功者勿开」的字样让搬运的人嘀咕了一路。', effects: { gold: 130, moraleAll: -2 } },
           { weight: 4, text: '搬最后一桶时塌了半边地窖,两桶好酒埋了,一个人的腿差点也埋了。剩下的卖了不少。', effects: { gold: 100, moraleRandom: -4 } },
         ],
       },
@@ -1086,13 +1086,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'dragon-cult',
     title: '鳞音教的募捐',
-    text: '白袍信士拦在路口,衣角绣着鳞纹:"龙苏醒之日,捐资者可记名于鳞册,灾时得眷属之庇。多少是个心意。"',
+    text: '白袍信士拦在路口,衣角绣着鳞纹:「龙苏醒之日,捐资者可记名于鳞册,灾时得眷属之庇。多少是个心意。」',
     choices: [
       {
         text: '捐。龙不龙的不急,眼下他们的刀是真的。',
         outcomes: [
-          { weight: 6, text: '信士在鳞册上写下公会名,郑重盖印:"眷属之庇,必不落空。"至少他们的语气是真的。', effects: { gold: -60, runBuff: { id: 'scale-bless', name: '鳞册记名', desc: '白袍人的保票——受疗提升,直到本次远征结束', mods: { heal: 1.15 } } } },
-          { weight: 4, text: '捐完钱走出十里,才有人反应过来:"鳞册记名,记的是名字——他们知道我们叫什么了。"荒野里安静了一瞬。', effects: { gold: -60, moraleAll: -4, runBuff: { id: 'scale-bless', name: '鳞册记名', desc: '受疗提升,直到本次远征结束', mods: { heal: 1.15 } } } },
+          { weight: 6, text: '信士在鳞册上写下公会名,郑重盖印:「眷属之庇,必不落空。」至少他们的语气是真的。', effects: { gold: -60, runBuff: { id: 'scale-bless', name: '鳞册记名', desc: '白袍人的保票——受疗提升,直到本次远征结束', mods: { heal: 1.15 } } } },
+          { weight: 4, text: '捐完钱走出十里,才有人反应过来:「鳞册记名,记的是名字——他们知道我们叫什么了。」荒野里安静了一瞬。', effects: { gold: -60, moraleAll: -4, runBuff: { id: 'scale-bless', name: '鳞册记名', desc: '受疗提升,直到本次远征结束', mods: { heal: 1.15 } } } },
         ],
       },
       {
@@ -1112,8 +1112,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '派人送她回去。干粮分她吃,到了地方再走。',
         outcomes: [
-          { weight: 6, text: '村子真找到了。她外婆是位独眼老妇,塞给你们一罐蜂蜜渍的药根:"沼泽里走的人,用得上。"', effects: { potionHeal: 2, moraleAll: 4 } },
-          { weight: 4, text: '送到地方,她爹却堵在门口骂了半天"拐子"。蜂蜜渍的药根最后还是塞过来了——大人的脸面和老人的心意,各是各的。', effects: { potionHeal: 1, moraleAll: -2 } },
+          { weight: 6, text: '村子真找到了。她外婆是位独眼老妇,塞给你们一罐蜂蜜渍的药根:「沼泽里走的人,用得上。」', effects: { potionHeal: 2, moraleAll: 4 } },
+          { weight: 4, text: '送到地方,她爹却堵在门口骂了半天「拐子」。蜂蜜渍的药根最后还是塞过来了——大人的脸面和老人的心意,各是各的。', effects: { potionHeal: 1, moraleAll: -2 } },
         ],
       },
       {
@@ -1128,20 +1128,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'blackmarket-healer',
     title: '黑市医师',
-    text: '地下室里的医师干净得可疑:"正规治疗五十金。我这只要十金,不问来路,不留病历——就是缝线的针脚丑了点。"',
+    text: '地下室里的医师干净得可疑:「正规治疗五十金。我这只要十金,不问来路,不留病历——就是缝线的针脚丑了点。」',
     choices: [
       {
         text: '十金的。丑针脚总比没针脚强。',
         outcomes: [
           { weight: 5, text: '针脚丑,但真管用。第二天队伍活蹦乱跳,只有伤口痒得钻心。', effects: { gold: -10, runBuff: { id: 'itchy-stitch', name: '丑针脚', desc: '伤口在痒——受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
-          { weight: 5, text: '回去才发现他给缝的线会自己化掉——"不拆线,省事"。省事是真省事,吓人也是真吓人。', effects: { gold: -10, runBuff: { id: 'itchy-stitch', name: '化线', desc: '伤口痒且虚——受疗略降,直到本次远征结束', mods: { heal: 0.85 } } } },
+          { weight: 5, text: '回去才发现他给缝的线会自己化掉——「不拆线,省事」。省事是真省事,吓人也是真吓人。', effects: { gold: -10, runBuff: { id: 'itchy-stitch', name: '化线', desc: '伤口痒且虚——受疗略降,直到本次远征结束', mods: { heal: 0.85 } } } },
         ],
       },
       {
         text: '五十金的正规医师。命只有一条,不赌针脚。',
         outcomes: [
           { weight: 7, text: '医师的手很稳,账单也很稳。队里有人嘀咕贵,嘀咕完也承认缝得漂亮。', effects: { gold: -50, moraleAll: 2 } },
-          { weight: 3, text: '正规医师检查完却说:"你们这伤,最好去找黑市那个老家伙——他这行干了四十年,整条街的疑难都是他缝的。"', effects: { gold: -20, moraleAll: -2 } },
+          { weight: 3, text: '正规医师检查完却说:「你们这伤,最好去找黑市那个老家伙——他这行干了四十年,整条街的疑难都是他缝的。」', effects: { gold: -20, moraleAll: -2 } },
         ],
       },
     ],
@@ -1149,20 +1149,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'levy-clerk',
     title: '税吏的账本',
-    text: '税吏翻开账本:"黑苔公会,上季度「佣兵抚恤附加税」,欠缴六十金。"账本很新,税种也新——新得像昨晚才发明的。',
+    text: '税吏翻开账本:「黑苔公会,上季度「佣兵抚恤附加税」,欠缴六十金。」账本很新,税种也新——新得像昨晚才发明的。',
     choices: [
       {
         text: '缴。六十金买个太平,比请律师便宜。',
         outcomes: [
-          { weight: 7, text: '税吏盖章收钱,还教你们下季度怎么"合理规避"。官僚的善意,就是这么具体。', effects: { gold: -60, moraleAll: -2 } },
-          { weight: 3, text: '缴完钱,旁边商队的账房凑过来低声说:"这个税吏上周已经被免职了,他现在收的都是自己的。"你们看着他的背影,谁都没动——追这种钱,比追债还丢人。', effects: { gold: -60, moraleAll: -6 } },
+          { weight: 7, text: '税吏盖章收钱,还教你们下季度怎么「合理规避」。官僚的善意,就是这么具体。', effects: { gold: -60, moraleAll: -2 } },
+          { weight: 3, text: '缴完钱,旁边商队的账房凑过来低声说:「这个税吏上周已经被免职了,他现在收的都是自己的。」你们看着他的背影,谁都没动——追这种钱,比追债还丢人。', effects: { gold: -60, moraleAll: -6 } },
         ],
       },
       {
         text: '抗税。让他拿出税令原文,拿不出就请他吃泥。',
         outcomes: [
           { weight: 5, text: '税吏支吾半天,收起账本走了。队里响起口哨声——敢跟账本叫板的公会,名字传得比想象中快。', effects: { moraleAll: 6 } },
-          { weight: 5, text: '他真拿出了原文,盖着候补税官的私印。税补了,罚金也补了,还多了个"刺头公会"的备注。', effects: { gold: -90, moraleAll: -3, delayed: { eventId: 'tax-warrant', dueDays: 3 } } },
+          { weight: 5, text: '他真拿出了原文,盖着候补税官的私印。税补了,罚金也补了,还多了个「刺头公会」的备注。', effects: { gold: -90, moraleAll: -3, delayed: { eventId: 'tax-warrant', dueDays: 3 } } },
         ],
       },
     ],
@@ -1170,7 +1170,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'mirror-lake',
     title: '不照人的湖',
-    text: '湖水平得像镜子,但村里人从不照:"它照的不是脸,是你欠的账。"湖边只有一块洗衣石,和一句被磨了一半的旧话:"照见者……"后半句风化了。',
+    text: '湖水平得像镜子,但村里人从不照:「它照的不是脸,是你欠的账。」湖边只有一块洗衣石,和一句被磨了一半的旧话:「照见者……」后半句风化了。',
     choices: [
       {
         text: '照。欠的账早晚要还,先看清是多少。',
@@ -1183,7 +1183,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '不照。有些账,让湖自己记着。',
         outcomes: [
           { weight: 7, text: '绕湖而过,洗衣石上坐着只青蛙,目送你们。世界偶尔会允许人不多事。', effects: { moraleAll: 3 } },
-          { weight: 3, text: '没照湖,却在村里被认出:"不照湖的佣兵?那湖照过的可都是大人物。"酒钱都被村民抢着付了。', effects: { gold: 25, moraleAll: 2 } },
+          { weight: 3, text: '没照湖,却在村里被认出:「不照湖的佣兵?那湖照过的可都是大人物。」酒钱都被村民抢着付了。', effects: { gold: 25, moraleAll: 2 } },
         ],
       },
     ],
@@ -1192,20 +1192,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'knight-pursuit',
     title: '第二幕·锈甲的来客',
-    text: '三名披同款锈甲的骑士堵在公会门口,为首的盯着柜台上那枚圣徽:"他临死前把东西给谁了?"他没有出示任何凭证。圣徽此刻不在柜台上——在你们挑中的远征队行囊里。',
+    text: '三名披同款锈甲的骑士堵在公会门口,为首的盯着柜台上那枚圣徽:「他临死前把东西给谁了?」他没有出示任何凭证。圣徽此刻不在柜台上——在你们挑中的远征队行囊里。',
     choices: [
       {
-        text: '交出去。"他只说送到,没说要陪着它死。"',
+        text: '交出去。「他只说送到,没说要陪着它死。」',
         outcomes: [
-          { weight: 6, text: '为首的接过圣徽,久久没说话,最后留下一小袋钱:"替我们,给他立杯酒。"', effects: { gold: 70, moraleAll: 3 } },
+          { weight: 6, text: '为首的接过圣徽,久久没说话,最后留下一小袋钱:「替我们,给他立杯酒。」', effects: { gold: 70, moraleAll: 3 } },
           { weight: 4, text: '他们收了圣徽,却记下了公会和那支远征队每个人的名字。是谢是忌,没人说得清。', effects: { gold: 40, moraleRandom: -3 } },
         ],
       },
       {
         text: '不交。托付是托付,徽在人在。',
         outcomes: [
-          { weight: 5, text: '对峙到黄昏,骑士们退了。临走留话:"它会认主。它已经认了。"行囊里的圣徽,似乎更沉了。', effects: { moraleAll: 4, runBuff: { id: 'relic-kept', name: '守诺之重', desc: '全队背负着托付——防御提升,直到本次远征结束', mods: { def: 1.15 } } } },
-          { weight: 5, text: '谈崩了,动起手。三位骑士带走了话,也留下了伤——"下回在旧教堂见"。那地方你们早晚要去。', effects: { moraleAll: -3, delayed: { eventId: 'knight-pursuit', dueDays: 4 } } },
+          { weight: 5, text: '对峙到黄昏,骑士们退了。临走留话:「它会认主。它已经认了。」行囊里的圣徽,似乎更沉了。', effects: { moraleAll: 4, runBuff: { id: 'relic-kept', name: '守诺之重', desc: '全队背负着托付——防御提升,直到本次远征结束', mods: { def: 1.15 } } } },
+          { weight: 5, text: '谈崩了,动起手。三位骑士带走了话,也留下了伤——「下回在旧教堂见」。那地方你们早晚要去。', effects: { moraleAll: -3, delayed: { eventId: 'knight-pursuit', dueDays: 4 } } },
         ],
       },
     ],
@@ -1213,19 +1213,19 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'tax-warrant',
     title: '第二幕·刺头的代价',
-    text: '公售所贴出新告示:"黑苔公会,抗税前科,此后各项执照费率上浮。"落款的印章是真的——上次那枚私印,竟也混在官方卷宗里盖了章。',
+    text: '公售所贴出新告示:「黑苔公会,抗税前科,此后各项执照费率上浮。」落款的印章是真的——上次那枚私印,竟也混在官方卷宗里盖了章。',
     choices: [
       {
         text: '认了。上浮就上浮,以后按章缴税,做干净生意。',
         outcomes: [
-          { weight: 6, text: '多缴的税像钝刀子。但半年后一场土地纠纷里,"干净生意"四个字救了公会的招牌。', effects: { gold: -40, moraleAll: 2 } },
+          { weight: 6, text: '多缴的税像钝刀子。但半年后一场土地纠纷里,「干净生意」四个字救了公会的招牌。', effects: { gold: -40, moraleAll: 2 } },
           { weight: 4, text: '费率上浮是上浮了,可卷宗里那枚私印也悄悄被撤了——有人替你们把尾巴收拾了。是谁,查不到。', effects: { gold: -25 } },
         ],
       },
       {
         text: '告回去。他们用假印在前,你们抗税在后,黑吃黑要看谁的纸更白。',
         outcomes: [
-          { weight: 5, text: '讼师赚了一笔,公售所灰头土脸地把告示撕了。公会门口从此多了一句俚语:"别惹黑苔,他们连纸都翻得动。"', effects: { gold: -60, moraleAll: 6 } },
+          { weight: 5, text: '讼师赚了一笔,公售所灰头土脸地把告示撕了。公会门口从此多了一句俚语:「别惹黑苔,他们连纸都翻得动。」', effects: { gold: -60, moraleAll: 6 } },
           { weight: 5, text: '讼师赢了,案子也拖了。赢的那天全队喝了顿大酒——然后发现讼师的账单,比上浮的税贵了三倍。', effects: { gold: -80, moraleAll: 3 } },
         ],
       },
@@ -1234,19 +1234,19 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'girl-debt',
     title: '第二幕·小女孩的债主',
-    text: '一个精瘦的男人闯进公会,拍下一张画像——就是当初那个"迷路"的女孩:"她偷了我东家的东西,见过她的人都要作证。作证费,二十金。不作证……那就是同伙。"',
+    text: '一个精瘦的男人闯进公会,拍下一张画像——就是当初那个「迷路」的女孩:「她偷了我东家的东西,见过她的人都要作证。作证费,二十金。不作证……那就是同伙。」',
     choices: [
       {
         text: '付钱,打发走。别让一个孩子背上一伙佣兵的麻烦。',
         outcomes: [
-          { weight: 6, text: '他前脚走,后脚隔壁酒馆老板探头:"那骗子又来?他东家早倒了,专挑软柿子吓唬。"软柿子。你们把钱袋攥出了印子。', effects: { gold: -20, moraleAll: -4 } },
-          { weight: 4, text: '付完钱,老板娘多送了两盘下酒菜:"替那丫头谢谢你们。她爹是我们这儿的渔夫,去年走的。"', effects: { gold: -20, moraleAll: 4 } },
+          { weight: 6, text: '他前脚走,后脚隔壁酒馆老板探头:「那骗子又来?他东家早倒了,专挑软柿子吓唬。」软柿子。你们把钱袋攥出了印子。', effects: { gold: -20, moraleAll: -4 } },
+          { weight: 4, text: '付完钱,老板娘多送了两盘下酒菜:「替那丫头谢谢你们。她爹是我们这儿的渔夫,去年走的。」', effects: { gold: -20, moraleAll: 4 } },
         ],
       },
       {
-        text: '不作证,也不给钱。请他体会一下,被一群佣兵"作证"的滋味。',
+        text: '不作证,也不给钱。请他体会一下,被一群佣兵「作证」的滋味。',
         outcomes: [
-          { weight: 5, text: '他跑得比女孩快多了。此后东区的地界上,"黑苔作证"成了句玩笑话,玩笑里带着三分敬。', effects: { moraleAll: 5 } },
+          { weight: 5, text: '他跑得比女孩快多了。此后东区的地界上,「黑苔作证」成了句玩笑话,玩笑里带着三分敬。', effects: { moraleAll: 5 } },
           { weight: 5, text: '他怂了,他东家的账房却没怂——一周后,公会收到了真正的传票。这次,是盖章的那种。', effects: { gold: -30, moraleAll: -2 } },
         ],
       },
@@ -1255,7 +1255,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'cult-wrath',
     title: '第二幕·鳞册的批注',
-    text: '一封鳞纹封口的信送到公会:您的鳞册记名已作批注——"曾拒圣听,心意不诚"。附言:已为您在"眷属之庇"名单中除名,并移入"灾时顺延"名单。',
+    text: '一封鳞纹封口的信送到公会:您的鳞册记名已作批注——「曾拒圣听,心意不诚」。附言:已为您在「眷属之庇」名单中除名,并移入「灾时顺延」名单。',
     choices: [
       {
         text: '烧了信。龙要真醒,先烧的应该是这种名单。',
@@ -1265,10 +1265,10 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
       {
-        text: '回信捐款,"补个心意"。有些名单,进比出便宜。',
+        text: '回信捐款,「补个心意」。有些名单,进比出便宜。',
         outcomes: [
-          { weight: 6, text: '补捐次日,新鳞册寄到,名字端正,还多了一枚"诚心"鳞印。白袍人的账,比谁都清楚。', effects: { gold: -45, runBuff: { id: 'scale-bless2', name: '诚心鳞印', desc: '白袍人的保票升级——受疗提升,直到本次远征结束', mods: { heal: 1.18 } } } },
-          { weight: 4, text: '补捐的钱刚送出去,他们的募捐队伍就常驻到了公会街口——"诚心信士"的招牌,想摘都摘不掉了。', effects: { gold: -45, moraleAll: -3 } },
+          { weight: 6, text: '补捐次日,新鳞册寄到,名字端正,还多了一枚「诚心」鳞印。白袍人的账,比谁都清楚。', effects: { gold: -45, runBuff: { id: 'scale-bless2', name: '诚心鳞印', desc: '白袍人的保票升级——受疗提升,直到本次远征结束', mods: { heal: 1.18 } } } },
+          { weight: 4, text: '补捐的钱刚送出去,他们的募捐队伍就常驻到了公会街口——「诚心信士」的招牌,想摘都摘不掉了。', effects: { gold: -45, moraleAll: -3 } },
         ],
       },
     ],
@@ -1283,7 +1283,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '把圣徽放上祭坛,讲完他最后一程。',
         outcomes: [
           { weight: 7, text: '亡魂们逐一起身,向你们行了个古老的军礼,随后化作尘埃。晨光从破窗落进来——多年没这么亮过。', effects: { blessing: 12, moraleAll: 8, expAll: 30 } },
-          { weight: 3, text: '礼成时,为首的亡魂多说了一句:"他也曾把别人的托付弄丢过。"原来大家都是一边弄丢,一边补上。', effects: { blessing: 8, moraleAll: 5, expAll: 20 } },
+          { weight: 3, text: '礼成时,为首的亡魂多说了一句:「他也曾把别人的托付弄丢过。」原来大家都是一边弄丢,一边补上。', effects: { blessing: 8, moraleAll: 5, expAll: 20 } },
         ],
       },
       {
@@ -1304,7 +1304,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '堵耳,快速通过。老办法,笨办法,好办法。',
         outcomes: [
           { weight: 7, text: '歌声在耳边变成闷响,像隔着棉被的世界。走出沼泽时,谁也没提自己刚才差点迈错的那半步。', effects: { moraleRandom: -3 } },
-          { weight: 3, text: '堵住的是耳朵,堵不住的是心里的事。有人边走边哭,问起都说"进水了"。', effects: { moraleAll: -2 } },
+          { weight: 3, text: '堵住的是耳朵,堵不住的是心里的事。有人边走边哭,问起都说「进水了」。', effects: { moraleAll: -2 } },
         ],
       },
       {
@@ -1319,12 +1319,12 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'siren-bones',
     title: '第二幕·歌姬的骨头',
-    text: '一个骨头贩子找上门:"歌姬的肋骨是乐器匠的圣物,一根五十金。你们见过她,对吧?告诉我她的巢穴,五五分账。"他笑起来牙床外露。',
+    text: '一个骨头贩子找上门:「歌姬的肋骨是乐器匠的圣物,一根五十金。你们见过她,对吧?告诉我她的巢穴,五五分账。」他笑起来牙床外露。',
     choices: [
       {
         text: '告诉地址。死物生财,各凭本事。',
         outcomes: [
-          { weight: 6, text: '分账到手的钱带着腥气。一个月后,乐器行挂出了"歌姬骨笛"——据说音色空灵,卖得很好。', effects: { gold: 90, moraleAll: -3 } },
+          { weight: 6, text: '分账到手的钱带着腥气。一个月后,乐器行挂出了「歌姬骨笛」——据说音色空灵,卖得很好。', effects: { gold: 90, moraleAll: -3 } },
           { weight: 4, text: '骨头贩子在巢穴翻了三天,一无所获地回来,逢人就说你们合伙骗他。威胁的话,他记在小本本上了。', effects: { moraleRandom: -3 } },
         ],
       },
@@ -1339,13 +1339,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'gilded-skull',
     title: '镀金头骨',
-    text: '游商摊位正中摆着一颗镀金头骨:"了解过去,预言未来,一次十金。不满意,退钱。"眼窝里镶的黑曜石随人转动,像在打量谁。',
+    text: '游商摊位正中摆着一颗镀金头骨:「了解过去,预言未来,一次十金。不满意,退钱。」眼窝里镶的黑曜石随人转动,像在打量谁。',
     choices: [
       {
         text: '问一次。十金买个好奇。',
         outcomes: [
-          { weight: 5, text: '头骨说:"你们的敌人在数自己的心跳,而你们在数金币。"全队琢磨了一路,越琢磨越觉得赚了。', effects: { gold: -10, expAll: 20 } },
-          { weight: 5, text: '头骨沉默半晌,说:"回去看看你的床。"没人敢问是什么意思。当晚有人把行军床换了方向。', effects: { gold: -10, moraleRandom: -3 } },
+          { weight: 5, text: '头骨说:「你们的敌人在数自己的心跳,而你们在数金币。」全队琢磨了一路,越琢磨越觉得赚了。', effects: { gold: -10, expAll: 20 } },
+          { weight: 5, text: '头骨沉默半晌,说:「回去看看你的床。」没人敢问是什么意思。当晚有人把行军床换了方向。', effects: { gold: -10, moraleRandom: -3 } },
         ],
       },
       {
@@ -1381,7 +1381,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'moon-well',
     title: '月井',
-    text: '林间圆井,月光落进去不散,反而像凝成了实物。井边石碑:"投其所珍,取其所需。"——典型的古老契约措辞,也典型的没说清楚违约条款。',
+    text: '林间圆井,月光落进去不散,反而像凝成了实物。井边石碑:「投其所珍,取其所需。」——典型的古老契约措辞,也典型的没说清楚违约条款。',
     choices: [
       {
         text: '投下一枚金币,求队伍平安。',
@@ -1391,10 +1391,10 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
       {
-        text: '打捞井底的"月光"。凝成实物的东西,就是钱。',
+        text: '打捞井底的「月光」。凝成实物的东西,就是钱。',
         outcomes: [
-          { weight: 4, text: '捞上来的碎月凝成一块"月银",入手温凉,是没见过的好料。井水随之黑了下去——它记住你们了。', effects: { gold: 100, runBuff: { id: 'moon-grudge', name: '月井之怨', desc: '井水黑下去的样子总在眼前——防御略降,直到本次远征结束', mods: { def: 0.9 } } } },
-          { weight: 6, text: '捞了半天,只捞起一把旧剑柄。月光的"实物"原来是历代打捞者留下的东西——你们添了一枚金币进去,快步离开。', effects: { moraleRandom: -2 } },
+          { weight: 4, text: '捞上来的碎月凝成一块「月银」,入手温凉,是没见过的好料。井水随之黑了下去——它记住你们了。', effects: { gold: 100, runBuff: { id: 'moon-grudge', name: '月井之怨', desc: '井水黑下去的样子总在眼前——防御略降,直到本次远征结束', mods: { def: 0.9 } } } },
+          { weight: 6, text: '捞了半天,只捞起一把旧剑柄。月光的「实物」原来是历代打捞者留下的东西——你们添了一枚金币进去,快步离开。', effects: { moraleRandom: -2 } },
         ],
       },
     ],
@@ -1402,20 +1402,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'fleeing-serf',
     title: '逃亡的佃农',
-    text: '田埂上追出一个抱婴儿的佃农家庭,身后烟尘滚滚——领主的骑奴。佃农喊:"行行好,让我们躲躲!地租利滚利,三代都还不完了!"',
+    text: '田埂上追出一个抱婴儿的佃农家庭,身后烟尘滚滚——领主的骑奴。佃农喊:「行行好,让我们躲躲!地租利滚利,三代都还不完了!」',
     choices: [
       {
-        text: '藏。干草垛后面塞下一家三口,对骑奴摇头:"没见过。"',
+        text: '藏。干草垛后面塞下一家三口,对骑奴摇头:「没见过。」',
         outcomes: [
           { weight: 6, text: '骑奴走后,佃农从干草里出来,膝盖砸进泥里给你们磕头。你们扶都扶不及——这礼太重,收不起。', effects: { moraleAll: 5, blessing: 3 } },
-          { weight: 4, text: '藏是藏住了,骑奴却记下了公会的脸。领主的"佣兵黑名单"上,大概多了一行字。', effects: { moraleAll: 3, delayed: { eventId: 'lord-mercy', dueDays: 3 } } },
+          { weight: 4, text: '藏是藏住了,骑奴却记下了公会的脸。领主的「佣兵黑名单」上,大概多了一行字。', effects: { moraleAll: 3, delayed: { eventId: 'lord-mercy', dueDays: 3 } } },
         ],
       },
       {
         text: '不掺和。领主的私事,佣兵掺和就是找死。',
         outcomes: [
           { weight: 7, text: '一家人被拽回去时的哭声,跟了你们一路。有队员攥断了手里的草茎。', effects: { moraleAll: -6 } },
-          { weight: 3, text: '当夜领主的管家找来,赏了你们一笔"识相钱":"识时务的佣兵,领主喜欢。"钱是真的,味道也是真的。', effects: { gold: 45, moraleAll: -4 } },
+          { weight: 3, text: '当夜领主的管家找来,赏了你们一笔「识相钱」:「识时务的佣兵,领主喜欢。」钱是真的,味道也是真的。', effects: { gold: 45, moraleAll: -4 } },
         ],
       },
     ],
@@ -1423,20 +1423,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'lord-mercy',
     title: '第二幕·领主的谢礼',
-    text: '领主的管家到访,礼数周全:"大人查阅卷宗,发现贵会曾「恰巧」存在于某片干草垛附近。大人重温旧事,感念当日不必为难彼此。"留下一个锦盒。',
+    text: '领主的管家到访,礼数周全:「大人查阅卷宗,发现贵会曾「恰巧」存在于某片干草垛附近。大人重温旧事,感念当日不必为难彼此。」留下一个锦盒。',
     choices: [
       {
         text: '收下。贵族的台阶,给就要接。',
         outcomes: [
           { weight: 6, text: '锦盒里是一枚领主家徽的银章——持此章,领地内佣兵税减半。当日那家人若知道,大概也会松口气。', effects: { gold: 50, moraleAll: 3 } },
-          { weight: 4, text: '银章是真的,管家的附言也是真的:"大人说,下次就没这么巧了。"贵族的善意,利息都是提前算好的。', effects: { gold: 30, moraleRandom: -2 } },
+          { weight: 4, text: '银章是真的,管家的附言也是真的:「大人说,下次就没这么巧了。」贵族的善意,利息都是提前算好的。', effects: { gold: 30, moraleRandom: -2 } },
         ],
       },
       {
-        text: '退回。"不必为难彼此"这种话,本身就是威胁。',
+        text: '退回。「不必为难彼此」这种话,本身就是威胁。',
         outcomes: [
-          { weight: 5, text: '管家收盒离开,脸上没什么表情。这种人的记性,是拿来记仇的,也是拿来记人情的——至少黑苔公会从此"有名有姓"。', effects: { moraleAll: 4 } },
-          { weight: 5, text: '半月后,领地内三个长期雇主"恰好"都改用了铁棘会。贵族的报复从不明说,只让你慢慢发现。', effects: { gold: -50, moraleAll: -3 } },
+          { weight: 5, text: '管家收盒离开,脸上没什么表情。这种人的记性,是拿来记仇的,也是拿来记人情的——至少黑苔公会从此「有名有姓」。', effects: { moraleAll: 4 } },
+          { weight: 5, text: '半月后,领地内三个长期雇主「恰好」都改用了铁棘会。贵族的报复从不明说,只让你慢慢发现。', effects: { gold: -50, moraleAll: -3 } },
         ],
       },
     ],
@@ -1444,19 +1444,19 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'rare-hunt',
     title: '稀有的传闻',
-    text: '酒馆角落,独眼老猎人不紧不慢地开了口:"沼泽深处最近出了个稀罕物——「三沼之灾」,头上有旧战盔,杀过一整支勘探队。它的巢,就是它的宝藏。"几个酒客听得眼睛发亮,又互相看了看,都没敢动。',
+    text: '酒馆角落,独眼老猎人不紧不慢地开了口:「沼泽深处最近出了个稀罕物——「三沼之灾」,头上有旧战盔,杀过一整支勘探队。它的巢,就是它的宝藏。」几个酒客听得眼睛发亮,又互相看了看,都没敢动。',
     choices: [
       {
         text: '追。稀有物配稀有胆——下一战,冲它去。',
         outcomes: [
-          { weight: 6, text: '老猎人指了路,收了杯酒钱:"活着回来,告诉我它长什么样。"', effects: { gold: -10, rareHuntNext: { mult: 1.5, rewardMult: 2 } } },
+          { weight: 6, text: '老猎人指了路,收了杯酒钱:「活着回来,告诉我它长什么样。」', effects: { gold: -10, rareHuntNext: { mult: 1.5, rewardMult: 2 } } },
           { weight: 4, text: '「三沼之灾」的名号在沼泽有几个版本——三头、双尾、拖尾锤。不管哪个版本,老猎人都说:「都比传闻里凶。」', effects: { gold: -10, rareHuntNext: { mult: 1.5, rewardMult: 2 } } },
         ],
       },
       {
         text: '不追。传闻里活下来的勘探队,人数是零。',
         outcomes: [
-          { weight: 7, text: '老猎人也不劝:"稀罕物,本来就是留给稀罕人的。"他接着喝他的酒,你们接着赶你们的路。', effects: { moraleAll: 1 } },
+          { weight: 7, text: '老猎人也不劝:「稀罕物,本来就是留给稀罕人的。」他接着喝他的酒,你们接着赶你们的路。', effects: { moraleAll: 1 } },
           { weight: 3, text: '半个月后,另一个公会猎杀了它,尾款据说够买下半条街。这种消息的传播速度,比瘟疫快,比刀子疼。', effects: { moraleAll: -3 } },
         ],
       },
@@ -1477,8 +1477,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '轰走。佣兵的旧账不需要配乐。',
         outcomes: [
-          { weight: 5, text: '诗人收琴离开,临走说:"故事不归你们所有,归听见的人。"门外,他已经开始编下一首了——不唱你们,唱铁棘会。', effects: { moraleAll: -2 } },
-          { weight: 5, text: '其他酒客不满了:"我们还爱听呢!"原来你们的故事,已经不只是你们的故事。这一晚,公会的名字被叫得格外响。', effects: { moraleAll: 3 } },
+          { weight: 5, text: '诗人收琴离开,临走说:「故事不归你们所有,归听见的人。」门外,他已经开始编下一首了——不唱你们,唱铁棘会。', effects: { moraleAll: -2 } },
+          { weight: 5, text: '其他酒客不满了:「我们还爱听呢!」原来你们的故事,已经不只是你们的故事。这一晚,公会的名字被叫得格外响。', effects: { moraleAll: 3 } },
         ],
       },
     ],
@@ -1486,20 +1486,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'memorial-visitor',
     title: '纪念碑前的陌生人',
-    text: '公会石碑前站着一个陌生人,放下一束沼泽菊,敬了个不太标准的军礼。他回头看见你,眼神复杂:"我哥哥……也在这行。想问问,他们走得,疼吗?"',
+    text: '公会石碑前站着一个陌生人,放下一束沼泽菊,敬了个不太标准的军礼。他回头看见你,眼神复杂:「我哥哥……也在这行。想问问,他们走得,疼吗?」',
     choices: [
       {
         text: '陪他站一会儿,把知道的都讲了。活着的人配得上真相,哪怕真相很重。',
         outcomes: [
-          { weight: 7, text: '陌生人听完,长长出了一口气,像卸下了什么:"谢谢你。比「不知道」强一万倍。"他留下一小袋钱,说是"香火钱"。', effects: { gold: 30, blessing: 5, moraleAll: 3 } },
+          { weight: 7, text: '陌生人听完,长长出了一口气,像卸下了什么:「谢谢你。比「不知道」强一万倍。」他留下一小袋钱,说是「香火钱」。', effects: { gold: 30, blessing: 5, moraleAll: 3 } },
           { weight: 3, text: '讲着讲着,你也讲到了自己埋在心里的那一仗。陌生人反过来安慰你。两个人在碑前坐了很久——这行里,谁不是别人故事里的配角。', effects: { moraleAll: 5, expAll: 10 } },
         ],
       },
       {
-        text: '岔开话题。"过去的事,提它做什么。"快走,别回头。',
+        text: '岔开话题。「过去的事,提它做什么。」快走,别回头。',
         outcomes: [
           { weight: 6, text: '陌生人愣在原地。你的背影替你回答了他。那束沼泽菊在碑前放了很多天,没人舍得收。', effects: { moraleAll: -4 } },
-          { weight: 4, text: '他没再问,只留下一句:"我哥也是佣兵。他说过,最怕的不是死,是被忘掉。"这句话,后来在队里传了很多年。', effects: { moraleAll: -2 } },
+          { weight: 4, text: '他没再问,只留下一句:「我哥也是佣兵。他说过,最怕的不是死,是被忘掉。」这句话,后来在队里传了很多年。', effects: { moraleAll: -2 } },
         ],
       },
     ],
@@ -1507,13 +1507,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'living-blade',
     title: '活体之刃',
-    text: '黑市深处,一柄剑插在铁砧上,剑身如流水游动。商人压低声音:"它自己挑主人。至今挑了七个,前六个……都出名了。以各种方式。"剑身轻轻震颤,像在打呵欠。',
+    text: '黑市深处,一柄剑插在铁砧上,剑身如流水游动。商人压低声音:「它自己挑主人。至今挑了七个,前六个……都出名了。以各种方式。」剑身轻轻震颤,像在打呵欠。',
     choices: [
       {
         text: '让它挑。是它挑人,又不是人求剑——规矩站着也不输。',
         outcomes: [
-          { weight: 4, text: '剑身朝队伍里某人亮了一下——成交价极低。商人脸都绿了:"七年来头一次,它打折。"那人从此睡觉都搂着剑。', effects: { gold: -40, item: 'wpn-t2-greatsword', moraleAll: 3 } },
-          { weight: 6, text: '剑身扫过所有人,黯淡下去,纹丝不动。商人摊手:"它说,还没到时候。"被一柄剑嫌弃了,说不尴尬是假的。', effects: { gold: -10, moraleRandom: -3 } },
+          { weight: 4, text: '剑身朝队伍里某人亮了一下——成交价极低。商人脸都绿了:「七年来头一次,它打折。」那人从此睡觉都搂着剑。', effects: { gold: -40, item: 'wpn-t2-greatsword', moraleAll: 3 } },
+          { weight: 6, text: '剑身扫过所有人,黯淡下去,纹丝不动。商人摊手:「它说,还没到时候。」被一柄剑嫌弃了,说不尴尬是假的。', effects: { gold: -10, moraleRandom: -3 } },
         ],
       },
       {
@@ -1527,20 +1527,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'hunger-altar',
     title: '饥渴之坛',
-    text: '地窖深处的石坛,凹槽里干涸的血迹发黑。石壁刻文:"喂养我,我喂养你。"坛边的陶碗里,放着一把银质的割血刀——擦得很亮,有人常用。',
+    text: '地窖深处的石坛,凹槽里干涸的血迹发黑。石壁刻文:「喂养我,我喂养你。」坛边的陶碗里,放着一把银质的割血刀——擦得很亮,有人常用。',
     choices: [
       {
-        text: '喂血。一人放一点,试试这个"等价交换"。',
+        text: '喂血。一人放一点,试试这个「等价交换」。',
         outcomes: [
           { weight: 5, text: '石坛嗡鸣着饮尽血,凹槽里浮出一批古老的银币——带着体温,像刚从谁的口袋里掏出来。', effects: { gold: 85, runBuff: { id: 'altar-thirst', name: '饥渴的余味', desc: '石坛记得你们的血——受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
-          { weight: 5, text: '血被喝了,坛子却毫无表示。石壁刻文的下一行,你这才看清:"……若我不悦。"——上古契约的坑,一个字都不带浪费的。', effects: { moraleAll: -4, runBuff: { id: 'altar-displeasure', name: '坛之不悦', desc: '全队隐隐发冷——攻击略降,直到本次远征结束', mods: { atk: 0.92 } } } },
+          { weight: 5, text: '血被喝了,坛子却毫无表示。石壁刻文的下一行,你这才看清:「……若我不悦。」——上古契约的坑,一个字都不带浪费的。', effects: { moraleAll: -4, runBuff: { id: 'altar-displeasure', name: '坛之不悦', desc: '全队隐隐发冷——攻击略降,直到本次远征结束', mods: { atk: 0.92 } } } },
         ],
       },
       {
         text: '砸坛。来路不明的等价交换,都是高利贷。',
         outcomes: [
-          { weight: 6, text: '石坛碎裂,夹层里滚出历代"喂食者"留下的财物——坛子本身就是个聚宝盆。碎石的缝里,隐约有什么叹息了一声。', effects: { gold: 120, moraleAll: -2 } },
-          { weight: 4, text: '锤子砸下去的瞬间,所有人都听见一个声音说:"记住你了。"之后一路无事——但每个人都把这句话记了很多年。', effects: { moraleRandom: -4 } },
+          { weight: 6, text: '石坛碎裂,夹层里滚出历代「喂食者」留下的财物——坛子本身就是个聚宝盆。碎石的缝里,隐约有什么叹息了一声。', effects: { gold: 120, moraleAll: -2 } },
+          { weight: 4, text: '锤子砸下去的瞬间,所有人都听见一个声音说:「记住你了。」之后一路无事——但每个人都把这句话记了很多年。', effects: { moraleRandom: -4 } },
         ],
       },
     ],
@@ -1554,13 +1554,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '开。宝箱怪也分很多种,有的只有牙,没有毒。',
         outcomes: [
           { weight: 4, text: '真宝箱!前主人藏得太急没来得及做陷阱。金币和一对完好的护腕——谎言般的运气。', effects: { gold: 75, item: 'arm-t1-mail' } },
-          { weight: 6, text: '箱子咬人了!恶战后把它的"舌头"劈了,箱子内部倒是别有洞天——上一批倒霉蛋的家当还在里面。', effects: { moraleRandom: -4, gold: 60, expAll: 15 } },
+          { weight: 6, text: '箱子咬人了!恶战后把它的「舌头」劈了,箱子内部倒是别有洞天——上一批倒霉蛋的家当还在里面。', effects: { moraleRandom: -4, gold: 60, expAll: 15 } },
         ],
       },
       {
         text: '绕开。宝箱不该出现在那里,就像鱼不该挂在树上。',
         outcomes: [
-          { weight: 6, text: '绕出去半里地,听见身后"咔哒"一声闷响——它合上了,等下一批人。你们省下的不只是血。', effects: { moraleAll: 2 } },
+          { weight: 6, text: '绕出去半里地,听见身后「咔哒」一声闷响——它合上了,等下一批人。你们省下的不只是血。', effects: { moraleAll: 2 } },
           { weight: 4, text: '绕路时踩塌了一片朽木,摔了个结实。回头一看,那箱子还在原地端端正正——连笑话都懒得讲。', effects: { moraleRandom: -3 } },
         ],
       },
@@ -1569,19 +1569,19 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'soul-trade',
     title: '灵魂商人',
-    text: '商人没有影子,货摊却应有尽有。"以记忆易物,"他微笑,"一段童年,换这把匕首;一段初恋,换那件护甲。质量上乘的回忆,我给好价钱。"',
+    text: '商人没有影子,货摊却应有尽有。「以记忆易物,」他微笑,「一段童年,换这把匕首;一段初恋,换那件护甲。质量上乘的回忆,我给好价钱。」',
     choices: [
       {
         text: '做一单小的。卖掉某次失败的尴尬回忆——正愁没地方扔。',
         outcomes: [
           { weight: 6, text: '回忆没了,连带着那段日子认识的一个名字也模糊了。东西是真的好,空落落也是真的空。', effects: { item: 'trk-t2-rune', moraleRandom: -3 } },
-          { weight: 4, text: '卖的是最疼的那段。商人验货时愣了一下:"这段很贵。"付的价钱,让全队都倒吸凉气——原来伤得越深,越值钱。', effects: { gold: 140, moraleAll: -5 } },
+          { weight: 4, text: '卖的是最疼的那段。商人验货时愣了一下:「这段很贵。」付的价钱,让全队都倒吸凉气——原来伤得越深,越值钱。', effects: { gold: 140, moraleAll: -5 } },
         ],
       },
       {
-        text: '不卖。"回忆是非卖品"这种话,说出口才发现自己都没底气。',
+        text: '不卖。「回忆是非卖品」这种话,说出口才发现自己都没底气。',
         outcomes: [
-          { weight: 6, text: '商人点点头,竟有些欣慰:"少见。大多数人是跑回来求我买的——可惜卖了的,买不回来。"', effects: { moraleAll: 3 } },
+          { weight: 6, text: '商人点点头,竟有些欣慰:「少见。大多数人是跑回来求我买的——可惜卖了的,买不回来。」', effects: { moraleAll: 3 } },
           { weight: 4, text: '走出很远,你发现自己想不起一个旧友的长相了——不是卖掉的,是本来就在淡。有些东西不留神就没了,跟商人无关。', effects: { moraleRandom: -3 } },
         ],
       },
@@ -1611,20 +1611,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'prisoner-ransom',
     title: '俘虏与赎金',
-    text: '你们端了匪窝,俘虏里有个绸衫商人:"我家里有钱!送信回去,三百金赎金!"另一个俘虏啐他:"他的「家里」是骗来的,我认识他,他叫三手刘!"',
+    text: '你们端了匪窝,俘虏里有个绸衫商人:「我家里有钱!送信回去,三百金赎金!」另一个俘虏啐他:「他的「家里」是骗来的,我认识他,他叫三手刘!」',
     choices: [
       {
         text: '信绸衫的,送信等赎金。锦衣玉食的人,绑错了会赔得很惨。',
         outcomes: [
           { weight: 5, text: '第七天,赎金到了,分文不少。三手刘被释放时发誓改行——第八天他就因销赃又被抓了。', effects: { gold: 150, delayed: { eventId: 'ransom-aftermath', dueDays: 3 } } },
-          { weight: 5, text: '等到第十天,赎金没来,来的却是剿匪的官兵——把你们和三手刘一起围了。解释了很久,官兵最后没收了"赃物"充公。', effects: { moraleAll: -5, gold: -20 } },
+          { weight: 5, text: '等到第十天,赎金没来,来的却是剿匪的官兵——把你们和三手刘一起围了。解释了很久,官兵最后没收了「赃物」充公。', effects: { moraleAll: -5, gold: -20 } },
         ],
       },
       {
         text: '信泼皮的话,把绸衫的交给官府。骗子的赎金,烫手。',
         outcomes: [
           { weight: 6, text: '官府顺藤摸瓜端了三手刘的销赃网,给公会的赏格比赎金还厚。绸衫的他在大牢里反而吃得香——牢饭免费,这回不是骗的。', effects: { gold: 90, moraleAll: 3 } },
-          { weight: 4, text: '官府说人证物证需要你们随行作证——耽搁了三天行程,还倒贴了两顿牢饭的招待钱。"见义勇为"的账,原来是这样算的。', effects: { gold: 40, moraleRandom: -3 } },
+          { weight: 4, text: '官府说人证物证需要你们随行作证——耽搁了三天行程,还倒贴了两顿牢饭的招待钱。「见义勇为」的账,原来是这样算的。', effects: { gold: 40, moraleRandom: -3 } },
         ],
       },
     ],
@@ -1632,13 +1632,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'ransom-aftermath',
     title: '第二幕·三手刘的信',
-    text: '一封信送到公会,字迹歪歪扭扭:"我是三手刘。改行了,真的。现在给商队当镖师,合法的。听说你们那边招人——别收我,我就是想说声谢。"信封里塞着一小袋钱,不多,压得平整。',
+    text: '一封信送到公会,字迹歪歪扭扭:「我是三手刘。改行了,真的。现在给商队当镖师,合法的。听说你们那边招人——别收我,我就是想说声谢。」信封里塞着一小袋钱,不多,压得平整。',
     choices: [
       {
-        text: '收下钱,回封信:"改了就别回头。"',
+        text: '收下钱,回封信:「改了就别回头。」',
         outcomes: [
           { weight: 7, text: '信发出去石沉大海。三个月后,一支商队路过公会,领头的朝门里望了很久——像三手刘,又不太像了。', effects: { gold: 25, moraleAll: 3 } },
-          { weight: 3, text: '钱袋里的钱是真的,还带着铁锈味——镖师这行也不好干。这声"谢"的分量,比想象中重。', effects: { gold: 40, moraleAll: 2 } },
+          { weight: 3, text: '钱袋里的钱是真的,还带着铁锈味——镖师这行也不好干。这声「谢」的分量,比想象中重。', effects: { gold: 40, moraleAll: 2 } },
         ],
       },
       {
@@ -1665,7 +1665,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '熔了卖金。刻字的部分剪掉,谁也不认识谁。',
         outcomes: [
-          { weight: 5, text: '金匠验货时啧啧称奇:"这手工,城里贵族才戴得起。"卖出的价钱,配得上它的来历——也配不上。', effects: { gold: 70, moraleAll: -3 } },
+          { weight: 5, text: '金匠验货时啧啧称奇:「这手工,城里贵族才戴得起。」卖出的价钱,配得上它的来历——也配不上。', effects: { gold: 70, moraleAll: -3 } },
           { weight: 5, text: '熔金的火光里,两个名字最后闪了一下。打杂的小学徒那天下午一直没说话,晚上偷偷在原地挖了半天泥。', effects: { gold: 60, moraleRandom: -4 } },
         ],
       },
@@ -1680,7 +1680,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '垫付抽水钱,赌矿脉是真的。',
         outcomes: [
           { weight: 5, text: '水抽干,矿脉比说的还肥。五五分账,矿主数钱数到笑出声——你们也分到了实打实的一袋。', effects: { gold: 110, moraleAll: 2 } },
-          { weight: 5, text: '水抽干了,矿脉是假的——早被上上个矿主采光了。矿主连道歉都很敷衍,四十金买了句"下次合作"。', effects: { gold: -40, moraleAll: -5 } },
+          { weight: 5, text: '水抽干了,矿脉是假的——早被上上个矿主采光了。矿主连道歉都很敷衍,四十金买了句「下次合作」。', effects: { gold: -40, moraleAll: -5 } },
         ],
       },
       {
@@ -1695,19 +1695,19 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'smuggler-hideout',
     title: '走私洞',
-    text: '山洞里的走私据点人去楼空,留下的货码得整整齐齐:上好的酒、南方的香料、几桶没贴标的火药。洞口刻着规矩:"同行不动同行的货。"',
+    text: '山洞里的走私据点人去楼空,留下的货码得整整齐齐:上好的酒、南方的香料、几桶没贴标的火药。洞口刻着规矩:「同行不动同行的货。」',
     choices: [
       {
-        text: '搬。规矩管的是"同行",你们是佣兵,吃这碗饭的不算。',
+        text: '搬。规矩管的是「同行」,你们是佣兵,吃这碗饭的不算。',
         outcomes: [
-          { weight: 5, text: '货卖了三笔好价钱。只是从此公会的货也走山道时,总有人"顺路"检查——江湖规矩,来日方长。', effects: { gold: 130, moraleAll: -2 } },
+          { weight: 5, text: '货卖了三笔好价钱。只是从此公会的货也走山道时,总有人「顺路」检查——江湖规矩,来日方长。', effects: { gold: 130, moraleAll: -2 } },
           { weight: 5, text: '搬火药时磕了一下,全洞轰的一声塌了半边。人是跑出来了,货只剩怀里的两瓶酒和一身灰。', effects: { gold: 40, moraleRandom: -4 } },
         ],
       },
       {
         text: '不搬,顺手把塌方的洞口做上记号。规矩是荒野的秩序,秩序护着每一个夜宿的人。',
         outcomes: [
-          { weight: 6, text: '一个月后,洞口的记号旁多了第二行字:"黑苔公会,可信。"走私犯的认可方式很怪,但很实用。', effects: { moraleAll: 3 } },
+          { weight: 6, text: '一个月后,洞口的记号旁多了第二行字:「黑苔公会,可信。」走私犯的认可方式很怪,但很实用。', effects: { moraleAll: 3 } },
           { weight: 4, text: '什么都没发生。有时什么都没发生,就是守规矩的全部回报。', effects: { moraleAll: 1 } },
         ],
       },
@@ -1716,7 +1716,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'fallen-star',
     title: '坠星与铁匠',
-    text: '一颗流星落在铁匠村后山。老铁匠眼睛发直:"星铁!三十年没见过的料!但老朽的锤子降不住它——需要一支佣兵去把流星头搬回来。路上,肯定不只有你们想要它。"',
+    text: '一颗流星落在铁匠村后山。老铁匠眼睛发直:「星铁!三十年没见过的料!但老朽的锤子降不住它——需要一支佣兵去把流星头搬回来。路上,肯定不只有你们想要它。」',
     choices: [
       {
         text: '去搬。抢星铁的都有谁?来一个打一个。',
@@ -1726,9 +1726,9 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         ],
       },
       {
-        text: '让给铁匠村自己组织人手,你们收个"指路费"走人。',
+        text: '让给铁匠村自己组织人手,你们收个「指路费」走人。',
         outcomes: [
-          { weight: 6, text: '老铁匠千恩万谢地付了路费。三个月后,村里寄来一批"星铁淬火"的箭头——说是谢礼,成色是真的好。', effects: { gold: 35, moraleAll: 2 } },
+          { weight: 6, text: '老铁匠千恩万谢地付了路费。三个月后,村里寄来一批「星铁淬火」的箭头——说是谢礼,成色是真的好。', effects: { gold: 35, moraleAll: 2 } },
           { weight: 4, text: '指路费收了,星铁的事再没消息。打铁的和搬铁的,各是各的命——只是偶尔想起来,会好奇那块铁最后成了什么。', effects: { gold: 35, moraleRandom: -2 } },
         ],
       },
@@ -1737,13 +1737,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'orphan-apprentice',
     title: '门口的孤儿',
-    text: '公会门口蹲着个半大孩子,包袱里是一套缝补过的佣兵皮甲——他爹的。"我会磨箭,认草药,记账。"他背了一遍,像背了很多遍。"收我。什么都干。"',
+    text: '公会门口蹲着个半大孩子,包袱里是一套缝补过的佣兵皮甲——他爹的。「我会磨箭,认草药,记账。」他背了一遍,像背了很多遍。「收我。什么都干。」',
     choices: [
       {
         text: '收下打杂。公会的灶台和账本,确实需要一双勤快的手。',
         outcomes: [
-          { weight: 6, text: '孩子把账理得清清楚楚,磨箭磨得比谁都亮。有人说看见他在练他爹的劈砍——没人点破,只是有人开始"顺路"教他两招。', effects: { gold: -15, moraleAll: 5, recruit: true } },
-          { weight: 4, text: '干了半个月,他的叔叔找来了,硬把孩子接走——"这行太苦"。走的那天,灶台的火没人会烧了,冷了三天的饭有人偷偷抹泪。', effects: { moraleAll: -3 } },
+          { weight: 6, text: '孩子把账理得清清楚楚,磨箭磨得比谁都亮。有人说看见他在练他爹的劈砍——没人点破,只是有人开始「顺路」教他两招。', effects: { gold: -15, moraleAll: 5, recruit: true } },
+          { weight: 4, text: '干了半个月,他的叔叔找来了,硬把孩子接走——「这行太苦」。走的那天,灶台的火没人会烧了,冷了三天的饭有人偷偷抹泪。', effects: { moraleAll: -3 } },
         ],
       },
       {
@@ -1764,14 +1764,14 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '入席。深更半夜的款待,推辞才是失礼。',
         outcomes: [
           { weight: 5, text: '菜是真香,酒是真暖。天亮时桌椅消失了,但每个人的疲惫都消了大半——有人的嘴角还挂着油光。', effects: { moraleAll: 6, runBuff: { id: 'ghost-feast', name: '宴席之恩', desc: '吃人的嘴软?不,是吃饱了有力气——攻击提升,直到本次远征结束', mods: { atk: 1.08 } } } },
-          { weight: 5, text: '酒过三巡,对面空着的坐垫上,有人开了口:"替我看看今年的收成。"大家礼貌地应了。答应亡者的事,记得还。', effects: { moraleAll: 3, delayed: { eventId: 'ghost-harvest', dueDays: 4 } } },
+          { weight: 5, text: '酒过三巡,对面空着的坐垫上,有人开了口:「替我看看今年的收成。」大家礼貌地应了。答应亡者的事,记得还。', effects: { moraleAll: 3, delayed: { eventId: 'ghost-harvest', dueDays: 4 } } },
         ],
       },
       {
         text: '撤营。不明来路的热饭,比明晃晃的刀还危险。',
         outcomes: [
           { weight: 6, text: '连夜拔营,走出去五里,回头望——宴席还在原地,热气还在飘。没人说话,安静得像送葬。', effects: { moraleAll: -3 } },
-          { weight: 4, text: '换营地后倒是睡了个好觉。只是天亮收账时发现,饭钱被"结"过了——每个钱袋里,都少了一枚币,却多了一粒饱满的新米。', effects: { gold: -4, moraleRandom: -2 } },
+          { weight: 4, text: '换营地后倒是睡了个好觉。只是天亮收账时发现,饭钱被「结」过了——每个钱袋里,都少了一枚币,却多了一粒饱满的新米。', effects: { gold: -4, moraleRandom: -2 } },
         ],
       },
     ],
@@ -1779,13 +1779,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'ghost-harvest',
     title: '第二幕·收成',
-    text: '路过一片陌生的农田,田里的麦子黑了半边——某种看不见的东西正在糟蹋收成。农夫抱头蹲在田埂:"去年答应过一个过路人,给他看今年的收成……人没来,田就成这样了。"',
+    text: '路过一片陌生的农田,田里的麦子黑了半边——某种看不见的东西正在糟蹋收成。农夫抱头蹲在田埂:「去年答应过一个过路人,给他看今年的收成……人没来,田就成这样了。」',
     choices: [
       {
-        text: '替那位"过路人"看收成,大声报个平安——再把答应的事做了。',
+        text: '替那位「过路人」看收成,大声报个平安——再把答应的事做了。',
         outcomes: [
           { weight: 7, text: '话音落下,黑麦的边缘以肉眼可见的速度转黄。农夫跪在田里哭,你们悄悄绕开了他的谢礼——有些托付,做了就该轻描淡写。', effects: { moraleAll: 5, blessing: 6 } },
-          { weight: 3, text: '报了平安,黑麦却只好转了一半——"过路人"欠的债太重,你们这点诚意只够打个折。农夫照样千恩万谢,你们照样心里有数。', effects: { moraleAll: 2, blessing: 2 } },
+          { weight: 3, text: '报了平安,黑麦却只好转了一半——「过路人」欠的债太重,你们这点诚意只够打个折。农夫照样千恩万谢,你们照样心里有数。', effects: { moraleAll: 2, blessing: 2 } },
         ],
       },
       {
@@ -1800,12 +1800,12 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'caravan-storm',
     title: '狼群下的商队',
-    text: '暴雨里,一支商队被狼群围在坡下,押货人举着火把结成圈,圈里的绸缎和铁器在闪电下发亮。商队领队嘶喊:"救命!货分你们三成!"',
+    text: '暴雨里,一支商队被狼群围在坡下,押货人举着火把结成圈,圈里的绸缎和铁器在闪电下发亮。商队领队嘶喊:「救命!货分你们三成!」',
     choices: [
       {
         text: '冲下去。狼好打,人心难买——三成货是顺带的。',
         outcomes: [
-          { weight: 6, text: '火把与刀光里,狼群散了。商队领队当场划货抵账,还多塞了两匹布:"下回走这条道,报黑苔的名号。"', effects: { gold: 100, moraleAll: 4 } },
+          { weight: 6, text: '火把与刀光里,狼群散了。商队领队当场划货抵账,还多塞了两匹布:「下回走这条道,报黑苔的名号。」', effects: { gold: 100, moraleAll: 4 } },
           { weight: 4, text: '救是救下了,狼群却也咬走了两箱货。商人肉疼得直哆嗦,三成变成了两成——还理直气壮。行吧,狼口里省下的都是赚的。', effects: { gold: 70, moraleRandom: -3 } },
         ],
       },
@@ -1821,20 +1821,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'mad-alchemist',
     title: '疯药剂师',
-    text: '药剂师从窗口探出头,白发炸成一朵蒲公英:"新药!喝了就知道明天的事!可惜昨天喝的那批,试药的人说知道的全是上礼拜的!"他晃着两瓶颜色可疑的药水:"半价!限时!"',
+    text: '药剂师从窗口探出头,白发炸成一朵蒲公英:「新药!喝了就知道明天的事!可惜昨天喝的那批,试药的人说知道的全是上礼拜的!」他晃着两瓶颜色可疑的药水:「半价!限时!」',
     choices: [
       {
         text: '买一瓶,挑个胆大的喝。',
         outcomes: [
-          { weight: 5, text: '喝的人说看见了"金色的麦田和一扇红门"——没人懂,但那天他的箭百发百中,像提前看过了弹道。', effects: { gold: -30, runBuff: { id: 'vision-haze', name: '幻视余韵', desc: '眼睛偶尔发花——但直觉变准了,攻击提升,直到本次远征结束', mods: { atk: 1.1 } } } },
-          { weight: 5, text: '喝的人看见的全是本周的伙食清单。药剂师大怒:"他体质特殊!"退款一半,算是有点良心。', effects: { gold: -15, moraleAll: -2 } },
+          { weight: 5, text: '喝的人说看见了「金色的麦田和一扇红门」——没人懂,但那天他的箭百发百中,像提前看过了弹道。', effects: { gold: -30, runBuff: { id: 'vision-haze', name: '幻视余韵', desc: '眼睛偶尔发花——但直觉变准了,攻击提升,直到本次远征结束', mods: { atk: 1.1 } } } },
+          { weight: 5, text: '喝的人看见的全是本周的伙食清单。药剂师大怒:「他体质特殊!」退款一半,算是有点良心。', effects: { gold: -15, moraleAll: -2 } },
         ],
       },
       {
         text: '不买,但买他三句真话。疯子的话里,偶尔藏着金子。',
         outcomes: [
           { weight: 5, text: '他说了三条沼泽的实情:哪片水有毒,哪片苇子藏匪,哪家的酒掺了水。条条值钱,句句不沾药。', effects: { gold: -10, expAll: 15 } },
-          { weight: 5, text: '他真的只说疯话,三条"真话"全是"月亮是奶酪做的"级别的。药剂师的疯,是套餐,不单点。', effects: { gold: -10, moraleRandom: -2 } },
+          { weight: 5, text: '他真的只说疯话,三条「真话」全是「月亮是奶酪做的」级别的。药剂师的疯,是套餐,不单点。', effects: { gold: -10, moraleRandom: -2 } },
         ],
       },
     ],
@@ -1842,17 +1842,17 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'confession-booth',
     title: '路旁忏悔室',
-    text: '荒野小教堂的忏悔室居然亮着灯。隔板后一个声音在哭:"我拿了不该拿的东西,卖了不该卖的人……神父睡着了,你听我说完行吗?就一次。"',
+    text: '荒野小教堂的忏悔室居然亮着灯。隔板后一个声音在哭:「我拿了不该拿的东西,卖了不该卖的人……神父睡着了,你听我说完行吗?就一次。」',
     choices: [
       {
         text: '听。有些话憋着会毒死人,说出来,对说话的人是解药。',
         outcomes: [
-          { weight: 6, text: '他讲了一个通宵。天亮时他平静了,塞过来一把钥匙:"仓库在码头,第三排。东西你们分,我解脱了。"', effects: { gold: 80, moraleAll: 2 } },
-          { weight: 4, text: '听完才知道,他卖的是"人"——字面意思。你攥着忏悔的重量,一夜没合眼:这种事,该报官,还是该守诺?天亮时他走了,你还在想。', effects: { moraleAll: -3, gold: 50 } },
+          { weight: 6, text: '他讲了一个通宵。天亮时他平静了,塞过来一把钥匙:「仓库在码头,第三排。东西你们分,我解脱了。」', effects: { gold: 80, moraleAll: 2 } },
+          { weight: 4, text: '听完才知道,他卖的是「人」——字面意思。你攥着忏悔的重量,一夜没合眼:这种事,该报官,还是该守诺?天亮时他走了,你还在想。', effects: { moraleAll: -3, gold: 50 } },
         ],
       },
       {
-        text: '不进。"神父睡着了"——你又不是神父,这锅背不起。',
+        text: '不进。「神父睡着了」——你又不是神父,这锅背不起。',
         outcomes: [
           { weight: 6, text: '你走你的夜路,他说他的忏悔。声音在身后渐渐低了。有些救赎,注定跟你没关系。', effects: { moraleRandom: -2 } },
           { weight: 4, text: '第二天天亮回看,忏悔室空了,灯还亮着。桌上留了半块没吃完的干粮——一个逃亡者的干粮,只有逃亡者懂。你把干粮埋了。', effects: { moraleAll: -2 } },
@@ -1863,19 +1863,19 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'old-map',
     title: '酒鬼的旧地图',
-    text: '酒鬼拽住你的袖子,掏出一张油乎乎的羊皮:"祖上传的!藏宝图!三十金卖你——不买拉倒,反正我孙子也不信。"图上的确画着错综的标记,还有一半被油渍泡烂了。',
+    text: '酒鬼拽住你的袖子,掏出一张油乎乎的羊皮:「祖上传的!藏宝图!三十金卖你——不买拉倒,反正我孙子也不信。」图上的确画着错综的标记,还有一半被油渍泡烂了。',
     choices: [
       {
         text: '买。三十金赌一个酒鬼的祖上,值。',
         outcomes: [
           { weight: 4, text: '按图索骥,烂掉的那半恰好是关键的岔口——但就靠没烂的半张,你们硬是摸到了窖口。祖上是真有货的,酒鬼没吹。', effects: { gold: 120, moraleAll: 4 } },
-          { weight: 6, text: '图上的标记全是本地酒馆的位置。所谓"藏宝",是他祖父当年的一场酒局路线。图是老的,醉是新的。', effects: { gold: -30, moraleRandom: -4 } },
+          { weight: 6, text: '图上的标记全是本地酒馆的位置。所谓「藏宝」,是他祖父当年的一场酒局路线。图是老的,醉是新的。', effects: { gold: -30, moraleRandom: -4 } },
         ],
       },
       {
-        text: '不买,但请他喝一顿,听他讲"祖上"。故事有时候比图值钱。',
+        text: '不买,但请他喝一顿,听他讲「祖上」。故事有时候比图值钱。',
         outcomes: [
-          { weight: 6, text: '酒过三巡,他把祖父当年走私的路线、暗桩、所有"同行不动同行货"的门道,全倒了出来——图会烂,口述的传承不会。', effects: { gold: -15, expAll: 20 } },
+          { weight: 6, text: '酒过三巡,他把祖父当年走私的路线、暗桩、所有「同行不动同行货」的门道,全倒了出来——图会烂,口述的传承不会。', effects: { gold: -15, expAll: 20 } },
           { weight: 4, text: '祖上的事他讲不出几句,倒是把村里三十年的恩怨情仇播报了一遍。信息不值钱,但下酒。', effects: { gold: -15, moraleAll: 1 } },
         ],
       },
@@ -1884,20 +1884,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'parasite-tongue',
     title: '蛆舌预言者',
-    text: '沼泽集市角落,兜帽人竖起一根手指:"免费预言。"手指顶端趴着一条一寸长的白虫,蠕动着指向每个驻足的人。"它尝过世界深处的味道。听,还是挖掉它?挖掉,预言就归你了。"',
+    text: '沼泽集市角落,兜帽人竖起一根手指:「免费预言。」手指顶端趴着一条一寸长的白虫,蠕动着指向每个驻足的人。「它尝过世界深处的味道。听,还是挖掉它?挖掉,预言就归你了。」',
     choices: [
       {
         text: '听。免费的预言,再恶心也是信息。',
         outcomes: [
-          { weight: 5, text: '白虫用细不可闻的声音说:"西边的路在流血,东边的路在睡觉。"后来你们在西边撞见了流寇,在东边睡了个好觉——字面意思的预言。', effects: { expAll: 15, moraleAll: 2 } },
-          { weight: 5, text: '预言是:"你的靴子不合脚。"当时全场嗤笑,三天后远征里唯一磨破脚的就是那个换新靴子的——恶心的预言,也是预言。', effects: { moraleRandom: -3, expAll: 10 } },
+          { weight: 5, text: '白虫用细不可闻的声音说:「西边的路在流血,东边的路在睡觉。」后来你们在西边撞见了流寇,在东边睡了个好觉——字面意思的预言。', effects: { expAll: 15, moraleAll: 2 } },
+          { weight: 5, text: '预言是:「你的靴子不合脚。」当时全场嗤笑,三天后远征里唯一磨破脚的就是那个换新靴子的——恶心的预言,也是预言。', effects: { moraleRandom: -3, expAll: 10 } },
         ],
       },
       {
         text: '挖掉。想要预言就干脆点——连虫带窝,一起算我的。',
         outcomes: [
-          { weight: 5, text: '兜帽人居然没拦,反而鼓掌:"每年就等一个敢挖的。"白虫的窝里藏着一枚旧戒指——那是他"去年敢挖的那位"留下的定金。', effects: { gold: 55, moraleRandom: -2 } },
-          { weight: 5, text: '挖是挖下来了,虫却顺着刀爬上了手腕,钻进袖口不见了。兜帽人摊手:"它自己挑地方。祝你好运。"那一整周,手腕都痒。', effects: { moraleRandom: -4, runBuff: { id: 'tongue-itch', name: '腕上之痒', desc: '总感觉袖子里有什么——受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
+          { weight: 5, text: '兜帽人居然没拦,反而鼓掌:「每年就等一个敢挖的。」白虫的窝里藏着一枚旧戒指——那是他「去年敢挖的那位」留下的定金。', effects: { gold: 55, moraleRandom: -2 } },
+          { weight: 5, text: '挖是挖下来了,虫却顺着刀爬上了手腕,钻进袖口不见了。兜帽人摊手:「它自己挑地方。祝你好运。」那一整周,手腕都痒。', effects: { moraleRandom: -4, runBuff: { id: 'tongue-itch', name: '腕上之痒', desc: '总感觉袖子里有什么——受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
         ],
       },
     ],
@@ -1906,7 +1906,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'dragon-egg',
     title: '龙蛋的困境',
-    text: '温泉眼边窝着三枚龙蛋,壳面温热,偶尔颤动——里面有活物。鳞音教的通缉令就贴在百里外的镇口:"私藏龙蛋者,株连雇主。"每个蛋,黑市开价两百金。',
+    text: '温泉眼边窝着三枚龙蛋,壳面温热,偶尔颤动——里面有活物。鳞音教的通缉令就贴在百里外的镇口:「私藏龙蛋者,株连雇主。」每个蛋,黑市开价两百金。',
     choices: [
       {
         text: '全部抱走。两百一个,三个六百,这是行军财务上的正确决策。',
@@ -1927,7 +1927,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'egg-hatch',
     title: '第二幕·壳里的东西',
-    text: '卖掉龙蛋的第九天,营地水桶里发现一只巴掌大的小龙崽——湿漉漉的,是从你们行囊缝里掉进水桶的蛋里孵出来的。它谁也不认,只咬当初提议"抱走"的那位。',
+    text: '卖掉龙蛋的第九天,营地水桶里发现一只巴掌大的小龙崽——湿漉漉的,是从你们行囊缝里掉进水桶的蛋里孵出来的。它谁也不认,只咬当初提议「抱走」的那位。',
     choices: [
       {
         text: '养着。能咬雇佣兵的东西,将来能咬别的。',
@@ -1947,20 +1947,20 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'cult-purge',
     title: '教团的清算',
-    text: '鳞音教的执事团堵在营地外,展开一卷名单:"据鳞册批注,贵会曾于圣地带不敬。念贵会屡建战功,罚金三百金,或——交出当日带队的名字,由圣火净化其不敬。"',
+    text: '鳞音教的执事团堵在营地外,展开一卷名单:「据鳞册批注,贵会曾于圣地带不敬。念贵会屡建战功,罚金三百金,或——交出当日带队的名字,由圣火净化其不敬。」',
     choices: [
       {
         text: '交钱。三百金买个既往不咎,比背上人命便宜。',
         outcomes: [
-          { weight: 6, text: '执事收钱划名,临走留下一句:"圣火看得见忠诚。"队伍里没人说话——被用钱定义的忠诚,总觉得哪里不对。', effects: { gold: -300, moraleAll: -4 } },
-          { weight: 4, text: '钱交了,名单上却多了一行小字:"已训诫,暂缓清算。"暂缓两个字,像根刺。', effects: { gold: -300, moraleRandom: -3 } },
+          { weight: 6, text: '执事收钱划名,临走留下一句:「圣火看得见忠诚。」队伍里没人说话——被用钱定义的忠诚,总觉得哪里不对。', effects: { gold: -300, moraleAll: -4 } },
+          { weight: 4, text: '钱交了,名单上却多了一行小字:「已训诫,暂缓清算。」暂缓两个字,像根刺。', effects: { gold: -300, moraleRandom: -3 } },
         ],
       },
       {
         text: '抗到底。净化两个字冲着谁来的,谁就站出来——全队都会站出来。',
         outcomes: [
           { weight: 5, text: '对峙到深夜,执事团烧了自己的营帐走了——那是教团最烈的抗议。全队握刀握到天亮,手上是汗,心里是火。', effects: { moraleAll: 8, delayed: { eventId: 'cult-vengeance', dueDays: 2 } } },
-          { weight: 5, text: '冲突见血了。双方各伤了人,教团扛着伤员撤离时,老队长说了句谁都懂的话:"这下梁子结到龙了。"', effects: { moraleAll: 5, moraleRandom: -3, delayed: { eventId: 'cult-vengeance', dueDays: 2 } } },
+          { weight: 5, text: '冲突见血了。双方各伤了人,教团扛着伤员撤离时,老队长说了句谁都懂的话:「这下梁子结到龙了。」', effects: { moraleAll: 5, moraleRandom: -3, delayed: { eventId: 'cult-vengeance', dueDays: 2 } } },
         ],
       },
     ],
@@ -1968,7 +1968,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'cult-vengeance',
     title: '第二幕·圣火的回信',
-    text: '夜里,营地四周的火把无故自燃,火苗全是幽蓝色。火堆边留着一封烧了一半的信:"圣火已至,勿谓言之不预。"字迹是烧出来的,不是写出来的。',
+    text: '夜里,营地四周的火把无故自燃,火苗全是幽蓝色。火堆边留着一封烧了一半的信:「圣火已至,勿谓言之不预。」字迹是烧出来的,不是写出来的。',
     choices: [
       {
         text: '灭火,加固岗哨,照常行军。吓唬人的火,烧不穿铁甲。',
@@ -1981,7 +1981,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '回敬。把他们的圣像也点一把火,火对火,公平。',
         outcomes: [
           { weight: 5, text: '圣像烧塌的那刻,远处山脊上所有教团的火把同时熄灭——然后同时亮起。他们记住了。你们也记住了:这里没人敢惹黑苔。', effects: { moraleAll: 6, gold: -20, delayed: { eventId: 'cult-vengeance', dueDays: 4 } } },
-          { weight: 5, text: '火太大了,烧过了山脊的枯草——教团的营地没了,半片林子也没了。你们赢了这一局,输了一片林子,也输掉了说"我们只是自卫"的底气。', effects: { moraleAll: -3, gold: 40 } },
+          { weight: 5, text: '火太大了,烧过了山脊的枯草——教团的营地没了,半片林子也没了。你们赢了这一局,输了一片林子,也输掉了说「我们只是自卫」的底气。', effects: { moraleAll: -3, gold: 40 } },
         ],
       },
     ],
@@ -1989,7 +1989,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'dragon-defector',
     title: '龙裔的叛逃者',
-    text: '一个龙裔鳞甲半褪、躲在溪水边发抖。他说自己是教团的锻奴,偷了火种图谱逃出来:"收留我,图谱归你们。被找到——你们和我是同罪。"',
+    text: '一个龙裔鳞甲半褪、躲在溪水边发抖。他说自己是教团的锻奴,偷了火种图谱逃出来:「收留我,图谱归你们。被找到——你们和我是同罪。」',
     choices: [
       {
         text: '收。图谱归公,人归队伍——教团的账,让教团自己头疼。',
@@ -2085,7 +2085,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '拒绝。佣兵只效忠钱和兄弟,不效忠火。',
         outcomes: [
-          { weight: 6, text: '征募官收起文书,不怒自威:"圣火记性好。"他走后,酒馆老板免费送了一轮酒——跟教团说不的人,酒钱我出。', effects: { moraleAll: 5 } },
+          { weight: 6, text: '征募官收起文书,不怒自威:「圣火记性好。」他走后,酒馆老板免费送了一轮酒——跟教团说不的人,酒钱我出。', effects: { moraleAll: 5 } },
           { weight: 4, text: '拒了之后一切如常——直到下次进城,铁匠铺恰好没了你们订的货,粮商恰好涨价了。没有明枪,全是暗箭。', effects: { gold: -40, moraleRandom: -3 } },
         ],
       },
@@ -2127,7 +2127,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '不喝,灌进水囊带回去卖。龙脊的疯货,城里有的是人抢。',
         outcomes: [
-          { weight: 6, text: '炼金商人抢着收购,当场现结。他灌装时手抖得厉害,嘴里念叨:"喝过的人都说好——但我不喝,你们最好也别喝。"', effects: { gold: 90 } },
+          { weight: 6, text: '炼金商人抢着收购,当场现结。他灌装时手抖得厉害,嘴里念叨:「喝过的人都说好——但我不喝,你们最好也别喝。」', effects: { gold: 90 } },
           { weight: 4, text: '水囊漏了。一路红痕,引来了两头循血而来的岩狼。打退狼,丢了泉,账面上不亏,心里堵得慌。', effects: { gold: 40, moraleRandom: -4, expAll: 10 } },
         ],
       },
