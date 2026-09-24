@@ -6,3 +6,12 @@ scripts/*.mjs
 dist-playtest/
 /黑苔公会-*.html
 .vite/
+!scripts/verify.mjs
+!scripts/inline-assets.mjs
+!scripts/e2e-cdp.mjs
+!scripts/e2e-battle.mjs
+!scripts/e2e-tower.mjs
+!scripts/diag-console.mjs
+!scripts/diag-assets.mjs
+!scripts/diag-units.mjs
+!scripts/qa-playthrough.mjs
