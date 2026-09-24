@@ -506,10 +506,13 @@ export default function App() {
       setDungeonMastery((mm) => ({ ...mm, [r.dungeon.id]: (mm[r.dungeon.id] ?? 0) + gain }))
     }
     // 挂机连刷(试玩反馈):rest 自动下一场;victory 自动重刷同一副本;团灭/保护撤退停止
+    // F09 修复(2026-09-25):victory 重刷此前被 startExpedition 入口守卫拒绝(runRef 尚挂终局
+    // run,自动重刷从未生效)——先走回城结算(满血/退药/清 runRef),再自动再出击
     if (endPhase !== 'battle' && r.autoMode) {
       if (endPhase === 'rest') {
         window.setTimeout(() => continueDeepRef.current?.(), 500)
       } else if (endPhase === 'victory') {
+        backToGuild()
         window.setTimeout(() => startExpeditionRef.current?.(lastBranchRef.current), 600)
       } else if (endPhase === 'defeat') {
         logChronicle(chronicleRaw(day, '挂机连刷结束:队伍全灭于' + r.dungeon.name + '。'))
@@ -702,7 +705,13 @@ export default function App() {
       setVisitor(rollVisitor(Math.random, membersRef.current, buildings.tavern ?? 0))
     } else if (roll < fx.visitorChance + 0.35 && !pendingEvent) {
       const ev = rollGuildEvent(Math.random)
-      if (ev) { setPendingEvent(ev); setEventResult(null); sfxVisitor() }
+      if (ev) {
+        setPendingEvent(ev); setEventResult(null); sfxVisitor()
+        // F09:挂机连刷时公会层事件由队长代打(与远征代打同语义),否则连刷卡死在弹窗上
+        if (r?.autoMode) {
+          window.setTimeout(() => resolveEventRef.current?.(Math.floor(Math.random() * ev.choices.length)), 900)
+        }
+      }
     }
   }
 
@@ -835,15 +844,22 @@ export default function App() {
       setMembers([...membersRef.current])
       chip(`全队属性点 +${fx.attrPoint}`, 'pos')
     }
-    // 药水经济接入事件叙事:补给/失窃/赠礼直接改公会库存(potionHeal 此前漏结算,顺手修复)
-    resolveEventRef.current = resolveEvent
-    undefined
+    // 药水经济接入事件叙事(F07 残余修复 2026-09-25):远征中触发的事件药水进远征携带
+    // (run.potions)——否则进公会库存后回城被 run.potions 退回覆盖,等于白给;公会层事件照旧进库存
     if (fx.potionHeal) {
-      setPotions((p) => ({ ...p, heal: Math.max(0, p.heal + fx.potionHeal!) }))
+      if (runRef.current) {
+        runRef.current.potions = { ...runRef.current.potions, heal: Math.max(0, runRef.current.potions.heal + fx.potionHeal!) }
+      } else {
+        setPotions((p) => ({ ...p, heal: Math.max(0, p.heal + fx.potionHeal!) }))
+      }
       chip(`治疗药水 ${sgn(fx.potionHeal)}`, fx.potionHeal > 0 ? 'pos' : 'neg')
     }
     if (fx.potionFury) {
-      setPotions((p) => ({ ...p, fury: Math.max(0, p.fury + fx.potionFury!) }))
+      if (runRef.current) {
+        runRef.current.potions = { ...runRef.current.potions, fury: Math.max(0, runRef.current.potions.fury + fx.potionFury!) }
+      } else {
+        setPotions((p) => ({ ...p, fury: Math.max(0, p.fury + fx.potionFury!) }))
+      }
       chip(`爆发药水 ${sgn(fx.potionFury)}`, fx.potionFury > 0 ? 'pos' : 'neg')
     }
     // 远征内持续状态(反馈④事件大项):仅副本内事件生效(挂到当前 run)
@@ -883,6 +899,9 @@ export default function App() {
       window.setTimeout(() => continueDeepRef.current?.(), 900)
     }
   }
+  // F09 修复(2026-09-25):ref 改为渲染期赋值——旧写法在 resolveEvent 体内自赋值,
+  // 首次自动事件(挂机)触发时 ref 尚为 null,自动选路静默失败、事件卡死
+  resolveEventRef.current = resolveEvent
 
   const dismissEvent = () => {
     setPendingEvent(null)
@@ -892,10 +911,13 @@ export default function App() {
   dismissEventRef.current = dismissEvent
 
   // 挂机代打事件(试玩反馈二轮):远征途中触发的事件,队长随机择路;结果展示后自动翻页
+  // F09(2026-09-25):守卫从 run.autoMode 改为 autoLoopRef——回城后 runRef 为 null,
+  // 公会层事件的自动结算/翻页此前会失效,挂机连刷卡死在结果弹窗上
   useEffect(() => {
     if (!pendingEvent || eventResult) return
     const r = runRef.current
-    if (!r?.autoMode || r.phase !== 'rest') return
+    if (r ? !r.autoMode : !autoLoopRef.current) return
+    if (r && r.phase !== 'rest') return
     const timer = setTimeout(() => {
       resolveEventRef.current?.(Math.floor(Math.random() * pendingEvent.choices.length))
     }, 900)
@@ -905,8 +927,7 @@ export default function App() {
 
   useEffect(() => {
     if (!eventResult) return
-    const r = runRef.current
-    if (!r?.autoMode || r.phase !== 'rest') return
+    if (!autoLoopRef.current) return
     const timer = setTimeout(() => dismissEventRef.current?.(), 1200)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
