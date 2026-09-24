@@ -18,6 +18,7 @@
 - **巫师 3 式事件**——91 个事件,每个选择都有取舍,部分后果延迟数天才显现
 - **两片版图 12 座副本**——黑苔荒野 → 龙脊山脉(鳞音圣战),灼热地形、火抗套装、龙裔怪族
 - **黑苔高塔**——无限爬塔,第 9 层起撤退保护失效
+- **王国委托**——大厅按 Q 接取灰冠王国来函；10份一次性委托连接建设、Boss与副本，酬金/补给二选一，王国信任解锁药水优惠
 - **灵魂层**——士气、性格、默契、编年史:你的佣兵不是数值,是会恐惧也会忠诚的人
 
 ## 开发版运行
@@ -27,8 +28,10 @@
 npm install
 npm run dev        # 开发服务器 http://localhost:5173
 npm run build      # 生产构建 → dist/
-npm run verify     # 全量门禁(构建+37 项冒烟断言+E2E 基建)
+npm run test:kingdom # 王国委托、奖励与存档迁移回归检查
 ```
+
+本检出缺少历史 `scripts/verify.mjs`，`npm run verify` 尚不可用，不能据此宣称全量门禁通过。当前开发接续入口见 [HANDOFF](docs/development/HANDOFF.md)，委托数值与验证范围见 [K01说明](docs/development/kingdom-commissions.md)。
 
 - 满配试玩档:`node scripts/dev-save.mjs [等级 1-15]` 生成导入码(docs/dev-save.txt)
 - 单文件分发版:`npx vite build --config vite.config.playtest.ts` → dist-playtest/
@@ -49,7 +52,7 @@ src/
   sim/      纯逻辑层(战斗/远征/事件/经济/成长——全部可单测)
   data/     数据表(副本/怪物/boss/事件/装备/特质——加内容不动引擎)
   ui/       表现层(Pixi 战斗渲染器 + React 界面)
-  state/    存档(v11 迁移链)
+  state/    存档(v12 迁移链，含王国委托)
 scripts/    门禁(smoke)/E2E(CDP)/探针(节奏·新档)/打包
 docs/       设计文档(DESIGN.md 宪法/boss 提案流程/验收截图)
 ```

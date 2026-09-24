@@ -844,7 +844,7 @@ const towerFailures: string[] = []
 
   // 13b:导出/导入回环——字段完整还原
   const saveObj = { version: SAVE_VERSION, members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
-  const code = exportSave(saveObj)
+  const code = exportSave({ ...saveObj, kingdom: { active: [], completed: [] } })
   const back = importSave(code)
   const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids) && back.dungeonMastery.blackmoss === 5
   console.log(`⑬ 导出导入:回环 ${roundOk},码长 ${code.length}`)
