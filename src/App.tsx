@@ -2146,7 +2146,8 @@ export default function App() {
                 const dId = run.dungeon.id
                 const m = dungeonMastery[dId] ?? 0
                 const lvl = revealLevel(m)
-                const isBossNext = run.stepIdx + 1 >= run.steps.length - 1
+                // rest 相 stepIdx 已指向「下一场待打」——下一场是压轴 boss 时收起选路(F02 同步修正 off-by-one)
+                const isBossNext = run.stepIdx >= run.steps.length - 1
                 const opts = junctionOptions(run, seedRef.current)
                 const bossDirect = m >= MASTERY.BOSS_DIRECT && !isBossNext
                 const kindLabel: Record<string, string> = { battle: '⚔ 战斗', elite: '☠ 精英·掉落翻倍', event: '❓ 事件', rest: '⛺ 休整·额外回复', treasure: '🎁 宝箱·无战斗' }
@@ -2158,7 +2159,7 @@ export default function App() {
                         {bossDirect ? ' 你已熟到可以直接挑战深处!' : ''}
                       </p>
                       {isBossNext ? (
-                        <p className="hint">深处的气息近了——前方就是<b style={{ color: '#d48f8f' }}>{encName(run, run.steps[run.stepIdx + 1])}</b>。</p>
+                        <p className="hint">深处的气息近了——前方就是<b style={{ color: '#d48f8f' }}>{encName(run, run.steps[run.stepIdx])}</b>。</p>
                       ) : (
                         <div className="route-choices">
                           {opts.map((n) => (
@@ -2173,8 +2174,9 @@ export default function App() {
                         <button onClick={() => {
                           const r2 = runRef.current
                           if (!r2) return
+                          // F03 修复(2026-09-25):直取 boss——路线只留 boss 一场,不再重打原首场
                           const bossEnc = r2.steps[r2.steps.length - 1]
-                          r2.steps = [r2.steps[0], bossEnc]
+                          r2.steps = [bossEnc]
                           r2.stepIdx = 0
                           r2.nodeIds.push('boss-direct')
                           setRun({ ...r2 })

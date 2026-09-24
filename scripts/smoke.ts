@@ -2333,6 +2333,32 @@ const towerFailures: string[] = []
     if (elite <= normal) fail34.push(`㉞ 精英缩放未生效:${normal} → ${elite}`)
     console.log(`㉞ 精英缩放:敌总血 ${normal} → ${elite}`)
   }
+  // 34f:F02 选路错位回归(2026-09-25)——rest 相 stepIdx 已指向「下一场待打」,
+  // battle/elite 应改写本位 steps[stepIdx],event/rest 应消耗本位(不吞压轴 boss)
+  {
+    const squad = JOBS.map((job, j) => generateMember(job, 5, 988000 + j))
+    seedMemberSeq(squad)
+    const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true)
+    // 模拟打完首场进入 rest 相(advanceRun 的 stepIdx++ 语义)
+    run.stepIdx = 1
+    run.phase = 'rest'
+    const wolves = run.dungeon.routeNodes.find((n) => n.id === 'bm-wolves')!
+    const stepsBefore = [...run.steps]
+    applyNodeChoice(run, 'bm-wolves')
+    if (run.steps[1] !== wolves.encounterId) fail34.push(`㉞ F02 战斗节点应改写下一场本位:${stepsBefore[1]}→${run.steps[1]}`)
+    if (run.steps[2] !== stepsBefore[2]) fail34.push('㉞ F02 战斗节点不应波及更后面的位次')
+    // 事件节点:消耗即将开打的一场(位次减一),压轴 boss 位不受影响
+    const run2 = createRun(JOBS.map((job, j) => generateMember(job, 5, 989000 + j)), BLACKMOSS, 'shortcut', 4242, 0, true)
+    seedMemberSeq(run2.members)
+    run2.stepIdx = 1
+    run2.phase = 'rest'
+    const before2 = run2.steps.length
+    const bossTail = run2.steps[run2.steps.length - 1]
+    applyNodeChoice(run2, 'bm-camp')
+    if (run2.steps.length !== before2 - 1) fail34.push(`㉞ F02 事件节点应消耗本位一场:${before2}→${run2.steps.length}`)
+    if (run2.steps[run2.steps.length - 1] !== bossTail) fail34.push('㉞ F02 事件节点吞掉了压轴 boss 位')
+    console.log(`㉞ F02 选路:战斗节点改写本位✓ 事件节点消耗本位✓(位次 ${before2}→${run2.steps.length})`)
+  }
   // 34e:熟练度揭示阈值(反馈④:阈值放大到 12/24/36,长期经营初衷)
   {
     if (revealLevel(0) !== 'hidden' || revealLevel(MASTERY.KIND) !== 'kind' || revealLevel(MASTERY.FULL) !== 'full') {

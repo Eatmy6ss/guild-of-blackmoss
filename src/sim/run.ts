@@ -274,21 +274,23 @@ export function junctionOptions(run: DungeonRun, seed: number, count = 4): Route
   return picked
 }
 
-/** 应用节点选择:返回节点类型;battle/elite 改写下一场遭遇;event/rest 不发生战斗 */
+/** 应用节点选择:返回节点类型;battle/elite 改写下一场遭遇;event/rest 不发生战斗
+ *  (F02 修复 2026-09-25:选路发生在 rest 相,advanceRun 已把 stepIdx 指向「下一场待打」——
+ *   改写/消耗都应作用于 steps[stepIdx] 本位,此前 +1 一格造成「选蛙人打狼群」错位) */
 export function applyNodeChoice(run: DungeonRun, nodeId: string): 'battle' | 'elite' | 'event' | 'rest' | 'treasure' | null {
   const node = run.dungeon.routeNodes.find((n) => n.id === nodeId)
   if (!node || run.nodeIds.includes(node.id)) return null
   run.nodeIds.push(node.id)
   if (node.kind === 'battle' || node.kind === 'elite') {
-    if (node.encounterId && run.steps[run.stepIdx + 1] !== undefined) {
-      run.steps[run.stepIdx + 1] = node.encounterId
+    if (node.encounterId && run.steps[run.stepIdx] !== undefined) {
+      run.steps[run.stepIdx] = node.encounterId
     }
     run.eliteNow = node.kind === 'elite'
     return node.kind
   }
-  // 事件/休整节点:消耗一场战斗的位次(少打一场,以事件/休整代之)
-  if (run.steps.length > 1 && run.stepIdx + 1 < run.steps.length - 1) {
-    run.steps.splice(run.stepIdx + 1, 1)
+  // 事件/休整节点:消耗即将开打的这场战斗的位次(少打一场,以事件/休整代之;不吞压轴 boss)
+  if (run.steps.length > 1 && run.stepIdx < run.steps.length - 1) {
+    run.steps.splice(run.stepIdx, 1)
   }
   return node.kind
 }
