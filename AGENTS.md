@@ -1,7 +1,7 @@
 # 黑苔公会：开发接续入口
 
 - 新任务或上下文恢复时，先读 `docs/development/HANDOFF.md`；开始具体工作前核对当前分支、提交和未提交改动。文件中的版本是记录，不保证仍是最新。
-- 按任务需要读取 `docs/development/BACKLOG.md` 的对应条目和 `docs/development/DECISIONS.md` 的相关决策。无需每次重读全部设计历史或整份审查报告。
+- 按任务需要读取 `docs/development/BACKLOG.md` 的对应条目和 `docs/development/DECISIONS.md` 的相关决策。想快速了解"游戏现在有什么/缺什么/什么挂起"，读 `docs/development/SYSTEM-MAP.md`（全景盘点，制作人侧维护）。无需每次重读全部设计历史或整份审查报告。
 - 用户当前明确指示优先。区分“当前实现事实”“用户已确认需求”“审查建议/待决事项”。不要把建议或历史草案视为已批准的改版。
 - 当前技术主线是 TypeScript + React + PixiJS + Vite。玩法审查证据在 `docs/gameplay-audit-2026-09-24.md`；历史设计在 `docs/DESIGN.md`，其中有已替代或暂缓的方案。
 - 行为修改围绕可验证的小范围目标推进，检查 UI → 状态 → 模拟 → 奖励/存档的完整调用链；按改动运行有意义的验证。不要仅凭类型检查或历史“门禁通过”判断玩法正确。
