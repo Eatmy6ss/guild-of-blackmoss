@@ -50,6 +50,7 @@ import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded
 import { memorialAura, computeLegacy, legacyQuality, legacyCounts, type LegacyContext } from './sim/memorial'
 import { rollWish, wishDone, WISH_MORALE } from './sim/wish'
 import { redeemCost } from './sim/tavern'
+import { rollScarChance, rollScar, canGainScar, attemptHeal, scarStatName, type HealingMastery } from './sim/scars'
 import { DUNGEON_FINAL_BOSS } from './data/regions'
 import { rollGuildEvent, pickOutcome } from './sim/guild-events'
 import { applyMoraleDelta } from './sim/morale'
@@ -146,6 +147,8 @@ export default function App() {
   const [starMarrow, setStarMarrow] = useState(() => saved?.starMarrow ?? 0)
   // 遗物安葬 2.0:阵亡装备待赎回清单
   const [pendingRelics, setPendingRelics] = useState(() => saved?.pendingRelics ?? [])
+  // S1 创伤一期:疗养熟练度(维度→尝试次数)
+  const [healingMastery, setHealingMastery] = useState<HealingMastery>(() => saved?.healingMastery ?? {})
   // K02 纪念品质(U11):阵亡登记时的公会上下文快照→生平事迹→品质→光环(封顶,替代旧人头 2%)
   const legacyContext = (): LegacyContext => ({
     bossKills: manual.length,
@@ -335,6 +338,16 @@ export default function App() {
       setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
       setMembers([...membersRef.current])
     }
+    // S1 创伤:塔深层(6 层+)每层 5% 随机一人留创伤
+    if (t.floor >= 6) {
+      const alive = membersRef.current.filter((m) => m.alive && canGainScar(m))
+      const picked = alive[Math.floor(Math.random() * alive.length)]
+      if (picked && Math.random() < 0.05) {
+        picked.scars = [...(picked.scars ?? []), rollScar(Math.random)]
+        logChronicle(chronicleRaw(day, picked.name + ' 在塔的深处留下了心结。'))
+        setMembers([...membersRef.current])
+      }
+    }
     const { gold, exp, drops } = settleTowerFloor(t)
     if (gold > 0) setGold((g) => g + gold)
     // K03 大秘境奖励:经验全队发放,装备入库(来源=塔, boss 层必掉)
@@ -381,8 +394,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ starMarrow, pendingRelics, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
-  }, [starMarrow, pendingRelics, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
+    saveGuild({ starMarrow, pendingRelics, healingMastery, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
+  }, [starMarrow, pendingRelics, healingMastery, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -502,6 +515,18 @@ export default function App() {
     updateKingdom(settleKingdomBattle(kingdomRef.current, r))
     advanceRun(r)
     const dead = markPermadeath(r)
+    // S1 创伤触发(DESIGN 14.3):目睹死亡 20%/boss 战 10%;濒死成员 25%;普通掉血零风险;上限 3 条
+    const bossBattle = !!enc?.kind === true && enc?.kind === 'boss'
+    const witnessedDeath = dead.length > 0
+    for (const m of r.members) {
+      if (!m.alive || !canGainScar(m)) continue
+      const nearDeath = b.combatants.find((c) => c.memberId === m.id) != null && (() => { const cc = b.combatants.find((x) => x.memberId === m.id)!; return cc.alive && cc.hp / cc.maxHp < 0.15 })()
+      const p = rollScarChance({ bossBattle, nearDeath, witnessedDeath, towerFloor: 0 })
+      if (p > 0 && Math.random() < p) {
+        m.scars = [...(m.scars ?? []), rollScar(Math.random)]
+        logChronicle(chronicleRaw(day, m.name + ' 带着新的创伤回到了公会。'))
+      }
+    }
     if (dead.length > 0) {
       // 遗物安葬 2.0:阵亡装备进待赎回清单(赎回费挂品级+词条),不再免费入库
       const newRelics: { item: ItemInstance; hero: string; redeem: number }[] = []
@@ -1291,6 +1316,12 @@ export default function App() {
                 <span>{setCrown ? `灰冠 ${setCrown} 件${setCrown >= 4 ? '（伤害 +10%）' : setCrown >= 2 ? '（伤害 +5%）' : ''}` : ''}{setCrown && setHunt ? ' · ' : ''}{setHunt ? `猎风 ${setHunt} 件${setHunt >= 4 ? '（暴击 +6%）' : setHunt >= 2 ? '（暴击 +3%）' : ''}` : ''}</span>
               </div>
             )}
+            {(m.scars?.length ?? 0) > 0 && (
+              <div className="stat-layer">
+                <span className="sl-label">创伤</span>
+                <span>{m.scars!.map((sc) => scarStatName(sc.stat) + ' -' + sc.value).join(' · ')}</span>
+              </div>
+            )}
             {m.trait && (
               <div className="stat-layer">
                 <span className="sl-label">特性</span>
@@ -1707,6 +1738,41 @@ export default function App() {
                   </div>
           <div className="inv-panel">
             <h2>🏰 公会基地（第 {day} 日）</h2>
+            <div className="potion-supply">
+              <span className="hint">🏋 特权训练:150 金 → 下次远征经验 +25%(本次在线有效,远征后消耗)</span>
+              <div className="tavern-row">
+                <button disabled={!!run || !!towerRun || gold < 150 || expBoostRef.current > 1} onClick={() => { setGold((g) => g - 150); expBoostRef.current = 1.25; logChronicle(chronicleRaw(day, '公会花钱包下了训练场——下次远征,全员经验 +25%。')) }}>
+                  {expBoostRef.current > 1 ? '✓ 已预约加练' : '🏋 加练(150 金)'}
+                </button>
+              </div>
+            </div>
+            {members.some((m) => m.alive && m.scars?.length) && (
+              <div className="potion-supply">
+                <span className="hint">🏥 疗养所——创伤治疗:60 金 + 1 祝福/条;成功率 85%(熟练度每尝试 +5%,cap +25%);失败可能恶化(轻度→重度)。当前熟练度:{Object.entries(healingMastery).map(([k, v]) => scarStatName(k as 'str') + ' + ' + Math.min(v * 5, 25) + '%').join(' · ') || '无'}</span>
+                {members.filter((m) => m.alive && m.scars?.length).flatMap((m) =>
+                  (m.scars ?? []).map((sc, si) => (
+                    <div key={m.id + '-' + si} className="tavern-row">
+                      <span className="hint">{m.name}:{scarStatName(sc.stat)} -{sc.value}({sc.text})</span>
+                      <button disabled={!!run || !!towerRun || gold < 60 || blessing < 1} onClick={() => {
+                        const m2 = membersRef.current.find((x) => x.id === m.id)
+                        if (!m2 || !m2.scars) return
+                        const mastery = healingMastery[sc.stat] ?? 0
+                        const r = attemptHeal(m2, si, mastery, Math.random)
+                        setHealingMastery((q) => ({ ...q, [sc.stat]: (q[sc.stat] ?? 0) + r.masteryGain }))
+                        setBlessing((b) => b - 1)
+                        setGold((g) => g - 60)
+                        setMembers([...membersRef.current])
+                        if (r.result === 'success') logChronicle(chronicleRaw(day, m2.name + ' 在疗养所痊愈了:' + r.scar.text + '。'))
+                        else if (r.result === 'worsen') logChronicle(chronicleRaw(day, m2.name + ' 的治疗失败了——创伤反而恶化了。'))
+                        else logChronicle(chronicleRaw(day, m2.name + ' 的治疗没有起效。'))
+                      }}>
+                        🏥 治疗(60 金 + 1 祝福)
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
             <div className="base-grid">
               {BUILDINGS.map((def) => {
                 const lv = buildings[def.id] ?? 0

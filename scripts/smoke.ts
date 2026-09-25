@@ -23,6 +23,7 @@ import { computeLegacy, memorialAura, legacyQuality, legacyCounts, LEGACY_AURA_C
 import { RACES as RACES_DATA } from '../src/data/races'
 import { guildGoals } from '../src/sim/goals'
 import { rollWish, wishDone } from '../src/sim/wish'
+import { rollScarChance, rollScar, canGainScar, attemptHeal, healRate } from '../src/sim/scars'
 import { pickOutcome, rollGuildEvent, SECOND_ACT_IDS } from '../src/sim/guild-events'
 import { bossIntents } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
@@ -2740,6 +2741,42 @@ const towerFailures: string[] = []
   console.log('53 遗物 2.0:赎回 ' + base + '(变卖 ' + sellValue(item) + '×1.5)✓ 塔内 ×2✓ 品级挂钩✓ v14 迁移✓')
   if (fail53.length > 0) { console.log('✗ 遗物 2.0 未通过:', fail53); process.exit(1) }
   console.log('✓ 遗物安葬 2.0 通过:赎回制/塔系数/品级挂钩/v14')
+}
+
+// ============================================================
+// 54 S1 创伤一期(2026-09-25,DESIGN 14)
+// ============================================================
+{
+  const fail54: string[] = []
+  // 触发口径:多源取最高(目睹 20%>boss 10%);普通掉血(全 false)=0
+  if (rollScarChance({ bossBattle: false, nearDeath: false, witnessedDeath: false, towerFloor: 0 }) !== 0) fail54.push('54 普通掉血不应有创伤风险')
+  if (rollScarChance({ bossBattle: true, nearDeath: false, witnessedDeath: false, towerFloor: 0 }) !== 0.1) fail54.push('54 boss 战口径错误')
+  if (rollScarChance({ bossBattle: true, nearDeath: true, witnessedDeath: true, towerFloor: 8 }) !== 0.25) fail54.push('54 多源应取最高 25%')
+  // 上限 3 条
+  const m = generateMember('guard', 9, 997101)
+  m.scars = [rollScar(() => 0.1), rollScar(() => 0.3), rollScar(() => 0.5)]
+  if (canGainScar(m)) fail54.push('54 上限 3 条后仍可新增')
+  // 属性减益聚合:str 创伤-2 → eff.str -2(combatant 级)
+  m.scars = [{ stat: 'str', value: 2, text: '旧伤未愈' }]
+  const before = generateMember('guard', 9, 997102)
+  void before
+  const bt = createBattle([m], BLACKMOSS, 'enc-frogs', 42, 0, 0, false)
+  const cc = bt.combatants.find((c) => c.memberId === m.id)!
+  const baseline = createBattle([generateMember('guard', 9, 997103)], BLACKMOSS, 'enc-frogs', 42, 0, 0, false)
+  const baseC = baseline.combatants.find((c) => c.team === 'guild')!
+  const atkDiff = baseC.attack - cc.attack
+  if (!(atkDiff > 0)) fail54.push('54 创伤属性减益未生效:攻差 ' + atkDiff)
+  var strDiff = atkDiff
+  // 疗养:成功率熟练度递增 + 恶化分支
+  const hr0 = healRate(0), hr5 = healRate(5)
+  if (!(hr5 > hr0 && hr0 >= 0.85)) fail54.push('54 疗养熟练度曲线异常')
+  if (healRate(999) > 1) fail54.push('54 熟练度未封顶')
+  // v15 迁移:healingMastery 补空
+  const migrated = migrate({ version: 14, members: [], inventory: [], memorial: [], manual: [], protectOn: true, gold: 0, blessing: 0, recruitCooldown: 0, towerBest: 0, lastSeen: Date.now(), chronicle: [], day: 1, buildings: {}, potions: { heal: 0, fury: 0 }, unlockedHybrids: [], dungeonMastery: {}, pendingConsequences: [], eventsSeen: [], guildBuffs: [], starMarrow: 0, pendingRelics: [], kingdom: { active: [], completed: [] } })
+  if (migrated.version !== SAVE_VERSION || typeof migrated.healingMastery !== 'object') fail54.push('54 v14→v15 迁移失效')
+  console.log('54 S1 创伤:触发口径✓ 上限✓ 属性减益(攻差 ' + atkDiff + ')✓ 疗养曲线 ' + hr0.toFixed(2) + '→' + hr5.toFixed(2) + '✓ v15 迁移✓')
+  if (fail54.length > 0) { console.log('✗ S1 未通过:', fail54); process.exit(1) }
+  console.log('✓ S1 创伤一期通过:触发/减益/疗养熟练度/v15')
 }
 
 // ============================================================

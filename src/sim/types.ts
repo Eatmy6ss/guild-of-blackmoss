@@ -173,6 +173,8 @@ export interface Member {
   wish?: import('./wish').Wish
   /** K09 人物特性·非战斗向(U16):drinker 爱喝酒/lucky 幸运儿/cool 冷静;可选=朴素 */
   trait?: string
+  /** S1 创伤(DESIGN 14):持久属性减益;可选=无创伤 */
+  scars?: import('./scars').Scar[]
   /** 通用战技(DD Augment):学过的被动,跨专精携带 */
   augments?: string[]
   level: number

@@ -11,6 +11,7 @@ import type {
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
 import { ITEM_BASES } from '../data/items'
+import { scarPenalty } from './scars'
 import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
 import { RACES } from '../data/races'
@@ -129,13 +130,14 @@ export function toCombatant(member: Member): Combatant {
   const race = member.race ? RACES[member.race] : RACES.human
   // 六维改革:种族招牌维加成并入有效属性;亡灵意志/人类经验保持独立字段
   const ab = race.attrBonus ?? {}
+  const scarPen = scarPenalty(member)
   const eff = {
-    str: member.attrs.str + (ab.str ?? 0),
-    agi: member.attrs.agi + (ab.agi ?? 0),
-    int: member.attrs.int + (ab.int ?? 0),
-    vit: member.attrs.vit + (ab.vit ?? 0),
-    spr: member.attrs.spr + (ab.spr ?? 0),
-    lck: member.attrs.lck + (ab.lck ?? 0),
+    str: Math.max(0, member.attrs.str + (ab.str ?? 0) + (scarPen.str ?? 0)),
+    agi: Math.max(0, member.attrs.agi + (ab.agi ?? 0) + (scarPen.agi ?? 0)),
+    int: Math.max(0, member.attrs.int + (ab.int ?? 0) + (scarPen.int ?? 0)),
+    vit: Math.max(0, member.attrs.vit + (ab.vit ?? 0) + (scarPen.vit ?? 0)),
+    spr: Math.max(0, member.attrs.spr + (ab.spr ?? 0) + (scarPen.spr ?? 0)),
+    lck: Math.max(0, member.attrs.lck + (ab.lck ?? 0) + (scarPen.lck ?? 0)),
   }
   // 通用战技(DD Augment,跨专精携带)
   const augs = member.augments ?? []
