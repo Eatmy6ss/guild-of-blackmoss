@@ -54,6 +54,8 @@ export interface GuildEventDef {
   title: string
   text: string
   choices: EventChoice[]
+  /** F08(U14 前置):地域限定——龙脊系事件不出现在黑苔远征/公会层;缺省=通用 */
+  region?: ('blackmoss-wild' | 'dragonridge')[]
 }
 
 // 试玩反馈④:回城事件率 0.45→0.3——「打完回城事件概率有点高」;访客 roll 互斥不变
@@ -1761,6 +1763,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   // ===== 事件三期(版图二·龙脊山脉主题):龙蛋/教团清算/龙裔叛逃者/火雨夜等 =====
   {
     id: 'dragon-egg',
+    region: ['dragonridge'],
     title: '龙蛋的困境',
     text: '温泉眼边窝着三枚龙蛋,壳面温热,偶尔颤动——里面有活物。鳞音教的通缉令就贴在百里外的镇口:「私藏龙蛋者,株连雇主。」每个蛋,黑市开价两百金。',
     choices: [
@@ -1844,6 +1847,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'dragon-defector',
+    region: ['dragonridge'],
     title: '龙裔的叛逃者',
     text: '一个龙裔鳞甲半褪、躲在溪水边发抖。他说自己是教团的锻奴,偷了火种图谱逃出来:「收留我,图谱归你们。被找到——你们和我是同罪。」',
     choices: [
@@ -1865,6 +1869,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'pilgrim-alms',
+    region: ['dragonridge'],
     title: '朝圣者的众筹',
     text: '一队衣衫褴褛的朝圣者在山道上支起木牌:众筹登龙脊,敬龙以止天罚。捐资者名入功德簿。他们的领袖是个瘸腿老妇,眼神却像鹰。',
     choices: [
@@ -1886,6 +1891,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'whelp-poachers',
+    region: ['dragonridge'],
     title: '盗猎幼龙者',
     text: '岩架下三个盗猎者正往麻袋里塞幼龙崽,龙妈妈被网罩住奄奄一息。盗猎头子冲你们晃了晃钱袋:一人五十,当没看见。龙崽贩子出手比你们公会大方。',
     choices: [
@@ -1907,6 +1913,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'fire-rain',
+    region: ['dragonridge'],
     title: '火雨之夜',
     text: '龙脊的夜空烧起来了——火山的碎屑随雨落下,火星打在帐篷上滋滋作响。老向导蹲在岩下:往南走能躲,往北走是猎场。但火雨后的猎场,会露出平时看不见的东西。',
     choices: [
@@ -1970,6 +1977,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'dragon-blood-spring',
+    region: ['dragonridge'],
     title: '龙血泉',
     text: '山岩缝里渗出一泓暗红的泉水,附近草木疯长,泉水边伏着一具巨兽骸骨——骸骨的心口位置,泉水正对着一枚心脏形状的凹坑。喝,还是不喝?',
     choices: [

@@ -21,7 +21,7 @@ import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, to
 import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
 import { computeLegacy, memorialAura, legacyQuality, legacyCounts, LEGACY_AURA_CAP } from '../src/sim/memorial'
 import { RACES as RACES_DATA } from '../src/data/races'
-import { pickOutcome, rollGuildEvent } from '../src/sim/guild-events'
+import { pickOutcome, rollGuildEvent, SECOND_ACT_IDS } from '../src/sim/guild-events'
 import { bossIntents } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
@@ -2569,6 +2569,36 @@ const towerFailures: string[] = []
   console.log('㊽ K05 关系表:12 图边数据有效✓ 邻居优先✓(岔口:' + opts.map((o) => o.id).join(',') + ')')
   if (fail44.length > 0) { console.log('✗ K05 未通过:', fail44); process.exit(1) }
   console.log('✓ K05 关系表选路通过')
+}
+
+// ============================================================
+// ㊾ F08 事件因果隔离(2026-09-25,U14 前置)
+// ============================================================
+{
+  const fail45: string[] = []
+  // 后续幕动态推导
+  if (SECOND_ACT_IDS.size < 7) fail45.push('㊾ 后续幕推导数量异常:' + SECOND_ACT_IDS.size)
+  // 1000 次黑苔区域随机抽取:不出现任何后续幕/龙脊事件(makeRng=滑变序列,固定 rng 会永远取池中同一项)
+  const makeRng = (seed: number) => { let v = seed % 2147483647; if (v <= 0) v += 2147483646; return () => { v = (v * 16807) % 2147483647; return (v - 1) / 2147483646 } }
+  const rngBm = makeRng(12345)
+  const rngDr = makeRng(77777)
+  let leaked = 0
+  for (let i = 0; i < 1000; i++) {
+    const ev = rollGuildEvent(rngBm, { force: true, context: { region: 'blackmoss-wild' } })
+    if (!ev) continue
+    if (SECOND_ACT_IDS.has(ev.id)) { leaked++; fail45.push('㊾ 后续幕被随机抽中:' + ev.id); break }
+    if (ev.region?.includes('dragonridge')) { leaked++; fail45.push('㊾ 龙脊事件漏进黑苔池:' + ev.id); break }
+  }
+  // 龙脊区域:龙脊事件可出现,黑苔限定不出现(黑苔事件全通用,跳过反向检查)
+  let dragonSeen = false
+  for (let i = 0; i < 400; i++) {
+    const ev = rollGuildEvent(rngDr, { force: true, context: { region: 'dragonridge' } })
+    if (ev?.region?.includes('dragonridge')) { dragonSeen = true; break }
+  }
+  if (!dragonSeen) fail45.push('㊾ 龙脊区域抽不到龙脊事件(过滤过严)')
+  console.log('㊾ F08:后续幕 ' + SECOND_ACT_IDS.size + ' 条隔离✓ 黑苔池 1000 抽零泄漏✓ 龙脊区域可达✓')
+  if (fail45.length > 0) { console.log('✗ F08 未通过:', fail45); process.exit(1) }
+  console.log('✓ F08 事件因果隔离通过')
 }
 
 // ============================================================

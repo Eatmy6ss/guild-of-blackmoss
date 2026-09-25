@@ -56,6 +56,7 @@ import { grantExp } from './sim/gen'
 import { JOBS, specOf } from './data/jobs'
 import { HYBRIDS, isHybrid } from './data/vocations'
 import { REGIONS, dungeonLock, nextRegionLocked } from './data/regions'
+import type { EventRegion } from './sim/guild-events'
 import { TRAIT_INFO } from './data/traits'
 import { MECH_INFO, mechanicBrief } from './data/mech-docs'
 
@@ -665,7 +666,7 @@ export default function App() {
         const kind = applyNodeChoice(r, node.id)
         if (kind === 'event') {
           // 路线事件节点必触发(挂机时由队长性格代打选项)
-          const ev = rollGuildEvent(Math.random, { force: true })
+          const ev = rollGuildEvent(Math.random, { force: true, context: { region: REGIONS.find((rg) => [...rg.main, ...rg.side, rg.finale].includes(r.dungeon.id))?.id as EventRegion | undefined } })
           if (ev) { setPendingEvent(ev); setEventResult(null) }
           setRun({ ...r })
           return
