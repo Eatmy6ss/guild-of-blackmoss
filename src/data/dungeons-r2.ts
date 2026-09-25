@@ -57,6 +57,11 @@ export const EMBERPASS: DungeonDef = {
     { id: 'ep-rest', name: '背风岩窝', kind: 'rest', desc: '山风被岩壁挡住,火塘还有余温' },
     { id: 'ep-cache', name: '坠商货担', kind: 'treasure', desc: '掉下悬崖的商队货担挂在枯树上' },
   ],
+  routeRelations: [
+    ['ep-sentinels', 'ep-camp'],
+    ['ep-shrine', 'ep-rest'],
+    ['ep-sentinels', 'ep-cache'],
+  ],
   encounters: [
     { id: 'enc-dragonkin', name: '龙裔鳞卫', kind: 'wave', enemyGroupIds: ['dragonkin'] },
     { id: 'enc-pilgrims', name: '朝圣狂徒', kind: 'wave', enemyGroupIds: ['pilgrims'] },
@@ -116,6 +121,11 @@ export const SCALEHAVEN: DungeonDef = {
     { id: 'sh-rest', name: '香客房', kind: 'rest', desc: '香客歇脚的客房,被褥干净' },
     { id: 'sh-relic', name: '供品库房', kind: 'treasure', desc: '历代香客供进的珍品' },
   ],
+  routeRelations: [
+    ['sh-avenue', 'sh-choir'],
+    ['sh-alms', 'sh-rest'],
+    ['sh-choir', 'sh-relic'],
+  ],
   encounters: [
     { id: 'enc-fanatics', name: '狂信卫士', kind: 'wave', enemyGroupIds: ['fanatics'] },
     { id: 'enc-drakeguard', name: '龙裔祭卫', kind: 'wave', enemyGroupIds: ['drakeguard'] },
@@ -173,6 +183,11 @@ export const FIRERIDGE: DungeonDef = {
     { id: 'fr-nest', name: '幼龙巢区', kind: 'battle', encounterId: 'enc-whelps', desc: '幼龙和驭火者的巡巢圈' },
     { id: 'fr-rest', name: '风口岩棚', kind: 'rest', desc: '唯一凉快些的地方,火抗的人才能睡得着' },
     { id: 'fr-cache', name: '先驱者遗装', kind: 'treasure', desc: '先前来探巢的先驱者留下的东西' },
+  ],
+  routeRelations: [
+    ['fr-ledges', 'fr-nest'],
+    ['fr-eggs', 'fr-nest'],
+    ['fr-rest', 'fr-cache'],
   ],
   encounters: [
     { id: 'enc-salamanders', name: '火脊蜥蜴', kind: 'wave', enemyGroupIds: ['salamanders'] },
@@ -232,6 +247,11 @@ export const PILGRIMPATH: DungeonDef = {
     { id: 'pp-rest', name: '朝圣者灶屋', kind: 'rest', desc: '灶膛的火几百年没灭过' },
     { id: 'pp-offering', name: '还愿品堆', kind: 'treasure', desc: '还愿者留下的谢礼堆成了小山' },
   ],
+  routeRelations: [
+    ['pp-lanterns', 'pp-shrine'],
+    ['pp-hunt', 'pp-lanterns'],
+    ['pp-shrine', 'pp-offering'],
+  ],
   encounters: [
     { id: 'enc-ghostpilgrims', name: '朝圣者亡魂', kind: 'wave', enemyGroupIds: ['ghostpilgrims'] },
     { id: 'enc-ridgehounds', name: '山脊霜狼', kind: 'wave', enemyGroupIds: ['ridgehounds'] },
@@ -288,6 +308,11 @@ export const FORGEWORKS: DungeonDef = {
     { id: 'fo-ember', name: '烬晶料场', kind: 'battle', encounterId: 'enc-emberkin', desc: '烬晶元素在料场游荡' },
     { id: 'fo-rest', name: '工头歇脚间', kind: 'rest', desc: '工头的皮沙发,火炉边上' },
     { id: 'fo-vault', name: '成品库', kind: 'treasure', desc: '出窑未久的成品架上还热着' },
+  ],
+  routeRelations: [
+    ['fo-hall', 'fo-ember'],
+    ['fo-mold', 'fo-ember'],
+    ['fo-hall', 'fo-vault'],
   ],
   encounters: [
     { id: 'enc-forgewrought', name: '锻偶卫队', kind: 'wave', enemyGroupIds: ['forgewrought'] },
@@ -353,6 +378,11 @@ export const DRAGONMAW: DungeonDef = {
     { id: 'dm-rest', name: '教团内殿', kind: 'rest', desc: '教团自己的内殿,居然最凉快' },
     { id: 'dm-treasure', name: '教团圣库', kind: 'treasure', desc: '历代教团聚敛的圣库' },
     { id: 'dm-final', name: '龙眠深渊', kind: 'elite', encounterId: 'enc-drakeelite', desc: '最深处——龙眠之地,教主就在那里' },
+  ],
+  routeRelations: [
+    ['dm-vanguard', 'dm-final'],
+    ['dm-altar', 'dm-rest'],
+    ['dm-elite', 'dm-treasure'],
   ],
   encounters: [
     { id: 'enc-dragonspawn', name: '龙渊鳞卫', kind: 'wave', enemyGroupIds: ['dragonspawn'] },

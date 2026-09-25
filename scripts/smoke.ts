@@ -2546,6 +2546,32 @@ const towerFailures: string[] = []
 }
 
 // ============================================================
+// ㊽ K05 关系表选路(2026-09-25,U13,B=C 地基)
+// ============================================================
+{
+  const fail44: string[] = []
+  // 数据有效性:12 图边两端 id 必须存在于该图 routeNodes
+  for (const d of DUNGEONS) {
+    const ids = new Set(d.routeNodes.map((n) => n.id))
+    for (const [a, b] of d.routeRelations ?? []) {
+      if (!ids.has(a) || !ids.has(b)) fail44.push('㊽ ' + d.id + ' 关系边引用未知节点:' + a + '-' + b)
+      if (a === b) fail44.push('㊽ ' + d.id + ' 自环边:' + a)
+    }
+  }
+  // 邻居优先:踏过 bm-frogs 后,岔口应包含其邻居(水蛭/混编/沉船 至少其一)
+  const run = createRun(JOBS.map((job, j) => generateMember(job, 8, 996000 + j)), BLACKMOSS, 'shortcut', 4242, 0, true)
+  run.nodeIds.push('bm-frogs')
+  run.stepIdx = 1
+  run.phase = 'rest'
+  const opts = junctionOptions(run, 4242)
+  const neighborIds = ['bm-leeches', 'bm-quirrel', 'bm-chest']
+  if (!opts.some((o) => neighborIds.includes(o.id))) fail44.push('㊽ 邻居优先失效:踏过蛙人后岔口无任何邻居 ' + opts.map((o) => o.id).join(','))
+  console.log('㊽ K05 关系表:12 图边数据有效✓ 邻居优先✓(岔口:' + opts.map((o) => o.id).join(',') + ')')
+  if (fail44.length > 0) { console.log('✗ K05 未通过:', fail44); process.exit(1) }
+  console.log('✓ K05 关系表选路通过')
+}
+
+// ============================================================
 // ㊲ 特质图鉴+首遇提示(可读性闭环)
 // ============================================================
 {

@@ -2234,6 +2234,16 @@ export default function App() {
                         熟练度 {m} —— {lvl === 'hidden' ? '前路未知,只闻其名。' : lvl === 'kind' ? '你已记得这些路的类别。' : '这张图你闭着眼都能走。'}
                         {bossDirect ? ' 你已熟到可以直接挑战深处!' : ''}
                       </p>
+                      {lvl === 'full' && (() => {
+                        // K05 关系揭示(U13):full 档输出踏过节点的边关系——「记地图」的记忆落点
+                        const rel = run.dungeon.routeRelations ?? []
+                        const nameOf = (id: string) => run.dungeon.routeNodes.find((n) => n.id === id)?.name ?? id
+                        const memories = rel
+                          .filter(([a, b]) => run.nodeIds.includes(a) || run.nodeIds.includes(b))
+                          .slice(0, 2)
+                          .map(([a, b]) => `${nameOf(a)} 常伴 ${nameOf(b)}`)
+                        return memories.length > 0 ? <p className="hint" style={{ opacity: 0.75 }}>你记得:{memories.join(';')}。</p> : null
+                      })()}
                       {isBossNext ? (
                         <p className="hint">深处的气息近了——前方就是<b style={{ color: '#d48f8f' }}>{encName(run, run.steps[run.stepIdx])}</b>。</p>
                       ) : (

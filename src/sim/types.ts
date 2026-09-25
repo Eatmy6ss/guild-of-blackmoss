@@ -371,6 +371,9 @@ export interface DungeonDef {
   encounters: EncounterDef[]
   /** 副本内部路线节点图(逐段选路;boss 节点由 encounters 的 boss 承担,不入此表) */
   routeNodes: RouteNodeDef[]
+  /** K05 关系表(U13,B=C 地基):节点关系边列表——岔口从踏过节点的邻居优先抽取;
+   *  边列表格式刻意与未来固定地图(C 形态)的连边同构,升级时数据零迁移 */
+  routeRelations?: [string, string][]
   /** 敌方强度倍率(宪法 v3.3 试玩反馈③:拉扯感——按副本阶梯) */
   enemyPower?: number
   /** 副本预期等级(节奏系数+等级压制的锚;未注册=高塔等临时内容不吃补正) */

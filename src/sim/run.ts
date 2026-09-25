@@ -263,14 +263,28 @@ export function revealLevel(mastery: number): RevealLevel {
 export function junctionOptions(run: DungeonRun, seed: number, count = 4): RouteNodeDef[] {
   const unvisited = run.dungeon.routeNodes.filter((n) => !run.nodeIds.includes(n.id))
   if (unvisited.length <= count) return [...unvisited]
-  const picked: RouteNodeDef[] = []
-  const pool = [...unvisited]
-  let x = seed * 2654435761 + run.nodeIds.length * 97
-  while (picked.length < count && pool.length > 0) {
-    x = (x * 1103515245 + 12345) | 0
-    const idx = Math.abs(x) % pool.length
-    picked.push(pool.splice(idx, 1)[0])
+  // K05 关系表(U13):与已踏节点有边相连者优先入选(最多占 2 席)——
+  // 「蛙人哨兵旁常伴水蛭洼地」的地理记忆成立;关系表=边列表,可升级为固定地图连边(U13 分期)
+  const rel = run.dungeon.routeRelations ?? []
+  const neighbors = new Set<string>()
+  for (const [a, b] of rel) {
+    if (run.nodeIds.includes(a)) neighbors.add(b)
+    if (run.nodeIds.includes(b)) neighbors.add(a)
   }
+  const linked = unvisited.filter((n) => neighbors.has(n.id))
+  const rest = unvisited.filter((n) => !neighbors.has(n.id))
+  const picked: RouteNodeDef[] = []
+  let x = seed * 2654435761 + run.nodeIds.length * 97
+  const take = (from: RouteNodeDef[], want: number) => {
+    for (let i = 0; i < want && from.length > 0; i++) {
+      x = (x * 1103515245 + 12345) | 0
+      const idx = Math.abs(x) % from.length
+      picked.push(from.splice(idx, 1)[0]!)
+    }
+  }
+  take(linked, Math.min(2, linked.length))
+  take(rest, count - picked.length)
+  take(linked, count - picked.length)
   return picked
 }
 

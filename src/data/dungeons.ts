@@ -156,6 +156,14 @@ export const BLACKMOSS: DungeonDef = {
     { id: 'bm-mire', name: '沼腹深处', kind: 'battle', encounterId: 'enc-mire', desc: '越往里,泥越深' },
     { id: 'bm-chest', name: '沉船货箱', kind: 'treasure', desc: '搁浅的货船残骸,货箱还封着蜡' },
   ],
+  routeRelations: [
+    ['bm-frogs', 'bm-leeches'],
+    ['bm-frogs', 'bm-quirrel'],
+    ['bm-wolves', 'bm-quirrel'],
+    ['bm-hut', 'bm-mire'],
+    ['bm-frogs', 'bm-chest'],
+    ['bm-camp', 'bm-leeches'],
+  ],
   encounters: [
     { id: 'enc-frogs', name: '蛙人哨兵', kind: 'wave', enemyGroupIds: ['frogs'] },
     { id: 'enc-wolves', name: '腐化狼群', kind: 'wave', enemyGroupIds: ['wolves'] },
@@ -279,6 +287,14 @@ export const RUSTMINE: DungeonDef = {
     { id: 'rm-crate', name: '坍塌货仓', kind: 'treasure', desc: '塌方封存的物资仓' },
     { id: 'rm-echo', name: '巷道回声', kind: 'event', desc: '塌方后有敲击声,像求救' },
   ],
+  routeRelations: [
+    ['rm-miners', 'rm-spiders'],
+    ['rm-bats', 'rm-deepvein'],
+    ['rm-cart', 'rm-miners'],
+    ['rm-echo', 'rm-deepvein'],
+    ['rm-bats', 'rm-batmix'],
+    ['rm-miners', 'rm-batmix'],
+  ],
   encounters: [
     { id: 'enc-miners', name: '尸化矿工队', kind: 'wave', enemyGroupIds: ['miners'] },
     { id: 'enc-bats', name: '锈穴蝠群', kind: 'wave', enemyGroupIds: ['bats'] },
@@ -400,6 +416,13 @@ export const ASHFIELD: DungeonDef = {
     { id: 'af-relic', name: '军械库残堆', kind: 'treasure', desc: '王朝军械库的最后一角' },
     { id: 'af-trumpet', name: '未响的号角', kind: 'event', desc: '号角一响,亡者当立正位' },
   ],
+  routeRelations: [
+    ['af-skeletons', 'af-funeral'],
+    ['af-wraiths', 'af-bonemix'],
+    ['af-knights', 'af-bonemix'],
+    ['af-camp', 'af-funeral'],
+    ['af-knights', 'af-relic'],
+  ],
   encounters: [
     { id: 'enc-skeletons', name: '骸骨列队', kind: 'wave', enemyGroupIds: ['skeletons'] },
     { id: 'enc-wraiths', name: '怨灵游荡', kind: 'wave', enemyGroupIds: ['wraiths'] },
@@ -510,6 +533,13 @@ export const FROSTGRAVE: DungeonDef = {
     { id: 'fg-frostmix', name: '墓卫鸦士混编', kind: 'battle', encounterId: 'enc-frostmix', desc: '墓卫与寒鸦同巡' },
     { id: 'fg-icetomb', name: '冰棺回廊', kind: 'battle', encounterId: 'enc-icetomb', desc: '冰棺排满回廊两侧' },
     { id: 'fg-cache', name: '陪葬冰窖', kind: 'treasure', desc: '冰层里封着陪葬品' },
+  ],
+  routeRelations: [
+    ['fg-wights', 'fg-gravers'],
+    ['fg-wolves', 'fg-frostmix'],
+    ['fg-gravers', 'fg-icetomb'],
+    ['fg-altar', 'fg-tent'],
+    ['fg-frostmix', 'fg-icetomb'],
   ],
   encounters: [
     // 反馈④ bug 修复:路线按数组顺序生成,boss 曾被排在中间(永远打不到)——压轴移末位
@@ -633,6 +663,13 @@ export const ABYSSALTAR: DungeonDef = {
     { id: 'ab-bloodfeast', name: '血宴残席', kind: 'battle', encounterId: 'enc-bloodfeast', desc: '宴席未散,饿殍未走' },
     { id: 'ab-relic', name: '沉供奉龛', kind: 'treasure', desc: '供奉沉在血池底,泛着金光' },
     { id: 'ab-whisper', name: '渊底低语', kind: 'event', desc: '低语许诺力量,代价未提' },
+  ],
+  routeRelations: [
+    ['ab-cultists', 'ab-bloodfeast'],
+    ['ab-ghouls', 'ab-abyssmix'],
+    ['ab-eyes', 'ab-whisper'],
+    ['ab-stone', 'ab-abyssmix'],
+    ['ab-relic', 'ab-bloodfeast'],
   ],
   encounters: [
     { id: 'enc-cultists', name: '血祭教徒环', kind: 'wave', enemyGroupIds: ['cultists'] },
@@ -796,6 +833,13 @@ export const THORNHOLD: DungeonDef = {
     { id: 'th-vanguard2', name: '前卫余部', kind: 'battle', encounterId: 'enc-vanguard2', desc: '败退的前卫重整再战' },
     { id: 'th-armory', name: '团库武械房', kind: 'treasure', desc: '荆棘团的团库就在门后' },
     { id: 'th-deserter', name: '逃兵求见', kind: 'event', desc: '一名荆棘逃兵想谈条件' },
+  ],
+  routeRelations: [
+    ['th-swords', 'th-siege'],
+    ['th-heavies', 'th-vanguard2'],
+    ['th-yard', 'th-siege'],
+    ['th-armory', 'th-heavies'],
+    ['th-deserter', 'th-swords'],
   ],
   encounters: [
     { id: 'enc-swords', name: '正门刀盾阵', kind: 'wave', enemyGroupIds: ['swords'] },
