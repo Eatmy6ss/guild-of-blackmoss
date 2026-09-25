@@ -188,7 +188,13 @@ export function rollSpec(jobId: JobId, rng: Rng): string {
 export function generateMember(job: JobId, level: number, seed: number = Date.now() + memberSeq * 131, opts?: { race?: string }): Member {
   const rng = createRng(seed)
   // 六族随机(宪法 v3):种族决定名字池与一条轻被动;老存档无 race 字段 = 人类
-  const raceId = raceOverride ?? opts?.race ?? pick(rng, RACE_IDS)
+  let raceId = raceOverride ?? opts?.race ?? pick(rng, RACE_IDS)
+  // K04 全局硬规则(U12):种族×职业矩阵全局强制——指定种族不支持该职业时,从兼容种族重抽
+  // (raceOverride=测试钉人特权,不重抽,保持 smoke 确定性)
+  if (!raceOverride && !RACES[raceId].allowedLines.includes(job)) {
+    const compatible = RACE_IDS.filter((r) => RACES[r].allowedLines.includes(job))
+    raceId = compatible[Math.floor(rng() * compatible.length)] ?? 'human'
+  }
   const name = uniqueName(rng, RACES[raceId].names)
   const member: Member = {
     id: `m${++memberSeq}`,

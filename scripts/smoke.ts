@@ -20,6 +20,7 @@ import { seedMemberSeq } from '../src/sim/gen'
 import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, towerEnemyScale, towerGold, towerExp, towerItemTier, TOWER } from '../src/sim/tower'
 import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
 import { computeLegacy, memorialAura, legacyQuality, legacyCounts, LEGACY_AURA_CAP } from '../src/sim/memorial'
+import { RACES as RACES_DATA } from '../src/data/races'
 import { pickOutcome, rollGuildEvent } from '../src/sim/guild-events'
 import { bossIntents } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
@@ -1844,7 +1845,9 @@ const towerFailures: string[] = []
     setRaceOverride(undefined)
     const m = generateMember('guard', 1, 993000)
     if (!m.race || !RACES[m.race]) fail26.push('㉖ 成员无种族或种族非法')
-    if (!RACES[m.race ?? 'human'].names.includes(m.name)) fail26.push(`㉖ 名字不在种族池内:${m.name}`)
+    // uniqueName 有 50% 概率加全局称号后缀(·灰袍),剥后比对裸名(K04 重抽平移 rng 暴露的预置脆弱)
+    const bareName = m.name.split('·')[0]!
+    if (!RACES[m.race ?? 'human'].names.includes(bareName)) fail26.push(`㉖ 名字不在种族池内:${m.name}`)
     const sp = rollSpec('mage', () => 0.99)
     if (sp !== 'mage-frost') fail26.push(`㉖ rollSpec 边界异常:${sp}`)
     console.log(`㉖ 生成:${m.name}(${RACES[m.race ?? 'human'].name}) 专精随机边界 ok`)
@@ -2514,6 +2517,32 @@ const towerFailures: string[] = []
   console.log(`㊷ K02/K03:品质 凡逝/青史(${veteran.score})/传奇(${legend.score})✓ 封顶 ${Math.round(aura * 100)}%✓ 老档✓;塔经验 ${towerExp(1)}→${towerExp(12)}✓ boss 必掉 ${bossDrops}/5✓`)
   if (fail42.length > 0) { console.log('✗ K02/K03 未通过:', fail42); process.exit(1) }
   console.log('✓ K02 纪念品质+K03 大秘境奖励通过')
+}
+
+// ============================================================
+// ㊼ K04 种族硬规则全局校验(2026-09-25,U12)
+// ============================================================
+{
+  const fail43: string[] = []
+  // 全量随机生成:任何成员的种族都必须允许其职业线(开局/招募/挂机共用 generateMember)
+  let checked = 0
+  const allJobs: JobId[] = ['guard', 'priest', 'ranger', 'warrior', 'mage', 'warlock']
+  for (let i = 0; i < 300; i++) {
+    const job = allJobs[i % 6]!
+    const m = generateMember(job, 5, 997000 + i * 7)
+    checked++
+    if (!RACES_DATA[m.race ?? 'human'].allowedLines.includes(job)) {
+      fail43.push('㊼ 违规组合:' + RACES_DATA[m.race ?? 'human']!.name + '+' + job)
+    }
+  }
+  // 钉人特权:raceOverride 保持强制(测试确定性)
+  setRaceOverride('dwarf')
+  const dwarfMage = generateMember('mage', 5, 998001)
+  setRaceOverride(undefined)
+  if (dwarfMage.race !== 'dwarf') fail43.push('㊼ raceOverride 钉人被重抽(测试确定性破坏)')
+  console.log('㊼ K04 种族硬规则:随机 ' + checked + ' 例零违规✓ 钉人特权保留✓')
+  if (fail43.length > 0) { console.log('✗ K04 未通过:', fail43); process.exit(1) }
+  console.log('✓ K04 种族硬规则通过')
 }
 
 // ============================================================

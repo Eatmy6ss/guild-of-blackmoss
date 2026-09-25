@@ -1065,6 +1065,8 @@ export default function App() {
     const m = membersRef.current.find((x) => x.id === memberId)
     if (!m || m.spec === newSpecId) return
     const isHy = isHybrid(newSpecId)
+    // K04 全局硬规则(U12):混合职阶的两条来源线都必须在该成员种族的允许线内
+    if (isHy && !HYBRIDS[newSpecId].lines.every((l) => RACES[m.race ?? 'human'].allowedLines.includes(l))) return
     if (isHy) {
       if (!unlockedHybrids.includes(newSpecId)) {
         // 一次性解锁:钱+祝福,同时记录
@@ -1627,6 +1629,9 @@ export default function App() {
                         const unlocked = unlockedHybrids.includes(hy.id)
                         const canBond = bond >= ECONOMY.hybridBondRequirement
                         const canPay = gold >= ECONOMY.vocation.hybridUnlockGold && blessing >= ECONOMY.vocation.hybridUnlockBlessing
+                        // K04:种族不允许的混合线直接隐藏(硬规则,不给点了再拒绝的挫败)
+                        const raceAllows = HYBRIDS[hy.id].lines.every((l) => RACES[m.race ?? 'human'].allowedLines.includes(l))
+                        if (!raceAllows) return null
                         return (
                           <button
                             key={hy.id}
