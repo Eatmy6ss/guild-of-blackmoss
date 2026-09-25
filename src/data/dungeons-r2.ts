@@ -365,6 +365,9 @@ export const DRAGONMAW: DungeonDef = {
         { id: 'vl-enrage', kind: 'enrage', name: '完全龙化', params: { atTick: 340, attackMult: 1.85 } },
       ],
       dropTable: [
+        { baseId: 'wpn-t3-dawn', chance: 0.3 },
+        { baseId: 'arm-t3-bulwark', chance: 0.3 },
+        { baseId: 'trk-t3-pyrexia', chance: 0.25 },
         { baseId: 'wpn-dragon-brand', chance: 0.4 },
         { baseId: 'arm-dragon-scalemail', chance: 0.35 },
         { baseId: 'trk-dragon-talisman', chance: 0.35 },

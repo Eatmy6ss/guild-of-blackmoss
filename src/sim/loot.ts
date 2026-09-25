@@ -127,7 +127,9 @@ export function describeItem(item: ItemInstance): string {
     const aff = AFFIXES[r.affixId]
     parts.push(`${aff.name}+${fmt(aff.stat, r.value)}`)
   }
-  return `${base.name}（${parts.join('，')}）`
+  const LEGACY_NAMES: Record<string, string> = { focus: '锋镝', killheal: '饮血', bulwark: '磐石', mend: '春霖', elitewarden: '嗜功', emberward: '烬衣', triumph: '凯歌', scavenger: '拾荒' }
+  const legacy = base.legacy ? '〔' + (LEGACY_NAMES[base.legacy] ?? base.legacy) + '〕' : ''
+  return `${base.name}${legacy}（${parts.join('，')}）`
 }
 
 function fmt(stat: StatKey, v: number): string {
@@ -183,8 +185,8 @@ const DUNGEON_SIGNS: Record<string, string[]> = {
 /** 杂兵小概率掉装备(反馈②:8%→12%,阵亡损耗与装备获取对齐)——白/绿为主
  *  特化加权:50% 先抽本图招牌池,刷对应副本有专属目标
  *  F10 修复(2026-09-25):精英节点兑现「掉落翻倍」承诺——概率 ×2(24%),品质略优 */
-export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false): ItemInstance | null {
-  if (rng() >= (elite ? 0.24 : 0.12)) return null
+export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false, scavBonus = 0): ItemInstance | null {
+  if (rng() >= (elite ? 0.24 : 0.12) + scavBonus) return null
   const tier = DUNGEON_TIER[dungeonId] ?? 1
   const signIds = DUNGEON_SIGNS[dungeonId] ?? []
   const signPool = signIds

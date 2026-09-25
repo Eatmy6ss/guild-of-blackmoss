@@ -141,6 +141,8 @@ export default function App() {
   }, [members])
 
   const [kingdom, setKingdom] = useState(() => saved?.kingdom ?? newKingdomState())
+  // 装备 2.0:星髓(拆解 T3 所得,灰冠兑换)
+  const [starMarrow, setStarMarrow] = useState(() => saved?.starMarrow ?? 0)
   // K02 纪念品质(U11):阵亡登记时的公会上下文快照→生平事迹→品质→光环(封顶,替代旧人头 2%)
   const legacyContext = (): LegacyContext => ({
     bossKills: manual.length,
@@ -367,8 +369,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
-  }, [kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
+    saveGuild({ starMarrow, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
+  }, [starMarrow, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -476,7 +478,9 @@ export default function App() {
     }
     // 杂兵掉落(试玩三轮):小概率装备,刷图过程有反馈;F10:精英场次兑现「掉落翻倍」
     else if (b.status === 'guild-win') {
-      const waveDrop = rollWaveDrop(r.dungeon.id, Math.random, r.eliteAt.includes(r.stepIdx))
+      // 装备 2.0 传承威能·拾荒:持有者在场,杂兵掉率 +4%
+      const hasScav = r.members.some((m) => m.alive && Object.values(m.equipment).some((e) => e && ITEM_BASES[e.baseId]?.legacy === 'scavenger'))
+      const waveDrop = rollWaveDrop(r.dungeon.id, Math.random, r.eliteAt.includes(r.stepIdx), hasScav ? 0.04 : 0)
       if (waveDrop) {
         setInventory((inv) => [...inv, waveDrop])
         setLastDrops((d2) => [...d2, waveDrop])
@@ -508,6 +512,10 @@ export default function App() {
     if (b.status === 'guild-win') {
       applyVictory(r.members.filter((m) => m.alive))
       logChronicle(chronicleBattleVictory(day, r.dungeon.name, r.members.filter((m) => m.alive)))
+      // 装备 2.0 传承威能·凯歌:持有者存活且获胜,全队士气 +2
+      if (r.members.some((m) => m.alive && Object.values(m.equipment).some((e) => e && ITEM_BASES[e.baseId]?.legacy === 'triumph'))) {
+        applyMoraleDelta(r.members.filter((m) => m.alive), 2)
+      }
       checkWishes()
     }
     if (dead.length > 0) setMemorial((m) => [...m, ...withLegacy(dead)])
@@ -980,6 +988,27 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventResult])
 
+  // 装备 2.0:拆解 T3 得星髓;灰冠兑换(信任 100 解锁)用星髓+金币换指定 T3
+  const dismantleT3 = (id: string) => {
+    const item = inventory.find((i) => i.id === id)
+    if (!item || ITEM_BASES[item.baseId].tier !== 3) return
+    setInventory((inv) => inv.filter((i) => i.id !== id))
+    setStarMarrow((m) => m + 2)
+    logChronicle(chronicleRaw(day, '拆解了 ' + describeItem(item) + ',取得 2 枚星髓。'))
+    sfxCoin()
+  }
+  const EXCHANGE_LIST = ['wpn-t3-dawn', 'arm-t3-bulwark', 'trk-t3-seer']
+  const exchangeT3 = (baseId: string) => {
+    if (kingdomTrust(kingdom) < 100 || gold < 800 || blessing < 10 || starMarrow < 2) return
+    setGold((g) => g - 800)
+    setBlessing((b) => b - 10)
+    setStarMarrow((m) => m - 2)
+    const d = rollDrop(baseId, Math.random, { qualityBias: 0.3 })
+    setInventory((inv) => [...inv, d])
+    setLastDrops((d2) => [...d2, d])
+    logChronicle(chronicleRaw(day, '凭灰冠信任兑换了 ' + describeItem(d) + '。'))
+    sfxCoin()
+  }
   const sellItem = (id: string) => {
     const item = inventory.find((i) => i.id === id)
     if (!item) return
@@ -1583,12 +1612,29 @@ export default function App() {
                 </button>
               </div>
             </div>
+            {kingdomTrust(kingdom) >= 100 && (
+              <div className="potion-supply">
+                <span className="hint">⚔ 灰冠兑换（信任 100 解锁 · 星髓 {starMarrow} · 拆解 T3 取得）——每件 2 星髓 + 800 金 + 10 祝福</span>
+                <div className="tavern-row">
+                  {EXCHANGE_LIST.map((bid) => (
+                    <button key={bid} disabled={!!run || !!towerRun || starMarrow < 2 || gold < 800 || blessing < 10} onClick={() => exchangeT3(bid)}>
+                      ⚔ 兑换 {ITEM_BASES[bid].name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {inventory.length === 0 ? (
               <p className="hint">击败 boss 掉落装备（首次击杀保底一件）。从成员卡的下拉框穿戴。</p>
             ) : (
               inventory.map((i) => (
                 <div key={i.id} className="inv-item">
                   {describeItem(i)}
+                  {ITEM_BASES[i.baseId].tier === 3 && (
+                    <button className="sell-btn" onClick={() => dismantleT3(i.id)}>
+                      ♻ 拆解 +2 星髓
+                    </button>
+                  )}
                   <button className="sell-btn" onClick={() => sellItem(i.id)}>
                     变卖 +{sellValue(i, fx.sellMult)} 金
                   </button>

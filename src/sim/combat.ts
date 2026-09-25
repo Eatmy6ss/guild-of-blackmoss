@@ -10,6 +10,7 @@ import type {
   BattleCommands,
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
+import { ITEM_BASES } from '../data/items'
 import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
 import { RACES } from '../data/races'
@@ -90,6 +91,22 @@ export function initCommands(potions?: { heal: number; fury: number }): BattleCo
 export function toCombatant(member: Member): Combatant {
   const job = JOBS[member.job]
   const eq = equipmentStats(member.equipment)
+    // 装备 2.0 传承威能聚合(DESIGN 13.3):行为类威能标记 + mend 折入受疗
+    let legacyFocus = false
+    let legacyKillheal = false
+    let legacyBulwark = false
+    let legacyElitewarden = false
+    let legacyEmberward = false
+    let legacyMend = 0
+    for (const eqItem of Object.values(member.equipment)) {
+      const lk = eqItem ? ITEM_BASES[eqItem.baseId]?.legacy : undefined
+      if (lk === 'focus') legacyFocus = true
+      else if (lk === 'killheal') legacyKillheal = true
+      else if (lk === 'bulwark') legacyBulwark = true
+      else if (lk === 'elitewarden') legacyElitewarden = true
+      else if (lk === 'emberward') legacyEmberward = true
+      else if (lk === 'mend') legacyMend += 0.08
+    }
   // 混合职阶(宪法 v3):自带头部/站位/主职,不走基础职业线;普通专精 = 线 base + 专精修正
   const hy = isHybrid(member.spec) ? HYBRIDS[member.spec!] : undefined
   const baseSpec = hy ? hy : specOf(member.job, member.spec)
@@ -162,10 +179,11 @@ export function toCombatant(member: Member): Combatant {
       if (adv) list.push({ def: adv, cooldownLeft: 0 })
       return list
     })(),
+    legacyFocus, legacyKillheal, legacyBulwark, legacyElitewarden, legacyEmberward,
     specId: baseSpec.id,
     spr: eff.spr,
     counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
-    healReceived: loyaltyHeal + (race.passive.healReceived ?? 0) + eff.spr * 0.004 + (eq.healReceived ?? 0),
+    healReceived: loyaltyHeal + (race.passive.healReceived ?? 0) + eff.spr * 0.004 + (eq.healReceived ?? 0) + legacyMend,
     fireResist: Math.min(0.75, eq.fireResist ?? 0),
     tauntedTicks: 0,
     position: hy ? hy.position : job.position,
@@ -408,6 +426,10 @@ export function applyHit(
   if (target.vulnUntilTick && state.tick < target.vulnUntilTick) {
     amount = Math.round(amount * (target.vulnMult ?? 1.2))
   }
+  // 装备 2.0 传承威能·磐石:受到 boss 的伤害 -8%
+  if (target.legacyBulwark && attacker.team === 'enemy' && attacker.bossMechanics?.length) {
+    amount = Math.round(amount * 0.92)
+  }
   target.hp = Math.max(0, target.hp - amount)
   // 反伤被动(荆棘/裂阵):近战命中者反弹 fraction
   if (target.counterMult && attacker.range === 'melee' && attacker.alive) {
@@ -487,7 +509,14 @@ export function applyHit(
     target.alive = false
     state.events.push({ tick: state.tick, type: 'death', targetId: target.id })
     pushLog(state, 'system', `☠ ${target.name} 倒下了`)
-    // 死亡特质:湮灭自爆/冰封遗骸/临终呼援
+    // 装备 2.0 传承威能·饮血:己方击杀敌人时,持有者回复 2% 最大生命
+    if (target.team === 'enemy' && attacker.team === 'guild') {
+      for (const g of aliveOf(state, 'guild')) {
+        if (!g.legacyKillheal) continue
+        const back = Math.max(1, Math.round(g.maxHp * 0.02))
+        g.hp = Math.min(g.maxHp, g.hp + back)
+      }
+    }    // 死亡特质:湮灭自爆/冰封遗骸/临终呼援
     if (target.traits?.includes('death-blast')) {
       traitHint(state, 'death-blast')
       for (const g of aliveOf(state, target.team === 'enemy' ? 'guild' : 'enemy')) {
@@ -563,6 +592,12 @@ function dealDamage(
     synergyDamageMult(state, attacker)
   if (attacker.team === 'guild' && state.commands.focusId === target.id) {
     raw *= FOCUS_MULT
+    // 装备 2.0 传承威能·锋镝:对集火目标伤害额外 +10%
+    if (attacker.legacyFocus) raw *= 1.1
+  }
+  // 传承威能·嗜功:对精英与 boss 伤害 +8%
+  if (attacker.legacyElitewarden && target.team === 'enemy' && target.bossMechanics?.length) {
+    raw *= 1.08
   }
   const dmg = Math.max(
     1,
@@ -864,7 +899,8 @@ export function stepBattle(state: BattleState): void {
     state.envHeat.next = state.tick + state.envHeat.everyTicks
     for (const c of state.combatants) {
       if (!c.alive || c.team !== 'guild') continue
-      const dmg = Math.max(1, Math.round(state.envHeat.damage * (1 - (c.fireResist ?? 0))))
+      const heatMult = c.legacyEmberward ? 0.5 : 1
+      const dmg = Math.max(1, Math.round(state.envHeat.damage * (1 - (c.fireResist ?? 0)) * heatMult))
       c.hp = Math.max(0, c.hp - dmg)
       if (c.hp === 0) {
         c.alive = false

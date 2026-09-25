@@ -141,6 +141,8 @@ export interface ItemBaseDef {
   value: number
   /** 词条条数区间 [min, max] */
   affixCount: [number, number]
+  /** 装备 2.0 传承威能(DESIGN 13.3) */
+  legacy?: string
 }
 
 /** 一次具体的掉落实例：baseId 固定来源，词条掉落时 roll（Q22） */
@@ -204,6 +206,12 @@ export interface Combatant {
   memberId?: string
   /** 技能独立冷却 */
   skills: { def: SkillDef; cooldownLeft: number }[]
+  /** 装备 2.0 传承威能(DESIGN 13.3):行为类威能标记 */
+  legacyFocus?: boolean
+  legacyKillheal?: boolean
+  legacyBulwark?: boolean
+  legacyElitewarden?: boolean
+  legacyEmberward?: boolean
   /** 被嘲讽剩余 tick（威胁系统 D3-4 扩展） */
   tauntedTicks: number
   taunterId?: string

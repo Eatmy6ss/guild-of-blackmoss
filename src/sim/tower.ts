@@ -36,6 +36,7 @@ export function towerExp(floor: number): number {
 
 /** 塔掉落装备的纪元:前 5 层 T1,6 层起 T2(挂 K03;U09 的 T3 池落地后此处跟进) */
 export function towerItemTier(floor: number): number {
+  if (floor >= 12) return 3
   return floor >= 6 ? 2 : 1
 }
 

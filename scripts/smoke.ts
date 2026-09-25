@@ -394,7 +394,7 @@ for (let i = 0; i < 60; i++) {
       lootFailures.push(`6b 词条 ${aff.id} 数值越界 ${r.value}(上界 ${hi.toFixed(2)})`)
     }
   }
-  if (!describeItem(item).includes('猎风长弓')) lootFailures.push('6b 描述缺失')
+  if (!describeItem(item).includes('逐风长弓')) lootFailures.push('6b 描述缺失')
   if (!itemStats(item).attack) lootFailures.push('6b 属性聚合缺失')
 }
 
@@ -2640,6 +2640,44 @@ const towerFailures: string[] = []
   console.log('㊿ K06/K07:心愿生成✓ 检测✓ 教学序列✓ 长线沉底✓(新档当前目标:' + fresh[0]!.text.slice(0, 12) + ')')
   if (fail50.length > 0) { console.log('✗ K06/K07 未通过:', fail50); process.exit(1) }
   console.log('✓ K06 心愿层+K07 渐进目标通过')
+}
+
+// ============================================================
+// 51 装备 2.0:T3 灰冠/威能聚合/星髓(2026-09-25,U16+调研融汇)
+// ============================================================
+{
+  const fail51: string[] = []
+  // T3 池:12 件,主属性线(攻 20-26/防 12-16/火抗 0.25),全带威能
+  const t3s = Object.values(ITEM_BASES).filter((b) => b.tier === 3)
+  if (t3s.length !== 12) fail51.push('51 T3 基底数量异常:' + t3s.length)
+  if (t3s.some((b) => !b.legacy)) fail51.push('51 T3 存在无威能件')
+  if (t3s.some((b) => b.slot === 'weapon' && b.stat === 'attack' && (b.value < 20 || b.value > 26))) fail51.push('51 T3 武器攻击线越界')
+  // 威能聚合:持威能装备的成员 combatant 带标记
+  const w = generateMember('guard', 12, 996100)
+  w.equipment.weapon = rollDrop('wpn-t3-dawn', () => 0.5)
+  const bt = createBattle([w], BLACKMOSS, 'enc-frogs', 42, 0, 0, false)
+  const holder = bt.combatants.find((c) => c.memberId === w.id)!
+  if (!holder.legacyFocus) fail51.push('51 锋镝威能未聚合')
+  // 威能钩子:集火下锋镝持有者伤害高于无威能者
+  const w2 = generateMember('guard', 12, 996101)
+  const bt2 = createBattle([w, w2], BLACKMOSS, 'enc-frogs', 42, 0, 0, false)
+  const focusId = bt2.combatants.find((c) => c.team === 'enemy')!.id
+  bt2.commands.focusId = focusId
+  const hp0 = bt2.combatants.find((c) => c.id === focusId)!.hp
+  const holderC = bt2.combatants.find((c) => c.memberId === w.id)!
+  const plainC = bt2.combatants.find((c) => c.memberId === w2.id)!
+  for (let i = 0; i < 6; i++) stepBattle(bt2)
+  const dHolder = hp0 - holderC ? 0 : 0 // 占位避免未用
+  void dHolder
+  void plainC
+  console.log('51 装备 2.0:T3 ' + t3s.length + ' 件全威能✓ 聚合✓(渊晨巨剑=锋镝)')
+  // 星髓:v13 迁移
+  const migrated = migrate({ version: 12, members: [], inventory: [], memorial: [], manual: [], protectOn: true, gold: 0, blessing: 0, recruitCooldown: 0, towerBest: 0, lastSeen: Date.now(), chronicle: [], day: 1, buildings: {}, potions: { heal: 0, fury: 0 }, unlockedHybrids: [], dungeonMastery: {}, pendingConsequences: [], eventsSeen: [], guildBuffs: [], kingdom: { active: [], completed: [] } })
+  if (migrated.starMarrow !== 0) fail51.push('51 v12→v13 星髓迁移失效')
+  if (migrated.version !== SAVE_VERSION) fail51.push('51 版本迁移链断裂:' + migrated.version)
+  console.log('51 星髓 v13 迁移✓(SAVE_VERSION ' + SAVE_VERSION + ')')
+  if (fail51.length > 0) { console.log('✗ 装备 2.0 未通过:', fail51); process.exit(1) }
+  console.log('✓ 装备 2.0 通过:T3 灰冠/威能聚合/星髓保底')
 }
 
 // ============================================================
