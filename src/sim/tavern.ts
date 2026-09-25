@@ -60,6 +60,13 @@ function pickCandidate(rng: Rng, members: Member[], level: number, forcedJob?: J
 }
 
 /** 装备变卖价:tier 基础 + 词条加值(T2 > T1,词条越多越值钱) */
+/** 遗物安葬 2.0(2026-09-25):阵亡装备赎回费 = 变卖价 ×1.5;塔内阵亡 ×2(深层代价)。
+ *  价格与品级(绿/紫系数)+词条数挂钩——装备越好,赎回越贵 */
+export function redeemCost(item: ItemInstance, towerFloor = 0): number {
+  const q = item.quality === 'purple' ? 1.5 : item.quality === 'green' ? 1.2 : 1
+  return Math.ceil(sellValue(item) * q * 1.5 * (towerFloor > 0 ? 2 : 1))
+}
+
 export function sellValue(item: ItemInstance, mult = 1): number {
   const qMult = item.quality === 'purple' ? 1.4 : item.quality === 'green' ? 1.15 : 1
   void qMult

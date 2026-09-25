@@ -49,6 +49,7 @@ import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
 import { memorialAura, computeLegacy, legacyQuality, legacyCounts, type LegacyContext } from './sim/memorial'
 import { rollWish, wishDone, WISH_MORALE } from './sim/wish'
+import { redeemCost } from './sim/tavern'
 import { DUNGEON_FINAL_BOSS } from './data/regions'
 import { rollGuildEvent, pickOutcome } from './sim/guild-events'
 import { applyMoraleDelta } from './sim/morale'
@@ -143,6 +144,8 @@ export default function App() {
   const [kingdom, setKingdom] = useState(() => saved?.kingdom ?? newKingdomState())
   // 装备 2.0:星髓(拆解 T3 所得,灰冠兑换)
   const [starMarrow, setStarMarrow] = useState(() => saved?.starMarrow ?? 0)
+  // 遗物安葬 2.0:阵亡装备待赎回清单
+  const [pendingRelics, setPendingRelics] = useState(() => saved?.pendingRelics ?? [])
   // K02 纪念品质(U11):阵亡登记时的公会上下文快照→生平事迹→品质→光环(封顶,替代旧人头 2%)
   const legacyContext = (): LegacyContext => ({
     bossKills: manual.length,
@@ -312,20 +315,22 @@ export default function App() {
     if (b.status === 'running') return
     const dead = towerMarkPermadeath(t, '黑苔高塔')
     if (dead.length > 0) {
-      // 遗物安葬(反馈②):塔中阵亡同样装备入库
+      // 遗物安葬 2.0:本层投保→装备免赎回费直接入库;未投保→进待赎回清单(塔内赎回费 ×2)
       const relics: ItemInstance[] = []
+      const newRelics: { item: ItemInstance; hero: string; redeem: number }[] = []
       for (const d of dead) {
         const m = membersRef.current.find((x) => x.id === d.id)
         if (!m) continue
         for (const slot of ['weapon', 'armor', 'trinket'] as const) {
           const it = m.equipment[slot]
-          if (it) {
-            relics.push(it)
-            m.equipment[slot] = undefined
-          }
+          if (!it) continue
+          if (t.insuredFloor) relics.push(it)
+          else newRelics.push({ item: it, hero: d.name, redeem: redeemCost(it, t.floor) })
+          m.equipment[slot] = undefined
         }
       }
       if (relics.length > 0) setInventory((inv) => [...inv, ...relics])
+      if (newRelics.length > 0) setPendingRelics((q) => [...(q ?? []), ...newRelics])
       setMemorial((m) => [...m, ...withLegacy(dead)])
       setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
       setMembers([...membersRef.current])
@@ -376,8 +381,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ starMarrow, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
-  }, [starMarrow, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
+    saveGuild({ starMarrow, pendingRelics, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
+  }, [starMarrow, pendingRelics, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -498,20 +503,19 @@ export default function App() {
     advanceRun(r)
     const dead = markPermadeath(r)
     if (dead.length > 0) {
-      // 遗物安葬(反馈②):阵亡者的装备随遗体归队入库——人没了,家伙什留下
-      const relics: ItemInstance[] = []
+      // 遗物安葬 2.0:阵亡装备进待赎回清单(赎回费挂品级+词条),不再免费入库
+      const newRelics: { item: ItemInstance; hero: string; redeem: number }[] = []
       for (const d of dead) {
         const m = r.members.find((x) => x.id === d.id)
         if (!m) continue
         for (const slot of ['weapon', 'armor', 'trinket'] as const) {
           const it = m.equipment[slot]
-          if (it) {
-            relics.push(it)
-            m.equipment[slot] = undefined
-          }
+          if (!it) continue
+          newRelics.push({ item: it, hero: d.name, redeem: redeemCost(it) })
+          m.equipment[slot] = undefined
         }
       }
-      if (relics.length > 0) setInventory((inv) => [...inv, ...relics])
+      if (newRelics.length > 0) setPendingRelics((q) => [...(q ?? []), ...newRelics])
       const witnesses = r.members.filter((m) => m.alive)
       applyDeathShock(dead[0].id, witnesses.filter((x) => x.trait !== 'cool') as typeof witnesses)
       // K09 人物特性·冷静:目击阵亡的士气冲击减半(实现=不进入冲击目击列表,等效减半)
@@ -1637,6 +1641,25 @@ export default function App() {
                 </button>
               </div>
             </div>
+            {pendingRelics.length > 0 && (
+              <div className="potion-supply">
+                <span className="hint">⚰ 遗物安葬（{pendingRelics.length}）——阵亡者的装备在此待赎,赎回费随品级与词条上涨;T3 可改拆星髓</span>
+                {pendingRelics.map((r, i) => (
+                  <div key={i} className="tavern-row">
+                    <span className="hint">⚰ {r.hero} 的 {describeItem(r.item)}</span>
+                    <button disabled={!!run || !!towerRun || gold < r.redeem} onClick={() => {
+                      if (gold < r.redeem) return
+                      setGold((g) => g - r.redeem)
+                      setInventory((inv) => [...inv, r.item])
+                      setPendingRelics((q) => q.filter((_, j) => j !== i))
+                      logChronicle(chronicleRaw(day, '花 ' + r.redeem + ' 金赎回了 ' + r.hero + ' 的遗物。'))
+                    }}>
+                      ⚰ 赎回（{r.redeem} 金）
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             {kingdomTrust(kingdom) >= 100 && (
               <div className="potion-supply">
                 <span className="hint">⚔ 灰冠兑换（信任 100 解锁 · 星髓 {starMarrow} · 拆解 T3 取得）——每件 2 星髓 + 800 金 + 10 祝福</span>
@@ -2283,6 +2306,21 @@ export default function App() {
                 幸存者回复 20% 生命。第 9 层起撤退保护失效——量力而行。
               </div>
               <div className="end-actions">
+                <button
+                  onClick={() => {
+                    const t = towerRunRef.current
+                    if (!t || t.insuredFloor) return
+                    const premium = t.floor * 40
+                    if (gold < premium) return
+                    setGold((g) => g - premium)
+                    t.insuredFloor = true
+                    setTowerRun({ ...t })
+                    logChronicle(chronicleRaw(day, '为第 ' + t.floor + ' 层投了保(保费 ' + premium + ' 金)——本层若有人倒下,装备免费归还。'))
+                  }}
+                  disabled={gold < (towerRun?.floor ?? 1) * 40}
+                >
+                  🛡 投保本层（{(towerRun?.floor ?? 1) * 40} 金,阵亡装备免赎回）
+                </button>
                 <button onClick={towerNextFloor}>⬆ 深入第 {towerRun.floor + 1} 层</button>
                 <button onClick={leaveTower}>🏰 带着奖励离开</button>
               </div>

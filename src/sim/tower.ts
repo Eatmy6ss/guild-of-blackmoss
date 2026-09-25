@@ -53,6 +53,8 @@ export interface TowerRun {
   potions: { heal: number; fury: number }
   /** 挂机连刷(试玩反馈):跨层延续,rest 自动深入下一层 */
   autoMode?: boolean
+  /** 遗物安葬 2.0:本层已投保(阵亡装备免赎回费) */
+  insuredFloor?: boolean
   result?: 'left' | 'defeated'
 }
 
@@ -210,6 +212,7 @@ export function towerRest(run: TowerRun, healPct: number = TOWER.restHealPct): v
 /** 深入下一层(层间休整界面点击后) */
 export function towerNext(run: TowerRun, seed: number): void {
   run.floor += 1
+  run.insuredFloor = false
   startTowerFloor(run, seed)
 }
 

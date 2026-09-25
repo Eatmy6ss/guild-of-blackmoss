@@ -10,7 +10,7 @@ import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
 import { dungeonLock } from '../src/data/regions'
-import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded, taleCandidates } from '../src/sim/tavern'
+import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded, taleCandidates, redeemCost } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, sanitizeMembers, SAVE_VERSION } from '../src/state/save'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
 import { BUILDINGS, baseEffects } from '../src/data/base'
@@ -2717,6 +2717,29 @@ const towerFailures: string[] = []
   console.log('52 K09/K10:特性字段兼容✓ 特权训练为会话层(App)✓')
   if (fail52.length > 0) { console.log('✗ K08/K09/K10 未通过:', fail52); process.exit(1) }
   console.log('✓ K08 套装+K09 特性+K10 特权训练通过')
+}
+
+// ============================================================
+// 53 遗物安葬 2.0:赎回制(2026-09-25,制作人拍板)
+// ============================================================
+{
+  const fail53: string[] = []
+  // 赎回公式:变卖价 ×1.5,塔内 ×2;品级与词条自动挂钩(sellValue 内部)
+  const item = rollDrop('wpn-t2-greatsword', () => 0.5)
+  const base = redeemCost(item)
+  if (base !== Math.ceil(sellValue(item) * 1.5)) fail53.push('53 赎回费公式异常:' + base + ' vs 变卖 ' + sellValue(item))
+  if (redeemCost(item, 9) !== base * 2) fail53.push('53 塔内赎回费未 ×2:' + redeemCost(item, 9) + ' vs ' + base)
+  // 品级挂钩:紫件赎回费应高于同基底白件
+  // 直接构造品级实例(rollDrop 的品质 roll 受 bias 影响,构造更确定)
+  const white: ItemInstance = { id: 'w', baseId: 'wpn-t2-greatsword', rolls: [] }
+  const purple: ItemInstance = { id: 'p', baseId: 'wpn-t2-greatsword', quality: 'purple', rolls: [] }
+  if (redeemCost(purple) <= redeemCost(white)) fail53.push('53 品级未影响赎回费(紫=' + redeemCost(purple) + ' 白=' + redeemCost(white) + ')')
+  // v14 迁移:pendingRelics 补空
+  const migrated = migrate({ version: 13, members: [], inventory: [], memorial: [], manual: [], protectOn: true, gold: 0, blessing: 0, recruitCooldown: 0, towerBest: 0, lastSeen: Date.now(), chronicle: [], day: 1, buildings: {}, potions: { heal: 0, fury: 0 }, unlockedHybrids: [], dungeonMastery: {}, pendingConsequences: [], eventsSeen: [], guildBuffs: [], starMarrow: 0, kingdom: { active: [], completed: [] } })
+  if (!Array.isArray(migrated.pendingRelics) || migrated.version !== SAVE_VERSION) fail53.push('53 v13→v14 迁移失效')
+  console.log('53 遗物 2.0:赎回 ' + base + '(变卖 ' + sellValue(item) + '×1.5)✓ 塔内 ×2✓ 品级挂钩✓ v14 迁移✓')
+  if (fail53.length > 0) { console.log('✗ 遗物 2.0 未通过:', fail53); process.exit(1) }
+  console.log('✓ 遗物安葬 2.0 通过:赎回制/塔系数/品级挂钩/v14')
 }
 
 // ============================================================

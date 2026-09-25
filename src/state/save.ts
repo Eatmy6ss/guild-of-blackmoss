@@ -11,7 +11,7 @@ import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kin
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 13
+export const SAVE_VERSION = 14
 
 export interface PendingConsequence {
   eventId: string
@@ -29,6 +29,8 @@ export interface GuildSave {
   kingdom: KingdomState
   /** v13: 星髓(拆解 T3 装备所得,灰冠兑换用) */
   starMarrow: number
+  /** v14: 遗物安葬 2.0——阵亡者装备待赎回清单(赎回制) */
+  pendingRelics: { item: import('../sim/types').ItemInstance; hero: string; redeem: number }[]
   version: number
   members: Member[]
   inventory: ItemInstance[]
@@ -63,6 +65,7 @@ export interface GuildSave {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  13: (d) => ({ ...d, pendingRelics: [] }),
   12: (d) => ({ ...d, starMarrow: 0 }),
   11: (d) => ({ ...d, kingdom: newKingdomState() }),
   // v1 → v2:补经济三字段(exp/bonds 的补齐也在这一级做,老档一次迁移到位)
@@ -104,6 +107,7 @@ export function migrate(data: Record<string, unknown>): GuildSave {
     d.version = v
   }
   d.starMarrow = typeof d.starMarrow === 'number' ? d.starMarrow : 0
+  d.pendingRelics = Array.isArray(d.pendingRelics) ? d.pendingRelics : []
   d.kingdom = normalizeKingdom(d.kingdom)
   return d as unknown as GuildSave
 }
