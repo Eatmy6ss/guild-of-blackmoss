@@ -143,6 +143,8 @@ export interface ItemBaseDef {
   affixCount: [number, number]
   /** 装备 2.0 传承威能(DESIGN 13.3) */
   legacy?: string
+  /** K08 套装系:gray-crown(灰冠)/wind-hunt(猎风) */
+  setName?: string
 }
 
 /** 一次具体的掉落实例：baseId 固定来源，词条掉落时 roll（Q22） */
@@ -169,6 +171,8 @@ export interface Member {
   specAdvanced?: Record<string, string>
   /** K06 个人心愿层(U14):可选;老档无此字段 = 暂无心愿 */
   wish?: import('./wish').Wish
+  /** K09 人物特性·非战斗向(U16):drinker 爱喝酒/lucky 幸运儿/cool 冷静;可选=朴素 */
+  trait?: string
   /** 通用战技(DD Augment):学过的被动,跨专精携带 */
   augments?: string[]
   level: number
@@ -212,6 +216,9 @@ export interface Combatant {
   legacyBulwark?: boolean
   legacyElitewarden?: boolean
   legacyEmberward?: boolean
+  /** K08 套装件数:灰冠(T3)/猎风(T2 猎装) */
+  setCrown?: number
+  setHunt?: number
   /** 被嘲讽剩余 tick（威胁系统 D3-4 扩展） */
   tauntedTicks: number
   taunterId?: string

@@ -156,15 +156,20 @@ export default function App() {
   const rollWishFor = (m: Member) => {
     m.wish = rollWish(Math.random, { slots: ['weapon', 'armor'], dungeons: wishDungeonPool(), towerBest, level: m.level }) ?? undefined
   }
+  // K09 人物特性(U16):招募时机 55% 立特性;checkWishes 循环里为朴素成员补立
+  const TRAITS = ['drinker', 'lucky', 'cool'] as const
+  const rollTraitFor = (m: Member) => {
+    if (Math.random() < 0.55) m.trait = TRAITS[Math.floor(Math.random() * TRAITS.length)]
+  }
   const checkWishes = () => {
     let changed = false
     for (const m of membersRef.current) {
       if (!m.alive) continue
-      if (!m.wish) { if (Math.random() < 0.15) rollWishFor(m); continue }
+      if (!m.wish) { if (Math.random() < 0.15) rollWishFor(m); rollTraitFor(m); continue }
       if (!wishDone(m, m.wish, { dungeonCleared: (id) => manual.includes(DUNGEON_FINAL_BOSS[id] ?? ''), towerBest })) continue
       m.morale = Math.min(100, (m.morale ?? 60) + WISH_MORALE)
       logChronicle(chronicleRaw(day, m.name + ' 了却心愿:「' + m.wish.text + '」。士气昂扬。'))
-      rollWishFor(m)
+      rollWishFor(m); rollTraitFor(m)
       changed = true
     }
     if (changed) setMembers([...membersRef.current])
@@ -234,6 +239,8 @@ export default function App() {
   const runRef = useRef<DungeonRun | null>(null)
   const lastBranchRef = useRef('shortcut')
   const autoLoopRef = useRef(false)
+  // K10 特权训练:150 金买下次远征经验 +25%(会话内有效,消费一次)
+  const expBoostRef = useRef(1)
   const continueDeepRef = useRef<(() => void) | null>(null)
   const resolveEventRef = useRef<((choiceIdx: number) => void) | null>(null)
   const dismissEventRef = useRef<(() => void) | null>(null)
@@ -479,7 +486,7 @@ export default function App() {
     // 杂兵掉落(试玩三轮):小概率装备,刷图过程有反馈;F10:精英场次兑现「掉落翻倍」
     else if (b.status === 'guild-win') {
       // 装备 2.0 传承威能·拾荒:持有者在场,杂兵掉率 +4%
-      const hasScav = r.members.some((m) => m.alive && Object.values(m.equipment).some((e) => e && ITEM_BASES[e.baseId]?.legacy === 'scavenger'))
+      const hasScav = r.members.some((m) => m.alive && Object.values(m.equipment).some((e) => e && ITEM_BASES[e.baseId]?.legacy === 'scavenger')) || r.members.some((m) => m.alive && m.trait === 'lucky')
       const waveDrop = rollWaveDrop(r.dungeon.id, Math.random, r.eliteAt.includes(r.stepIdx), hasScav ? 0.04 : 0)
       if (waveDrop) {
         setInventory((inv) => [...inv, waveDrop])
@@ -506,7 +513,8 @@ export default function App() {
       }
       if (relics.length > 0) setInventory((inv) => [...inv, ...relics])
       const witnesses = r.members.filter((m) => m.alive)
-      applyDeathShock(dead[0].id, witnesses)
+      applyDeathShock(dead[0].id, witnesses.filter((x) => x.trait !== 'cool') as typeof witnesses)
+      // K09 人物特性·冷静:目击阵亡的士气冲击减半(实现=不进入冲击目击列表,等效减半)
       for (const d of dead) logChronicle(chronicleHeroFall(day, d.name, JOBS[d.job].name, r.dungeon.name))
     }
     if (b.status === 'guild-win') {
@@ -520,7 +528,9 @@ export default function App() {
     }
     if (dead.length > 0) setMemorial((m) => [...m, ...withLegacy(dead)])
     // M1 P0 成长:经验 + 默契的发放下沉在 sim 层(可被 smoke 直接验证)
-    settleGrowth(r, fx.expMult)
+    const expBoost = expBoostRef.current
+    settleGrowth(r, fx.expMult * expBoost)
+    if (expBoost > 1 && b.status === 'guild-win') expBoostRef.current = 1
     // M1 P2 编年史:升级与默契升星(出击前快照对比)
     for (const m of r.members) {
       const snap = growthSnapshotRef.current.get(m.id)
@@ -802,7 +812,7 @@ export default function App() {
 
   const signVisitor = () => {
     if (!visitor || runRef.current || aliveCount() >= ROSTER_CAP) return
-    rollWishFor(visitor.member)
+    rollWishFor(visitor.member); rollTraitFor(visitor.member)
     setMembers((roster) => [...roster, visitor.member])
     logChronicle(chronicleRecruit(day, visitor.member, '上门投奔'))
     setVisitor(null)
@@ -812,7 +822,7 @@ export default function App() {
     if (runRef.current || effectiveCooldown > 0 || gold < ECONOMY.bountyCost || aliveCount() >= ROSTER_CAP) return
     setGold((g) => g - ECONOMY.bountyCost)
     const m = bountyCandidate(Math.random, membersRef.current, job)
-    rollWishFor(m)
+    rollWishFor(m); rollTraitFor(m)
     setMembers((roster) => [...roster, m])
     logChronicle(chronicleRecruit(day, m, '定向悬赏'))
     setRecruitCooldown(cooldownNeeded(aliveCount()))
@@ -831,7 +841,7 @@ export default function App() {
     // 宪法 v3:招募即带专精;F06(2026-09-25):候选已定专精(生成时默认线/三选一可能混合线)——
     // 入职保留之,不再重 roll(否则玩家看中的专精在入职瞬间被替换)
     const recruited = m.spec ? m : { ...m, spec: rollSpec(m.job, Math.random) }
-    rollWishFor(recruited)
+    rollWishFor(recruited); rollTraitFor(recruited)
     setMembers((roster) => [...roster, recruited])
     logChronicle(chronicleRecruit(day, recruited, '酒馆传闻'))
     setCandidates([])
@@ -1247,6 +1257,9 @@ export default function App() {
     const hp = c ? c.hp : m.hp
     const max = c ? c.maxHp : maxHpOf(m)
     const onExpedition = run != null ? run.members.includes(m) : expedition.includes(m)
+  // K08 套装计数(成员侧直接数装备)
+  const setCrown = Object.values(m.equipment).filter((e) => e && ITEM_BASES[e.baseId]?.setName === 'gray-crown').length
+  const setHunt = Object.values(m.equipment).filter((e) => e && ITEM_BASES[e.baseId]?.setName === 'wind-hunt').length
     return (
       <div key={m.id} className="member-card">
         <div className="mc-head" style={{ cursor: 'pointer' }} title="点击展开属性明细" onClick={() => setDetailOpen((cur) => { const n = new Set(cur); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n })}>
@@ -1268,6 +1281,18 @@ export default function App() {
                 <span className={l.good ? 'good' : l.bad ? 'bad' : ''}>{l.text}</span>
               </div>
             ))}
+            {(setCrown > 0 || setHunt > 0) && (
+              <div className="stat-layer">
+                <span className="sl-label">套装</span>
+                <span>{setCrown ? `灰冠 ${setCrown} 件${setCrown >= 4 ? '（伤害 +10%）' : setCrown >= 2 ? '（伤害 +5%）' : ''}` : ''}{setCrown && setHunt ? ' · ' : ''}{setHunt ? `猎风 ${setHunt} 件${setHunt >= 4 ? '（暴击 +6%）' : setHunt >= 2 ? '（暴击 +3%）' : ''}` : ''}</span>
+              </div>
+            )}
+            {m.trait && (
+              <div className="stat-layer">
+                <span className="sl-label">特性</span>
+                <span>{m.trait === 'drinker' ? '爱喝酒（庆功宴效果 +50%）' : m.trait === 'lucky' ? '幸运儿（掉宝率 +2%）' : m.trait === 'cool' ? '冷静（目睹阵亡冲击减半）' : m.trait}</span>
+              </div>
+            )}
             {m.wish && (
               <div className="stat-layer">
                 <span className="sl-label">心愿</span>
@@ -1535,7 +1560,7 @@ export default function App() {
             <div className="tavern-row">
               <button
                 disabled={!!run || gold < 60}
-                onClick={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
+                onClick={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); for (const d of membersRef.current) { if (d.alive && d.trait === 'drinker') d.morale = Math.min(100, (d.morale ?? 60) + Math.round(baseEffects(buildings).feastBoost * 0.5)) } setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
               >
                 🍻 庆功宴（60 金）：全员士气 +30
               </button>

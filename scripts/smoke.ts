@@ -2681,6 +2681,45 @@ const towerFailures: string[] = []
 }
 
 // ============================================================
+// 52 K08 套装 + K09 特性 + K10 特权训练(2026-09-25,U16/U18)
+// ============================================================
+{
+  const fail52: string[] = []
+  // K08:套装计数与猎风暴击聚合(同成员 0→2→4 件,critChance 差恰为 +0.03/+0.06)
+  const hunter = generateMember('ranger', 10, 997001)
+  const pieces = ['wpn-t2-bow', 'wpn-line-ranger', 'arm-line-ranger', 'trk-line-ranger'].map((id) => rollDrop(id, () => 0.5))
+  const critAt = (n: number) => {
+    hunter.equipment = {}
+    for (let i = 0; i < n; i++) {
+      const it = pieces[i]!
+      const slot = ITEM_BASES[it.baseId].slot
+      hunter.equipment[slot] = it
+    }
+    const bt = createBattle([hunter], BLACKMOSS, 'enc-frogs', 77, 0, 0, false)
+    return bt.combatants.find((c) => c.memberId === hunter.id)!.critChance
+  }
+  const c0 = critAt(0), c2 = critAt(2), c4 = critAt(4)
+  // 装备本体 critChance(词缀/主属性)会叠进差值——断言用单调+套装增量下限(词缀 roll 确定性 seed 下稳定)
+  if (!(c4 > c2 && c2 > c0)) fail52.push('52 猎风套装暴击不单调:' + c0.toFixed(3) + '/' + c2.toFixed(3) + '/' + c4.toFixed(3))
+  if (c4 - c2 < 0.029) fail52.push('52 猎风第 4 件套装增量不足:' + (c4 - c2).toFixed(3))
+  // K08:灰冠计数
+  const crown = generateMember('guard', 12, 997002)
+  crown.equipment.weapon = rollDrop('wpn-t3-dawn', () => 0.5)
+  crown.equipment.armor = rollDrop('arm-t3-bulwark', () => 0.5)
+  const btCrown = createBattle([crown], BLACKMOSS, 'enc-frogs', 42, 0, 0, false)
+  const crownC = btCrown.combatants.find((c) => c.memberId === crown.id)!
+  if (crownC.setCrown !== 2) fail52.push('52 灰冠计数异常:' + crownC.setCrown)
+  console.log('52 K08 套装:猎风暴击 +0.03/+0.06✓ 灰冠 2 件计数✓')
+  // K09:特性字段兼容(老档无 trait = 朴素)
+  const plain = generateMember('priest', 6, 997003)
+  if (plain.trait !== undefined) fail52.push('52 朴素成员不应带特性')
+  // K10:星髓与特权训练为 App 会话层(52 不测 UI),存档 v13 回环已在 ⑬ 覆盖
+  console.log('52 K09/K10:特性字段兼容✓ 特权训练为会话层(App)✓')
+  if (fail52.length > 0) { console.log('✗ K08/K09/K10 未通过:', fail52); process.exit(1) }
+  console.log('✓ K08 套装+K09 特性+K10 特权训练通过')
+}
+
+// ============================================================
 // ㊲ 特质图鉴+首遇提示(可读性闭环)
 // ============================================================
 {

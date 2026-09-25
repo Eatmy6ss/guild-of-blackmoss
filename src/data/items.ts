@@ -8,7 +8,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   'wpn-t2-bow': {
     id: 'wpn-t2-bow', name: '逐风长弓', slot: 'weapon', tier: 2,
-    stat: 'attack', value: 12, affixCount: [2, 3], legacy: 'killheal',
+    stat: 'attack', value: 12, affixCount: [2, 3], legacy: 'killheal', setName: 'wind-hunt',
   },
   'arm-t1-mail': {
     id: 'arm-t1-mail', name: '戍卒锁甲', slot: 'armor', tier: 1,
@@ -86,7 +86,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   'wpn-line-ranger': {
     id: 'wpn-line-ranger', name: '鹘眼长弓', slot: 'weapon', tier: 2,
-    stat: 'critChance', value: 0.06, affixCount: [2, 3], legacy: 'focus',
+    stat: 'critChance', value: 0.06, affixCount: [2, 3], legacy: 'focus', setName: 'wind-hunt',
   },
   'wpn-line-warrior': {
     id: 'wpn-line-warrior', name: '碎颚斧', slot: 'weapon', tier: 2,
@@ -119,11 +119,11 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   'arm-line-ranger': {
     id: 'arm-line-ranger', name: '风皮猎衣', slot: 'armor', tier: 2,
-    stat: 'speed', value: 2, affixCount: [2, 3],
+    stat: 'speed', value: 2, affixCount: [2, 3], legacy: 'focus', setName: 'wind-hunt',
   },
   'trk-line-ranger': {
     id: 'trk-line-ranger', name: '鹘眼坠饰', slot: 'trinket', tier: 2,
-    stat: 'critChance', value: 0.06, affixCount: [2, 2], legacy: 'focus',
+    stat: 'critChance', value: 0.06, affixCount: [2, 2], legacy: 'focus', setName: 'wind-hunt',
   },
   'arm-line-warrior': {
     id: 'arm-line-warrior', name: '血宴甲', slot: 'armor', tier: 2,
@@ -183,59 +183,59 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
 // ===== T3 灰冠纪元(装备 2.0,2026-09-25):版图二毕业+高塔深层,全带传承威能 =====
   'wpn-t3-dawn': {
     id: 'wpn-t3-dawn', name: '渊晨巨剑', slot: 'weapon', tier: 3,
-    stat: 'attack', value: 26, affixCount: [2, 3], legacy: 'focus',
+    stat: 'attack', value: 26, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'wpn-t3-tide': {
     id: 'wpn-t3-tide', name: '缚潮咒典', slot: 'weapon', tier: 3,
-    stat: 'lifesteal', value: 0.1, affixCount: [2, 3], legacy: 'killheal',
+    stat: 'lifesteal', value: 0.1, affixCount: [2, 3], legacy: 'killheal', setName: 'gray-crown',
   },
   'wpn-t3-gale': {
     id: 'wpn-t3-gale', name: '隼击长弓', slot: 'weapon', tier: 3,
-    stat: 'critChance', value: 0.08, affixCount: [2, 3], legacy: 'focus',
+    stat: 'critChance', value: 0.08, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'wpn-t3-ember': {
     id: 'wpn-t3-ember', name: '烬渊宝珠', slot: 'weapon', tier: 3,
-    stat: 'attack', value: 23, affixCount: [2, 3], legacy: 'emberward',
+    stat: 'attack', value: 23, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
   'wpn-t3-vox': {
     id: 'wpn-t3-vox', name: '春霖圣杖', slot: 'weapon', tier: 3,
-    stat: 'healReceived', value: 0.12, affixCount: [2, 3], legacy: 'mend',
+    stat: 'healReceived', value: 0.12, affixCount: [2, 3], legacy: 'mend', setName: 'gray-crown',
   },
   'arm-t3-bulwark': {
     id: 'arm-t3-bulwark', name: '灰冠壁垒', slot: 'armor', tier: 3,
-    stat: 'defense', value: 16, affixCount: [2, 3], legacy: 'bulwark',
+    stat: 'defense', value: 16, affixCount: [2, 3], legacy: 'bulwark', setName: 'gray-crown',
   },
   'arm-t3-drake': {
     id: 'arm-t3-drake', name: '渊龙鳞铠', slot: 'armor', tier: 3,
-    stat: 'fireResist', value: 0.25, affixCount: [2, 3], legacy: 'emberward',
+    stat: 'fireResist', value: 0.25, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
   'arm-t3-whisper': {
     id: 'arm-t3-whisper', name: '缚魂裹尸布', slot: 'armor', tier: 3,
-    stat: 'lifesteal', value: 0.09, affixCount: [2, 3], legacy: 'killheal',
+    stat: 'lifesteal', value: 0.09, affixCount: [2, 3], legacy: 'killheal', setName: 'gray-crown',
   },
   'arm-t3-gale': {
     id: 'arm-t3-gale', name: '风脊猎衣', slot: 'armor', tier: 3,
-    stat: 'speed', value: 3, affixCount: [2, 3], legacy: 'focus',
+    stat: 'speed', value: 3, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'trk-t3-vanguard': {
     id: 'trk-t3-vanguard', name: '前卫印玺', slot: 'trinket', tier: 3,
-    stat: 'defense', value: 8, affixCount: [2, 3], legacy: 'bulwark',
+    stat: 'defense', value: 8, affixCount: [2, 3], legacy: 'bulwark', setName: 'gray-crown',
   },
   'trk-t3-seer': {
     id: 'trk-t3-seer', name: '先知圣徽', slot: 'trinket', tier: 3,
-    stat: 'critChance', value: 0.07, affixCount: [2, 3], legacy: 'focus',
+    stat: 'critChance', value: 0.07, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'trk-t3-pyrexia': {
     id: 'trk-t3-pyrexia', name: '血宴杯', slot: 'trinket', tier: 3,
-    stat: 'attack', value: 8, affixCount: [2, 3], legacy: 'killheal',
+    stat: 'attack', value: 8, affixCount: [2, 3], legacy: 'killheal', setName: 'gray-crown',
   },
 
   'trk-dragon-talisman': {
     id: 'trk-dragon-talisman', name: '驭火者坠', slot: 'trinket', tier: 2,
-    stat: 'fireResist', value: 0.15, affixCount: [1, 2], legacy: 'emberward',
+    stat: 'fireResist', value: 0.15, affixCount: [1, 2], legacy: 'emberward', setName: 'gray-crown',
   },
   'wpn-dragon-brand': {
     id: 'wpn-dragon-brand', name: '烙焰长剑', slot: 'weapon', tier: 2,
-    stat: 'attack', value: 14, affixCount: [2, 3], legacy: 'emberward',
+    stat: 'attack', value: 14, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
 }

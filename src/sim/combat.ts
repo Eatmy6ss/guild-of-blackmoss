@@ -98,6 +98,8 @@ export function toCombatant(member: Member): Combatant {
     let legacyElitewarden = false
     let legacyEmberward = false
     let legacyMend = 0
+    let setCrown = 0
+    let setHunt = 0
     for (const eqItem of Object.values(member.equipment)) {
       const lk = eqItem ? ITEM_BASES[eqItem.baseId]?.legacy : undefined
       if (lk === 'focus') legacyFocus = true
@@ -106,6 +108,10 @@ export function toCombatant(member: Member): Combatant {
       else if (lk === 'elitewarden') legacyElitewarden = true
       else if (lk === 'emberward') legacyEmberward = true
       else if (lk === 'mend') legacyMend += 0.08
+      // K08 套装计数
+      const sn = eqItem ? ITEM_BASES[eqItem.baseId]?.setName : undefined
+      if (sn === 'gray-crown') setCrown++
+      if (sn === 'wind-hunt') setHunt++
     }
   // 混合职阶(宪法 v3):自带头部/站位/主职,不走基础职业线;普通专精 = 线 base + 专精修正
   const hy = isHybrid(member.spec) ? HYBRIDS[member.spec!] : undefined
@@ -163,7 +169,7 @@ export function toCombatant(member: Member): Combatant {
         (member.level - 1) * job.growth.defense +
         (eq.defense ?? 0),
     ),
-    critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0),
+    critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0) + (setHunt >= 4 ? 0.06 : setHunt >= 2 ? 0.03 : 0),
     attackInterval: Math.max(
       6,
       Math.round(60 / (base.speed + (mods.speed ?? 0) + eff.agi * 0.04 + (eq.speed ?? 0))),
@@ -179,7 +185,7 @@ export function toCombatant(member: Member): Combatant {
       if (adv) list.push({ def: adv, cooldownLeft: 0 })
       return list
     })(),
-    legacyFocus, legacyKillheal, legacyBulwark, legacyElitewarden, legacyEmberward,
+    legacyFocus, legacyKillheal, legacyBulwark, legacyElitewarden, legacyEmberward, setCrown, setHunt,
     specId: baseSpec.id,
     spr: eff.spr,
     counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
@@ -599,6 +605,9 @@ function dealDamage(
   if (attacker.legacyElitewarden && target.team === 'enemy' && target.bossMechanics?.length) {
     raw *= 1.08
   }
+  // K08 套装·灰冠:2 件伤害 +5%,4 件 +10%
+  if ((attacker.setCrown ?? 0) >= 4) raw *= 1.1
+  else if ((attacker.setCrown ?? 0) >= 2) raw *= 1.05
   const dmg = Math.max(
     1,
     Math.round((raw * MITIGATION_K) / (MITIGATION_K + effectiveDefense(state, target))),
