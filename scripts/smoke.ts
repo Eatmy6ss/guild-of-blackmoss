@@ -21,6 +21,8 @@ import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, to
 import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
 import { computeLegacy, memorialAura, legacyQuality, legacyCounts, LEGACY_AURA_CAP } from '../src/sim/memorial'
 import { RACES as RACES_DATA } from '../src/data/races'
+import { guildGoals } from '../src/sim/goals'
+import { rollWish, wishDone } from '../src/sim/wish'
 import { pickOutcome, rollGuildEvent, SECOND_ACT_IDS } from '../src/sim/guild-events'
 import { bossIntents } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
@@ -2599,6 +2601,45 @@ const towerFailures: string[] = []
   console.log('㊾ F08:后续幕 ' + SECOND_ACT_IDS.size + ' 条隔离✓ 黑苔池 1000 抽零泄漏✓ 龙脊区域可达✓')
   if (fail45.length > 0) { console.log('✗ F08 未通过:', fail45); process.exit(1) }
   console.log('✓ F08 事件因果隔离通过')
+}
+
+// ============================================================
+// ㊿ K06 个人心愿层 + K07 渐进目标清单(2026-09-25,U14/U15)
+// ============================================================
+{
+  const fail50: string[] = []
+  // K06:心愿生成——无副本池时不出 dungeon 心愿
+  let dungeonWished = false
+  for (let i = 0; i < 60; i++) {
+    const w = rollWish(() => i / 60, { slots: ['weapon', 'armor'], dungeons: [], towerBest: 0, level: 6 })
+    if (w?.kind === 'dungeon') dungeonWished = true
+  }
+  if (dungeonWished) fail50.push('㊿ 无副本池仍出了副本心愿')
+  // K06:检测逻辑——gear 心愿装上 T2 即达成
+  const m = generateMember('guard', 6, 995001)
+  m.wish = { kind: 'gear', target: 'weapon', text: '想攒钱换一把更趁手的武器' }
+  const t2 = rollDrop('wpn-t2-greatsword', () => 0.5)
+  m.equipment.weapon = t2
+  if (!wishDone(m, m.wish, { dungeonCleared: () => false, towerBest: 0 })) fail50.push('㊿ gear 心愿未随 T2 上身达成')
+  // K06:dungeon 心愿按首杀推导
+  m.wish = { kind: 'dungeon', target: 'blackmoss', text: '想再走一趟黑苔沼泽' }
+  if (wishDone(m, m.wish, { dungeonCleared: (id) => id === 'blackmoss', towerBest: 0 }) !== true) fail50.push('㊿ dungeon 心愿通关应达成')
+  if (wishDone(m, m.wish, { dungeonCleared: () => false, towerBest: 0 }) !== false) fail50.push('㊿ dungeon 心愿未通关应未达成')
+  // K07:新档第一目标=打赢第一仗;教学序列在前;长线 boss 沉底
+  const freshSquad = [generateMember('guard', 5, 995002), generateMember('priest', 5, 995003), generateMember('ranger', 5, 995004)]
+  const fresh = guildGoals({ members: freshSquad, inventory: [], manual: [], expedition: freshSquad, towerBest: 0, masteryTotal: 0, kingdomDone: 0 })
+  if (fresh[0]!.id !== 'first-blood') fail50.push('㊿ 新档第一目标应为 first-blood:' + fresh[0]!.id)
+  const idxOf = (id: string) => fresh.findIndex((g) => g.id === id)
+  const seq = ['first-blood', 'kill-grush', 'wear-t2', 'exp-lv6', 'roster-6', 'kill-talma', 'tower-3', 'kingdom-first', 'gear-t2-3', 'power-700']
+  for (let i = 0; i < seq.length - 1; i++) {
+    if (idxOf(seq[i]!) < 0 || idxOf(seq[i]!) > idxOf(seq[i + 1]!)) fail50.push('㊿ 教学序列错位:' + seq[i]!)
+  }
+  const lastKingdom = idxOf('kingdom-first')
+  const lateBoss = idxOf('kill-velhola')
+  if (lateBoss < lastKingdom) fail50.push('㊿ 长线 boss 未沉底')
+  console.log('㊿ K06/K07:心愿生成✓ 检测✓ 教学序列✓ 长线沉底✓(新档当前目标:' + fresh[0]!.text.slice(0, 12) + ')')
+  if (fail50.length > 0) { console.log('✗ K06/K07 未通过:', fail50); process.exit(1) }
+  console.log('✓ K06 心愿层+K07 渐进目标通过')
 }
 
 // ============================================================

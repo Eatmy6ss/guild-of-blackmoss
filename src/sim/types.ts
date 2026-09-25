@@ -165,6 +165,8 @@ export interface Member {
   race?: string
   /** 精进记录:specId → 选中的精进技能 id(切回该专精即恢复) */
   specAdvanced?: Record<string, string>
+  /** K06 个人心愿层(U14):可选;老档无此字段 = 暂无心愿 */
+  wish?: import('./wish').Wish
   /** 通用战技(DD Augment):学过的被动,跨专精携带 */
   augments?: string[]
   level: number

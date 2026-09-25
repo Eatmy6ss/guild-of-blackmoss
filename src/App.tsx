@@ -48,6 +48,8 @@ import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
 import { memorialAura, computeLegacy, legacyQuality, legacyCounts, type LegacyContext } from './sim/memorial'
+import { rollWish, wishDone, WISH_MORALE } from './sim/wish'
+import { DUNGEON_FINAL_BOSS } from './data/regions'
 import { rollGuildEvent, pickOutcome } from './sim/guild-events'
 import { applyMoraleDelta } from './sim/morale'
 import { rollDrop } from './sim/loot'
@@ -147,6 +149,25 @@ export default function App() {
     chronicleCount: chronicle.length,
   })
   const withLegacy = (dead: DeadHero[]): DeadHero[] => dead.map((d) => ({ ...d, legacy: computeLegacy(d, legacyContext()) }))
+  // K06 个人心愿层(U14):入职 50% 立愿;达成给士气+编年史,再 50% 立新愿
+  const wishDungeonPool = () => Object.keys(dungeonMastery).map((id) => ({ id, name: DUNGEONS.find((d) => d.id === id)?.name ?? id }))
+  const rollWishFor = (m: Member) => {
+    m.wish = rollWish(Math.random, { slots: ['weapon', 'armor'], dungeons: wishDungeonPool(), towerBest, level: m.level }) ?? undefined
+  }
+  const checkWishes = () => {
+    let changed = false
+    for (const m of membersRef.current) {
+      if (!m.alive) continue
+      if (!m.wish) { if (Math.random() < 0.15) rollWishFor(m); continue }
+      if (!wishDone(m, m.wish, { dungeonCleared: (id) => manual.includes(DUNGEON_FINAL_BOSS[id] ?? ''), towerBest })) continue
+      m.morale = Math.min(100, (m.morale ?? 60) + WISH_MORALE)
+      logChronicle(chronicleRaw(day, m.name + ' 了却心愿:「' + m.wish.text + '」。士气昂扬。'))
+      rollWishFor(m)
+      changed = true
+    }
+    if (changed) setMembers([...membersRef.current])
+    return changed
+  }
   const kingdomRef = useRef(kingdom)
   const [royalNotice, setRoyalNotice] = useState('')
   const [saveTransfer, setSaveTransfer] = useState<{ mode: 'import' | 'export'; code: string } | null>(null)
@@ -315,6 +336,7 @@ export default function App() {
         if (t.floor > towerBest) logChronicle(chronicleTowerRecord(day, t.floor))
         setTowerBest((best) => Math.max(best, t.floor))
       }
+      checkWishes()
       setTowerRunning(false)
       setTowerRun({ ...t })
       // 挂机连刷:rest 自动休整并深入下一层
@@ -486,6 +508,7 @@ export default function App() {
     if (b.status === 'guild-win') {
       applyVictory(r.members.filter((m) => m.alive))
       logChronicle(chronicleBattleVictory(day, r.dungeon.name, r.members.filter((m) => m.alive)))
+      checkWishes()
     }
     if (dead.length > 0) setMemorial((m) => [...m, ...withLegacy(dead)])
     // M1 P0 成长:经验 + 默契的发放下沉在 sim 层(可被 smoke 直接验证)
@@ -543,6 +566,7 @@ export default function App() {
   }
 
   const equip = (m: Member, slot: Slot, itemId: string) => {
+
     const old = m.equipment[slot]
     if (old) setInventory((inv) => [...inv, old])
     if (itemId) {
@@ -555,6 +579,7 @@ export default function App() {
       delete m.equipment[slot]
     }
     setMembers([...membersRef.current])
+    checkWishes()
   }
 
   const retreat = () => {
@@ -769,6 +794,7 @@ export default function App() {
 
   const signVisitor = () => {
     if (!visitor || runRef.current || aliveCount() >= ROSTER_CAP) return
+    rollWishFor(visitor.member)
     setMembers((roster) => [...roster, visitor.member])
     logChronicle(chronicleRecruit(day, visitor.member, '上门投奔'))
     setVisitor(null)
@@ -778,6 +804,7 @@ export default function App() {
     if (runRef.current || effectiveCooldown > 0 || gold < ECONOMY.bountyCost || aliveCount() >= ROSTER_CAP) return
     setGold((g) => g - ECONOMY.bountyCost)
     const m = bountyCandidate(Math.random, membersRef.current, job)
+    rollWishFor(m)
     setMembers((roster) => [...roster, m])
     logChronicle(chronicleRecruit(day, m, '定向悬赏'))
     setRecruitCooldown(cooldownNeeded(aliveCount()))
@@ -796,6 +823,7 @@ export default function App() {
     // 宪法 v3:招募即带专精;F06(2026-09-25):候选已定专精(生成时默认线/三选一可能混合线)——
     // 入职保留之,不再重 roll(否则玩家看中的专精在入职瞬间被替换)
     const recruited = m.spec ? m : { ...m, spec: rollSpec(m.job, Math.random) }
+    rollWishFor(recruited)
     setMembers((roster) => [...roster, recruited])
     logChronicle(chronicleRecruit(day, recruited, '酒馆传闻'))
     setCandidates([])
@@ -1211,6 +1239,12 @@ export default function App() {
                 <span className={l.good ? 'good' : l.bad ? 'bad' : ''}>{l.text}</span>
               </div>
             ))}
+            {m.wish && (
+              <div className="stat-layer">
+                <span className="sl-label">心愿</span>
+                <span>{m.wish.text}{wishDone(m, m.wish, { dungeonCleared: (id) => manual.includes(DUNGEON_FINAL_BOSS[id] ?? ''), towerBest }) ? '（已达成!）' : ''}</span>
+              </div>
+            )}
           </div>
         )}
         <div className="row">
@@ -1348,7 +1382,8 @@ export default function App() {
             ))}
           </div>
           {(() => {
-            const goals = guildGoals({ members, inventory, manual, expedition, towerBest })
+            const masteryTotal = Object.values(dungeonMastery).reduce((a, b) => a + b, 0)
+            const goals = guildGoals({ members, inventory, manual, expedition, towerBest, masteryTotal, kingdomDone: kingdom.completed.length })
             const cur = goals.find((g) => !g.done)
             return (
               <p className="hub-goal">
