@@ -1,6 +1,6 @@
 # R02｜新主线兼容整合与创伤修复
 
-2026-09-26。用户选择 A：兼容整合＋修复明确的新问题。当前分支 `fix/gameplay-review-september` 已快进至 `39f2ecd`，在此基础上重新应用 R01 未提交修复；原目录保持不动。两处冲突（App、save）已人工整合，没有丢弃上游 S1 创伤、疗养及设计记录。修改尚未提交/推送/部署。
+2026-09-26。用户选择 A：兼容整合＋修复明确的新问题。当前分支 `fix/gameplay-review-september` 基于 `39f2ecd` 重新应用 R01 修复；原目录保持不动。两处冲突（App、save）已人工整合，没有丢弃上游 S1 创伤、疗养及设计记录。后续按用户要求，功能提交 `b345661` 已推送并创建 [PR #2](https://github.com/Eatmy6ss/guild-of-blackmoss/pull/2)，尚未合并或部署。
 
 ## 兼容结果
 
@@ -39,4 +39,4 @@
 
 主要文件：`src/App.tsx`、`src/state/save.ts`、`src/sim/{scars,mechanics,combat,types,run,tower}.ts`；原 R01 的 morale/wish/member-traits 修复保留。新增与扩展 `scripts/gameplay.test.ts`，合成存档脚本同步 v16 所需字段。文档同步 HANDOFF/BACKLOG/DECISIONS/README。
 
-集成时 Git 自动保存的旧修复快照 `8bcf4f9` 仍保留在 stash，供回溯；不要再次 apply，否则会重复旧补丁。未新建功能提交、未推送、未创建 PR。下一步按用户指示提交前核对远端，若主线又有变化需再做兼容检查。
+集成时 Git 自动保存的旧修复快照 `8bcf4f9` 仍保留在 stash，供回溯；不要再次 apply，否则会重复旧补丁。修复已推送，下一步审查 PR #2；若主线又有变化需再做兼容检查。提交前再次运行 verify，仍退出 0。
