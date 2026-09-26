@@ -29,6 +29,9 @@ export interface DungeonRun {
   potions: { heal: number; fury: number }
   /** 挂机连刷(试玩反馈):跨战斗延续,rest 自动下一场,victory 自动重进同一副本 */
   autoMode?: boolean
+  /** 特权训练仅作用于这次远征的所有胜场 */
+  trainingExpMultiplier?: number
+  witnessScarredIds?: string[]
   nodeIds: string[]
   eliteNow?: boolean
   /** 精英场次索引(反馈④:路线内 2-4 只精英,×1.25) */
@@ -128,6 +131,9 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     (run.eliteNow || isElite ? 1.25 : 1) * rareMult,
     Object.keys(mods).length > 0 ? mods : undefined,
   )
+  for (const c of run.battle.combatants) {
+    if (c.team === 'enemy' && !c.boss) c.elite = !!(run.eliteNow || isElite)
+  }
   run.eliteNow = false
   run.battle.commands.autoMode = !!run.autoMode
   run.phase = 'battle'
@@ -212,7 +218,7 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
     for (const c of b.combatants) {
       if (c.team !== 'guild' || !c.alive || !c.memberId) continue
       const m = run.members.find((x) => x.id === c.memberId)
-      if (m?.alive) grantExp(m, Math.round(exp * expMult * underMult))
+      if (m?.alive) grantExp(m, Math.round(exp * expMult * (run.trainingExpMultiplier ?? 1) * underMult))
     }
   }
   if (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated') {

@@ -1,7 +1,7 @@
 // 统一验证入口(自检流程问题修复):提交前必跑,任何一步失败即非零退出。
 // 用法:npm run verify
 // 覆盖:①smoke 全门禁(断言 EXIT=0 且 ✓ 计数不低于 28——防止门禁静默少跑)
-//       ②生产构建
+//       ②玩法修复回归 ③王国委托回归 ④生产构建(含类型检查)
 import { execSync, spawnSync } from 'node:child_process'
 
 let failed = false
@@ -28,6 +28,9 @@ if (!failed) {
     if (passes < 28) throw new Error(`门禁计数 ${passes} < 28——有门禁静默少跑了,禁止提交`)
   })
 }
+
+step('玩法修复回归', () => execSync('node scripts/test-gameplay.cjs', { encoding: 'utf8' }))
+step('王国委托回归', () => execSync('node scripts/test-kingdom.cjs', { encoding: 'utf8' }))
 
 step('生产构建', () => execSync('npm run build', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }))
 

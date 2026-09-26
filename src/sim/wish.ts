@@ -4,6 +4,7 @@
 // 心愿全部可从现有状态推导检测(装备槽/首杀记录/塔纪录),不引入复杂模拟。
 
 import type { Member } from './types'
+import { ITEM_BASES } from '../data/items'
 
 export type WishKind = 'gear' | 'dungeon' | 'tower'
 
@@ -45,7 +46,7 @@ export function rollWish(rng: () => number, opts: { slots?: string[]; dungeons?:
 export function wishDone(m: Member, wish: Wish, ctx: { dungeonCleared: (id: string) => boolean; towerBest: number }): boolean {
   if (wish.kind === 'gear') {
     const eq = m.equipment[wish.target as 'weapon' | 'armor']
-    return !!eq && eq.baseId.includes('-t2-')
+    return !!eq && (ITEM_BASES[eq.baseId]?.tier ?? 0) >= 2
   }
   if (wish.kind === 'dungeon') return ctx.dungeonCleared(wish.target)
   if (wish.kind === 'tower') return ctx.towerBest >= Number(wish.target)

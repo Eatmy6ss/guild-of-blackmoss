@@ -29,9 +29,11 @@ npm install
 npm run dev        # 开发服务器 http://localhost:5173
 npm run build      # 生产构建 → dist/
 npm run test:kingdom # 王国委托、奖励与存档迁移回归检查
+npm run test:gameplay # 保险、重开、套装、训练与人物效果回归
+npm run verify     # 冒烟、两组回归、类型检查与生产构建
 ```
 
-本检出缺少历史 `scripts/verify.mjs`，`npm run verify` 尚不可用，不能据此宣称全量门禁通过。当前开发接续入口见 [HANDOFF](docs/development/HANDOFF.md)，委托数值与验证范围见 [K01说明](docs/development/kingdom-commissions.md)。
+验证入口已恢复并纳入玩法与王国委托回归。当前开发接续入口见 [HANDOFF](docs/development/HANDOFF.md)，委托数值与验证范围见 [K01说明](docs/development/kingdom-commissions.md)，本轮修复及验证边界见 [R01说明](docs/development/gameplay-repairs-2026-09-25.md)。
 
 - 满配试玩档:`node scripts/dev-save.mjs [等级 1-15]` 生成导入码(docs/dev-save.txt)
 - 单文件分发版:`npx vite build --config vite.config.playtest.ts` → dist-playtest/
@@ -41,7 +43,7 @@ npm run test:kingdom # 王国委托、奖励与存档迁移回归检查
 TypeScript · React · PixiJS · Vite · WebAudio(程序化音效) · Tauri(发行期封装,暂缓)
 
 - 引擎/表现分离:模拟层(`src/sim/`)纯函数可独立测试,表现层只消费状态
-- 37 项冒烟门禁 + CDP E2E(`scripts/e2e-*.mjs`)作为提交守卫
+- 冒烟、玩法与王国委托回归、生产构建作为提交守卫；浏览器 E2E(`scripts/e2e-*.mjs`)按改动另行运行
 - 像素素材:[Dungeon Crawl Stone Soup tiles](https://opengameart.org/content/dungeon-crawl-32x32-tiles)(CC0)+ 程序化像素矩阵
 - 字体:[Fusion Pixel 12px Proportional SC](https://github.com/TakWolf/fusion-pixel-font)
 
@@ -52,7 +54,7 @@ src/
   sim/      纯逻辑层(战斗/远征/事件/经济/成长——全部可单测)
   data/     数据表(副本/怪物/boss/事件/装备/特质——加内容不动引擎)
   ui/       表现层(Pixi 战斗渲染器 + React 界面)
-  state/    存档(v12 迁移链，含王国委托)
+  state/    存档(v16 迁移链，含王国委托、星髓、遗物、疗养熟练度与训练资格)
 scripts/    门禁(smoke)/E2E(CDP)/探针(节奏·新档)/打包
 docs/       设计文档(DESIGN.md 宪法/boss 提案流程/验收截图)
 ```
@@ -76,5 +78,5 @@ npm install && npm run dev   # http://localhost:5173
 ```
 
 - push 需要认证:推荐安装 [gh CLI](https://cli.github.com/) 后 `gh auth login`,或配置 Personal Access Token
-- 约定:改动先在本地验证 `npm run verify`(37 项门禁),绿了再 push
+- 约定:改动先在本地验证 `npm run verify`，通过后再 push；浏览器试玩结果另行记录
 - 大改动建议开分支(`git switch -c feature/xxx`),小修可直接推 main

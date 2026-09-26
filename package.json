@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test:kingdom": "node scripts/test-kingdom.cjs",
     "preview": "vite preview",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "test:gameplay": "node scripts/test-gameplay.cjs"
   },
   "dependencies": {
     "@fontsource/fusion-pixel-12px-proportional-sc": "^5.3.0",

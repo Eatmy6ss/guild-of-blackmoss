@@ -55,6 +55,9 @@ export interface TowerRun {
   autoMode?: boolean
   /** 遗物安葬 2.0:本层已投保(阵亡装备免赎回费) */
   insuredFloor?: boolean
+  /** 休整时购买的下一层保障，进入指定层时生效 */
+  insuredNextFloor?: number
+  witnessScarredIds?: string[]
   result?: 'left' | 'defeated'
 }
 
@@ -212,7 +215,8 @@ export function towerRest(run: TowerRun, healPct: number = TOWER.restHealPct): v
 /** 深入下一层(层间休整界面点击后) */
 export function towerNext(run: TowerRun, seed: number): void {
   run.floor += 1
-  run.insuredFloor = false
+  run.insuredFloor = run.insuredNextFloor === run.floor
+  run.insuredNextFloor = undefined
   startTowerFloor(run, seed)
 }
 
@@ -231,4 +235,13 @@ export function towerMarkPermadeath(run: TowerRun, dungeonName: string): Array<{
     }
   }
   return dead
+}
+
+/** 下一层投保：重复购买、非休整、资金不足均不扣款。 */
+export function insureNextTowerFloor(run: TowerRun, gold: number): number {
+  const target = run.floor + 1
+  const premium = target * 40
+  if (run.phase !== 'rest' || run.insuredNextFloor === target || gold < premium) return 0
+  run.insuredNextFloor = target
+  return premium
 }
