@@ -1,4 +1,5 @@
 import type { BattleState, Combatant } from './types'
+import { recordScarMechanic } from './scars'
 import { applyHit, battleRandom, controlResist, enemyToCombatant as mkEnemy, pushLog } from './combat'
 
 // boss 机制引擎（D8-9）：解释 BossMechanicDef 数据。
@@ -114,6 +115,7 @@ export function processBossMechanics(state: BattleState): void {
               if (victim.originalPosition === undefined) victim.originalPosition = victim.position
               victim.position = 'front'
               victim.pulledUntilTick = state.tick + num(m.params.durationTicks, 600)
+              recordScarMechanic(c, victim)
               state.events.push({ tick: state.tick, type: 'pulled', targetId: victim.id })
               pushLog(state, 'enemy', `${c.name} 的【${m.name}】把 ${victim.name} 拽到了前排!`)
             }
@@ -187,6 +189,7 @@ export function processBossMechanics(state: BattleState): void {
               const victim = candidates[Math.floor(battleRandom(state) * candidates.length)]
               const ticks = controlResist(victim, num(m.params.bindTicks, 30))
               victim.boundUntilTick = state.tick + ticks
+              recordScarMechanic(c, victim)
               applyHit(state, c, victim, num(m.params.damage, 20), '束缚')
               state.events.push({
                 tick: state.tick,
@@ -238,7 +241,10 @@ export function processBossMechanics(state: BattleState): void {
               delete rt.until
               rt.next = state.tick + num(m.params.everyTicks, 240)
               for (const g of state.combatants) {
-                if (g.alive && g.team === 'guild') g.fearUntilTick = state.tick + num(m.params.durationTicks, 200)
+                if (g.alive && g.team === 'guild') {
+                  g.fearUntilTick = state.tick + num(m.params.durationTicks, 200)
+                  recordScarMechanic(c, g)
+                }
               }
               state.events.push({ tick: state.tick, type: 'enraged', targetId: c.id })
               pushLog(state, 'enemy', `${c.name} 的【${m.name}】扩散开来——队伍的手脚变沉了!`)

@@ -232,8 +232,12 @@ export interface Combatant {
   synergyIds: string[]
   /** 威胁表：对每个我方成员积累的仇恨值（敌方实体持有） */
   threat: Record<string, number>
+  /** 当前遭遇中的精英实体，供威能和掉落判定使用 */
+  elite?: boolean
   /** boss 实体标记（演出层放大体型） */
   boss?: boolean
+  /** 本场实际受到的 Boss 恐惧/灼烧/束缚/拉拽次数，结算创伤用 */
+  scarMechanicHits?: number
   // ---- D8-9 指挥台与机制 ----
   /** 被束缚：到该 tick 前无法行动、无法撤离 */
   boundUntilTick?: number
@@ -480,6 +484,8 @@ export interface BattleEvent {
 }
 
 export interface BattleState {
+  /** 创伤结算幂等标记；新战斗重新初始化 */
+  scarsSettled?: boolean
   /** 首次遭遇提示:已提示过的特质(每场一次) */
   traitSeen?: Record<string, boolean>
   /** 灼热地形(版图二·heat 环境):everyTicks 周期全队火伤,火抗减免 */

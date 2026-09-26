@@ -38,7 +38,7 @@ export function applyDeathShock(
     // 亡灵轻被动(宪法 v3):已经死过一次,阵亡冲击减半
     const race = m.race ? RACES[m.race] : RACES.human
     const undeadHalf = race.passive.undeadWill || m.augments?.includes('aug-resolve') ? 0.5 : 1
-    const loss = MORALE.deathShock * (1 - brave * 0.5) * undeadHalf
+    const loss = MORALE.deathShock * (1 - brave * 0.5) * undeadHalf * (m.trait === 'cool' ? 0.5 : 1)
     m.morale = clamp((m.morale ?? 60) - loss)
     if (m.id !== deadId) {
       const loyal = m.personality.loyalty / 100

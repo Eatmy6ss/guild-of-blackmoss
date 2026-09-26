@@ -44,7 +44,7 @@ const buildings: Record<string, number> = {}
 for (const b of BUILDINGS) buildings[b.id] = b.maxLevel
 
 const save: GuildSave = {
-  version: SAVE_VERSION,
+  version: SAVE_VERSION, trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [],
   kingdom: { active: [], completed: [] },
   members,
   inventory,

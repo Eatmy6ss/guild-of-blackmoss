@@ -11,7 +11,7 @@ import type {
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
 import { ITEM_BASES } from '../data/items'
-import { scarPenalty } from './scars'
+import { scarPenalty, recordScarMechanic } from './scars'
 import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
 import { RACES } from '../data/races'
@@ -171,7 +171,7 @@ export function toCombatant(member: Member): Combatant {
         (member.level - 1) * job.growth.defense +
         (eq.defense ?? 0),
     ),
-    critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0) + (setHunt >= 4 ? 0.06 : setHunt >= 2 ? 0.03 : 0),
+    critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0) + (setHunt >= 3 ? 0.06 : setHunt >= 2 ? 0.03 : 0),
     attackInterval: Math.max(
       6,
       Math.round(60 / (base.speed + (mods.speed ?? 0) + eff.agi * 0.04 + (eq.speed ?? 0))),
@@ -486,6 +486,7 @@ export function applyHit(
     traitHint(state, 'dragon-fear')
     target.fearUntilTick = state.tick + 40
   }
+  if (attacker.traits?.some(t => t === 'ember-breath' || t === 'dragon-fear')) recordScarMechanic(attacker, target)
   // 我方引导咏唱:被打的伤害累积,超过阈值即打断
   if (target.channelUntilTick && state.tick < target.channelUntilTick) {
     target.channelTaken = (target.channelTaken ?? 0) + amount
@@ -604,11 +605,11 @@ function dealDamage(
     if (attacker.legacyFocus) raw *= 1.1
   }
   // 传承威能·嗜功:对精英与 boss 伤害 +8%
-  if (attacker.legacyElitewarden && target.team === 'enemy' && target.bossMechanics?.length) {
+  if (attacker.legacyElitewarden && target.team === 'enemy' && (target.boss || target.elite)) {
     raw *= 1.08
   }
-  // K08 套装·灰冠:2 件伤害 +5%,4 件 +10%
-  if ((attacker.setCrown ?? 0) >= 4) raw *= 1.1
+  // K08 套装·灰冠:2 件伤害 +5%,3 件 +10%
+  if ((attacker.setCrown ?? 0) >= 3) raw *= 1.1
   else if ((attacker.setCrown ?? 0) >= 2) raw *= 1.05
   const dmg = Math.max(
     1,
