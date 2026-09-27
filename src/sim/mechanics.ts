@@ -9,7 +9,7 @@ import { applyHit, battleRandom, controlResist, enemyToCombatant as mkEnemy, pus
 //   enrage        → 爆发药/撤退
 // 机制运行时状态存在 combatant.mech[kind]，键为机制 kind（每 boss 每类一个）。
 
-function mech(c: Combatant, kind: string): { until?: number; next?: number; taken?: number; fired?: number } {
+function mech(c: Combatant, kind: string): NonNullable<Combatant['mech']>[string] {
   if (!c.mech) c.mech = {}
   if (!c.mech[kind]) c.mech[kind] = {}
   return c.mech[kind]
@@ -31,9 +31,10 @@ export function processBossMechanics(state: BattleState): void {
             if (state.tick >= rt.until) {
               delete rt.until
               rt.next = state.tick + num(m.params.everyTicks, 150)
-              resolveSlam(state, c, num(m.params.damage, 40))
+              rt.resolvedAt = state.tick
+              resolveSlam(state, c, num(m.params.damage, 40), m.name, m.params.damageType === 'fire')
             }
-          } else if ((rt.next ?? 100) <= state.tick) {
+          } else if ((rt.next ?? num(m.params.firstTick, 100)) <= state.tick) {
             rt.until = state.tick + num(m.params.telegraphTicks, 30)
             state.events.push({
               tick: state.tick,
@@ -60,7 +61,7 @@ export function processBossMechanics(state: BattleState): void {
               state.events.push({ tick: state.tick, type: 'interrupted', targetId: c.id })
               pushLog(state, 'guild', `集火奏效！${c.name} 的【${m.name}】被打断了！`)
             }
-          } else if ((rt.next ?? 90) <= state.tick) {
+          } else if ((rt.next ?? num(m.params.firstTick, 90)) <= state.tick) {
             const castTicks = num(m.params.castTicks, 25)
             rt.until = state.tick + castTicks
             rt.taken = 0
@@ -73,7 +74,15 @@ export function processBossMechanics(state: BattleState): void {
           // 治疗链:咏唱完成后为自身与全部存活同伴回血——打断或集火秒掉咏唱者是唯一解,
           // 否则战斗时长被无限拉长。打断框架与 cast-buff 共用(taken ≥ breakDamage)。
           if (rt.until !== undefined) {
-            if (state.tick >= rt.until) {
+            // Damage is accumulated only before the deadline. Honor a last-tick
+            // interrupt before resolving the heal on the following tick.
+            if ((rt.taken ?? 0) >= num(m.params.breakDamage, 450)) {
+              delete rt.until
+              rt.taken = 0
+              rt.next = state.tick + num(m.params.everyTicks, 240)
+              state.events.push({ tick: state.tick, type: 'interrupted', targetId: c.id })
+              pushLog(state, 'guild', `集火奏效！${c.name} 的【${m.name}】被打断了！`)
+            } else if (state.tick >= rt.until) {
               delete rt.until
               rt.next = state.tick + num(m.params.everyTicks, 240)
               const amount = num(m.params.healAmount, 200)
@@ -85,14 +94,8 @@ export function processBossMechanics(state: BattleState): void {
                 state.events.push({ tick: state.tick, type: 'heal', attackerId: c.id, targetId: a.id, amount: healed })
               }
               pushLog(state, 'enemy', `${c.name} 的【${m.name}】咏唱完成，伤势在血光中愈合！`)
-            } else if ((rt.taken ?? 0) >= num(m.params.breakDamage, 450)) {
-              delete rt.until
-              rt.taken = 0
-              rt.next = state.tick + num(m.params.everyTicks, 240)
-              state.events.push({ tick: state.tick, type: 'interrupted', targetId: c.id })
-              pushLog(state, 'guild', `集火奏效！${c.name} 的【${m.name}】被打断了！`)
             }
-          } else if ((rt.next ?? 90) <= state.tick) {
+          } else if ((rt.next ?? num(m.params.firstTick, 90)) <= state.tick) {
             const castTicks = num(m.params.castTicks, 30)
             rt.until = state.tick + castTicks
             rt.taken = 0
@@ -162,9 +165,17 @@ export function processBossMechanics(state: BattleState): void {
           break
         }
         case 'summon': {
+          const spacing = num(m.params.recoveryTicks, 0)
+          const slam = c.mech?.['telegraph-aoe']
+          const hasWindow = spacing === 0 || (slam?.until === undefined &&
+            state.tick >= (slam?.resolvedAt ?? -spacing) + spacing)
           // 机制登场保障:血量线 OR 时间兜底(默认 26s)——战斗变长/打不穿的局里增援照样登场
-          if (!rt.fired && (c.hp / c.maxHp <= num(m.params.atHpPct, 0.6) || state.tick >= num(m.params.atTickFallback, 260))) {
+          if (!rt.fired && hasWindow && (c.hp / c.maxHp <= num(m.params.atHpPct, 0.6) || state.tick >= num(m.params.atTickFallback, 260))) {
             rt.fired = 1
+            if (spacing > 0) {
+              const aoe = mech(c, 'telegraph-aoe')
+              aoe.next = Math.max(aoe.next ?? 0, state.tick + spacing)
+            }
             const pool = c.summonPool ?? []
             const count = num(m.params.count, 2)
             for (let i = 0; i < count && i < pool.length; i++) {
@@ -269,21 +280,22 @@ export function processBossMechanics(state: BattleState): void {
 }
 
 /** 震地猛击结算：分散阵型下每人只受 30%，其中一人承伤一半（风险分摊） */
-function resolveSlam(state: BattleState, boss: Combatant, damage: number): void {
+function resolveSlam(state: BattleState, boss: Combatant, damage: number, name: string, fire = false): void {
   const spread = state.commands.stance === 'spread'
   const members = state.combatants.filter((x) => x.alive && x.team === 'guild')
   if (members.length === 0) return
   const tankIdx = Math.floor(battleRandom(state) * members.length)
   for (let i = 0; i < members.length; i++) {
-    const dmg = Math.max(1, Math.round(damage * (spread ? (i === tankIdx ? 0.5 : 0.1) : 1)))
-    applyHit(state, boss, members[i], dmg, '震地猛击命中')
+    const resistance = fire ? 1 - Math.min(0.75, Math.max(0, members[i].fireResist ?? 0)) : 1
+    const dmg = Math.max(1, Math.round(damage * resistance * (spread ? (i === tankIdx ? 0.5 : 0.1) : 1)))
+    applyHit(state, boss, members[i], dmg, `${name}命中`)
   }
   // 指挥 payoff 事件:减伤与否必须让演出层看见——这是「我的指令救了全队」的可见回报
   state.events.push({ tick: state.tick, type: 'slam', targetId: boss.id, amount: damage, mitigated: spread })
   pushLog(
     state,
     'enemy',
-    spread ? '【震地猛击】落下——分散阵型大幅减伤！' : '【震地猛击】命中全队！',
+    spread ? `【${name}】落下——分散阵型大幅减伤！` : `【${name}】命中全队！`,
   )
 }
 

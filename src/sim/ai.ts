@@ -26,12 +26,11 @@ export function runAutoAI(state: BattleState): void {
   const allies = aliveOf(state, 'guild')
   if (foes.length === 0 || allies.length === 0) return
 
-  const boss = foes.find((f) => f.bossMechanics)
-  const adds = foes.filter((f) => !f.bossMechanics)
-  const telegraphing =
-    boss?.mech?.['telegraph-aoe'] !== undefined && boss.mech['telegraph-aoe'].until !== undefined
-  const casting =
-    boss?.mech?.['cast-buff'] !== undefined && boss.mech['cast-buff'].until !== undefined
+  const boss = foes.find((f) => f.boss)
+  const adds = foes.filter((f) => !f.boss)
+  const telegraphing = foes.some(f => f.mech?.['telegraph-aoe']?.until !== undefined)
+  const caster = foes.find(f => ['cast-buff', 'cast-heal'].some(kind => f.mech?.[kind]?.until !== undefined))
+  const casting = !!caster
   const enraged = boss?.mech?.['enrage']?.fired === 1
 
   const lowest = allies.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
@@ -51,8 +50,8 @@ export function runAutoAI(state: BattleState): void {
   }
 
   // ---- 集火 ----
-  if (casting && p.caution >= 45 && boss) {
-    setFocus(state, boss.id) // 打断咏唱
+  if (caster && p.caution >= 45) {
+    setFocus(state, caster.id) // 打断咏唱
   } else if (adds.length > 0) {
     const weakest = adds.reduce((a, b) => (a.hp <= b.hp ? a : b))
     setFocus(state, weakest.id) // 增援是掉落载体，优先清理

@@ -219,6 +219,8 @@ export function enemyToCombatant(def: EnemyDef): Combatant {
     alive: true,
     traits: def.traits,
     skills: (def.skills ?? []).map((def2) => ({ def: def2, cooldownLeft: 0 })),
+    bossMechanics: def.mechanics,
+    mech: def.mechanics ? {} : undefined,
     tauntedTicks: 0,
     position: def.position,
     range: def.range,
@@ -418,6 +420,17 @@ export function applyHit(
   label: string,
   opts?: { crit?: boolean; ranged?: boolean },
 ): void {
+  // Mitigation must precede HP loss, shields, threat and interrupt accounting.
+  if (target.traits?.includes('heavy-plate') && !target.plateUsed) {
+    traitHint(state, 'heavy-plate')
+    target.plateUsed = true
+    amount = Math.max(1, Math.round(amount * 0.6))
+    state.events.push({ tick: state.tick, type: 'armorbreak', targetId: target.id })
+  }
+  if (opts?.crit && target.traits?.includes('dragon-scale')) {
+    traitHint(state, 'dragon-scale')
+    amount = Math.max(1, Math.round(amount * 0.5))
+  }
   // 吸收盾(戒律/圣盾使):伤害先扣盾,余量才进血
   if (target.absorbShield && target.absorbShield > 0) {
     const absorbed = Math.min(target.absorbShield, amount)
@@ -434,7 +447,7 @@ export function applyHit(
     amount = Math.round(amount * (target.vulnMult ?? 1.2))
   }
   // 装备 2.0 传承威能·磐石:受到 boss 的伤害 -8%
-  if (target.legacyBulwark && attacker.team === 'enemy' && attacker.bossMechanics?.length) {
+  if (target.legacyBulwark && attacker.team === 'enemy' && attacker.boss) {
     amount = Math.round(amount * 0.92)
   }
   target.hp = Math.max(0, target.hp - amount)
@@ -456,23 +469,11 @@ export function applyHit(
   if (attacker.team === 'guild') {
     target.threat[attacker.id] = (target.threat[attacker.id] ?? 0) + amount
   }
-  // 特质·heavy-plate(重甲):首次受击减半
-  if (target.traits?.includes('heavy-plate') && !target.plateUsed) {
-    traitHint(state, 'heavy-plate')
-    target.plateUsed = true
-    amount = Math.max(1, Math.round(amount * 0.6))
-    state.events.push({ tick: state.tick, type: 'armorbreak', targetId: target.id })
-  }
   // 特质·venom(淬毒):命中附加易伤
   if (attacker.traits?.includes('venom') && target.alive) {
     traitHint(state, 'venom')
     target.vulnUntilTick = state.tick + 30
     target.vulnMult = 1.15
-  }
-  // 特质·dragon-scale(龙鳞,版图二):暴击伤害减半——会玩暴击流的针对性克星
-  if (opts?.crit && target.traits?.includes('dragon-scale')) {
-    traitHint(state, 'dragon-scale')
-    amount = Math.max(1, Math.round(amount * 0.5))
   }
   // 特质·ember-breath(灼息,版图二):命中点燃目标,持续灼烧
   if (attacker.traits?.includes('ember-breath') && target.alive) {

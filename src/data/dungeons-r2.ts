@@ -1,10 +1,22 @@
-import type { DungeonDef } from '../sim/types'
+import type { DungeonDef, EnemyDef } from '../sim/types'
 
 // ============================================================
 // 版图二 · 龙脊山脉(鳞音圣战)——提案 docs/region2-proposal.md 已批注
 // env:'heat' = 灼热地形(战斗中周期全队火伤,火抗减免)
 // boss 尊名风格:WoW 化「尊号·名」
 // ============================================================
+
+const EMBER_CHANTER: EnemyDef = {
+  id: 'pg-c', name: '唱诗朝圣者', traits: [], maxHp: 440, attack: 12, defense: 2, speed: 9,
+  position: 'back', range: 'ranged', archetype: 'striker',
+  mechanics: [
+    { id: 'pg-chant', kind: 'cast-heal', name: '圣音齐诵', params: { firstTick: 75, castTicks: 40, healAmount: 180, everyTicks: 160, breakDamage: 110 } },
+  ],
+}
+const EMBER_FANATIC: EnemyDef = {
+  id: 'pg-a', traits: ['dragon-fear'], name: '朝圣狂徒', maxHp: 520, attack: 19, defense: 3,
+  speed: 10, position: 'front', range: 'melee', archetype: 'bruiser',
+}
 
 export const EMBERPASS: DungeonDef = {
   id: 'emberpass',
@@ -21,13 +33,15 @@ export const EMBERPASS: DungeonDef = {
     dragonkin: [
       { id: 'dk-a', traits: ['dragon-scale'], name: '龙裔鳞卫', maxHp: 650, attack: 19, defense: 8, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'dk-b', traits: ['dragon-scale'], name: '龙裔鳞卫', maxHp: 650, attack: 19, defense: 8, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
-      { id: 'dk-c', traits: ['ember-breath'], name: '龙裔吐息手', maxHp: 560, attack: 21, defense: 4, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
+      { id: 'dk-c', traits: [], name: '龙裔吐息手', maxHp: 560, attack: 21, defense: 4, speed: 8, position: 'back', range: 'ranged', archetype: 'striker',
+        mechanics: [{ id: 'dk-breath', kind: 'telegraph-aoe', name: '灼风吐息', params: { firstTick: 45, telegraphTicks: 30, damage: 78, damageType: 'fire', everyTicks: 130 } }] },
     ],
     pilgrims: [
-      { id: 'pg-a', traits: ['dragon-fear'], name: '朝圣狂徒', maxHp: 520, attack: 19, defense: 3, speed: 10, position: 'front', range: 'melee', archetype: 'bruiser' },
-      { id: 'pg-b', traits: ['dragon-fear'], name: '朝圣狂徒', maxHp: 520, attack: 19, defense: 3, speed: 10, position: 'front', range: 'melee', archetype: 'bruiser' },
-      { id: 'pg-c', traits: [], skills: [{ id: 'pg-chant', name: '圣音齐诵', effect: 'heal-lowest', target: 'ally', cooldownTicks: 100 }], name: '唱诗朝圣者', maxHp: 440, attack: 12, defense: 2, speed: 9, position: 'back', range: 'ranged', archetype: 'striker' },
+      EMBER_FANATIC,
+      { ...EMBER_FANATIC, id: 'pg-b' },
+      EMBER_CHANTER,
     ],
+    reinforcements: [{ ...EMBER_FANATIC, id: 'kz-guard' }, { ...EMBER_CHANTER, id: 'kz-chanter' }],
   },
   bosses: {
     kazraxes: {
@@ -41,7 +55,7 @@ export const EMBERPASS: DungeonDef = {
       range: 'melee',
       mechanics: [
         { id: 'kz-slam', kind: 'telegraph-aoe', name: '熔石崩落', params: { telegraphTicks: 30, damage: 34, everyTicks: 110 } },
-        { id: 'kz-call', kind: 'summon', name: '召朝圣狂徒', params: { atHpPct: 0.6, count: 2, groupId: 'pilgrims' } },
+        { id: 'kz-call', kind: 'summon', name: '隘口援军', params: { atHpPct: 0.6, count: 2, groupId: 'reinforcements', recoveryTicks: 60 } },
         { id: 'kz-enrage', kind: 'enrage', name: '隘口之怒', params: { atTick: 300, attackMult: 1.7 } },
       ],
       dropTable: [

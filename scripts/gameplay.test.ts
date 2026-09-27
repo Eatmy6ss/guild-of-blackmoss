@@ -28,6 +28,126 @@ import type { Member, Slot } from '../src/sim/types'
 const squad = () => ['guard', 'priest', 'ranger'].map((j, i) => generateMember(j as Member['job'], 5, 901 + i))
 const item = (id: string) => rollDrop(id, () => 0.4)
 
+test('dragon-scale and heavy-plate mitigate HP, shields, threat and displayed damage consistently', () => {
+  for (const traits of [['dragon-scale'], ['heavy-plate'], ['dragon-scale', 'heavy-plate']]) {
+    const b = createBattle(squad(), EMBERPASS, 'enc-dragonkin', 123)
+    const attacker = b.combatants.find(c => c.team === 'guild')!
+    const target = b.combatants.find(c => c.team === 'enemy')!
+    target.traits = traits
+    target.threat[attacker.id] = 0
+    const reduced = traits.length === 2 ? 30 : traits[0] === 'dragon-scale' ? 50 : 60
+    const hp = target.hp
+    applyHit(b, attacker, target, 100, 'test', { crit: true })
+    assert.equal(hp - target.hp, reduced)
+    assert.equal(target.threat[attacker.id], reduced)
+    assert.equal(b.events.filter(e => e.type === 'damage').at(-1)!.amount, reduced)
+    const nextHp = target.hp
+    applyHit(b, attacker, target, 100, 'test', { crit: false })
+    assert.equal(nextHp - target.hp, 100, 'plate is one-use; scales only mitigate crits')
+  }
+  const b = createBattle(squad(), EMBERPASS, 'enc-dragonkin', 123)
+  const target = b.combatants.find(c => c.team === 'enemy')!
+  target.absorbShield = 40
+  const hp = target.hp
+  applyHit(b, b.combatants[0], target, 100, 'test', { crit: true })
+  assert.equal(hp - target.hp, 10)
+  assert.equal(target.absorbShield, 0)
+})
+
+test('emberpass wave telegraphs respect spread and fire resistance without boss-only effects', () => {
+  const damage = (spread: boolean, resist: number) => {
+    const b = createBattle(squad(), EMBERPASS, 'enc-dragonkin', 321)
+    const breather = b.combatants.find(c => c.name === '龙裔吐息手')!
+    assert(!breather.boss)
+    const guild = b.combatants.filter(c => c.team === 'guild')
+    for (const c of guild) { c.hp = c.maxHp = 1000; c.fireResist = resist; c.legacyBulwark = true }
+    b.commands.stance = spread ? 'spread' : 'standard'
+    b.tick = 45
+    processBossMechanics(b)
+    assert(bossIntents(b).telegraphing)
+    assert.equal(breather.mech!['telegraph-aoe'].until, 75)
+    b.tick = 75
+    processBossMechanics(b)
+    assert(!bossIntents(b).telegraphing)
+    assert(guild.every(c => !c.scarMechanicHits))
+    assert(b.log.some(l => l.text.includes('灼风吐息')))
+    return guild.reduce((n, c) => n + 1000 - c.hp, 0)
+  }
+  assert.equal(damage(false, 0), 234, 'small enemies do not trigger boss-only bulwark')
+  assert.equal(damage(false, 0.5), 117)
+  assert(damage(true, 0) < damage(false, 0) / 2)
+})
+
+test('emberpass chanter has a real interruptible cast, not an instant heal skill', () => {
+  for (const interrupt of [true, false]) {
+    const b = createBattle(squad(), EMBERPASS, 'enc-pilgrims', 555)
+    const chanter = b.combatants.find(c => c.name === '唱诗朝圣者')!
+    assert(!chanter.boss)
+    assert.equal(chanter.skills.length, 0)
+    for (const c of b.combatants.filter(c => c.team === 'enemy')) c.hp -= 300
+    const ally = b.combatants.find(c => c.name === '朝圣狂徒')!
+    const hp = ally.hp
+    b.tick = 75; processBossMechanics(b)
+    assert.equal(bossIntents(b).casterId, chanter.id)
+    assert.equal(chanter.mech!['cast-heal'].until, 115)
+    if (interrupt) {
+      applyHit(b, b.combatants[0], chanter, 110, 'test')
+      b.tick = 76; processBossMechanics(b)
+      assert(b.events.some(e => e.type === 'interrupted' && e.targetId === chanter.id))
+    }
+    b.tick = 115; processBossMechanics(b)
+    assert.equal(ally.hp - hp, interrupt ? 0 : 180)
+  }
+})
+
+test('chanter last-tick interrupt and death cancel healing; damage at deadline does not interrupt', () => {
+  for (const mode of ['last-tick', 'deadline', 'dead'] as const) {
+    const b = createBattle(squad(), EMBERPASS, 'enc-pilgrims', 557)
+    const chanter = b.combatants.find(c => c.name === '唱诗朝圣者')!
+    const ally = b.combatants.find(c => c.name === '朝圣狂徒')!
+    ally.hp -= 300
+    const hp = ally.hp
+    b.tick = 75; processBossMechanics(b)
+    b.tick = mode === 'deadline' ? 115 : 114
+    applyHit(b, b.combatants[0], chanter, mode === 'dead' ? chanter.hp : 110, 'test')
+    b.tick = 115; processBossMechanics(b)
+    assert.equal(ally.hp - hp, mode === 'deadline' ? 180 : 0)
+    assert.equal(b.events.filter(e => e.type === 'interrupted').length, mode === 'last-tick' ? 1 : 0)
+  }
+})
+
+test('emberpass boss summons exactly fanatic and chanter once between slam windows', () => {
+  const b = createBattle(squad(), EMBERPASS, 'enc-kazraxes', 111)
+  const boss = b.combatants.find(c => c.boss)!
+  boss.hp = boss.maxHp * 0.59
+  b.tick = 100; processBossMechanics(b)
+  assert.equal(boss.mech!['telegraph-aoe'].until, 130)
+  assert(!boss.mech!['summon'].fired)
+  b.tick = 130; processBossMechanics(b)
+  b.tick = 189; processBossMechanics(b)
+  assert(!boss.mech!['summon'].fired)
+  b.tick = 190; processBossMechanics(b)
+  const adds = b.combatants.filter(c => c.team === 'enemy' && !c.boss)
+  assert.deepEqual(adds.map(c => c.name), ['朝圣狂徒', '唱诗朝圣者'])
+  assert.equal(boss.mech!['telegraph-aoe'].next, 250)
+  assert.equal(adds[1].bossMechanics![0].kind, 'cast-heal')
+  b.tick = 249; processBossMechanics(b)
+  assert.equal(b.combatants.filter(c => c.team === 'enemy' && !c.boss).length, 2)
+  assert.equal(boss.mech!['telegraph-aoe'].until, undefined)
+  const other = createBattle(squad(), EMBERPASS, 'enc-pilgrims', 111)
+  assert.deepEqual(other.combatants.find(c => c.name === '唱诗朝圣者')!.mech, {})
+})
+
+test('cautious auto captain can respond to regular-enemy telegraphs and heal casts', () => {
+  const b = createBattle(squad(), EMBERPASS, 'enc-mix', 222)
+  b.commands.autoMode = true
+  b.combatants[0].personality = { bravery: 40, caution: 70, greed: 40, loyalty: 40 }
+  b.tick = 45; processBossMechanics(b); runAutoAI(b)
+  assert.equal(b.commands.stance, 'spread')
+  b.tick = 75; processBossMechanics(b); runAutoAI(b)
+  assert.equal(b.commands.focusId, b.combatants.find(c => c.name === '唱诗朝圣者')!.id)
+})
+
 test('free visitor signing is synchronous and idempotent before React renders again', () => {
   const initial = squad().slice(0, 2)
   const visitor = { member: squad()[0], story: 'test visitor' }

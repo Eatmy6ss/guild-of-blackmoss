@@ -246,7 +246,7 @@ export interface Combatant {
   /** 召唤机制的增援池（从副本 enemyGroups 解析） */
   summonPool?: EnemyDef[]
   /** 机制运行时状态：按机制 kind 存 until/next/taken/fired */
-  mech?: Record<string, { until?: number; next?: number; taken?: number; fired?: number }>
+  mech?: Record<string, { until?: number; next?: number; taken?: number; fired?: number; resolvedAt?: number }>
   /** 咏唱成功获得的临时攻击加成 */
   buffAttack?: number
   buffUntil?: number
@@ -323,6 +323,8 @@ export interface EnemyDef {
   traits?: string[]
   /** 主动技能(三层融合·行动层):复用 SkillDef,敌方同样走 useSkill */
   skills?: SkillDef[]
+  /** Optional telegraphed mechanics; these do not make a regular enemy a boss. */
+  mechanics?: BossMechanicDef[]
 }
 
 export type MechanicKind =
