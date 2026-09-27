@@ -164,6 +164,78 @@ test('legacy preview full-health sentinel is resolved on import and load without
   }
 })
 
+test('tower rotates three wave groups independently of three bosses across two cycles', () => {
+  const run = startTower(squad(), 301, { heal: 0, fury: 0 })
+  const waves = ['frogs', 'wolves', 'leeches']
+  const bosses = [BLACKMOSS.bosses.grush, BLACKMOSS.bosses.talma, RUSTMINE.bosses.delveanchor]
+  let wave = 0
+  for (let floor = 1; floor <= 18; floor++) {
+    if (floor > 1) towerNext(run, 301)
+    const enemies = run.battle!.combatants.filter(c => c.team === 'enemy')
+    const expected = floor % 3 === 0
+      ? [bosses[(floor / 3 - 1) % 3]]
+      : BLACKMOSS.enemyGroups[waves[wave++ % 3]]
+    assert.deepEqual(enemies.map(c => c.name), expected.map(c => c.name), `floor ${floor}`)
+    enemies.forEach((c, i) => {
+      assert.equal(c.maxHp, Math.round(expected[i].maxHp * towerEnemyScale(floor)))
+      assert.equal(c.attack, Math.round(expected[i].attack * towerEnemyScale(floor)))
+    })
+  }
+})
+
+test('tower summons real scaled adds once without mutating source dungeon definitions', () => {
+  const before = JSON.stringify([BLACKMOSS, RUSTMINE])
+  const entries = [
+    { floor: 3, group: BLACKMOSS.enemyGroups['frogs-frail'] },
+    { floor: 6, group: BLACKMOSS.enemyGroups['wolves-frail'] },
+    { floor: 9, group: RUSTMINE.enemyGroups['bats-frail'] },
+    { floor: 12, group: BLACKMOSS.enemyGroups['frogs-frail'] },
+  ]
+  for (const { floor, group } of entries) {
+    const run = startTower(squad(), 302, { heal: 0, fury: 0 })
+    run.floor = floor
+    startTowerFloor(run, 302)
+    const battle = run.battle!
+    const boss = battle.combatants.find(c => c.boss)!
+    const summon = boss.bossMechanics!.find(m => m.kind === 'summon')!
+    assert.equal(boss.summonPool!.length, group.length)
+    boss.hp = Math.floor(boss.maxHp * Number(summon.params.atHpPct))
+    processBossMechanics(battle)
+    const adds = battle.combatants.filter(c => c.team === 'enemy' && !c.boss)
+    assert.equal(adds.length, Number(summon.params.count))
+    adds.forEach((c, i) => {
+      assert.equal(c.name, group[i].name)
+      assert.equal(c.maxHp, Math.round(group[i].maxHp * towerEnemyScale(floor)))
+      assert.equal(c.attack, Math.round(group[i].attack * towerEnemyScale(floor)))
+    })
+    processBossMechanics(battle)
+    assert.equal(battle.combatants.filter(c => c.team === 'enemy' && !c.boss).length, adds.length)
+  }
+  assert.equal(JSON.stringify([BLACKMOSS, RUSTMINE]), before)
+})
+
+test('third tower boss pulls a backliner, who returns after the duration expires', () => {
+  const run = startTower(squad(), 303, { heal: 0, fury: 0 })
+  run.floor = 9
+  startTowerFloor(run, 303)
+  const battle = run.battle!
+  battle.tick = 120
+  processBossMechanics(battle)
+  const pulled = battle.events.find(e => e.type === 'pulled')!
+  assert(pulled)
+  const victim = battle.combatants.find(c => c.id === pulled.targetId)!
+  assert.equal(victim.originalPosition, 'back')
+  assert.equal(victim.position, 'front')
+  assert.equal(victim.pulledUntilTick, 720)
+  // 隔离归位计时,防止期间的普攻/再次拉拽干扰边界断言。
+  const boss = battle.combatants.find(c => c.boss)!
+  boss.bossMechanics = []
+  for (const c of battle.combatants) c.cooldownLeft = 1000
+  battle.tick = 719
+  stepBattle(battle)
+  assert.equal(victim.position, 'back')
+})
+
 const ast = ts.createSourceFile('App.tsx', readFileSync('src/App.tsx', 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 function handler(name: string, scope: Record<string, unknown>) {
   let expression: ts.Expression | undefined

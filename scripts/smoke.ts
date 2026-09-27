@@ -785,6 +785,32 @@ console.log('✓ 经济与酒馆验证通过：变卖/冷却/访客/悬赏/迁�
 // ============================================================
 const towerFailures: string[] = []
 {
+  // V2:普通层独立轮换,前十层三种 Boss,召唤池必须有真实增援。
+  const rotation = startTower(JOBS.map((job, j) => generateMember(job, 6, 776 + j)), 4241, { heal: 0, fury: 0 })
+  const bossKinds = new Set<string>()
+  const waveKinds = new Set<string>()
+  const mechanics = new Set<string>()
+  for (let floor = 1; floor <= 10; floor++) {
+    if (floor > 1) towerNext(rotation, 4241)
+    const b = rotation.battle!
+    const boss = b.combatants.find(c => c.boss)
+    if (boss) {
+      bossKinds.add(boss.bossMechanics![0].id)
+      for (const m of boss.bossMechanics!) {
+        mechanics.add(m.kind)
+        if (m.kind === 'summon' && (boss.summonPool?.length ?? 0) < Number(m.params.count)) {
+          towerFailures.push(`⑫ V2 第 ${floor} 层召唤池缺失`)
+        }
+      }
+    } else {
+      waveKinds.add(b.combatants.find(c => c.team === 'enemy')!.name)
+    }
+  }
+  if (bossKinds.size !== 3 || waveKinds.size !== 3) towerFailures.push('⑫ V2 前十层未覆盖三种 Boss/三组杂兵')
+  if (!['telegraph-aoe', 'summon', 'cast-buff', 'bind', 'pull'].every(k => mechanics.has(k))) {
+    towerFailures.push('⑫ V2 机制覆盖不完整')
+  }
+  console.log(`⑫ V2 前十层:Boss ${bossKinds.size} 种,杂兵 ${waveKinds.size} 组,召唤池与机制引用已检查`)
   // 12a:强度单调递增
   if (!(towerEnemyScale(1) < towerEnemyScale(3) && towerEnemyScale(3) < towerEnemyScale(9))) {
     towerFailures.push('⑫ 强度缩放不单调')

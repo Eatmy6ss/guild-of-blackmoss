@@ -1,5 +1,6 @@
 import { rollDrop } from './loot'
 import { ITEM_BASES } from '../data/items'
+import { BLACKMOSS, RUSTMINE } from '../data/dungeons'
 import type { BossDef, DungeonDef, EnemyDef, ItemInstance, Member } from './types'
 import { createBattle, POTION_STOCK } from './combat'
 import type { BattleState } from './types'
@@ -34,7 +35,7 @@ export function towerExp(floor: number): number {
   return TOWER.expPerFloorBase + TOWER.expScalingPerFloor * (floor - 1)
 }
 
-/** 塔掉落装备的纪元:前 5 层 T1,6 层起 T2(挂 K03;U09 的 T3 池落地后此处跟进) */
+/** 塔掉落装备的纪元:前 5 层 T1,6–11 层 T2,12 层起 T3 */
 export function towerItemTier(floor: number): number {
   if (floor >= 12) return 3
   return floor >= 6 ? 2 : 1
@@ -83,14 +84,11 @@ function scaleEnemy(def: EnemyDef, floor: number): EnemyDef {
   }
 }
 
-const BOSS_ROTATION: Array<(floor: number) => BossDef> = [
-  (floor) => scaledBoss(BLACKMOSS_BOSSES.grush, floor),
-  (floor) => scaledBoss(BLACKMOSS_BOSSES.talma, floor),
+const BOSS_ROTATION: { boss: BossDef; groups: DungeonDef['enemyGroups'] }[] = [
+  { boss: BLACKMOSS.bosses.grush, groups: BLACKMOSS.enemyGroups },
+  { boss: BLACKMOSS.bosses.talma, groups: BLACKMOSS.enemyGroups },
+  { boss: RUSTMINE.bosses.delveanchor, groups: RUSTMINE.enemyGroups },
 ]
-
-// 塔复用黑苔沼泽的敌人/boss 数据表(缩放后入场)——内容皆数据
-import { BLACKMOSS } from '../data/dungeons'
-const BLACKMOSS_BOSSES = BLACKMOSS.bosses
 
 function scaledBoss(def: BossDef, floor: number): BossDef {
   const k = towerEnemyScale(floor)
@@ -101,17 +99,28 @@ function scaledBoss(def: BossDef, floor: number): BossDef {
 export function startTowerFloor(run: TowerRun, seed: number): void {
   const floor = run.floor
   const isBoss = towerFloorIsBoss(floor)
+  // 普通层独立计数,避免第三组永远被每三层一次的 Boss 占用。
+  const waveIndex = floor - 1 - Math.floor(floor / TOWER.bossEvery)
   const pool: EnemyDef[] = isBoss
     ? []
-    : [FLOOR_POOL[(floor - 1) % FLOOR_POOL.length]].map((g) => g.map((e) => scaleEnemy(e, floor))).flat()
+    : FLOOR_POOL[waveIndex % FLOOR_POOL.length].map((e) => scaleEnemy(e, floor))
+  const entry = BOSS_ROTATION[(Math.floor(floor / TOWER.bossEvery) - 1) % BOSS_ROTATION.length]
+  const enemyGroups: DungeonDef['enemyGroups'] = { tower: pool }
+  if (isBoss) {
+    for (const mechanic of entry.boss.mechanics) {
+      if (mechanic.kind !== 'summon') continue
+      const groupId = String(mechanic.params.groupId)
+      enemyGroups[groupId] = entry.groups[groupId].map((e) => scaleEnemy(e, floor))
+    }
+  }
   const dungeon: DungeonDef = {
     id: `tower-${floor}`,
     name: `黑苔高塔·第 ${floor} 层`,
     size: 3,
     branches: [],
     routeNodes: [],
-    enemyGroups: { tower: pool },
-    bosses: isBoss ? { boss: BOSS_ROTATION[(Math.floor(floor / TOWER.bossEvery) - 1) % BOSS_ROTATION.length](floor) } : {},
+    enemyGroups,
+    bosses: isBoss ? { boss: scaledBoss(entry.boss, floor) } : {},
     encounters: [
       isBoss
         ? { id: 'tower-boss', name: `守塔者(第 ${floor} 层)`, kind: 'boss', enemyGroupIds: [], bossId: 'boss' }
@@ -140,7 +149,7 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
 }
 
 const FLOOR_POOL: EnemyDef[][] = [
-  // 第 1/4/7… 层:蛙人;2/5/8…:狼;3 层归 boss 层轮换占用前的水蛭留给非 3 倍数层
+  // 跳过 Boss 层:1/5/10… 蛙人,2/7/11… 狼,4/8/13… 水蛭。
   BLACKMOSS.enemyGroups.frogs,
   BLACKMOSS.enemyGroups.wolves,
   BLACKMOSS.enemyGroups.leeches,
