@@ -1,6 +1,6 @@
 # T01 管理员战斗实验室
 
-2026-09-27，实现并验证；已随 `076aaf4` 推送至 `codex/mechanic-registry`，尚未创建 PR 或合并。用户要求自由选关、配队、调整等级装备以反复测试技能，并明确“管理员测试模式，不要和正式游戏耦合”。
+2026-09-27，实现并验证；已随 `076aaf4` 推送至 `codex/mechanic-registry`，已创建 [PR #3](https://github.com/Eatmy6ss/guild-of-blackmoss/pull/3)，待有写入权限的协作者批准后合并。用户要求自由选关、配队、调整等级装备以反复测试技能，并明确“管理员测试模式，不要和正式游戏耦合”。
 
 ## 使用方法
 
@@ -46,4 +46,4 @@
 
 新增 `tools/admin/{index.html,main.tsx,TestLab.tsx,lab.ts,lab.css}`、`vite.config.admin.ts`、`tsconfig.admin.json`、`src/testing/admin-lab.test.ts`；更新 package.json 的工具/类型检查入口、.gitignore、README、BACKLOG 和 HANDOFF。
 
-后续先由制作人用工具检验关卡、技能和 M1 操作感，再决定下一步玩法修改。M1 仍待人工试玩；本工具和代理检查不等于 M1 已通过。功能已提交并推送，未创建 PR、合并或部署。
+后续先由制作人用工具检验关卡、技能和 M1 操作感，再决定下一步玩法修改。M1 仍待人工试玩；本工具和代理检查不等于 M1 已通过。功能已提交并推送，PR #3 因缺少 1 位协作者批准而尚未合并，未部署。

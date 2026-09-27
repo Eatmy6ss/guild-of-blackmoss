@@ -8,4 +8,4 @@
 - 新增真实战斗集成用例 src/sim/combat.test.ts，验证模块加载、战斗终止、终止后不再推进和输入成员不被修改；不设置胜率或数值平衡目标。
 - 验证：1 项 Vitest 集成测试通过；临时失败用例使 verify 返回 1，零匹配返回 1，.only 返回 1，探针文件已清理。最终完整 verify 退出 0，历史 smoke 47、玩法 70、王国回归、TypeScript 与生产构建通过。
 - 文件：package.json、package-lock.json、vitest.config.ts、src/sim/combat.test.ts、README.md、本专题、实施计划和 HANDOFF。
-- 本项未修改游戏运行逻辑或存档；已随 `076aaf4` 推送至 `codex/mechanic-registry`，尚未创建 PR 或合并。后续用户另行要求的独立管理员工具已完成，详见 [T01](admin-test-lab-2026-09-27.md)，不把 M1 标为通过。
+- 本项未修改游戏运行逻辑或存档；已随 `076aaf4` 推送至 `codex/mechanic-registry`，[PR #3](https://github.com/Eatmy6ss/guild-of-blackmoss/pull/3) 待协作者批准后合并。后续用户另行要求的独立管理员工具已完成，详见 [T01](admin-test-lab-2026-09-27.md)，不把 M1 标为通过。

@@ -1,5 +1,15 @@
 # 当前交接
 
+## 当前接续：PR #3 待协作者批准后合并（2026-09-27）
+
+- 用户明确要求“合并”。目标为 `codex/mechanic-registry` → `main`；创建对应中文 PR，检查 GitHub 合并条件，按仓库规则完成合并。
+- 开始状态：开发工作树干净，分支头 `d6a3401`，远端 main 仍为 `a2a23cf`，与上一轮验证的基准一致；没有追加源码改动。
+- 已创建并关联 [PR #3：功能：统一战斗机制并新增独立管理员测试实验室](https://github.com/Eatmy6ss/guild-of-blackmoss/pull/3)，目标 `main`，来源 `codex/mechanic-registry`，中文说明列明实现、验证及 M1 边界。
+- GitHub 检查结果：无代码合并冲突（mergeable=true），但 mergeable_state=blocked；无已提交审核、无 check-run 或 commit status。当前账号有 push 权限，无 admin 权限。
+- 已按被检查的 `d6a3401` 发起普通 merge commit 合并；GitHub 返回 HTTP 405：`At least 1 approving review is required by reviewers with write access.` 实际未合并，未更改保护规则、未绕过审核、未部署。
+- 下一步：请另一位有写入权限的协作者在 PR #3 批准（Approve）；随后重新核对 PR 最新头提交、审核与检查，再继续用户已授权的合并。不要把创建 PR 或 mergeable=true 视为已合并。
+- 本轮仅更新交接/专题的 PR 状态并推送到同一开发分支；沿用上一轮完整 verify，源码与构建输入无新增改动。原目录仅同步交接指针，保留旧分支与研究文档。
+
 ## 本轮：提交并推送当前版本（2026-09-27，已完成）
 
 - 用户明确要求提交、推送当前已完成版本。本轮仅归档 #0.1 机制修复、#0.7a 测试基础、T01 独立管理员实验室及相关审查/交接文档，不继续新增修复。
