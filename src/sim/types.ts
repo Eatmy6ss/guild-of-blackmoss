@@ -242,6 +242,7 @@ export interface Combatant {
   /** 被束缚：到该 tick 前无法行动、无法撤离 */
   boundUntilTick?: number
   /** boss 机制定义（仅 boss 实体携带） */
+  /** Mechanism list for ordinary enemies as well as bosses; runtime is keyed by unique kind. */
   bossMechanics?: BossMechanicDef[]
   /** 召唤机制的增援池（从副本 enemyGroups 解析） */
   summonPool?: EnemyDef[]

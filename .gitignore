@@ -4,6 +4,7 @@ dist/
 .DS_Store
 scripts/*.mjs
 dist-playtest/
+dist-admin/
 /黑苔公会-*.html
 .vite/
 !scripts/verify.mjs

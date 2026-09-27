@@ -27,16 +27,23 @@
 # Node.js 18+
 npm install
 npm run dev        # 开发服务器 http://localhost:5173
+npm run dev:admin  # 独立管理员战斗实验室 http://127.0.0.1:5180
 npm run build      # 生产构建 → dist/
+npm test           # 新增源码测试（Vitest，一次运行后退出）
+npm run test:watch # 开发时持续运行新增测试
 npm run test:kingdom # 王国委托、奖励与存档迁移回归检查
 npm run test:gameplay # 保险、重开、套装、训练与人物效果回归
-npm run verify     # 冒烟、两组回归、类型检查与生产构建
+npm run verify     # Vitest、管理员类型检查、历史冒烟/两组回归、游戏类型检查与生产构建
 ```
 
 验证入口已恢复并纳入玩法与王国委托回归。当前开发接续入口见 [HANDOFF](docs/development/HANDOFF.md)，委托数值与验证范围见 [K01说明](docs/development/kingdom-commissions.md)，本轮修复及验证边界见 [R01说明](docs/development/gameplay-repairs-2026-09-25.md)。
 
+新增自动化用例放在 `src/**/*.test.ts`，从 `vitest` 显式导入 `test` / `expect`，默认在 Node 环境运行。Vitest 共用 Vite 配置，但只收集源码测试；`scripts/` 中的历史检查沿用原入口，不迁移。新入口在没有找到测试或遗留 `.only` 时会失败，避免漏跑；`npm run verify` 先执行新增测试，再执行完整历史验证。接入说明见 [#0.7a](docs/development/vitest-setup-2026-09-27.md)。
+
 - 满配试玩档:`node scripts/dev-save.mjs [等级 1-15]` 生成导入码(docs/dev-save.txt)
 - 单文件分发版:`npx vite build --config vite.config.playtest.ts` → dist-playtest/
+
+管理员实验室是独立本机工具，不在正式游戏菜单和生产包内。支持直接选副本遭遇、配置 1–6 人队伍、等级装备与技能冷却、暂停单步和同条件重战；只保存自己的测试配置，不读写正式存档或发放奖励。启动和测试口径见 [管理员测试指南](docs/development/admin-test-lab-2026-09-27.md)。
 
 ## 技术栈
 
@@ -56,6 +63,7 @@ src/
   ui/       表现层(Pixi 战斗渲染器 + React 界面)
   state/    存档(v16 迁移链，含王国委托、星髓、遗物、疗养熟练度与训练资格)
 scripts/    门禁(smoke)/E2E(CDP)/探针(节奏·新档)/打包
+tools/admin/ 独立管理员战斗实验室（共享模拟和战斗画面，独立入口/配置/输出）
 docs/       设计文档(DESIGN.md 宪法/boss 提案流程/验收截图)
 ```
 

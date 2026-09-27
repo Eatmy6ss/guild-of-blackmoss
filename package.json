@@ -5,11 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:admin": "vite --config vite.config.admin.ts",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "typecheck:admin": "tsc --noEmit -p tsconfig.admin.json",
     "test:kingdom": "node scripts/test-kingdom.cjs",
     "preview": "vite preview",
-    "verify": "node scripts/verify.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "npm run test && npm run typecheck:admin && node scripts/verify.mjs",
     "test:gameplay": "node scripts/test-gameplay.cjs"
   },
   "dependencies": {
@@ -25,6 +29,7 @@
     "esbuild": "^0.21.5",
     "typescript": "~5.6.2",
     "vite": "^5.4.11",
-    "vite-plugin-singlefile": "^2.3.3"
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "3.2.7"
   }
 }

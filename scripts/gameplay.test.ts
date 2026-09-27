@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import './mechanics.test'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import ts from 'typescript'

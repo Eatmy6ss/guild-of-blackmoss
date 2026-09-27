@@ -1,4 +1,5 @@
 import type { BattleState, Combatant } from './types'
+import { mechanicIntents } from './mechanic-registry'
 import { orderRetreat, pushLog, setFocus, setStance, useFuryPotion, useHealPotion } from './combat'
 
 // 挂机 AI（D12）：队长性格代打。与手动指挥台共用同一套指令函数（Q27 红利），
@@ -28,8 +29,9 @@ export function runAutoAI(state: BattleState): void {
 
   const boss = foes.find((f) => f.boss)
   const adds = foes.filter((f) => !f.boss)
-  const telegraphing = foes.some(f => f.mech?.['telegraph-aoe']?.until !== undefined)
-  const caster = foes.find(f => ['cast-buff', 'cast-heal'].some(kind => f.mech?.[kind]?.until !== undefined))
+  const intentions = foes.map(foe => ({ foe, intents: mechanicIntents(state, foe) }))
+  const telegraphing = intentions.some(({ intents }) => intents.some(it => it.type === 'telegraph'))
+  const caster = intentions.find(({ intents }) => intents.some(it => it.type === 'cast' && it.interruptible))?.foe
   const casting = !!caster
   const enraged = boss?.mech?.['enrage']?.fired === 1
 
