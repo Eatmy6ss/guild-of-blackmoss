@@ -560,6 +560,103 @@ test('due consequences defer departure without consuming a day or creating a bat
   assert.equal(days,0); assert.equal(created,0)
 })
 
+test('event pools exhaustively cover local and common first acts without cross-region leakage', () => {
+  const common = GUILD_EVENTS.filter(e => !e.region && !SECOND_ACT_IDS.has(e.id))
+  assert(common.length > 0)
+  assert(GUILD_EVENTS.filter(e => e.region?.includes('blackmoss-wild') && !SECOND_ACT_IDS.has(e.id)).length >= 30)
+  for (const region of ['blackmoss-wild', 'dragonridge', undefined] as const) {
+    const expected = GUILD_EVENTS.filter(e => !SECOND_ACT_IDS.has(e.id) && (!e.region || (region && e.region.includes(region))))
+    const actual = expected.map((_, i) => rollGuildEvent(() => (i + 0.5) / expected.length, { force: true, context: { region } })!.id)
+    assert.deepEqual(actual, expected.map(e => e.id))
+    for (const e of common) assert(actual.includes(e.id))
+    assert.equal(rollGuildEvent(() => EVENT_CHANCE, { context: { region } }), null)
+    assert.equal(eventCount(), GUILD_EVENTS.length, 'regional draws must not truncate the encyclopedia')
+  }
+  for (const id of ['swamp-scent', 'frost-envoy', 'mining-strike', 'abyss-preacher', 'rare-hunt']) {
+    assert.deepEqual(GUILD_EVENTS.find(e => e.id === id)!.region, ['blackmoss-wild'])
+  }
+  for (const id of ['dragon-cult', 'cult-purge', 'cult-recruiter', 'forge-sluice', 'ash-waymarkers']) {
+    assert.deepEqual(GUILD_EVENTS.find(e => e.id === id)!.region, ['dragonridge'])
+  }
+  for (const id of ['deserter', 'night-knock', 'old-debt', 'bard-chronicle', 'orphan-apprentice']) {
+    assert(common.some(e => e.id === id), id)
+  }
+})
+
+test('regional delayed chains stay resolvable after travelling to the other region', () => {
+  for (const source of GUILD_EVENTS) {
+    for (const choice of source.choices) for (const outcome of choice.outcomes) {
+      const delayed = outcome.effects?.delayed
+      if (!delayed) continue
+      const target = GUILD_EVENTS.find(e => e.id === delayed.eventId)!
+      assert(target, delayed.eventId)
+      assert.deepEqual(target.region, source.region, source.id)
+      assert(SECOND_ACT_IDS.has(target.id))
+      const dungeon = source.region?.includes('dragonridge') ? BLACKMOSS : EMBERPASS
+      const due = { eventId: target.id, dueDay: 2 }
+      let shown: unknown
+      handler('startExpedition', {
+        runRef: {current:null}, towerRunRef: {current:null}, pendingEvent:null,
+        expedition:squad(), activeDungeon:dungeon, lastBranchRef:{current:''},
+        refusesToMarch:()=>false, pendingConsequences:[due], day:1, GUILD_EVENTS,
+        setPendingConsequences:()=>{}, pendingDepartureRef:{current:null},pendingConsequenceRef:{current:null},
+        setPendingEvent:(e:unknown)=>{shown=e}, setEventResult:()=>{},
+        setDay:()=>assert.fail('followup must precede departure'),
+      })(dungeon.branches[0].id)
+      assert.equal(shown, target)
+    }
+  }
+})
+
+test('new Dragonridge choices have weighted outcomes with real costs and supported effects', () => {
+  for (const id of ['forge-sluice', 'ash-waymarkers']) {
+    const event = GUILD_EVENTS.find(e => e.id === id)!
+    assert.equal(event.choices.length, 2)
+    event.choices.forEach((choice, i) => {
+      assert(choice.outcomes.every(o => o.weight > 0 && o.text && o.effects))
+      assert.equal(pickOutcome(event, i, 0), choice.outcomes[0])
+      assert.equal(pickOutcome(event, i, 0.999999), choice.outcomes.at(-1))
+      assert(choice.outcomes.some(o => o.effects!.injure || (o.effects!.gold ?? 0) < 0 ||
+        (o.effects!.moraleAll ?? 0) < 0 || (o.effects!.moraleRandom ?? 0) < 0))
+    })
+  }
+})
+
+test('new regional outcomes use the actual expedition handler, with visible buffs and carried potions', () => {
+  for (const id of ['forge-sluice', 'ash-waymarkers']) {
+    const ev = GUILD_EVENTS.find(e => e.id === id)!
+    for (const choice of ev.choices) for (const outcome of choice.outcomes) {
+      const members = squad()
+      members.forEach(m => {m.hp = toCombatant(m).maxHp})
+      const run = createRun(members, EMBERPASS, EMBERPASS.branches[0].id, 41, 0, true, {heal:3,fury:3})
+      run.phase = 'rest'
+      let gold = 1000, result = '', seen: string[] = [], impacts: {t:string}[] = []
+      handler('resolveEvent', {
+        pendingEvent:ev, eventResult:null, pickOutcome:()=>outcome,
+        eventResolvingRef:{current:false},pendingConsequenceRef:{current:null},
+        runRef:{current:run}, membersRef:{current:members}, day:20,
+        gainGold:(n:number)=>{gold+=n}, setGold:(f:(n:number)=>number)=>{gold=f(gold)},
+        setBlessing:()=>{}, applyMoraleDelta, grantExp, setMembers:()=>{},
+        setPotions:()=>assert.fail('route rewards must go to carried potions'),
+        setEventsSeen:(f:(s:string[])=>string[])=>{seen=f(seen)},
+        logChronicle:()=>{}, chronicleRaw:()=>({}),
+        setEventResult:(s:string)=>{result=s}, setEventImpacts:(s:{t:string}[])=>{impacts=s},
+      })(0)
+      assert.equal(result, outcome.text)
+      assert.deepEqual(seen, [ev.id])
+      assert.equal(gold, 1000 + (outcome.effects?.gold ?? 0))
+      assert.equal(run.potions.heal, 3 + (outcome.effects?.potionHeal ?? 0))
+      const buff = outcome.effects?.runBuff
+      if (buff) {
+        assert(run.buffs?.includes(buff))
+        assert(impacts.some(i => i.t.includes(buff.name)))
+      }
+      if (outcome.effects?.potionHeal) assert(impacts.some(i => i.t.includes('治疗药水 +1')))
+      if (outcome.effects?.injure) assert(impacts.some(i => i.t.includes('生命减半')))
+    }
+  }
+})
+
 test('delayed decisions survive reload until chosen, settle once and retain duplicate future consequences', () => {
   const event = GUILD_EVENTS.find(e => e.id === 'egg-hatch')!
   const due = {eventId:event.id,dueDay:21}
