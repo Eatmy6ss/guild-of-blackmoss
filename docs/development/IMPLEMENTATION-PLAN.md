@@ -7,6 +7,45 @@
 > `../EXECUTION-PLAN-2026-09-27.md` 为面向制作人的决策稿，**已被本文件取代**，勿作施工依据。
 >
 > 约束：半职约 20 小时／周（≈2.5 人日／周）；无外部硬期限；**允许破坏性重构，不需保老存档兼容**。
+>
+> **v2 修订（2026-09-27，基于合并后 `main@423cf52` 重新读码）**：见下方「修订说明」。**制作人已于 2026-09-27 采纳 v2 全部内容，⚖ D-1/D-2/D-3 均按推荐裁定**（DECISIONS U21）。v1 仅保留在 git 历史中，勿再作施工依据。
+
+---
+
+## 修订说明 · v2（先读这一节）
+
+### 读码基准
+
+- `main@423cf52`（`a84a4fe` 合并 `codex/gameplay-next` 之后）。工作树干净，`origin/main` 已同步。
+- **事实**：`git diff codex/gameplay-next main -- src` 为空，即 main 的游戏代码与 Codex 分支 HEAD 逐字节相同。zcode 主线的功能（装备 2.0、套装、特性、特权训练、遗物赎回、S1 创伤、王国委托）早在 Codex 分支的基点 `0767ac9` 里就已包含。合并带进来的实质只有 zcode 的文档：DECISIONS U20、BACKLOG 阶段约定、IMPLEMENTATION-PLAN 复审附录。
+- **合并事故**：zcode 在 `d0a9e1a` 追加的「zcode 侧独立复审意见」附录在合并时被丢了。v2 已把它恢复到文末。
+
+### v1 与代码不符、v2 已更正的地方
+
+| # | v1 说法 | 读码事实 | v2 处置 |
+|---|---|---|---|
+| C-1 | #0.9：裸 `Math.random` 主要在 `tower.ts`，0.5 人日 | `App.tsx` 里有 **25 处**，覆盖远征关键路径：杂兵掉落 `:544`、挂机选路 `:770`、远征内事件 `:779`、宝箱 `:796-801`、事件结局 `:959`、属性点 `:1019`、疗养判定 `:1859` 等。另有 `tower.ts:198-203` 3 处，`member-traits.ts:6` 默认参数 1 处 | 「同种子逐字节一致」这条验收，在结算仍留在 `App.tsx` 时做不到。#0.9 拆开并入 #0.10 与 #0.6 |
+| C-2 | #0.6：新建 `RunState` 类型 | `sim/run.ts:14` `DungeonRun` 和 `sim/tower.ts` `TowerRun` 本来就是 sim 层的远征对象。再建一个 `RunState` 等于**计划自己开出第二条实现路径**，违反 0.3 | 改为扩展现有两个对象，让它们可序列化。真正的障碍是：`dungeon` 存的是整份 `DungeonDef`，`members` 与花名册是同一对象引用（`run.ts:22`） |
+| C-3 | 没有识别 | **结算管线有两份**：副本走 `App.tsx:516-640 settleBattleEnd`，高塔走 `App.tsx:344-420` 的 useEffect，两边行为已经分叉。高塔阵亡**不触发**目睹冲击 `applyDeathShock`，**不写**编年史阵亡条目 `chronicleHeroFall`；高塔胜利**不发**士气 `applyVictory`；高塔经验走 `grantExp`，绕过 `settleGrowth`，所以**不涨默契**。`markPermadeath`（`run.ts:182`）与 `towerMarkPermadeath`（`tower.ts:233`）也是两份拷贝 | **新增 #0.10 结算管线收口**。这是全项目最大的一处接缝，而且直接违反制作人红线 6「涌现叙事」：高塔里死人，不会长出故事。批次 3 的高塔赌局化建在这条管线上，必须先收口 |
+| C-4 | #0.1 只针对 Boss | `8b4db9b` 起普通敌人也能挂机制（`EnemyDef.mechanics` → `enemyToCombatant` 写进 `bossMechanics`，`combat.ts:222`）。字段名 `bossMechanics` 已经名不副实。`summon` 通过 `recoveryTicks` 直接读写 `telegraph-aoe` 的运行时（`mechanics.ts:168-178`），属于**跨机制耦合**。`ground-zone` 起读条时**不发 `casting` 事件**（`mechanics.ts:143-147`），演出层看不到读条 | 在 #0.1 补齐规格与验收 |
+| C-5 | #0.8：只有 3 处难度手调 | 敌人实际乘区有 **6 个**：`enemyPower`、`difficultyMods.{hp,atk}`、`ENEMY_HP_MULT=1.1`（只作用于有 `expectedLevel` 的图，`combat.ts:59,251`）、精英 ×1.25（`run.ts:134`）、稀有猎杀 `rareHunt.mult`、高塔自带的 `scaleEnemy`（`tower.ts:78`，**和 v1 规划的 `difficulty.scaleEnemy` 同名**） | 在 #0.8 补全乘区清单，解决命名冲突 |
+| C-6 | I7：按 `rating` 升序，Boss 强度严格单调 | 3 人本和 5 人本的 Boss 血量天然不在一个量级。制作人 2026-09-27 的口径是「按合法编制、同等级同装备比较整趟压力」，并明确要求**烬石隘口 > 荆棘要塞** | I7 改成按编制归一化，并把制作人这条要求写成断言 I7b |
+| C-7 | #1.4：两条隐形 synergy，并入基础值、保持总强度 | `shield-wall` 在 `combat.ts:364` 生效。`blessed-formation`（「治疗者存活时全队防御 +10%」）**引擎里没有实现**，是死数据。两条的 `desc` 也都没有 UI 展示 | `shield-wall` 并入基础值。`blessed-formation` 直接删除，**不能**并入：它目前是 0 效果，并入反而会变强 |
+| C-8 | §10：「套装系统」列为明确不做 | K08 套装已经上线（灰冠/猎风，2/3 件），`App.tsx:1407` 还把套装数值**硬编码写进文案**，与引擎各存一份 | 见 ⚖D-2 |
+| C-9 | #2.7：治疗只有受疗一条路径 | 治疗输出 = `attack × 4.5 × (1+目标受疗)`（`combat.ts:699`），治疗职业其实吃攻击力。远征事件 buff 的 `mods.heal` 也改写 `healReceived`（`combat.ts:264`）。所以一共有三条路径 | 在 #2.7 写清楚 `healPower` 与攻击力的关系 |
+| C-10 | #0.4：只改 `describeItem` | 百分比格式化还散落在 `combat.ts:1199,1221`（属性面板）和 `App.tsx:1407`（套装） | 把这些位置列进 #0.4 的范围 |
+
+### ⚖ 制作人裁定（2026-09-27 已按推荐全部采纳，U21）
+
+| ID | 冲突 | 裁定（= 原推荐） |
+|---|---|---|
+| **D-1** | v1 的 B8（把 `wish.ts` 与特性并入创伤/性格）与 **U14**（制作人亲选「个人心愿层」）冲突，也碰到红线 6 | **撤销 B8**。心愿与特性保持现状并冻结，不扩写也不合并。合并要花几人日，换来的只是「少一个认知槽位」，却会伤到涌现叙事 |
+| **D-2** | 套装已经上线，v1 却写着「不做」 | **保留现有 2 套并冻结**，不新增。批次 2 把套装加成接进 `formatStat` 与 I8，成为构筑轴之一；新套装留到批次 2 出口之后再议 |
+| **D-3** | 高塔阵亡要不要补上目睹冲击、编年史和默契（C-3） | **补上**。A6′ 说塔中阵亡是「你自己多爬了一层」，这正是最该留下故事的死亡。按缺陷修复处理，不算数值调整 |
+
+### 工期变化
+
+批次 0：21 → **26 人日**。v1 标题写 21，但各任务工期加起来其实是 24，这是 v1 自身的算术错误。v2 在 24 的基础上：#0.10 +3，#0.1 +0.5，#0.8 +0.5，#0.9 −0.5（拆分并入），#0.6 −1.5（改造现有类型而不是新建）。总计约 101 人日 ≈ **42 周**。M1 位置不变，仍在 #0.1 之后，约第 2–3 周。
 
 ---
 
@@ -28,7 +67,7 @@
 | **扩写 `src/data/guild-events.ts`** | 已 2110 行且冻结。该文件顶部有冻结抬头，勿移除 |
 | **新增 `DESIGN.md` 章节** | 宪法已冻结。设计变更走本文件 |
 | **新增系统**（新面板、新货币、新资源、新玩法） | 本计划只新增 4 个机制：主动技能、精力、加码条款、塔词缀。其余一律是把已有系统挖深 |
-| **裸 `Math.random()`** | 必须用 `src/sim/rng.ts`。现存违规点见 #0.9 |
+| **裸 `Math.random()`** | 必须用 `src/sim/rng.ts`。现存违规点见 v2 修订说明 C-1，收口在 #0.10 |
 | **同一概念开第二条实现路径** | 见 0.3 |
 
 ### 0.3 反接缝规则（本项目最主要的缺陷来源）
@@ -42,6 +81,8 @@
 新增 StatKey       → 必须走 §批次2 的「新增属性 7 处接线清单」，一处不落
 新增 SkillEffect   → 搜 effect switch；解释器、AI 提示、文案三处
 新增存档字段       → 搜 SAVE_VERSION；schema、迁移、默认值、清档四处
+新增结算后果       → 只许写进 sim/settlement.ts（#0.10 之后）；禁止在 App.tsx 的副本或高塔分支里单独加
+新增敌人乘区       → 只许写进 sim/difficulty.ts（#0.2/#0.8 之后）
 ```
 
 若发现某概念的登记点多于一处且无法合并，**在本文件末尾「接缝登记簿」追加一条**，写清都有哪几处。
@@ -79,7 +120,7 @@
 | B5 | 砍掉两条隐形 synergy，数值并入基础值 | 永久生效且不可见的被动 buff 不是机制 |
 | B6 | 冻结 `guild-events.ts` | 叙事产能转投创伤／关系，让内容由模拟长出 |
 | B7 | 休眠混合职阶移出 live 数据目录 | 降低 live 目录噪音 |
-| B8 | `wish.ts` 与 `traits.ts`／`member-traits.ts` 合并进创伤／性格 | 共 102 行撑不起两个玩家认知槽位 |
+| ~~B8~~ ⚖ | ~~`wish.ts` 与 `traits.ts`／`member-traits.ts` 合并进创伤／性格~~ → **已撤销**（D-1，U21），心愿与特性冻结保留 | 与 U14 冲突；合并成本大于收益 |
 | B9 | **六维保留六维**（修正早先「砍成 4 维」的建议）。改做两件事：①每一维的战斗作用在 UI 可见；②事件 `attrPoint` 从随机维改为**玩家指定维** | 读码确认（`sim/gen.ts:72`、`types.ts:8-26`）：六维在招募时 roll，升级按 `Nature.growth` 自动成长，**玩家全程无法分配**。但 `Nature.growth/caps` 使每个招募对象真的不同，这正是批次 4 名册玩法需要的质感。所以问题不是维度太多，而是**六维完全不可见、且唯一的成长输入是随机的** |
 | B10 | 战力评分降级为背包过滤器；换装场景改为取舍展示 | 刷子游戏需要评分做过滤，但不能用它回答「该不该换」 |
 | C1 | 本计划执行期间宪法冻结 | 七天十五章是设计扩张远超验证的信号 |
@@ -92,17 +133,17 @@
 
 ## 第 2 节 · 批次与时间表
 
-约 96 人日 ≈ 40 周（按 2.5 人日／周）。
+约 101 人日 ≈ 42 周（按 2.5 人日／周）。
 
 | 批次 | 内容 | 人日 | 累计周 | 规格详细度 |
 |---|---|---|---|---|
-| 0 | 地基（无新玩法） | 21 | 第 9 周 | **完整工单** |
-| 1 | 让战斗值得重复 | 17 | 第 16 周 | **完整工单** |
-| 2 | 让装备值得刷 | 19 | 第 24 周 | **完整工单** |
-| 3 | 高塔赌局化 | 9 | 第 28 周 | 结构规格 |
-| 4 | 公会经营成立 | 13 | 第 33 周 | 结构规格 |
-| 5 | 副本阶梯 | 8 | 第 36 周 | 结构规格 |
-| 6 | 收尾与验收 | 9 | 第 40 周 | 结构规格 |
+| 0 | 地基（无新玩法） | 26 | 第 11 周 | **完整工单** |
+| 1 | 让战斗值得重复 | 17 | 第 18 周 | **完整工单** |
+| 2 | 让装备值得刷 | 19 | 第 26 周 | **完整工单** |
+| 3 | 高塔赌局化 | 9 | 第 30 周 | 结构规格 |
+| 4 | 公会经营成立 | 13 | 第 35 周 | 结构规格 |
+| 5 | 副本阶梯 | 8 | 第 38 周 | 结构规格 |
+| 6 | 收尾与验收 | 9 | 第 42 周 | 结构规格 |
 
 **为什么后四批只给结构规格**：M1 与 M2 两个验证点会实质改变后续设计。现在把批次 4–6 写成逐行工单，大概率要重写。批次 3 的规格在 M1 之后细化，批次 4–6 在 M2 之后细化。这是有意的，不是遗漏。
 
@@ -111,20 +152,22 @@
 - **M1 · 第 2 周，`#0.1` 完成后**：手动打一遍隘口 Boss 与任一版图二 Boss。
   问题：**打断真的生效之后，「没有操纵感」这句话还成立吗？**
   这是全计划最便宜、信息量最大的一次实验，它决定批次 1 的真实规模。代理完成 #0.1 后**必须停下来交给制作人试玩**，不要直接往 #0.2 冲。
-- **M2 · 第 28 周，批次 3 完成后**：完整跑「养成 → 进塔 → 决定何时收手」。验证主菜是否好玩。不好玩则暂停批次 4–6 重新设计。
-- **M3 · 第 40 周**：完整真人式新档验收（第 9 节口径）。
+- **M2 · 第 30 周，批次 3 完成后**：完整跑「养成 → 进塔 → 决定何时收手」。验证主菜是否好玩。不好玩则暂停批次 4–6 重新设计。
+- **M3 · 第 42 周**：完整真人式新档验收（第 9 节口径）。
 
 ---
 
-## 第 3 节 · 批次 0 · 地基（21 人日）
+## 第 3 节 · 批次 0 · 地基（26 人日）
 
 **目标：让引擎不再撒谎，让之后的一切测量可信。本批次不新增任何玩家可见玩法。**
 
-执行顺序：`#0.1` → **M1** → `#0.7a` → `#0.2` → `#0.3` → `#0.4` → `#0.9` → `#0.8` → `#0.7b` → `#0.5` → `#0.6`
+执行顺序（v2）：`#0.1` → **M1** → `#0.7a` → `#0.2` → `#0.3` → `#0.4` → **`#0.10`** → `#0.5` → `#0.8` → `#0.7b` → `#0.6`
+
+排序理由：#0.10 把结算从 `App.tsx` 搬进 sim 之后，物品归属（#0.5）和随机数收口（原 #0.9）才有唯一的落点。#0.6 的序列化又依赖前两者，所以仍然排在最后。
 
 ---
 
-### #0.1 机制注册表 —— 收敛打断判据（5 人日）
+### #0.1 机制注册表 —— 收敛打断判据（5.5 人日）
 
 **解决**：B01、B02，以及整个接缝缺陷类别。
 
@@ -157,6 +200,15 @@ else if (state.tick >= rt.until) { /* 完成 */ }
 ```
 
 最后一 tick 打断在 `cast-buff` 上会失效。修法不是把 `cast-buff` 改成和 `cast-heal` 一样，**而是让读条窗口只存在一份实现**。
+
+> v2 注：`cast-heal` 的判定顺序已在 `8b4db9b` 单独修好（`mechanics.ts:77-85`），所以 B02 现在只剩 `cast-buff`。但 `ground-zone` 与 `fear-aura` 也是「先判完成」，和 `cast-buff` 一样错。统一窗口仍是正解。
+
+#### v2 补充现状（`8b4db9b` 之后）
+
+1. **普通敌人也挂机制**：`EnemyDef.mechanics` → `enemyToCombatant` 写入 `bossMechanics`（`combat.ts:222-223`），`boss` 身份改由 `c.boss` 标记。registry 的遍历对象是「所有带机制的 combatant」，**不得用 `c.boss` 过滤**。`bossMechanics` 字段先不改名（改名会波及演出层），在 `types.ts` 注释里标明它等于「机制列表」。
+2. **跨机制耦合**：`summon` 的 `recoveryTicks` 会读取并推迟同一单位 `telegraph-aoe` 的运行时（`mechanics.ts:168-178`）。所以 `MechanicCtx` 要多带一个 `sibling(kind)` 访问器；**只能**经它读写兄弟机制的状态，不得直接去碰 `self.mech[...]`。
+3. **读条事件缺失**：`ground-zone` 开始读条时不 push `casting` 事件（`mechanics.ts:143-147`），而另外三种都会。改由 `stepCastWindow` 统一发出，四种读条机制的事件流自然一致。
+4. **结构约束（记录，不改）**：运行时按 `kind` 做键，所以同一单位不能挂两个同 kind 机制。在 registry 注释里写明，并加一条数据断言兜底：同一 def 的 `mechanics` 数组内 kind 不重复。
 
 #### 目标状态
 
@@ -266,6 +318,9 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
 - 探针：给 `ground-zone` 与 `fear-aura` 的 Boss 在读条期间打足 `breakDamage`，必须产生 `{type:'interrupted'}` 事件。
 - 探针：在读条**最后一 tick** 打足阈值，`cast-buff` 与 `cast-heal` 行为一致（都被打断）。
 - `mech-docs` 的每条 counter 文案都能在 registry 找到对应项，无孤儿文案。
+- （v2）探针：**普通敌人**（隘口唱诗者）挂的可打断机制，与 Boss 挂的同款机制，打断行为一致。
+- （v2）四种读条机制起读条时都产生 `casting` 事件。
+- （v2）`grep -n "mech?.\['telegraph-aoe'\]\|mech\['telegraph-aoe'\]" src/sim/mechanics.ts` 只在 `sibling()` 内部出现。
 
 #### 禁止事项
 
@@ -297,7 +352,11 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
 
 **现状**：`createBattle` 对初始怪应用地图倍率，`summonPool` 保留原始定义 —— 同一概念两条路径。
 
-**目标**：新增 `src/sim/difficulty.ts` 的 `scaleEnemy()`（签名见 #0.8），令**全项目只有这一处对敌人数值做乘算**。`createBattle` 与 `summon` 机制的 `mkEnemy` 都走它。高塔已预缩放的怪打标记，防二次放大。
+**目标**：新增 `src/sim/difficulty.ts` 的 `scaleEnemy()`（签名见 #0.8），令**全项目只有这一处对敌人数值做乘算**。`createBattle`（`combat.ts:245-287`）与 `summon` 机制的 `mkEnemy`（`mechanics.ts:182`）都走它。高塔已预缩放的怪打标记，防二次放大。
+
+**v2 注**：
+- `tower.ts:78` 已经有一个私有的 `scaleEnemy(def, floor)`，**和本任务的函数重名**。本任务先把它改名为 `towerFloorScale`，再改成调用 `difficulty.scaleEnemy`，避免代理 grep 时混淆两者。
+- 精英 ×1.25（`run.ts:134`）与稀有猎杀 `rareHunt.mult` 目前经 `enemyScale` 参数传入 `createBattle`。本任务把它们声明为 `DifficultyInput` 的 `modifiers` 字段，而不是继续当裸乘数传。召唤出来的增援要不要继承精英倍率，由 `scaleEnemy` 统一决定（推荐：继承）。
 
 **验收**：不变量断言 —— 同一 `EnemyDef` 经初始生成与经 `summon` 生成，属性完全相同。
 
@@ -323,25 +382,41 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
 
 **目标**：建 `formatStat(stat: StatKey, value: number): string` 单一入口，由 `StatKey` 决定「整数 / 百分比 / 带符号」。所有展示位调用它。
 
+**v2 范围**：`loot.ts` `describeItem`、`combat.ts:1199,1221`（属性分层面板）、`App.tsx:1407`（套装加成文案；这里同时把硬编码的 5%/10%/3%/6% 改为读引擎的套装定义）。
+
 **验收**：不变量断言 —— 遍历 `StatKey` 全集，每个 key 的 `formatStat` 输出非空且格式与该 key 声明的种类一致（这条断言在批次 2 加 7 个新属性时会自动生效，是防漏的关键）。
 
 ---
 
-### #0.9 确定性 RNG 收口（0.5 人日）
+### ~~#0.9 确定性 RNG 收口~~ → v2 已拆分并入 #0.10 与 #0.6
 
-**现状**：`src/sim/tower.ts` 的 `settleTowerFloor` 等处使用裸 `Math.random()`，脱离项目确定性 RNG 纪律。
+**v1 低估了范围**。实际裸 `Math.random` 共 29 处：`App.tsx` 25 处（远征掉落、挂机选路、远征内事件、宝箱、事件结局、属性点、疗养判定、招募），`tower.ts:198-203` 3 处，`member-traits.ts:6` 默认参数 1 处。另有 `ui/audio.ts` 和 `ui/battle/` 下约 25 处纯演出用途，可保留。
 
-**目标**：`grep -rn "Math.random" src/` 结果为空（演出层纯视觉抖动可保留，但必须加 `// presentation-only` 注释）。
+这些调用点大多嵌在 `App.tsx` 的结算闭包里，**不先把结算搬进 sim，就没有地方可以接 RNG**。所以：
+- 结算路径上的随机数 → 随 **#0.10** 一起改为 `rng.ts`（远征对象持有 `rng`）。
+- 基地侧的随机数（招募、访客、公会事件、疗养）→ 随 **#0.10** 顺带改为公会级 `rng`，种子随存档保存。
+- 「同种子逐字节一致」的验收 → 移到 **#0.6**（那时 `rngState` 才进存档）。
 
-**验收**：同种子两次完整远征，战果逐字节一致。
+最终出口条件不变：`grep -rn "Math.random" src/ | grep -v presentation-only` 为空，演出层调用需加 `// presentation-only` 注释。
 
 ---
 
-### #0.8 难度模型（4 人日）
+### #0.8 难度模型（4.5 人日）
 
 **解决**：G01、G02 的**根**（难度倒挂）。
 
-**现状**：难度由三处分散手调叠加 —— `DungeonDef.enemyPower`、`DungeonDef.difficultyMods{enemyAttack,enemyHp}`、地图级倍率。手调必然产生非单调。
+**现状（v2 更正）**：敌人数值一共经过 6 个乘区，分散在 4 个文件：
+
+| 乘区 | 位置 | 性质 |
+|---|---|---|
+| `DungeonDef.enemyPower` | `data/dungeons*.ts`，经 `combat.ts:245` | 地图手调 |
+| `DungeonDef.difficultyMods.{enemyHp,enemyAttack}` | `data/dungeons*.ts`，经 `combat.ts:253-254` | 地图手调（V1 与 2026-09-27 跨版图校准叠在这里） |
+| `ENEMY_HP_MULT = 1.1` | `combat.ts:59`，仅作用于有 `expectedLevel` 的图 | 全局常量 |
+| 精英 ×1.25 | `run.ts:134` | 场次修饰 |
+| 稀有猎杀 `rareHunt.mult` | `run.ts:117` | 场次修饰 |
+| 高塔层数缩放 | `tower.ts:65,78,93` | 高塔专属 |
+
+前三项属于「地图难度」，本任务收敛为一个 `rating`；后三项属于「场次/模式修饰」，保留，但必须经 `DifficultyInput.modifiers` 传入同一个 `scaleEnemy`。手调必然产生非单调。
 
 **目标**：新建 `src/sim/difficulty.ts`：
 
@@ -366,8 +441,10 @@ export function ratingOfEnemy(e: EnemyDef): number
 
 #### 验收（这条是 G01/G02 的机器可证版本）
 
-- 不变量断言：把全部副本按 `rating` 升序排列，其 Boss 的 `ratingOfEnemy` 必须**严格单调递增**。
+- 不变量断言（v2 更正）：`rating` 定义为**按编制归一化**的压力，即 Boss 等效强度 ÷ 该副本 `size`。把全部副本按 `rating` 升序排列，归一化后的 Boss `ratingOfEnemy / size` 必须**严格单调递增**。3 人本与 5 人本不能直接比较裸血量（制作人 2026-09-27 口径）。
+- （v2 新增 I7b）制作人硬约束断言：`rating(烬石隘口) > rating(荆棘要塞)`，并且版图二每张图的 `rating` 都高于版图一的最高值。
 - 不变量断言：同 `rating` 不同 `archetype` 的敌人，`ratingOfEnemy` 差值在 ±5% 内（形状不同、总量相同）。
+- 注：`rating` 的单调性只是**静态模型**上的必要条件。整趟压力还取决于机制与路线，这部分以第 9 节口径实测为准；本断言不能替代实测。
 
 #### 禁止事项
 
@@ -390,11 +467,74 @@ export function ratingOfEnemy(e: EnemyDef): number
 | I4 | 同预算下两条词条生成路径数值总量相等 | B04 类 |
 | I5 | 遍历 `StatKey` 全集，`formatStat` 输出格式与声明种类一致 | B05 类 |
 | I6 | 任一物品 uid 在全存档中出现次数恰为 1 | B06 类（#0.5 后生效） |
-| I7 | 副本按 `rating` 升序，Boss 等效强度严格单调递增 | G01/G02 |
+| I7 | 副本按 `rating` 升序，**按编制归一化**后的 Boss 等效强度严格单调递增（v2 更正） | G01/G02 |
+| I7b | `rating(烬石隘口) > rating(荆棘要塞)`；版图二每图都高于版图一最高值（v2 新增） | 2026-09-27 制作人口径 |
+| I9 | 同一名英雄在副本与高塔中阵亡，`settleEncounter` 产出的**后果类型集合**相同（v2 新增，#0.10 后生效） | C-3 结算双管线 |
+| I10 | 带战斗机制的**杂兵**与 Boss 挂同一机制时，打断行为一致（v2 新增） | C-4 |
 
 再加一个 **fuzz 驱动**：随机职业组合 × 随机装备 × 随机种子跑 200 场，断言无异常抛出、无 NaN、战斗必在 `TICK_HARD_CAP` 内终止。
 
 **禁止**：不要把断言写成「等于某个具体数字」。数值会在批次 1–2 全面变化，写死数字的断言会被下一个代理直接删掉。断言要写**关系**，不写**数值**。
+
+---
+
+### #0.10 结算管线收口（3 人日，v2 新增）
+
+**解决**：C-3（副本与高塔两条结算管线）；并承接 #0.9 拆出的结算侧 RNG。
+
+**现状**：
+- 副本结算在 `App.tsx:516-640`（`settleBattleEnd`），流程完整：王国声望 → 伤疤 → 遗物 → `applyDeathShock` → `chronicleHeroFall` → 士气 → 心愿 → `settleGrowth`（含羁绊）→ 金币 → 精通 → 自动循环。
+- 高塔结算在 `App.tsx:344-420` 的一个 `useEffect` 里，**另写了一份**：没有 `applyDeathShock`、没有 `chronicleHeroFall`、没有 `applyVictory`；经验走 `grantExp`，绕过 `settleGrowth`，因此**不产生羁绊**。
+- 阵亡登记有两份：`run.ts:182 markPermadeath` 和 `tower.ts:233 towerMarkPermadeath`。
+- `tower.ts:177 settleTowerFloor` 用裸 `Math.random`（198-203）。
+
+**后果**：英雄死在塔里，公会**不会有任何反应**，编年史也不记。这直接违背宪法「涌现叙事」和已定的死亡统一原则（「不存在『骰子杀死了我的角色』」）——死亡不仅要有理由，还要有回响。另外，批次 3「下塔才结算」如果在两条管线上各做一遍，是必然的新接缝。
+
+**目标**：新建 `src/sim/settlement.ts`：
+
+```ts
+export interface EncounterOutcome {
+  source: 'dungeon' | 'tower'
+  win: boolean
+  deaths: Array<{ memberId: string; cause: DeathCause }>
+  survivors: string[]
+  loot: { items: ItemInstance[]; gold: number; starMarrow: number }
+  exp: number
+  /** 以下均为待应用的「后果」，由 App 层逐条 apply，App 不再自己计算 */
+  consequences: {
+    deathShock: DeathShockEffect[]
+    chronicle: ChronicleEntry[]
+    scars: ScarEffect[]
+    relics: PendingRelic[]
+    morale: MoraleDelta[]
+    wishes: WishProgress[]
+    growth: GrowthResult     // 经验 + 羁绊，统一走 settleGrowth
+    kingdom?: KingdomDelta
+    mastery?: MasteryDelta
+  }
+}
+
+export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutcome
+```
+
+1. `settleEncounter` 是**纯函数**：输入战斗结果、远征上下文和 `rng`，输出 `EncounterOutcome`。不读写 React 状态、不读写存档。
+2. `App.tsx` 两处结算都改为 `const o = settleEncounter(…); applyOutcome(o)`。`applyOutcome` 只做 setState，不做任何判定。
+3. 合并 `markPermadeath` / `towerMarkPermadeath` 为一个。
+4. 高塔补齐：阵亡 → `applyDeathShock` + `chronicleHeroFall`；胜利 → `applyVictory`；经验 → `settleGrowth`（依据 ⚖ D-3）。
+5. 高塔的差异（每层掉落、赐福 `App.tsx:373`、保险 `insureNextTowerFloor`）作为 `source === 'tower'` 的**分支参数**留在 `settleEncounter` 内部，不另起函数。
+6. 结算路径上的随机数全部走 `rng`；基地侧 `App.tsx` 的其余裸 `Math.random`（招募、访客、事件、疗养、属性点）同批改为公会级 `rng`（种子进存档）。
+
+**验收**：
+- I9 通过：同一名英雄、同样死因，副本与高塔产出的 `consequences` 键集合一致（数值可以不同）。
+- `grep -n "Math.random" src/App.tsx src/sim/tower.ts src/sim/member-traits.ts` 为空。
+- 现有 smoke / gameplay 的副本结算金值**不变**（副本路径只是搬家，不改行为）。高塔金值会变，因为多了死亡冲击和羁绊。变化须在 HANDOFF 里列出，**不得**通过改测试数值来掩盖。
+
+**禁止事项**：
+- 不改任何数值（掉落率、金币、经验、士气幅度一律照搬）。
+- 不动自动循环的 UI（`auto-loop` 相关按钮与状态机留给 #0.6）。
+- 不要为高塔另写一套「简化版」死亡冲击。它必须和副本调用**同一个**函数。
+
+**依赖**：放在 #0.4 之后、#0.5 之前。#0.5 要改物品归属，而遗物（`pendingRelics`）的产生点就在结算里，先收口结算，#0.5 只需改一处。
 
 ---
 
@@ -434,50 +574,70 @@ export interface GuildSave {
 
 ---
 
-### #0.6 RunState 状态机（6 人日，本批次最大风险）
+### #0.6 远征对象可序列化（4.5 人日，本批次最大风险）
 
 **解决**：R04（远征中途刷新丢失）。
 
-**现状**：`src/App.tsx` 2664 行、29 个 `useState`、0 个 `useReducer`、0 个 `createContext`。远征流程隐式编码在组件状态里 —— R04 是**结构后果**，不是策略选择。手感迭代必须在这个文件里做，风险最高。
+**现状**：`src/App.tsx` 约 2660 行、49 个 `useState`、0 个 `useReducer`。远征流程隐式编码在组件状态里 —— R04 是**结构后果**，不是策略选择。
 
-**目标**：新建 `src/sim/run-state.ts`，远征成为可序列化对象，随存档持久化。
+**v2 更正**：v1 要求新建 `RunState` 类型，但代码里**已经有**两个远征对象：`run.ts:14 DungeonRun` 和 `tower.ts` 的 `TowerRun`（后者带 `autoMode`）。再建一个 `RunState` 就是第三份「远征」概念 —— 这正是 §0.3 禁止的接缝。它们不能直接存档的原因很具体：
+- `DungeonRun.dungeon` 存的是整个 `DungeonDef` 对象，而不是 id；
+- `members` 是对名册成员的**共享引用**，序列化后引用关系就断了；
+- 没有 RNG 状态，恢复后结果不可复现。
+
+**目标**：**改造现有两个类型**，不新建第三个。抽出公共部分：
 
 ```ts
-export interface RunState {
+/** DungeonRun 与 TowerRun 的共同可序列化部分 */
+export interface RunCore {
   schema: 1
-  kind: 'dungeon' | 'tower'
   seed: number
   /** 断点续跑必须能复现 —— 不存 RNG 状态就等于没解决 R04 */
   rngState: number
-
-  dungeonId?: string
-  routeTaken: string[]
-  nodeIndex: number
-  floor?: number                // 塔
-
+  /** 只存 id，运行时从名册解析 */
+  memberIds: string[]
+  party: Array<{ memberId: string; hp: number }>
   /** 未结算战利品。批次 3「下塔才结算」依赖此字段 */
   pendingLoot: { items: ItemUid[]; gold: number; starMarrow: number; exp: number }
-
-  party: Array<{ memberId: string; hp: number }>
-
   /** 预留字段，批次 3 / 5 填充。现在建好，避免再来一次存档迁移 */
   affixes?: string[]            // 批次 3 塔词缀
   clauses?: string[]            // 批次 5 加码条款
 }
+
+export interface DungeonRun extends RunCore {
+  kind: 'dungeon'
+  dungeonId: string             // 取代 dungeon: DungeonDef
+  routeTaken: string[]
+  nodeIndex: number
+  // …现有其余字段保留，但必须全部是可 JSON 化的值
+}
+
+export interface TowerRun extends RunCore {
+  kind: 'tower'
+  floor: number
+  // autoMode 保留到批次 3 再删（届时禁挂机）
+}
+
+export type ActiveRun = DungeonRun | TowerRun
 ```
 
 **重要**：即使 `pendingLoot` / `affixes` / `clauses` 在批次 0 完全不用，**现在就要建**。批次 3 和 5 会挂在这三个字段上；留到那时再加，等于多一次破坏性存档迁移。
 
 改动策略（按此顺序，勿跳步）：
 1. 先给远征流程补 UI 冒烟测试（Vitest + 现有 e2e 脚本），**建立安全网再动刀**。
-2. 把远征相关的 `useState` 收拢成一个 `useReducer(runReducer)`，reducer 放在 sim 层，纯函数。
-3. `RunState` 接入存档；刷新后可恢复。
-4. **不做**其他 UI 重构。App.tsx 仍会很大，那是可接受的。
+2. 把 `DungeonRun.dungeon` / `members` 改为 id 引用，并提供 `resolveRun(run, save)` 在运行时解析。
+3. 把远征相关的 `useState` 收拢成一个 `useReducer(runReducer)`，reducer 放在 sim 层，纯函数；结算动作调用 #0.10 的 `settleEncounter`。
+4. `ActiveRun` 接入存档（与 #0.5 同一次 v19 迁移，或紧随其后的 v20）；刷新后可恢复。
+5. **不做**其他 UI 重构。App.tsx 仍会很大，那是可接受的。
 
-**验收**：远征任意节点刷新页面，恢复后继续跑完，战果与不刷新时**逐字节一致**（依赖 `rngState`）。
+**验收**：
+- 远征任意节点（副本与高塔各测一次）刷新页面，恢复后继续跑完，战果与不刷新时**逐字节一致**（依赖 `rngState`）。这是 v1 #0.9「同种子逐字节一致」的最终落点。
+- `JSON.parse(JSON.stringify(run))` 与原对象深相等（无函数、无循环引用、无 def 对象）。
+- 测试刷新只能用内存或临时 storage mock，**严禁写入用户真实 localStorage**（AGENTS.md 红线）。
 
 **禁止事项**：
-- 不要把 29 个 `useState` 全部重构。只动远征相关的那些。范围蔓延是本任务失败的主要方式。
+- 不要新建与 `DungeonRun` / `TowerRun` 并列的第三个远征类型。
+- 不要把 49 个 `useState` 全部重构。只动远征相关的那些。范围蔓延是本任务失败的主要方式。
 - 不要引入状态管理库（Redux / Zustand / Jotai）。`useReducer` + sim 层纯函数足够。
 - 不要在本任务里改任何战斗逻辑。
 
@@ -487,8 +647,10 @@ export interface RunState {
 
 ### 批次 0 出口条件
 
-- I1–I7 全绿；fuzz 200 局无失败。
+- I1–I7、I7b、I9、I10 全绿；fuzz 200 局无失败。
 - `grep -rn "Math.random" src/` 为空（除标注 presentation-only）。
+- 副本与高塔只经过一条结算管线（`settleEncounter`）；塔中阵亡有死亡冲击与编年史记录（#0.10）。
+- 敌人数值只在 `difficulty.scaleEnemy` 一处做乘算，`tower.ts` 不再有私有缩放函数。
 - 全部地图难度由 `rating` 生成，单调性可证；倒挂清单已记录（**未修**）。
 - 远征刷新可恢复。
 - **未调整任何数值平衡。**
@@ -578,7 +740,13 @@ export function useSignature(state: BattleState, memberId: string, targetId?: st
 
 **现状**：`jobs.ts` 的 `SYNERGY` 只有 2 条（`shield-wall`、`blessed-formation`），均为永久生效且**不可见**的被动团队 buff。
 
-**目标**：删除，数值并入相关职业基础值（保持总强度不变，避免触发平衡变化）。
+**v2 读码**：两条的实际状态不同，处理也不同。
+- `shield-wall`（`combat.ts:364` 消费）：有坦克存活时，游侠/战士 +15% 攻击。**正在生效。**
+- `blessed-formation`（`jobs.ts:287-294` 定义）：`combat.ts` 里**没有任何读取点**，是死数据，UI 也没展示它的说明。
+
+**目标**：
+- `shield-wall`：删除，+15% 并入游侠/战士基础攻击。注意这会去掉「有坦克存活」这个条件，严格说是一次小幅加强（坦克阵亡后仍保留加成）。这点可以接受，因为 C4 冻结的是**调参**，不是这类收敛；但 HANDOFF 里必须写明。
+- `blessed-formation`：直接删除定义。它现在不生效，删掉对数值**零影响**，不要「并入」任何职业，否则反而是一次加强。
 
 **禁止**：不要改成「可见条件羁绊」——那是新机制，违反 0.2 节。羁绊系统留给批次 4 之后。
 
@@ -731,7 +899,16 @@ tier 区间直接沿用被删词条的原区间（锋利 [2,6] → 蛮力 [4,9] 
 
 **现状（E01）**：`healReceived`（受疗，作用于**自己被治疗时**）被当成治疗职业的收益词条，但治疗者需要的是**治疗输出**。
 
-**目标**：拆成两个属性 —— `healPower`（我治别人的量，#2.2）与 `healReceived`（别人治我的量，保留）。核对每个治疗技能实际吃哪个。
+**v2 读码**：当前治疗有 3 条独立的路径，本任务必须全部覆盖：
+1. 技能治疗：`combat.ts:699`，`c.attack * 4.5 * (1 + healReceived)` —— 治疗量吃的是治疗者**攻击力**与**被治者**的受疗。
+2. 药水：`useHealPotion`，固定比例，不吃任何属性。
+3. 远征 buff：`combat.ts:264` 的 `mods.heal` 直接改写 `healReceived`（「治疗减半」塔词缀将来也会走这里）。
+
+**目标**：拆成两个属性 —— `healPower`（我治别人的量，#2.2）与 `healReceived`（别人治我的量，保留）。
+- `healPower` 以乘区方式挂在第 1 条路径的 `attack * 4.5` 之后：`attack * 4.5 * (1 + healPower) * (1 + healReceived)`。不要改 `4.5` 这个系数（C4）。
+- 第 2 条路径（药水）明确声明**不吃** `healPower`，也不吃 `healReceived`，写进 `mech-docs` 或属性说明，不要留成隐含行为。
+- 第 3 条路径的 `mods.heal` 改为独立乘区 `healTakenMod`，不再覆盖 `healReceived`。否则玩家堆的受疗词条会被远征 buff 吞掉。
+- 断言：三条路径都经过同一个 `computeHeal(source, target, kind)` 函数。
 
 ---
 
@@ -747,7 +924,8 @@ tier 区间直接沿用被删词条的原区间（锋利 [2,6] → 蛮力 [4,9] 
 
 ### 批次 2 出口条件
 
-- I8（无死属性）全绿。
+- I8（无死属性）全绿，覆盖范围**包括现有两套套装的加成**（依据 ⚖ D-2：套装已上线，数值冻结，但必须接进 `formatStat` 与 I8）。
+- `App.tsx:1407` 的套装文案改为读引擎定义，不再硬编码数字。
 - E04 复测通过。
 - 15 条词条（8 旧 + 7 新）× tier 化，无同属性多档。
 - 过滤 + 分解 + 确定性改造闭环可用。
@@ -763,10 +941,10 @@ tier 区间直接沿用被删词条的原区间（锋利 [2,6] → 蛮力 [4,9] 
 
 | # | 现状 | 改法 | 人日 |
 |---|---|---|---|
-| 1 | **奖励逐层立即入账**（`settleTowerFloor`）→ 零风险 | **下塔才结算**：战利品累计进 `RunState.pendingLoot`（#0.6 已建好），下塔兑现，团灭损失大部分 | 2 |
+| 1 | **奖励逐层立即入账**（`settleTowerFloor`）→ 零风险 | **下塔才结算**：战利品累计进 `TowerRun.pendingLoot`（#0.6 已建好），下塔兑现，团灭损失大部分 | 2 |
 | 2 | 纯线性缩放（`scalingPerFloor: 0.15`），**无任何局内变数** | **词缀层**：每 3 层一「段」，进段随机挂 1–2 条，层数越高越多 | 2.5 |
-| 3 | 内容池只取黑苔 + 锈坑（版图一），`BOSS_ROTATION` / `FLOOR_POOL` | 随层数解锁全版图怪组与 Boss 轮换（纯数据工作） | 1.5 |
-| 4 | 允许挂机爬塔 | **禁止**（A4）。挂机仅限已通关副本 | 0.5 |
+| 3 | 内容池只取版图一：`BOSS_ROTATION`（`tower.ts:87`）只有格鲁什、塔尔玛、深锚 3 个 Boss；`FLOOR_POOL`（`:151`）只有黑苔的蛙/狼/水蛭 | 随层数解锁全版图怪组与 Boss 轮换（纯数据工作）。版图二的怪进塔同样经 `difficulty.scaleEnemy`，不得在 `tower.ts` 再写缩放 | 1.5 |
+| 4 | 允许挂机爬塔（`TowerRun.autoMode`） | **禁止**（A4）。删除 `autoMode` 及其 UI 入口；挂机仅限已通关副本。塔记录已经只认手动，所以这里只需删代码 | 0.5 |
 
 塔词缀全部**复用已有机制**，几乎零新增引擎工作：
 
@@ -784,6 +962,8 @@ tier 区间直接沿用被删词条的原区间（锋利 [2,6] → 蛮力 [4,9] 
 - **收手界面戏剧化**（1.5 人日）：累计战利品 + 下一段词缀预览 + 队伍状态同屏。「何时收手」必须是戏剧性时刻，不是一个「继续/离开」按钮。**塔的全部乐趣来自这一屏。**
 
 塔的 3 人限制（`startTower` 的 `.slice(0, 3)`）在批次 4 精力系统落地后重新评估，本批次不动。
+
+**依赖（v2）**：第 1 项「下塔才结算」依赖 #0.10。只在 `settleEncounter` 的 `source === 'tower'` 分支里改，不另开结算函数。
 
 **出口 = M2 里程碑。**
 
@@ -864,7 +1044,8 @@ tier 区间直接沿用被删词条的原区间（锋利 [2,6] → 蛮力 [4,9] 
 
 本计划周期内**不启动**，除非批次 0–6 全部完成：
 
-- 混合职阶回归、套装系统、声望、10 人本、公会保卫战、亡灵叙事、版图三
+- 混合职阶回归、**新增**套装（现有灰冠/猎风 2 套已上线，保留并冻结，见 ⚖ D-2）、声望、10 人本、公会保卫战、亡灵叙事、版图三
+- 心愿（`wish.ts`）与特性（`traits.ts` / `member-traits.ts`）的合并或扩写（已上线，冻结保留，见 ⚖ D-1）
 - 深度人物模拟、完整新手引导、美术/UI 换皮、BGM
 - 任何新增经济系统（#2.6 确定性改造除外）
 - **继续扩写事件表**
@@ -878,13 +1059,18 @@ S2 心理怪癖 / S3 永久残缺：批次 4 之后再议，届时精力系统�
 
 | 风险 | 应对 |
 |---|---|
-| #0.6 RunState 提取受阻（App.tsx 2664 行） | 先补冒烟测试再动刀；严格限定范围；可推迟至批次 4 前，不可取消 |
+| #0.6 远征对象序列化受阻（App.tsx 约 2660 行） | 先补冒烟测试再动刀；严格限定范围；可推迟至批次 4 前，不可取消 |
 | 批次 1–2 使全部平衡结论作废 | **预期行为。** 遵守 C4，批次 2 出口才解冻 |
 | #0.1 后版图二变简单 | **预期行为**（死代码变活）。记录，不要调数值 |
 | 新增 7 属性漏接线 → 死属性 | I8 断言 + 7 处接线清单 |
 | M2 发现主菜不好玩 | **这正是 M2 的意义。** 预留重设计缓冲，不要跳过 |
 | 破坏性重构后现有试玩档作废 | 扩展 `scripts/dev-save.ts` 为新 schema 的档案生成器 |
 | 代理跨任务顺手改 | 0.1 节纪律；commit 必须单任务 |
+| #0.10 搬结算时改变了副本行为（v2） | 副本路径的 smoke/gameplay 金值必须**不变**，这是「只搬家」的机器证明。高塔金值允许变化，但要在 HANDOFF 里逐条列出 |
+| #0.10 使高塔突然「更痛」（多了死亡冲击），试玩者误以为是平衡调整（v2） | 这是缺陷修复（D-3）。更新日志里写明「塔中阵亡现在会被公会记住」，并且作为叙事功能来介绍 |
+| `shield-wall` 并入基础值后坦克阵亡时战士/游侠更强（v2） | 幅度小，属于收敛的必然代价；HANDOFF 写明，C4 解冻后统一复核 |
+| 裸 `Math.random` 换成 `rng` 后，所有固定种子的黄金值一次性全变（v2） | 预期行为。在同一个 commit 里重新生成黄金值，commit 说明写「仅 RNG 来源变化」，复审方据此核对没有夹带逻辑改动 |
+| 用 v1 施工的代理按旧规格新建 `RunState`（v2） | 仓库内只保留 v2；v1 由 git 历史保留。HANDOFF 标注「以 v2 为准」 |
 
 ---
 
@@ -898,18 +1084,23 @@ S2 心理怪癖 / S3 永久残缺：批次 4 之后再议，届时精力系统�
 | B04 | #0.3 |
 | B05 | #0.4（`formatStat` + I5 断言） |
 | B06 | #0.5（物品注册表 + I6 断言） |
+| C-3（v2 新发现：结算双管线、塔中阵亡无后果） | #0.10 + I9 |
+| C-4（v2 新发现：杂兵机制、召唤↔预警耦合、ground-zone 无读条事件） | #0.1 v2 补充 + I10 |
+| C-5（v2 新发现：敌人 6 个乘区、`scaleEnemy` 重名） | #0.2 + #0.8 |
+| C-7（`blessed-formation` 死数据） | #1.4 |
+| C-9（治疗 3 条路径） | #2.7 |
 | E01 | #2.7 |
 | E02 | #2.8 |
 | E03 | #2.1 |
 | E04 | #2.4（双语境） |
 | E05 | 随批次 2 装备重做覆盖 |
-| G01 G02 | #0.8 难度模型 + I7 断言；实际修倒挂在批次 2 出口后 |
+| G01 G02 | #0.8 难度模型 + I7 / I7b 断言；实际修倒挂在批次 2 出口后 |
 | G03 | #4.1 精力 + #4.5 替补追赶 + #5.1 带新人条款 |
 | G04 | #3 塔禁挂机（结构解）+ #1.5 胜率差可测 |
 | G05 | #4.6「天」资源收口后重测 |
 | R01 | #4.2 补给成本 |
 | R02 R03 | 批次 4 随精力/疗养体系重设计 |
-| R04 | #0.6 RunState（含 `rngState`） |
+| R04 | #0.6 远征对象可序列化（含 `rngState`） |
 | R05 | 第 9 节统一口径 |
 
 ---
@@ -926,3 +1117,26 @@ S2 心理怪癖 / S3 永久残缺：批次 4 之后再议，届时精力系统�
 | 属性展示格式 | ~~各展示位~~ → `formatStat` | #0.4 后合并 |
 | 物品归属 | ~~members/inventory/pendingRelics~~ → `save.items` 单一仓库 | #0.5 后合并 |
 | `StatKey` | 7 处（见批次 2 清单）**无法合并** | 靠 I8 断言守 |
+| 遭遇结算（v2） | ~~`App.tsx:516-640` 副本、`App.tsx:344-420` 高塔~~ → `settlement.settleEncounter` | #0.10 后合并 |
+| 阵亡登记（v2） | ~~`run.ts:182 markPermadeath`、`tower.ts:233 towerMarkPermadeath`~~ → 1 个 | #0.10 后合并 |
+| 敌人乘区（v2） | ~~`enemyPower`、`difficultyMods`、`ENEMY_HP_MULT`~~ → `rating`；精英 / 稀有猎杀 / 塔层 → `DifficultyInput.modifiers` | #0.2 + #0.8 后合并 |
+| 远征对象（v2） | `DungeonRun`、`TowerRun` 共用 `RunCore`；**禁止第三个类型** | #0.6 后合并公共部分 |
+| 套装加成文案（v2） | ~~`App.tsx:1407` 硬编码~~ → 读引擎定义 + `formatStat` | 批次 2 后合并 |
+| 治疗量（v2） | ~~技能 `combat.ts:699`、药水、`mods.heal` 覆盖 `healReceived`~~ → `computeHeal` | #2.7 后合并 |
+| 随机数来源（v2） | ~~`App.tsx` 25 处、`tower.ts` 3 处、`member-traits.ts` 1 处~~ → `rng.ts` | #0.10 后合并 |
+
+---
+
+<!-- v2 注：以下附录由 d0a9e1a 加入，在合并 a84a4fe 时丢失，此处原文恢复。复审意见针对 v1；v2 的改动均在复审第 4 点纪律（反接缝、C4、关系断言、单任务 commit）范围内，未改变第 2 点投赞成票的三项核心设计。 -->
+
+## 附 · zcode 侧独立复审意见(2026-09-27,复审方背书)
+
+复审人:zcode(制作人侧 AI,独立复审与部署职责)。全文阅读 IMPLEMENTATION-PLAN/REDESIGN-PROPOSAL/ISSUE-INVENTORY 后的正式意见:
+
+1. **诊断认同**:反接缝规则(六大缺陷五个同源于"同一概念两条实现路径")与制作人侧复审的踩坑史互相印证(potionHeal 双路径/选路索引漂移/settleGrowth 索引错位均属此类);"玩家可触发机制为 0"的操纵感根因诊断,与制作人最早"没有操纵感"反馈及 K06 后的实测感受一致。
+2. **三项核心设计投赞成票**:招牌技能(每专精一个点名技,至少 4 个与 Boss 机制交互)/精力系统(公会经营的唯一支点,一机制解六悬空)/塔赌局化(下塔才结算+词缀+禁挂机,成本最低体验改变最大)。
+3. **三项代价已知悉并向制作人转达**:试玩者存档随破坏性重构反复作废(需知会试玩群);"通关太轻松"按 C4 冻结至批次 2 出口(约半年);周期 40 周(半职口径)以 M1/M2 止损点控制。
+4. **复审执行纪律**:批次 0 起每个 PR 的独立复审将额外核查——①反接缝规则执行(新概念登记点收敛);②C4 数值冻结未被顺手破坏;③I1-I8 断言写关系不写数值;④commit 单任务纪律。
+5. **S3 口径漂移修正备案**:zcode 此前 S3 复审中"独臂防御 +2/清空 scars"与 DESIGN 14.1 既有值(防御习惯 +1)不一致,以 DESIGN 14.1 为准,已按 Codex 标记回退。
+
+复审方将按本计划配合施工,里程碑 M1/M2/M3 的人工试玩组织与数据桩对齐由制作人侧完成。
