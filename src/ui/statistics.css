@@ -1,0 +1,47 @@
+.statistics-panel .screen-head {
+  flex-wrap: wrap;
+}
+.statistics-panel .screen-head h2 {
+  margin-right: auto;
+}
+.statistics-panel button {
+  min-height: 44px;
+  white-space: normal;
+}
+.statistics-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.statistics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.statistics-table th,
+.statistics-table td {
+  padding: 8px 4px;
+  border-bottom: 1px solid currentColor;
+  text-align: right;
+}
+.statistics-table th:first-child {
+  text-align: left;
+}
+.statistics-totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  font-variant-numeric: tabular-nums;
+}
+.statistics-pair {
+  display: contents;
+}
+.statistics-totals dd {
+  margin: 0;
+  text-align: right;
+}
+.statistics-panel textarea {
+  min-height: 240px;
+}
+.statistics-panel h3 {
+  margin-top: 24px;
+}

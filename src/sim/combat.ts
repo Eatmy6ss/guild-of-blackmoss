@@ -245,13 +245,11 @@ export function createBattle(
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
   // 副本节奏系数(试玩反馈④:满配队 11-18s 秒杀 boss、机制零触发)——只作用于注册了
   // expectedLevel 的副本;高塔有自己的 scaleEnemy 分层缩放,不吃这套
-  // 等级压制:队伍平均等级超出副本预期等级时敌人血/攻上修,高等级回头刷低图不再无损碾压
+  // Normal maps have fixed enemies: leveling must not raise the cost of revisiting them.
   const hasCurve = dungeon.expectedLevel !== undefined
-  const overLvl = hasCurve
-    ? Math.max(0, members.reduce((s, m) => s + m.level, 0) / Math.max(1, members.length) - (dungeon.expectedLevel ?? 0))
-    : 0
-  const hpFactor = hasCurve ? ENEMY_HP_MULT * (1 + Math.min(1.2, overLvl * 0.12)) : 1
-  const atkFactor = hasCurve ? 1 + Math.min(0.6, overLvl * 0.06) : 1
+  const hpFactor = hasCurve ? ENEMY_HP_MULT : 1
+  const difficultyHp = dungeon.difficultyMods?.enemyHp ?? 1
+  const difficultyAttack = dungeon.difficultyMods?.enemyAttack ?? 1
   const combatants: Combatant[] = members.map(toCombatant)
   if (mods) {
     for (const c of combatants) {
@@ -267,10 +265,10 @@ export function createBattle(
   for (const gid of enc.enemyGroupIds) {
     for (const e of dungeon.enemyGroups[gid] ?? []) {
       const raw = enemyToCombatant(e)
-      if (power !== 1 || hpFactor !== 1) {
-        raw.maxHp = Math.round(raw.maxHp * power * hpFactor)
+      if (power !== 1 || hpFactor !== 1 || difficultyHp !== 1 || difficultyAttack !== 1) {
+        raw.maxHp = Math.round(raw.maxHp * power * hpFactor * difficultyHp)
         raw.hp = raw.maxHp
-        raw.attack = Math.round(raw.attack * power * atkFactor)
+        raw.attack = Math.round(raw.attack * power * difficultyAttack)
       }
       combatants.push(raw)
     }
@@ -281,10 +279,11 @@ export function createBattle(
     boss.boss = true
     boss.bossMechanics = def.mechanics
     boss.mech = {}
-    if (hpFactor !== 1) {
-      boss.maxHp = Math.round(boss.maxHp * power * hpFactor)
+    if (power !== 1 || hpFactor !== 1 || difficultyHp !== 1 || difficultyAttack !== 1) {
+      boss.maxHp = Math.round(boss.maxHp * power * hpFactor * difficultyHp)
       boss.hp = boss.maxHp
-      boss.attack = Math.round(boss.attack * power * atkFactor)
+      boss.attack = Math.round(boss.attack * power)
+      boss.attack = Math.round(boss.attack * difficultyAttack)
     }
     const sumMech = def.mechanics.find((m) => m.kind === 'summon')
     if (sumMech) boss.summonPool = dungeon.enemyGroups[String(sumMech.params.groupId)] ?? []

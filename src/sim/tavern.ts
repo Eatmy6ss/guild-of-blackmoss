@@ -5,6 +5,7 @@ import { RACES } from '../data/races'
 import { HYBRIDS } from '../data/vocations'
 import { JOBS } from '../data/jobs'
 import { ECONOMY, VISITOR_STORIES } from '../data/economy'
+import { ITEM_BASES } from '../data/items'
 
 // 酒馆与经济(M1 P0 切片 2):招募三路径的纯逻辑。
 // 路径一:随机上门(事件,免费签,不受冷却——缘分不排队)
@@ -69,8 +70,7 @@ export function redeemCost(item: ItemInstance, towerFloor = 0): number {
 
 export function sellValue(item: ItemInstance, mult = 1): number {
   const qMult = item.quality === 'purple' ? 1.4 : item.quality === 'green' ? 1.15 : 1
-  void qMult
-  const tier = item.baseId.includes('-t3-') || item.baseId.includes('-line-') ? 3 : item.baseId.includes('-t2-') ? 2 : 1
+  const tier = ITEM_BASES[item.baseId]?.tier ?? 1
   const base = ECONOMY.sell.perTier * tier + item.rolls.length * ECONOMY.sell.perRoll
   return Math.round(base * qMult * mult)
 }

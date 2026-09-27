@@ -4,9 +4,10 @@ import { writeFileSync } from 'node:fs'
 import { JOBS } from '../src/data/jobs'
 import { BUILDINGS } from '../src/data/base'
 import { rollDrop } from '../src/sim/loot'
-import { generateMember, levelTo } from '../src/sim/gen'
+import { generateMember, levelTo, maxHpOf } from '../src/sim/gen'
 import type { GuildSave } from '../src/state/save'
 import { SAVE_VERSION } from '../src/state/save'
+import { newStatistics } from '../src/sim/statistics'
 
 const T2 = { weapon: 'wpn-t2-bow', armor: 'arm-t2-plate', trinket: 'trk-t2-totem' } as const
 const SLOTS = ['weapon', 'armor', 'trinket'] as const
@@ -27,8 +28,8 @@ const rng = () => {
 const members = COMP.map((job, i) => {
   const m = generateMember(job as keyof typeof JOBS, LEVEL, 990000 + i * 17)
   levelTo(m, LEVEL)
-  m.hp = -1 // 约定:进场按满血处理(toCombatant 的 hp<=0 分支)
   for (const slot of SLOTS) m.equipment[slot] = rollDrop(T2[slot], rng)
+  m.hp = maxHpOf(m)
   return m
 })
 
@@ -44,6 +45,8 @@ const buildings: Record<string, number> = {}
 for (const b of BUILDINGS) buildings[b.id] = b.maxLevel
 
 const save: GuildSave = {
+  rareHuntNext: null,
+  statistics: newStatistics(20),
   version: SAVE_VERSION, trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [],
   kingdom: { active: [], completed: [] },
   members,

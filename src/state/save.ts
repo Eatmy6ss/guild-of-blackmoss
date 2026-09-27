@@ -2,8 +2,10 @@ import type { DeadHero, ItemInstance, Member } from '../sim/types'
 import { JOBS } from '../data/jobs'
 import { RACES } from '../data/races'
 import { isHybrid } from '../data/vocations'
+import { maxHpOf } from '../sim/gen'
 import type { ChronicleEntry } from '../sim/chronicle'
 import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kingdom'
+import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../sim/statistics'
 
 // 公会存档(save-systems:版本号 + 迁移链 + 防御式加载)
 // 只在公会阶段落盘(远征中不写):刷新/关闭浏览器后恢复公会资产,
@@ -11,7 +13,7 @@ import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kin
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 16
+export const SAVE_VERSION = 18
 
 export interface PendingConsequence {
   eventId: string
@@ -25,6 +27,10 @@ export interface StoredGuildBuff {
 }
 
 export interface GuildSave {
+  /** v18: 已立约、尚未用于下一次远征的稀有猎杀 */
+  rareHuntNext?: { mult: number; rewardMult: number } | null
+  /** v17: only measured settlements, never reconstructed historical totals */
+  statistics: GameplayStatistics
   /** v16：已购买、尚未用于远征的训练资格 */
   trainingReady: boolean
   /** v12: 王国委托、进度和一次性领取记录 */
@@ -69,6 +75,8 @@ export interface GuildSave {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  17: (d) => ({ ...d, rareHuntNext: null }),
+  16: (d) => ({ ...d, statistics: newStatistics(typeof d.day === 'number' ? Math.max(1, Math.floor(d.day)) : 1) }),
   15: (d) => ({ ...d, trainingReady: d.trainingReady === true }),
   14: (d) => ({ ...d, healingMastery: {} }),
   13: (d) => ({ ...d, pendingRelics: [] }),
@@ -117,6 +125,11 @@ export function migrate(data: Record<string, unknown>): GuildSave {
   d.pendingRelics = Array.isArray(d.pendingRelics) ? d.pendingRelics : []
   d.healingMastery = d.healingMastery && typeof d.healingMastery === 'object' ? d.healingMastery : {}
   d.kingdom = normalizeKingdom(d.kingdom)
+  d.statistics = normalizeStatistics(d.statistics, typeof d.day === 'number' ? d.day : 1)
+  const hunt = d.rareHuntNext as GuildSave['rareHuntNext']
+  d.rareHuntNext = hunt && Number.isFinite(hunt.mult) && hunt.mult >= 1 &&
+    Number.isFinite(hunt.rewardMult) && hunt.rewardMult >= 1
+    ? { mult: hunt.mult, rewardMult: hunt.rewardMult } : null
   return d as unknown as GuildSave
 }
 
@@ -158,6 +171,8 @@ export function sanitizeMembers(members: Member[]): Member[] {
       spr: out.attrs.spr ?? 3,
       lck: out.attrs.lck ?? 3,
     }
+    // Legacy preview saves used -1 as full health; resolve before hub events use HP.
+    if (out.alive && out.hp === -1) out.hp = maxHpOf(out)
     return out
   })
 }

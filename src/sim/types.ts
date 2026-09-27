@@ -399,6 +399,8 @@ export interface DungeonDef {
   routeRelations?: [string, string][]
   /** 敌方强度倍率(宪法 v3.3 试玩反馈③:拉扯感——按副本阶梯) */
   enemyPower?: number
+  /** V1 二轮收紧:只对登记副本的敌人叠加威胁,不影响高塔/临时战斗 */
+  difficultyMods?: { enemyAttack?: number; enemyHp?: number }
   /** 副本预期等级(节奏系数+等级压制的锚;未注册=高塔等临时内容不吃补正) */
   expectedLevel?: number
   /** 副本环境(版图二):heat=灼热地形,战斗中周期性全队火伤(可被火抗减免) */
@@ -484,6 +486,8 @@ export interface BattleEvent {
 }
 
 export interface BattleState {
+  /** 战斗创建时固定，结算不使用已经推进的路线索引。 */
+  encounterId?: string
   /** 创伤结算幂等标记；新战斗重新初始化 */
   scarsSettled?: boolean
   /** 首次遭遇提示:已提示过的特质(每场一次) */

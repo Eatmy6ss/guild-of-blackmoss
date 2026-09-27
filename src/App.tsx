@@ -1,5 +1,7 @@
 import { KingdomPanel } from './ui/KingdomPanel'
 import { SaveTransferPanel } from './ui/SaveTransferPanel'
+import { StatisticsPanel } from './ui/StatisticsPanel'
+import { newStatistics, recordStatistics, expeditionStatistics, type StatisticsAction, type GoldSource } from './sim/statistics'
 import { COMMISSIONS, type CommissionDef } from './data/kingdom'
 import { acceptCommission, abandonCommission, advanceCommissions, settleKingdomBattle, claimCommission, newKingdomState, kingdomRank, kingdomTrust, royalPotionCost, type RoyalRewardChoice } from './sim/kingdom'
 import { useEffect, useRef, useState } from 'react'
@@ -35,7 +37,7 @@ import {
 } from './sim/run'
 import { powerScore } from './sim/combat'
 
-import { rollBossDrops, rollWaveDrop, describeItem, slotsOf } from './sim/loot'
+import { rollBossDrops, rollWaveDrop, describeItem, slotsOf, dungeonItemTier } from './sim/loot'
 import { loadGuildSave, saveGuild, clearGuildSave, exportSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
 import { GUILD_EVENTS } from './data/guild-events'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
@@ -91,7 +93,7 @@ const ROSTER_CAP = 6
 const MANUAL_BONUS = 0.05 // 已研习 boss 全队对其伤害 +5%
 
 // UI 2.0 屏幕栈:公会大厅(hub) + 功能界面覆盖层。快捷键呼出,Esc/再按关闭。
-type UIScreen = 'kingdom' | 'roster' | 'tavern' | 'warehouse' | 'base' | 'chronicle' | 'memorial' | 'manual' | 'expedition'
+type UIScreen = 'kingdom' | 'roster' | 'tavern' | 'warehouse' | 'base' | 'chronicle' | 'memorial' | 'manual' | 'expedition' | 'statistics'
 // 大厅功能坞:图标 + 名称 + 快捷键(顺序即展示顺序)
 const HUB_DOCK: { key: UIScreen; icon: string; label: string; hotkey: string }[] = [
   { key: 'kingdom', icon: '♜', label: '王国委托', hotkey: 'Q' },
@@ -213,11 +215,21 @@ export default function App() {
   const [confirmAsk, setConfirmAsk] = useState<{ text: string; okLabel?: string; onOk: () => void } | null>(null)
   const [muted, setMuted] = useState(isMuted())
   const [gold, setGold] = useState(() => saved?.gold ?? 150)
+  const [statistics, setStatistics] = useState(() => saved?.statistics ?? newStatistics())
+  const noteStatistics = (action: StatisticsAction | null) => {
+    if (action) setStatistics((previous) => recordStatistics(previous, action))
+  }
+  const gainGold = (amount: number, source: GoldSource) => {
+    if (amount <= 0) return
+    setGold((g) => g + amount)
+    noteStatistics({ type: 'gold', source, amount })
+  }
   const [blessing, setBlessing] = useState(() => saved?.blessing ?? 0)
   const [recruitCooldown, setRecruitCooldown] = useState(() => saved?.recruitCooldown ?? 0)
   const [visitor, setVisitor] = useState<ReturnType<typeof rollVisitor> | null>(null)
   const [pendingEvent, setPendingEvent] = useState<ReturnType<typeof rollGuildEvent> | null>(null)
   const [eventResult, setEventResult] = useState<string | null>(null)
+  const eventResolvingRef = useRef(false)
   // 事件影响明细(反馈:选完要看得见改变)——chips 逐条列出本次结算的实际变化
   const [eventImpacts, setEventImpacts] = useState<{ t: string; tone?: 'pos' | 'neg' | 'hook' }[]>([])
   const [offlineNote, setOfflineNote] = useState<string | null>(null)
@@ -236,11 +248,18 @@ export default function App() {
   // 事件二期:图鉴(见过的事件)+ 公会层跨天状态 + 稀有猎杀(下次出征首场,用后即逝)
   const [eventsSeen, setEventsSeen] = useState<string[]>(() => saved?.eventsSeen ?? [])
   const [guildBuffs, setGuildBuffs] = useState<StoredGuildBuff[]>(() => saved?.guildBuffs ?? [])
-  const [rareHuntNext, setRareHuntNext] = useState<{ mult: number; rewardMult: number } | null>(null)
+  const [rareHuntNext, setRareHuntNext] = useState(() => saved?.rareHuntNext ?? null)
   const [towerRun, setTowerRun] = useState<TowerRun | null>(null)
+  const towerRunRef = useRef<TowerRun | null>(null)
+  const [towerRunning, setTowerRunning] = useState(false)
+  const pendingDepartureRef = useRef<string | null>(null)
+  const pendingConsequenceRef = useRef<PendingConsequence | null>(null)
+  const offlineAppliedRef = useRef(false)
 
   // 读档登记已用名字：新招募不与存档英雄/英灵重名
   useEffect(() => {
+    if (offlineAppliedRef.current) return
+    offlineAppliedRef.current = true
     if (saved) {
       seedMemberSeq(saved.members) // 防新招募与存档成员撞 ID(血量写回会串位)
       reserveNames([...saved.members.map((m) => m.name), ...saved.memorial.map((h) => h.name)])
@@ -248,7 +267,7 @@ export default function App() {
       // M1 P1 离线累积:离开的时间里,存活英雄们接零工
       const { hours, gold } = offlineGain(saved.members, saved.lastSeen, Date.now())
       if (gold > 0) {
-        setGold((g) => g + gold)
+        gainGold(gold, 'offline')
         setOfflineNote(`🕯 离开的 ${hours} 小时里,队员们接了些零工,赚了 ${gold} 金。`)
       }
     }
@@ -282,7 +301,7 @@ export default function App() {
     // 指挥台：点击场上敌人 = 集火
     renderer.onUnitClick = (c) => {
       if (c.team !== 'enemy' || !c.alive) return
-      const b = runRef.current?.battle
+      const b = towerRunRef.current?.battle ?? runRef.current?.battle
       if (!b || b.status !== 'running') return
       setFocus(b, c.id)
       drainAndSync(b)
@@ -360,7 +379,8 @@ export default function App() {
     for (const notice of notices) logChronicle(chronicleRaw(day, notice))
     if (scars.length) setMembers([...membersRef.current])
     const { gold, exp, drops } = settleTowerFloor(t)
-    if (gold > 0) setGold((g) => g + gold)
+    noteStatistics({ type: 'battle', mode: 'towerFloors', status: b.status, deaths: dead.length })
+    if (gold > 0) gainGold(gold, 'tower')
     // K03 大秘境奖励:经验全队发放,装备入库(来源=塔, boss 层必掉)
     if (exp > 0) for (const m of t.members) if (m.alive) grantExp(m, exp)
     if (drops.length > 0) {
@@ -405,8 +425,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ trainingReady, starMarrow, pendingRelics, healingMastery, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
-  }, [trainingReady, starMarrow, pendingRelics, healingMastery, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
+    saveGuild({ trainingReady, rareHuntNext, statistics, starMarrow, pendingRelics, healingMastery, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
+  }, [trainingReady, rareHuntNext, statistics, starMarrow, pendingRelics, healingMastery, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -444,7 +464,7 @@ export default function App() {
     }, TICK_MS)
     return () => clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running])
+  }, [running, towerRunning])
 
   // 战斗终态兜底（D13 修复软锁）：×10 步进/暂停步进跳过实时循环时，
   // 终局结算（血量写回/永久死亡/掉落）依然必须发生。幂等由 settleBattleEnd 的
@@ -498,11 +518,17 @@ export default function App() {
     if (!b || b.status === 'running') return
     if (r.phase !== 'battle') return
     const enc = r.dungeon.encounters.find((e) => e.id === r.steps[r.stepIdx])
+    const settledStep = r.stepIdx
     if (b.status === 'guild-win' && enc?.kind === 'boss' && enc.bossId) {
       const bossId = enc.bossId
       // D14 首杀保底：该 boss 尚未研习（首杀）时空手则必掉一件
       const pity = !manual.includes(bossId)
-      const drops = rollBossDrops(r.dungeon.bosses[bossId].dropTable, ++seedRef.current * 31, { pity })
+      const entryGate = r.dungeon.id === 'thornhold' && bossId === 'victor' && pity
+      const drops = rollBossDrops(
+        r.dungeon.bosses[bossId].dropTable,
+        ++seedRef.current * 31,
+        entryGate ? { pity, qualityBias: 0.12, minQuality: 'green' } : { pity },
+      )
       if (drops.length > 0) {
         setInventory((inv) => [...inv, ...drops])
         setLastDrops((d) => [...d, ...drops])
@@ -525,6 +551,8 @@ export default function App() {
     updateKingdom(settleKingdomBattle(kingdomRef.current, r))
     advanceRun(r)
     const dead = markPermadeath(r)
+    noteStatistics({ type: 'battle', mode: 'expeditionBattles', status: b.status, deaths: dead.length })
+    noteStatistics(expeditionStatistics(r))
     const scars = settleScars(r, dead.length > 0)
     const notices = scars.map(({ member, scar }) => member.name + ' 新增创伤：' + scarStatName(scar.stat) + ' -' + scar.value + '（' + scar.text + '），可回基地疗养。')
     setScarNotices(notices)
@@ -581,11 +609,11 @@ export default function App() {
     // M1 P0 经济:胜场金币 / 通关奖励 / 阵亡祝福 / 招募冷却递减
     if (b.status === 'guild-win') {
       // 稀有猎杀:首战奖励加厚(事件二期,WoW 式)
-      const rhMult = r.rareHunt && r.stepIdx === 0 ? r.rareHunt.rewardMult : 1
-      setGold((g) => g + Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) * rhMult))
+      const rhMult = r.rareHunt && settledStep === 0 ? r.rareHunt.rewardMult : 1
+      gainGold(Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) * rhMult), 'expedition')
     }
     const endPhase = r.phase as DungeonRun['phase']
-    if (endPhase === 'victory') { setGold((g) => g + ECONOMY.clearBonus); sfxVictory() }
+    if (endPhase === 'victory') { gainGold(ECONOMY.clearBonus, 'clear'); sfxVictory() }
     if (endPhase === 'defeat') sfxDefeat()
     if (dead.length > 0) setBlessing((b2) => b2 + dead.length * fx.blessingPerDeath)
     setRecruitCooldown((c) => Math.max(0, c - 1))
@@ -604,8 +632,12 @@ export default function App() {
         backToGuild()
         window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.(lastBranchRef.current) }, 600)
       } else if (endPhase === 'defeat') {
+        autoLoopRef.current = false
+        r.autoMode = false
         logChronicle(chronicleRaw(day, '挂机连刷结束:队伍全灭于' + r.dungeon.name + '。'))
       } else if (endPhase === 'retreated') {
+        autoLoopRef.current = false
+        r.autoMode = false
         logChronicle(chronicleRaw(day, '挂机连刷结束:撤退保护把队伍带回了公会。'))
       }
     }
@@ -639,8 +671,11 @@ export default function App() {
       return
     }
     if (r.phase === 'rest') {
+      autoLoopRef.current = false
+      r.autoMode = false
       setRunning(false)
       retreatRun(r)
+      noteStatistics(expeditionStatistics(r))
       syncAll()
     }
   }
@@ -657,7 +692,7 @@ export default function App() {
   }
 
   const startExpedition = (branchId: string) => {
-    if (runRef.current || towerRunRef.current) return
+    if (runRef.current || towerRunRef.current || pendingEvent || expedition.length < activeDungeon.size) return
     lastBranchRef.current = branchId
     const refusers = expedition.filter((m) => refusesToMarch(m))
     if (refusers.length > 0) {
@@ -665,20 +700,20 @@ export default function App() {
       setMembers([...membersRef.current])
       return
     }
-    setDay((d) => d + 1)
-    // 延迟第二幕(反馈④事件大项):dueDay 到期即弹出后续事件(队列里最早到期的先出)
-    setPendingConsequences((q) => {
-      if (!q || q.length === 0) return q
-      const newDay = day + 1
-      const due = q.find((c) => c.dueDay <= newDay)
-      if (!due) return q
+    // 先处理到期后果，再出征；不能让弹窗遮住正在推进的永久死亡战斗。
+    const due = pendingConsequences.find((c) => c.dueDay <= day + 1)
+    if (due) {
       const def = GUILD_EVENTS.find((e) => e.id === due.eventId)
       if (def) {
-        window.setTimeout(() => setPendingEvent(def), 0)
-        return q.filter((c) => c !== due)
+        pendingConsequenceRef.current = due
+        pendingDepartureRef.current = branchId
+        setPendingEvent(def)
+        setEventResult(null)
+        return
       }
-      return q.filter((c) => c !== due)
-    })
+      setPendingConsequences((q) => q.filter((c) => c !== due))
+    }
+    setDay((d) => d + 1)
     // 事件二期:过期的公会层状态自然消退
     setGuildBuffs((q) => q.filter((g) => g.endDay > day + 1))
     if (expedition.length < activeDungeon.size) return
@@ -694,6 +729,9 @@ export default function App() {
       memorialAura(memorial),
       protectOn,
       potions,
+      autoLoopRef.current,
+      guildBuffs.filter((g) => g.endDay > day + 1).map((g) => g.buff),
+      rareHuntNext ?? undefined,
     )
     if (trainingReadyRef.current) {
       runRef.current.trainingExpMultiplier = 1.25
@@ -701,13 +739,7 @@ export default function App() {
       setTrainingReady(false)
       logChronicle(chronicleRaw(day, '特权训练生效：本次远征所有胜场经验 +25%。'))
     }
-    runRef.current.autoMode = autoLoopRef.current
-    // 事件二期:公会层跨天状态注入(未到期的)+ 稀有猎杀(首场,用后即逝)
-    for (const g of guildBuffs) {
-      if (g.endDay > day) runRef.current.buffs.push(g.buff)
-    }
     if (rareHuntNext) {
-      runRef.current.rareHunt = rareHuntNext
       setRareHuntNext(null)
     }
     setLastDrops([])
@@ -762,9 +794,9 @@ export default function App() {
         if (kind === 'treasure') {
           // 宝箱节点(试玩反馈二轮):不战斗,纯收获——金币+一件带品级的装备
           const gold2 = 60 + Math.floor(Math.random() * 90)
-          setGold((g) => g + gold2)
-          const maxTier = r.dungeon.id === 'thornhold' ? 3 : 2
-          const bases = Object.keys(ITEM_BASES).filter((id) => ITEM_BASES[id].tier <= maxTier)
+          gainGold(gold2, 'event')
+          const tier = dungeonItemTier(r.dungeon.id)
+          const bases = Object.keys(ITEM_BASES).filter((id) => ITEM_BASES[id].tier === tier)
           const baseId = bases[Math.floor(Math.random() * bases.length)]
           const item = rollDrop(baseId, Math.random, { qualityBias: 0.3 })
           setInventory((inv) => [...inv, item])
@@ -787,6 +819,7 @@ export default function App() {
 
   const backToGuild = () => {
     const r = runRef.current
+    if (r) noteStatistics(expeditionStatistics(r))
     if (r) resetAfterRun(membersRef.current)
     // 药水经济:未用完的药水退回公会库存
     if (r) setPotions({ ...r.potions })
@@ -805,10 +838,6 @@ export default function App() {
       const ev = rollGuildEvent(Math.random)
       if (ev) {
         setPendingEvent(ev); setEventResult(null); sfxVisitor()
-        // F09:挂机连刷时公会层事件由队长代打(与远征代打同语义),否则连刷卡死在弹窗上
-        if (r?.autoMode) {
-          window.setTimeout(() => resolveEventRef.current?.(Math.floor(Math.random() * ev.choices.length)), 900)
-        }
       }
     }
   }
@@ -830,6 +859,7 @@ export default function App() {
     setCandidates([])
     setVisitor(null)
     setGold(150)
+    setStatistics(newStatistics())
     setBlessing(0)
     setRecruitCooldown(0)
     setPotions({ ...ECONOMY.startingPotions })
@@ -870,6 +900,9 @@ export default function App() {
     setTowerRun(null)
     setTowerRunning(false)
     autoLoopRef.current = false
+    pendingDepartureRef.current = null
+    pendingConsequenceRef.current = null
+    eventResolvingRef.current = false
     growthSnapshotRef.current.clear()
     eventCursorRef.current = 0
   }
@@ -880,9 +913,12 @@ export default function App() {
   const aliveCount = () => membersRef.current.filter((m) => m.alive).length
 
   const signVisitor = () => {
-    if (!visitor || runRef.current || aliveCount() >= ROSTER_CAP) return
+    if (!visitor || runRef.current || towerRunRef.current || aliveCount() >= ROSTER_CAP) return
+    if (membersRef.current.some(m => m.id === visitor.member.id)) return
+    // Reserve the recruit before a second click can replay this render's visitor.
+    membersRef.current = [...membersRef.current, visitor.member]
     rollWishFor(visitor.member); rollTraitFor(visitor.member)
-    setMembers((roster) => [...roster, visitor.member])
+    setMembers([...membersRef.current])
     logChronicle(chronicleRecruit(day, visitor.member, '上门投奔'))
     setVisitor(null)
   }
@@ -919,8 +955,15 @@ export default function App() {
   // 大事事件:按权重结算选择并应用效果(效果声明在 data/guild-events.ts)
   const resolveEvent = (choiceIdx: number) => {
     const ev = pendingEvent
-    if (!ev) return
+    if (!ev || eventResult || eventResolvingRef.current) return
     const outcome = pickOutcome(ev, choiceIdx, Math.random())
+    eventResolvingRef.current = true
+    // 决策与奖励同批落盘;仅展示时保留队列,刷新不能跳过未处理后果。
+    const due = pendingConsequenceRef.current
+    if (due) {
+      setPendingConsequences((q) => q.filter((c) => c !== due))
+      pendingConsequenceRef.current = null
+    }
     const fx = outcome.effects ?? {}
     // 影响明细:每项结算同步登记 chip,结果面板逐条可见(反馈:选完要看得见改变)
     const impacts: { t: string; tone?: 'pos' | 'neg' | 'hook' }[] = []
@@ -928,7 +971,8 @@ export default function App() {
     const sgn = (n: number) => (n > 0 ? `+${n}` : `${n}`)
     const gold2 = fx.gold
     if (gold2) {
-      setGold((g) => Math.max(0, g + gold2))
+      if (gold2 > 0) gainGold(gold2, 'event')
+      else setGold((g) => Math.max(0, g + gold2))
       chip(`金币 ${sgn(gold2)}`, gold2 > 0 ? 'pos' : 'neg')
     }
     const blessing2 = fx.blessing
@@ -996,7 +1040,7 @@ export default function App() {
       }
       chip(`爆发药水 ${sgn(fx.potionFury)}`, fx.potionFury > 0 ? 'pos' : 'neg')
     }
-    // 远征内持续状态(反馈④事件大项):仅副本内事件生效(挂到当前 run)
+    // 途中即时生效;公会/出征前获得的状态借用公会状态保存,只覆盖下一出征日。
     const buffNeg = (mods: { atk?: number; def?: number; hp?: number; heal?: number }) =>
       [mods.atk, mods.def, mods.hp, mods.heal].some((v) => v !== undefined && v < 1)
     if (fx.runBuff) {
@@ -1004,6 +1048,9 @@ export default function App() {
       if (r) {
         r.buffs = [...(r.buffs ?? []), fx.runBuff]
         chip(`获得状态:${fx.runBuff.name}(${fx.runBuff.desc})`, buffNeg(fx.runBuff.mods) ? 'neg' : 'pos')
+      } else {
+        setGuildBuffs((q) => [...q, { buff: fx.runBuff!, endDay: day + 2 }])
+        chip(`下次远征状态:${fx.runBuff.name}(${fx.runBuff.desc})`, buffNeg(fx.runBuff.mods) ? 'neg' : 'pos')
       }
     }
     // 事件二期:公会层跨天状态(传奇事件的诅咒/祝福带回公会,days 天内出征生效)
@@ -1028,19 +1075,24 @@ export default function App() {
     setEventResult(outcome.text)
     setEventImpacts(impacts)
     setMembers([...membersRef.current])
-    // 挂机连刷:远征途中触发的事件,代打结算后自动继续推进
-    if (runRef.current?.autoMode && runRef.current.phase === 'rest') {
-      window.setTimeout(() => continueDeepRef.current?.(), 900)
-    }
   }
   // F09 修复(2026-09-25):ref 改为渲染期赋值——旧写法在 resolveEvent 体内自赋值,
   // 首次自动事件(挂机)触发时 ref 尚为 null,自动选路静默失败、事件卡死
   resolveEventRef.current = resolveEvent
 
   const dismissEvent = () => {
+    eventResolvingRef.current = false
     setPendingEvent(null)
     setEventResult(null)
     setEventImpacts([])
+    const departure = pendingDepartureRef.current
+    pendingDepartureRef.current = null
+    if (departure) window.setTimeout(() => startExpeditionRef.current?.(departure), 0)
+    else if (runRef.current?.autoMode && runRef.current.phase === 'rest') {
+      window.setTimeout(() => continueDeepRef.current?.(), 0)
+    } else if (!runRef.current && autoLoopRef.current) {
+      window.setTimeout(() => startExpeditionRef.current?.(lastBranchRef.current), 0)
+    }
   }
   dismissEventRef.current = dismissEvent
 
@@ -1091,16 +1143,13 @@ export default function App() {
   const sellItem = (id: string) => {
     const item = inventory.find((i) => i.id === id)
     if (!item) return
-    setGold((g) => g + sellValue(item, fx.sellMult)); sfxCoin()
+    gainGold(sellValue(item, fx.sellMult), 'sales'); sfxCoin()
     setInventory((inv) => inv.filter((i) => i.id !== id))
   }
 
   // ---- M1 P1 黑苔高塔 ----
-  const towerRunRef = useRef<TowerRun | null>(null)
-  const [towerRunning, setTowerRunning] = useState(false)
-
   const enterTower = () => {
-    if (runRef.current || towerRunRef.current || expedition.length < 3) return
+    if (runRef.current || towerRunRef.current || pendingEvent || expedition.length < 3) return
     setScarNotices([])
     const t = startTower(expedition, ++seedRef.current * 9973, potions)
     towerRunRef.current = t
@@ -1137,6 +1186,7 @@ export default function App() {
     const t = towerRunRef.current
     // 药水经济:离开高塔,未用完的药水退回公会库存(settleTowerFloor 已逐层回写)
     if (t) setPotions({ ...t.potions })
+    if (t) resetAfterRun(membersRef.current)
     towerRunRef.current = null
     setTowerRun(null)
     setTowerRunning(false)
@@ -1263,7 +1313,7 @@ export default function App() {
   const inBattle = run?.phase === 'battle' && battle != null
   const battleOver = inBattle && battle!.status !== 'running'
   // 指挥有感:boss 意图实时推导——蓄力中「分散」脉冲,咏唱中亮「打断咏唱」按钮(决策窗口可见)
-  const intents = inBattle && battle!.status === 'running' ? bossIntents(battle!) : null
+  const intents = (inBattle || inTowerBattle) && battle!.status === 'running' ? bossIntents(battle!) : null
   // 屏幕栈状态:null = 大厅;远征/爬塔中快捷键不劫持(战斗界面是全屏态)。与 title/game 阶段状态相互独立
   const [hubScreen, setHubScreen] = useState<UIScreen | null>(null)
   // 透明面板(宪法 v3.2 缺陷二):展开显示乘区逐层明细的成员
@@ -1305,7 +1355,7 @@ export default function App() {
     // Reserve the receipt synchronously: rapid clicks cannot award both options.
     updateKingdom(result.state)
     const r = result.reward
-    setGold((g) => g + r.gold)
+    gainGold(r.gold, 'kingdom')
     setBlessing((b) => b + r.blessing)
     setPotions((p) => ({ heal: p.heal + r.heal, fury: p.fury + r.fury }))
     if (r.item) setInventory((inv) => [...inv, r.item!])
@@ -1812,6 +1862,7 @@ export default function App() {
                         setHealingMastery((q) => ({ ...q, [sc.stat]: (q[sc.stat] ?? 0) + r.masteryGain }))
                         setBlessing((b) => b - cost.blessing)
                         setGold((g) => g - cost.gold)
+                        noteStatistics({ type: 'healing', gold: cost.gold, blessing: cost.blessing })
                         setMembers([...membersRef.current])
                         const outcome = r.result === 'success' ? '已治愈，属性恢复。' : r.result === 'worsen' ? '治疗失败，创伤恶化为重度。' : '治疗未起效，创伤保留。'
                         const notice = m2.name + ' 的' + scarStatName(sc.stat) + '创伤：' + outcome + ' 消耗 ' + cost.gold + ' 金、' + cost.blessing + ' 祝福；该维度疗养经验 +' + r.masteryGain + '。'
@@ -1926,11 +1977,13 @@ export default function App() {
               </div>
               </div>
             )}
+            {hubScreen === 'statistics' && <StatisticsPanel statistics={statistics} day={day} onClose={() => setHubScreen(null)} onBack={() => setHubScreen('chronicle')} />}
             {hubScreen === 'chronicle' && (
               <div className="screen-overlay">
                 <div className="screen-panel">
                   <div className="screen-head">
                     <h2>📜 大事记</h2>
+                    <button onClick={() => setHubScreen('statistics')}>战绩统计</button>
                     <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
                   </div>
           <div className="inv-panel">
@@ -2159,6 +2212,7 @@ export default function App() {
                       cmd(
                         (b) => {
                           b.commands.autoMode = !b.commands.autoMode
+                          autoLoopRef.current = b.commands.autoMode
                           if (runRef.current) runRef.current.autoMode = b.commands.autoMode
                         },
                         true,
@@ -2394,10 +2448,11 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    if (battle.status !== 'running') return
+                    const current = towerRunRef.current?.battle
+                    if (!current || current.status !== 'running') return
                     setTowerRunning(false)
-                    for (let i = 0; i < 10 && battle.status === 'running'; i++) stepBattle(battle)
-                    drainAndSync(battle)
+                    for (let i = 0; i < 10 && current.status === 'running'; i++) stepBattle(current)
+                    drainAndSync(current)
                   }}
                   disabled={battle.status !== 'running'}
                 >

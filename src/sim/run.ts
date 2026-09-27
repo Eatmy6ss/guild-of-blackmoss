@@ -31,6 +31,7 @@ export interface DungeonRun {
   autoMode?: boolean
   /** 特权训练仅作用于这次远征的所有胜场 */
   trainingExpMultiplier?: number
+  statisticsRecorded?: boolean
   witnessScarredIds?: string[]
   nodeIds: string[]
   eliteNow?: boolean
@@ -85,6 +86,8 @@ export function createRun(
   protectOn = true,
   potions = { heal: POTION_STOCK, fury: POTION_STOCK },
   autoMode = false,
+  buffs: RunBuffDef[] = [],
+  rareHunt?: { mult: number; rewardMult: number },
 ): DungeonRun {
   const plan = routePlan(dungeon, branchId, seed)
   const run: DungeonRun = {
@@ -101,7 +104,8 @@ export function createRun(
     autoMode,
     nodeIds: [],
     eliteAt: plan.eliteAt,
-    buffs: [],
+    buffs: [...buffs],
+    rareHunt,
   }
   startStep(run, seed)
   return run
@@ -136,6 +140,7 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
   }
   run.eliteNow = false
   run.battle.commands.autoMode = !!run.autoMode
+  run.battle.encounterId = run.steps[run.stepIdx]
   run.phase = 'battle'
 }
 
@@ -204,12 +209,10 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
   const b = run.battle
   if (!b) return
   if (b.status === 'guild-win') {
-    const enc = run.dungeon.encounters.find((e) => e.id === run.steps[run.stepIdx])
-    // 试玩反馈④:经验获取收紧——路线拉长到 10-15 场后 波16/boss90 保持"三轮通关升一级"总账
-    // (一轮 11 波×16+90=266,三轮 798 ≥ xpNeeded(5)=750,两轮 532 < 750)
-    // 难度递增改版(2026-09-25,U08+制作人拍板):经验降档锚定"一副本刷 5-6 遍升一级"
-    // 一轮 ~11 波×11+60=181;xpNeeded 750→1200 → 每级 4.1-6.6 遍,前期稍快上手、后期自然放缓
-    const exp = enc?.kind === 'boss' ? 60 : 11
+    const enc = run.dungeon.encounters.find((e) => e.id === (b.encounterId ?? run.steps[run.stepIdx]))
+    // V1 难度二轮收紧(2026-09-26):威胁升档但不降收益;经验只收紧为波9/Boss50。
+    // 一轮约11波×9+50=149, 对 xpNeeded 750→1200 约为5-8遍升一级。
+    const exp = enc?.kind === 'boss' ? 50 : 9
     const expected = run.dungeon.expectedLevel
     const over = expected !== undefined
       ? Math.max(0, run.members.reduce((s, m) => s + m.level, 0) / Math.max(1, run.members.length) - expected)

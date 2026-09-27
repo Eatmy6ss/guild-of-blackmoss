@@ -312,6 +312,7 @@ export const ASHFIELD: DungeonDef = {
   id: 'ashfield',
   name: '灰烬旧战场',
   enemyPower: 1.1,
+  difficultyMods: { enemyAttack: 1.15, enemyHp: 1.1 },
   expectedLevel: 7,
   size: 3,
   branches: [
@@ -440,6 +441,7 @@ export const FROSTGRAVE: DungeonDef = {
   id: 'frostgrave',
   name: '白霜墓园',
   enemyPower: 0.95,
+  difficultyMods: { enemyAttack: 1.15, enemyHp: 1.1 },
   expectedLevel: 8,
   size: 3,
   branches: [
@@ -559,6 +561,7 @@ export const ABYSSALTAR: DungeonDef = {
   id: 'abyssaltar',
   name: '渊底祭坛',
   enemyPower: 1.05,
+  difficultyMods: { enemyAttack: 1.15, enemyHp: 1.1 },
   expectedLevel: 9,
   size: 3,
   branches: [
@@ -819,9 +822,9 @@ export const THORNHOLD: DungeonDef = {
         },
       ],
       dropTable: [
-        { baseId: 'wpn-t2-bow', chance: 0.45 },
-        { baseId: 'trk-t2-totem', chance: 0.3 },
-        { baseId: 'wpn-sign-warbrand', chance: 0.35 },
+        { baseId: 'wpn-t3-gale', chance: 0.35 },
+        { baseId: 'arm-t3-bulwark', chance: 0.3 },
+        { baseId: 'trk-t3-vanguard', chance: 0.3 },
       ],
     },
   },
@@ -857,4 +860,3 @@ export const DUNGEONS: DungeonDef[] = [
   // 版图二 · 龙脊山脉(鳞音圣战)
   EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW,
 ]
-

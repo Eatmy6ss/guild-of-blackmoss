@@ -5,8 +5,6 @@ import { AFFIXES } from '../data/affixes'
 // 掉落系统（D10，Q17/Q22）：boss 掉什么固定（掉落表），什么词条掉落时 roll。
 // 装备属性 = 基础盘 + 词条聚合，战斗投影时一次性加算。
 
-let itemSeq = 0
-
 function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
@@ -47,9 +45,15 @@ function rollQuality(rng: () => number, bias = 0): ItemQuality {
   return 'white'
 }
 
-export function rollDrop(baseId: string, rng: () => number, opts?: { qualityBias?: number }): ItemInstance {
+export function rollDrop(
+  baseId: string,
+  rng: () => number,
+  opts?: { qualityBias?: number; minQuality?: ItemQuality },
+): ItemInstance {
   const base = ITEM_BASES[baseId]
-  const quality = rollQuality(rng, opts?.qualityBias ?? 0)
+  let quality = rollQuality(rng, opts?.qualityBias ?? 0)
+  if (opts?.minQuality === 'green' && quality === 'white') quality = 'green'
+  if (opts?.minQuality === 'purple') quality = 'purple'
   const rolls = rollAffixes(rng, base)
   const qAdj = quality === 'purple' ? { mult: 1.25, add: 1 } : quality === 'green' ? { mult: 1.08, add: 0 } : { mult: 0.9, add: -0 }
   const adjusted = rolls.map((r) => ({ ...r, value: round2(r.value * qAdj.mult) }))
@@ -60,24 +64,24 @@ export function rollDrop(baseId: string, rng: () => number, opts?: { qualityBias
       adjusted.push({ affixId: aff.id, value: round2(aff.range[0] * (base.tier >= 2 ? 1.5 : 1)) })
     }
   }
-  return { id: `i${++itemSeq}`, baseId, quality, rolls: adjusted }
+  return { id: `i${crypto.randomUUID()}`, baseId, quality, rolls: adjusted }
 }
 
 /** boss 固定掉落表结算：每条按 chance 独立 roll；pity=true 时空手则保底一件（D14 首杀保底） */
 export function rollBossDrops(
   dropTable: { baseId: string; chance: number }[],
   seed: number,
-  opts?: { pity?: boolean },
+  opts?: { pity?: boolean; qualityBias?: number; minQuality?: ItemQuality },
 ): ItemInstance[] {
   const rng = createLootRng(seed)
   const drops: ItemInstance[] = []
   for (const entry of dropTable) {
-    if (rng() < entry.chance) drops.push(rollDrop(entry.baseId, rng))
+    if (rng() < entry.chance) drops.push(rollDrop(entry.baseId, rng, opts))
   }
   if (drops.length === 0 && opts?.pity && dropTable.length > 0) {
     // 保底掉 chance 最高的条目（通常即本 boss 的代表掉落）
     const best = dropTable.reduce((a, b) => (b.chance >= a.chance ? b : a))
-    drops.push(rollDrop(best.baseId, rng))
+    drops.push(rollDrop(best.baseId, rng, opts))
   }
   return drops
 }
@@ -154,22 +158,21 @@ export function slotsOf(item: ItemInstance): Slot {
 
 // ===== 杂兵掉落(试玩三轮:刷图过程要有装备反馈,不然长草)=====
 
-/** 各副本杂兵的装备纪元:版图一前两图 T1,后三图 T2,团本杂兵 T2;版图二全 T2
- *  (F11 修复 2026-09-25:此前未登记版图二,`?? 1` 回退让龙脊杂兵掉 T1 铁剑;
- *   U09 融合方案的 T3 纪元池为独立任务,不阻塞本修复) */
-const DUNGEON_TIER: Record<string, number> = {
+/** 各副本杂兵的装备纪元:版图一前两图 T1,后三图/团本 T2;版图二全 T3。
+ *  荆棘要塞最终 Boss 是进入版图二的装备门槛,版图二从此切入 T3 纪元。 */
+export const DUNGEON_TIER: Record<string, number> = {
   blackmoss: 1,
   rustmine: 1,
   ashfield: 2,
   frostgrave: 2,
   abyssaltar: 2,
   thornhold: 2,
-  emberpass: 2,
-  scalehaven: 2,
-  fireridge: 2,
-  'pilgrim-path': 2,
-  'forge-works': 2,
-  dragonmaw: 2,
+  emberpass: 3,
+  scalehaven: 3,
+  fireridge: 3,
+  'pilgrim-path': 3,
+  'forge-works': 3,
+  dragonmaw: 3,
 }
 
 /** 副本特化装备池(试玩反馈④:装备多样性——在对应图刷会有专属掉落) */
@@ -180,6 +183,16 @@ const DUNGEON_SIGNS: Record<string, string[]> = {
   frostgrave: ['trk-sign-frostheart', 'wpn-line-mage', 'arm-line-priest'],
   abyssaltar: ['wpn-sign-bloodletter', 'wpn-line-warlock', 'arm-line-warrior'],
   thornhold: ['arm-sign-thornmail', 'wpn-line-ranger', 'arm-line-ranger'],
+  emberpass: ['arm-t3-drake', 'wpn-t3-ember', 'trk-t3-pyrexia'],
+  scalehaven: ['trk-t3-seer', 'wpn-t3-vox', 'arm-t3-drake'],
+  fireridge: ['wpn-t3-ember', 'arm-t3-drake', 'trk-t3-pyrexia'],
+  'pilgrim-path': ['wpn-t3-dawn', 'arm-t3-gale', 'trk-t3-seer'],
+  'forge-works': ['arm-t3-bulwark', 'wpn-t3-ember', 'trk-t3-vanguard'],
+  dragonmaw: ['wpn-t3-dawn', 'arm-t3-drake', 'trk-t3-pyrexia'],
+}
+
+export function dungeonItemTier(dungeonId: string): number {
+  return DUNGEON_TIER[dungeonId] ?? 1
 }
 
 /** 杂兵小概率掉装备(反馈②:8%→12%,阵亡损耗与装备获取对齐)——白/绿为主
@@ -187,7 +200,7 @@ const DUNGEON_SIGNS: Record<string, string[]> = {
  *  F10 修复(2026-09-25):精英节点兑现「掉落翻倍」承诺——概率 ×2(24%),品质略优 */
 export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false, scavBonus = 0): ItemInstance | null {
   if (rng() >= (elite ? 0.24 : 0.12) + scavBonus) return null
-  const tier = DUNGEON_TIER[dungeonId] ?? 1
+  const tier = dungeonItemTier(dungeonId)
   const signIds = DUNGEON_SIGNS[dungeonId] ?? []
   const signPool = signIds
     .map((id) => ITEM_BASES[id])

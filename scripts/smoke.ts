@@ -12,6 +12,7 @@ import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGE
 import { dungeonLock } from '../src/data/regions'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded, taleCandidates, redeemCost } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, sanitizeMembers, SAVE_VERSION } from '../src/state/save'
+import { newStatistics, recordStatistics, exportStatistics } from '../src/sim/statistics'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
 import { BUILDINGS, baseEffects } from '../src/data/base'
 import { refusesToMarch, applyDeathShock, applyFeast, MORALE, clamp } from '../src/sim/morale'
@@ -695,9 +696,8 @@ const growthFailures: string[] = []
   console.log(`⑩ 成长：会玩通关 ${runs}/50，幸存者升级 ${leveled}/${runs || '-'}，两两默契 ${bonded}/${runs || '-'}`)
   // 反馈④长路线(12-15 场×3 连打,成员血量跨轮延续)后全通率 ~20% 是新常态,契约同步
   if (runs < 8) growthFailures.push(`⑩ 通关样本不足 ${runs}`)
-  // 2026-09-25 难度改版:契约改为"一副本刷 5-6 遍升一级"(U08+制作人拍板)——
-  // exp 波11/boss60,3 连打 543<750 多数不升级是设计意图;实测 ≈0.12,阈值留余量定 0.08
-  if (runs > 0 && leveled < runs * 0.08) growthFailures.push('⑩ 升级节奏失衡——难度改版契约:5-6 遍升一级(实测 ' + leveled + '/' + runs + ')')
+  // V1:经验为波9/Boss50,三轮总量约447,低于Lv5首级750;三轮内升级说明经验曲线过快。
+  if (leveled > 0) growthFailures.push('⑩ 升级节奏过快——三轮远征不应升到Lv6(实测 ' + leveled + '/' + runs + ')')
   if (bonded !== runs) growthFailures.push('⑩ 通关未建立两两默契')
 
   // 10b:默契战斗加成——同一批种子,有默契的队伍伤害更高
@@ -876,7 +876,7 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
-  const saveObj = { version: SAVE_VERSION, trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [], members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
+  const saveObj = { version: SAVE_VERSION, rareHuntNext: null, statistics: newStatistics(2), trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [], members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
   const code = exportSave({ ...saveObj, kingdom: { active: [], completed: [] } })
   const back = importSave(code)
   const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids) && back.dungeonMastery.blackmoss === 5
@@ -1811,22 +1811,32 @@ const towerFailures: string[] = []
     console.log(`㉕ 15 混合职阶各打一场:终结 ${completed}/15`)
   }
 
-  // 25d:v3.2 回归——混合职阶可遇(约 10%),60 次候选应出现 ≥1;且矩阵两线皆通
+  // 25d: exercise both sides of the 10% boundary and every hybrid, without flaky random sampling.
   {
     const pool = JOBS.map((job, j) => generateMember(job, 5, 968000 + j))
     seedMemberSeq(pool)
+    const ids = Object.keys(HYBRIDS)
     let hySeen = 0
-    for (let i = 0; i < 60; i++) {
-      const v = rollVisitor(Math.random, pool)
-      if (v.member.spec?.startsWith('hy-')) {
+    for (let i = 0; i < ids.length; i++) {
+      for (const threshold of [0.099, 0.1]) {
+        // level, race, job, hybrid gate, hybrid identity, compatible race, member seed, story
+        const values = [0.5, 0.5, 0.5, threshold, (i + 0.5) / ids.length, 0.5, 0.5, 0.5]
+        const v = rollVisitor(() => values.shift() ?? 0.5, pool)
+        if (threshold === 0.1) {
+          if (v.member.spec?.startsWith('hy-')) fail25.push('㉕ 10% 边界不应产生混合候选')
+          continue
+        }
+        if (v.member.spec !== ids[i]) {
+          fail25.push(`㉕ 混合候选不可达:${ids[i]}`)
+          continue
+        }
         hySeen++
-        const hy = HYBRIDS[v.member.spec]
+        const hy = HYBRIDS[ids[i]]
         const race = RACES[v.member.race ?? 'human']
         if (!hy.lines.every((l) => race.allowedLines.includes(l))) fail25.push(`㉕ 混合候选违反矩阵:${v.member.race}/${v.member.spec}`)
       }
     }
-    if (hySeen < 1) fail25.push('㉕ 混合职阶回归失效:60 次候选 0 出现')
-    console.log(`㉕ 回归:60 次候选混合出现 ${hySeen} 次(期望 ~6),矩阵合规`)
+    console.log(`㉕ 回归:${hySeen}/${ids.length} 混合候选可达，10% 边界与矩阵合规`)
   }
   if (fail25.length > 0) { console.log('✗ 混合职阶未通过:', fail25); process.exit(1) }
   console.log('✓ 混合职阶通过:15 全配对数据完整,投影与战斗终结性成立')
@@ -2460,19 +2470,19 @@ const towerFailures: string[] = []
     }
   }
   if (wrongTier > 0) fail36.push(`㊱ T2 池混入非 T2 装备`)
-  // F11:版图二不掉 T1(此前未登记回退);F10:精英概率翻倍(~24%,200 抽期望 48)
+  // 版图二进入 T3 纪元;F10:精英概率翻倍(~24%,200 抽期望 48)
   let r2wrongTier = 0
   for (let i = 0; i < 120; i++) {
     const w = rollWaveDrop('emberpass', createLootRng(950000 + i * 41))
-    if (w && ITEM_BASES[w.baseId].tier !== 2) r2wrongTier++
+    if (w && ITEM_BASES[w.baseId].tier !== 3) r2wrongTier++
   }
-  if (r2wrongTier > 0) fail36.push(`㊱ F11 烬石隘口(版图二)掉出了 T1 装备 ${r2wrongTier} 件`)
+  if (r2wrongTier > 0) fail36.push(`㊱ 版图二 T3 池混入非 T3 装备 ${r2wrongTier} 件`)
   let eliteDrops = 0
   for (let i = 0; i < 200; i++) {
     if (rollWaveDrop('blackmoss', createLootRng(970000 + i * 53), true)) eliteDrops++
   }
   if (eliteDrops < drops) fail36.push(`㊱ F10 精英翻倍未生效:普通 ${drops}/200 vs 精英 ${eliteDrops}/200`)
-  console.log(`㊱ 杂兵掉落:黑苔 ${drops}/200(T1 池),渊底 ${t2drops}/200(T2 池),烬石纪元✓,精英 ${eliteDrops}/200(翻倍✓)`)
+  console.log(`㊱ 杂兵掉落:黑苔 ${drops}/200(T1 池),渊底 ${t2drops}/200(T2 池),版图二 T3✓,精英 ${eliteDrops}/200(翻倍✓)`)
   if (fail36.length > 0) { console.log('✗ 杂兵掉落未通过:', fail36); process.exit(1) }
   console.log('✓ 杂兵掉落通过:8% 触发,纪元绑定正确')
 }
@@ -2867,4 +2877,20 @@ const towerFailures: string[] = []
   }
   if (fail38.length > 0) { console.log('✗ boss 机制图鉴未通过:', fail38); process.exit(1) }
   console.log('✓ boss 机制图鉴通过')
+}
+
+// V4: settlement counters and the human-readable export are part of the release gate.
+{
+  let stats = newStatistics(5)
+  stats = recordStatistics(stats, { type: 'battle', mode: 'expeditionBattles', status: 'guild-win', deaths: 1 })
+  stats = recordStatistics(stats, { type: 'battle', mode: 'towerFloors', status: 'guild-wipe', deaths: 3 })
+  stats = recordStatistics(stats, { type: 'gold', source: 'expedition', amount: 60 })
+  stats = recordStatistics(stats, { type: 'healing', gold: 120, blessing: 3 })
+  const text = exportStatistics(stats, 6)
+  if (stats.expeditionBattles.wins !== 1 || stats.towerFloors.losses !== 1 ||
+      !['场次 1', '死亡人数：4', '团灭次数：1', '金币收入合计：60', '支出 120 金'].every((s) => text.includes(s))) {
+    console.log('✗ V4 统计与导出未通过')
+    process.exit(1)
+  }
+  console.log('✓ V4 统计与文本导出通过')
 }
