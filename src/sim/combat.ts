@@ -17,6 +17,7 @@ import { HYBRIDS, isHybrid } from '../data/vocations'
 import { RACES } from '../data/races'
 import type { SpecDef } from './types'
 import { processBossMechanics } from './mechanics'
+import { interruptThreshold, MECHANIC_REGISTRY } from './mechanic-registry'
 import { runAutoAI } from './ai'
 import { equipmentStats } from './loot'
 import { bondStars, BOND_MULT_PER_STAR } from './gen'
@@ -491,10 +492,11 @@ export function applyHit(
   if (target.channelUntilTick && state.tick < target.channelUntilTick) {
     target.channelTaken = (target.channelTaken ?? 0) + amount
   }
-  // 对咏唱中的 boss 造成伤害计入打断阈值(所有可打断咏唱线:cast-buff/cast-heal)
+  // Ordinary enemies and bosses share declaration-based interrupt accumulation.
   if (target.bossMechanics && target.mech) {
-    for (const kind of ['cast-buff', 'cast-heal'] as const) {
-      const rt = target.mech[kind]
+    for (const def of target.bossMechanics) {
+      if (interruptThreshold(def) === undefined) continue
+      const rt = target.mech[def.kind]
       if (rt?.until !== undefined && state.tick < rt.until) {
         rt.taken = (rt.taken ?? 0) + amount
       }
@@ -622,9 +624,9 @@ function dealDamage(
   // 霜寒触摸(slow-touch 被动):命中概率减速目标——行动间隔加倍,持续可刷新
   const slowDef = attacker.bossMechanics?.find((m) => m.kind === 'slow-touch')
   if (slowDef && target.alive) {
-    const chance = typeof slowDef.params.chance === 'number' ? slowDef.params.chance : 0.35
+    const chance = typeof slowDef.params.chance === 'number' ? slowDef.params.chance : MECHANIC_REGISTRY[slowDef.kind].defaults.chance
     if (battleRandom(state) < chance) {
-      let ticks = typeof slowDef.params.ticks === 'number' ? slowDef.params.ticks : 30
+      let ticks = typeof slowDef.params.ticks === 'number' ? slowDef.params.ticks : MECHANIC_REGISTRY[slowDef.kind].defaults.ticks
       ticks = controlResist(target, ticks)
       target.slowUntilTick = state.tick + ticks
       state.events.push({ tick: state.tick, type: 'slowed', targetId: target.id, amount: ticks })

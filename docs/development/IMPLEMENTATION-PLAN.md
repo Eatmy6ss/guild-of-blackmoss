@@ -171,6 +171,8 @@
 
 **解决**：B01、B02，以及整个接缝缺陷类别。
 
+**2026-09-27 实施状态**：#0.1 已在本地分支完成实现与自动/界面验证，待 M1 人工试玩，尚未提交或发布。R1 校准已并入下方规格，详见 [本轮验收](mechanic-registry-2026-09-27.md)。下方“现状”引用为实施前基准证据。
+
 #### 现状
 
 `MechanicKind` 共 12 种（`src/sim/types.ts`）：`telegraph-aoe`、`cast-buff`、`cast-heal`、`slow-touch`、`pull`、`ground-zone`、`phase-invuln`、`summon`、`bind`、`enrage`、`breath-charge`、`fear-aura`。
@@ -207,7 +209,7 @@ else if (state.tick >= rt.until) { /* 完成 */ }
 
 1. **普通敌人也挂机制**：`EnemyDef.mechanics` → `enemyToCombatant` 写入 `bossMechanics`（`combat.ts:222-223`），`boss` 身份改由 `c.boss` 标记。registry 的遍历对象是「所有带机制的 combatant」，**不得用 `c.boss` 过滤**。`bossMechanics` 字段先不改名（改名会波及演出层），在 `types.ts` 注释里标明它等于「机制列表」。
 2. **跨机制耦合**：`summon` 的 `recoveryTicks` 会读取并推迟同一单位 `telegraph-aoe` 的运行时（`mechanics.ts:168-178`）。所以 `MechanicCtx` 要多带一个 `sibling(kind)` 访问器；**只能**经它读写兄弟机制的状态，不得直接去碰 `self.mech[...]`。
-3. **读条事件缺失**：`ground-zone` 开始读条时不 push `casting` 事件（`mechanics.ts:143-147`），而另外三种都会。改由 `stepCastWindow` 统一发出，四种读条机制的事件流自然一致。
+3. **读条事件保留**（R1 校准）：`ground-zone` 已在 `mechanics.ts:151` 发出 `casting`。迁入 `stepCastWindow` 后每次开始只发一次，不额外补发。
 4. **结构约束（记录，不改）**：运行时按 `kind` 做键，所以同一单位不能挂两个同 kind 机制。在 registry 注释里写明，并加一条数据断言兜底：同一 def 的 `mechanics` 数组内 kind 不重复。
 
 #### 目标状态
@@ -238,6 +240,8 @@ export interface MechanicCtx {
   self: Combatant
   def: BossMechanicDef
   rt: MechanicRuntime
+  /** 保留召唤与范围技错峰；仅经此访问兄弟机制运行时。 */
+  sibling(kind: MechanicKind): MechanicRuntime
 }
 
 export interface MechanicSpec {
@@ -246,22 +250,26 @@ export interface MechanicSpec {
   label: string
   /** 玩家可见的应对文案。data/mech-docs.ts 的内容迁移到这里，该文件删除 */
   counter: string
+  /** 执行与图鉴共用既有引擎缺省值。 */
+  defaults: Readonly<Record<string, number>>
+  describe(def: BossMechanicDef): string
   /** 每 tick 推进 */
   step(ctx: MechanicCtx): void
   /** 意图查询：指挥台脉冲、挂机 AI、教学提示共用唯一来源 */
-  intent(ctx: Omit<MechanicCtx, 'state'>): MechanicIntent
+  intent(ctx: { tick: number; self: Combatant; def: BossMechanicDef; rt: Readonly<MechanicRuntime> }): MechanicIntent
 }
 
 export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = { /* 12 条 */ }
 
 /**
- * 「可打断」的唯一判据：params.breakDamage 存在即可打断。
+ * 「可打断」的唯一判据：显式参数或注册表缺省参数可解析出 breakDamage。
+ * 四种既有读条的缺省阈值原样保留；不得因数据省略参数而取消打断。
  * 禁止在任何其他位置书写 kind 白名单来判断可打断性。
  */
 export function interruptThreshold(def: BossMechanicDef): number | undefined {
   const v = def.params.breakDamage
   const n = typeof v === 'string' ? Number(v) : v
-  return typeof n === 'number' && Number.isFinite(n) ? n : undefined
+  return typeof n === 'number' && Number.isFinite(n) ? n : MECHANIC_REGISTRY[def.kind].defaults.breakDamage
 }
 
 /**
@@ -275,7 +283,6 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
   firstTick: number
   startLog: string
   onComplete(ctx: MechanicCtx): void
-  onInterrupt?(ctx: MechanicCtx): void
 }): void
 ```
 
@@ -298,13 +305,13 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
 4. `ai.ts:31-32` 改为：
    ```ts
    const telegraphing = foes.some(f => (f.bossMechanics ?? []).some(d =>
-     MECHANIC_REGISTRY[d.kind].intent({ self: f, def: d, rt: f.mech?.[d.kind] ?? {} }).type === 'telegraph'))
+     MECHANIC_REGISTRY[d.kind].intent({ tick: state.tick, self: f, def: d, rt: f.mech?.[d.kind] ?? {} }).type === 'telegraph'))
    const caster = foes.find(f => (f.bossMechanics ?? []).some(d => {
-     const it = MECHANIC_REGISTRY[d.kind].intent({ self: f, def: d, rt: f.mech?.[d.kind] ?? {} })
+     const it = MECHANIC_REGISTRY[d.kind].intent({ tick: state.tick, self: f, def: d, rt: f.mech?.[d.kind] ?? {} })
      return it.type === 'cast' && it.interruptible
    }))
    ```
-5. 删除 `src/data/mech-docs.ts`，文案移入 registry 的 `counter` 字段；UI 改为读 registry。
+5. 删除 `src/data/mech-docs.ts`，类型名、counter 与参数化 `mechanicBrief` 全部迁入 registry 的 label/counter/describe；UI 与原 smoke 改为读 registry，保留现有信息量。
 
 #### ⚠ 预期副作用（不要当 bug 修）
 
@@ -316,8 +323,8 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
 
 - `tsc` 无错；全项目 `grep -rn "'cast-buff'" src/` 只剩 registry 内部与数据表，无判据性白名单。
 - 探针：给 `ground-zone` 与 `fear-aura` 的 Boss 在读条期间打足 `breakDamage`，必须产生 `{type:'interrupted'}` 事件。
-- 探针：在读条**最后一 tick** 打足阈值，`cast-buff` 与 `cast-heal` 行为一致（都被打断）。
-- `mech-docs` 的每条 counter 文案都能在 registry 找到对应项，无孤儿文案。
+- 探针：四种读条在 **until - 1** 打足阈值，截止时先结算打断；**until 当刻**的伤害不再累计。覆盖中途、阈值不足、死亡取消、重复处理与新一轮读条，不改全局行动顺序。
+- `mech-docs` 的类型名、counter 和参数化说明完整迁移；说明与执行用同一套默认值。无敌到期意图消失，查询不得创建运行时状态。
 - （v2）探针：**普通敌人**（隘口唱诗者）挂的可打断机制，与 Boss 挂的同款机制，打断行为一致。
 - （v2）四种读条机制起读条时都产生 `casting` 事件。
 - （v2）`grep -n "mech?.\['telegraph-aoe'\]\|mech\['telegraph-aoe'\]" src/sim/mechanics.ts` 只在 `sibling()` 内部出现。
@@ -327,11 +334,14 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
 - 不要改 `combatant.mech[kind]` 的数据形状（存档与演出层都依赖它）。
 - 不要顺手给机制加新参数或新机制种类。
 - 不要改任何 `params` 默认值。
+- 本项可调整旧验证脚本的必要导入与受修复影响的断言，并补定向回归；测试框架迁移留在 M1 后的 #0.7a。
 - **完成后停下，交 M1 试玩。**
 
 ---
 
 ### #0.7a 引入 Vitest（0.5 人日，插在 M1 之后）
+
+**2026-09-27 状态**：用户明确 M1 尚未试玩并授权先做技术准备，本项已提前完成本地接入。新测试通过后从 package.json 串接原 verify，scripts/ 保持原样。见 [接入记录](vitest-setup-2026-09-27.md)。M1 未通过，未据此批准后续玩法改版。
 
 **现状**：`package.json` 无测试框架；`scripts/` 约 17.3k 行手写 `.ts`/`.mjs`（`smoke.mjs` 10.7k 行疑为签入的构建产物）。
 

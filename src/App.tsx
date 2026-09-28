@@ -65,7 +65,7 @@ import { HYBRIDS, isHybrid } from './data/vocations'
 import { REGIONS, dungeonLock, nextRegionLocked } from './data/regions'
 import type { EventRegion } from './sim/guild-events'
 import { TRAIT_INFO } from './data/traits'
-import { MECH_INFO, mechanicBrief } from './data/mech-docs'
+import { MECHANIC_REGISTRY, mechanicBrief } from './sim/mechanic-registry'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
 // 花名册 = 全体成员（含亡者记录）；远征队 = 花名册前三名幸存者。
@@ -2075,7 +2075,7 @@ export default function App() {
                             </div>
                             {boss.mechanics.map((m) => (
                               <div key={m.id} className="hint" style={{ marginLeft: 14, marginTop: 2 }}>
-                                ▸〔{MECH_INFO[m.kind]?.name ?? m.kind}〕<b>{m.name}</b> —— {mechanicBrief(m)}
+                                ▸〔{MECHANIC_REGISTRY[m.kind]?.label ?? m.kind}〕<b>{m.name}</b> —— {mechanicBrief(m)}
                               </div>
                             ))}
                             <div className="hint" style={{ marginLeft: 14, marginTop: 2 }}>

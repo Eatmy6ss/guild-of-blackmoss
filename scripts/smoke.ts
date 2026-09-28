@@ -26,7 +26,7 @@ import { guildGoals } from '../src/sim/goals'
 import { rollWish, wishDone } from '../src/sim/wish'
 import { rollScarChance, rollScar, canGainScar, attemptHeal, healRate } from '../src/sim/scars'
 import { pickOutcome, rollGuildEvent, SECOND_ACT_IDS } from '../src/sim/guild-events'
-import { bossIntents } from '../src/sim/mechanics'
+import { bossIntents, processBossMechanics } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
@@ -35,7 +35,7 @@ import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE, type JobId } from '../src/data/jobs'
 import { HYBRIDS } from '../src/data/vocations'
 import { TRAIT_INFO } from '../src/data/traits'
-import { MECH_INFO, mechanicBrief } from '../src/data/mech-docs'
+import { MECHANIC_REGISTRY, mechanicBrief } from '../src/sim/mechanic-registry'
 import { traitHint } from '../src/sim/combat'
 import { RACES } from '../src/data/races'
 import { grantExp, rollSpec, setRaceOverride } from '../src/sim/gen'
@@ -2174,7 +2174,7 @@ const towerFailures: string[] = []
     if (phaseBlocked === 0) fail31.push('㉛ 相位无敌从未格挡(摩尔德雷克亡者相位未接线)')
     console.log(`㉛ 相位:亡者相位格挡 ${phaseBlocked} 次攻击`)
   }
-  // 31c:血污旗阵——非分散吃持续伤害(科尔特,5 人本编制)
+  // 31c: #0.1 后旗阵可被正常攻击打断；分别验证自然应对与未打断时的持续伤害。
   {
     const squad = (['guard', 'priest', 'ranger', 'ranger', 'warrior'] as const).map((job, j) => generateMember(job, 5, 975000 + j))
     seedMemberSeq(squad)
@@ -2182,8 +2182,24 @@ const towerFailures: string[] = []
     let guard = 0
     while (b.status === 'running' && guard++ < MAX_TICK) stepBattle(b)
     const mireCasts = b.log.filter((e) => e.text.includes('血污旗阵') && e.text.includes('漫开')).length
-    if (mireCasts === 0) fail31.push('㉛ 血污旗阵从未漫开(毒区未生效)')
-    console.log(`㉛ 毒区:血污旗阵完成 ${mireCasts} 次`)
+    const interrupted = b.log.filter((e) => e.text.includes('血污旗阵') && e.text.includes('被打断')).length
+    if (mireCasts + interrupted === 0) fail31.push('㉛ 血污旗阵既未完成也未被打断')
+    const probe = createBattle(squad, THORNHOLD, 'enc-colt', 4242, 0, 0, false)
+    const caster = probe.combatants.find(c => c.boss)!
+    caster.bossMechanics = caster.bossMechanics!.filter(m => m.kind === 'ground-zone')
+    for (const c of probe.combatants) {
+      c.cooldownLeft = 10000
+      for (const skill of c.skills) skill.cooldownLeft = 10000
+    }
+    probe.tick = 500; processBossMechanics(probe)
+    probe.tick = caster.mech!['ground-zone'].until!; processBossMechanics(probe)
+    const victim = probe.combatants.find(c => c.team === 'guild')!
+    const hp = victim.hp
+    for (let tick = 0; tick < 10; tick++) stepBattle(probe)
+    if (!probe.events.some(e => e.type === 'zoned') || !victim.zonedUntilTick || victim.hp >= hp) {
+      fail31.push('㉛ 未打断/未分散的旗阵未产生实际持续伤害')
+    }
+    console.log(`㉛ 毒区:自然完成 ${mireCasts} 次/打断 ${interrupted} 次；未打断探针伤害 ${hp - victim.hp}`)
   }
   // 31d:加权招募——缺治疗线时,候选治疗线概率显著高于均匀(无保底触发的普通局面)
   {
@@ -2858,18 +2874,18 @@ const towerFailures: string[] = []
 }
 
 // ============================================================
-// ㊳ boss 机制图鉴:MECH_INFO 覆盖全部 MechanicKind + 全 boss 机制可读 + 掉落表可解析
+// ㊳ boss 机制图鉴:MECHANIC_REGISTRY 覆盖全部 MechanicKind + 全 boss 机制可读 + 掉落表可解析
 // ============================================================
 {
   const fail38: string[] = []
-  // 38a:图鉴覆盖——MechanicKind 全集每种都有 MECH_INFO 条目(新机制漏文案会被抓住)
+  // 38a:图鉴覆盖——MechanicKind 全集每种都有 MECHANIC_REGISTRY 条目(新机制漏文案会被抓住)
   {
     const kinds = [
       'telegraph-aoe', 'cast-buff', 'cast-heal', 'slow-touch', 'pull',
       'ground-zone', 'phase-invuln', 'summon', 'bind', 'enrage',
       'breath-charge', 'fear-aura',
     ] as const
-    for (const k of kinds) if (!MECH_INFO[k]) fail38.push(`㊳ MECH_INFO 缺 ${k}`)
+    for (const k of kinds) if (!MECHANIC_REGISTRY[k]) fail38.push(`㊳ MECHANIC_REGISTRY 缺 ${k}`)
     console.log(`㊳ 图鉴:MechanicKind 全集 ${kinds.length} 种全部有条目`)
   }
   // 38b:全 boss 机制明细可读——mechanicBrief 非空且提到招式应对;boss 无机制视为异常
@@ -2883,7 +2899,7 @@ const towerFailures: string[] = []
           let brief = ''
           try { brief = mechanicBrief(m) } catch (err) { fail38.push(`㊳ ${boss.name}.${m.name} brief 抛错:${err}`) }
           if (!brief || brief.length < 10) fail38.push(`㊳ ${boss.name}.${m.name} brief 异常:「${brief}」`)
-          if (MECH_INFO[m.kind] && !brief.includes('——')) fail38.push(`㊳ ${boss.name}.${m.name} brief 缺应对段`)
+          if (MECHANIC_REGISTRY[m.kind] && !brief.includes('——')) fail38.push(`㊳ ${boss.name}.${m.name} brief 缺应对段`)
         }
       }
     }
