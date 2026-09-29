@@ -1,5 +1,14 @@
 # 当前交接
 
+## 交接：PR #4 已合并，批次 0 剩余工单移交 shldo（2026-09-29，制作人指派）
+
+- **PR #4 审查通过并已合并**：合并提交 `8873d24`（2026-09-29 23:40 北京时间）。本机独立复审结论：云端净增量全部采纳且不覆盖主线语义——追加词条 1.25 品质倍率入 `rollAffixes` 预算（修主线后处理 qAdj 漏乘追加条）、`createBattle` 第 9 参 `enemyScale` 改 `DifficultyModifiers` 对象（elite/rareHunt/towerFloor）、套装数值抽 `equipment-sets.ts` 单一来源、显示层统一 `formatStat`/`formatPercent` 并支持键盘展开、精英标记收进 `applyEnemyScaling` 且 `difficultyScaled` 防塔层二次缩放。本机复跑完整 verify 退出 0（Vitest 34、smoke 47、玩法+王国回归、类型与构建）。审查认可的语义变化：精英场次 Boss 现在也带 `elite` 标记（旧版只标小怪）；塔层防御不随层数上涨的规则保持原样。
+- **工单移交（制作人 2026-09-29 指示：本机暂停施工，剩余任务交 shldo）**：批次 0 剩余三项按序认领——**#0.10 结算管线收口 → #0.5 物品注册表 → #0.6 RunState 可序列化**。完成后批次 0 出口达成，进批次 1（#1.1 招牌技能）。
+- **认领规则（本轮起生效，防撞车）**：开工前先在本文件顶部登记认领（加一节"当前接续：工单号（认领人 shldo）"）再动代码。2026-09-29 的 #0.2/#0.3 即因工单无认领人，本机与云端各做一遍；本机现已停手，规则仍保留。
+- **#0.10 开工提示**（见 IMPLEMENTATION-PLAN v2 修订说明 C-3，开工前先读）：副本结算（`App.tsx` `settleBattleEnd`）与高塔结算（useEffect）已分叉——高塔阵亡不触发 `applyDeathShock`、不写编年史 `chronicleHeroFall`；高塔胜利不发 `applyVictory`；经验走 `grantExp` 绕过 `settleGrowth` 不涨默契；`towerMarkPermadeath`（tower.ts）与 `markPermadeath`（run.ts）是两份拷贝。验收须含"高塔死人长出故事"（制作人红线 6）。
+- **#0.5 / #0.6 开工提示**：#0.5 存档 v19 物品单一仓库+引用，断言 I6。#0.6 按 v2 C-2 **改造现有 `DungeonRun`/`TowerRun`** 使其可序列化，**不新建 RunState 类型**（避免第二条实现路径）；动刀前先补 UI 冒烟测试再改。
+- **纪律不变**：基于最新 main（`8873d24`）开分支；一任务一中文 commit（以工单 ID 开头）；C4 数值冻结、事件表/DESIGN 冻结；完整 verify 必跑（EXIT 码与尾部都要看）；完成每项更新本文件；代码走 PR（中文标题/说明）交本机审查合并。
+
 ## 当前接续：#0.4 已推送，PR #4 待审查（2026-09-29）
 
 - 用户要求再修复一轮后直接推送并开 PR。开始时 `codex/enemy-scaling@94db00f` 干净；fetch 发现主线从 `4816f3e` 前进到 `a7b8c94`，四次提交与本地 #0.2/#0.3 重叠，并增加 rating 难度模型、塔掉落 RNG 与不变量测试。
