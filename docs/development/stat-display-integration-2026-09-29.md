@@ -2,6 +2,8 @@
 
 用户要求“再修复一轮，这轮之后直接推送并提交 PR”。开始为干净的 `codex/enemy-scaling@94db00f`；fetch 发现主线新增 `bd5d9fe`、`bf941dc`、`a064c92`、`a7b8c94`，已部分覆盖本地 #0.2/#0.3/#0.4，并引入 rating、塔掉落确定性与不变量测试。因此先整合，再完成显示遗漏；推送/PR 最终状态见 [HANDOFF](HANDOFF.md)。
 
+交付：功能合并提交 `2eec855` 已推送 `codex/enemy-scaling`，已创建中文 [PR #4](https://github.com/Eatmy6ss/guild-of-blackmoss/pull/4) → main；创建时无冲突，未合并/部署。GitHub 暂无自动检查记录，验证证据来自本地；本节随纯文档状态提交归档。
+
 ## 当前实现与整合选择
 
 | 区域 | 采用的最新行为 | 保留/补齐的本地内容 |
