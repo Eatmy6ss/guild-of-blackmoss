@@ -221,6 +221,10 @@ export interface Combatant {
   /** K08 套装件数:灰冠(T3)/猎风(T2 猎装) */
   setCrown?: number
   setHunt?: number
+  /** #0.2:原始敌人定义(summon 缩放校验用) */
+  enemyDef?: import('./types').EnemyDef
+  /** #0.2:召唤增援继承的缩放因子(summon 机制消费) */
+  scaleFactors?: import('./difficulty').EnemyScaleFactors
   /** 被嘲讽剩余 tick（威胁系统 D3-4 扩展） */
   tauntedTicks: number
   taunterId?: string

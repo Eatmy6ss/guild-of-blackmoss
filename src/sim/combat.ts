@@ -11,6 +11,7 @@ import type {
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
 import { ITEM_BASES } from '../data/items'
+import { applyEnemyScaling as applyScaling, type EnemyScaleFactors } from './difficulty'
 import { scarPenalty, recordScarMechanic } from './scars'
 import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
@@ -243,7 +244,6 @@ export function createBattle(
   /** 远征内事件状态(反馈④事件大项):乘数,只作用于我方 */
   mods?: { atk?: number; def?: number; hp?: number; heal?: number },
 ): BattleState {
-  const power = (dungeon.enemyPower ?? 1) * enemyScale
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
   // 副本节奏系数(试玩反馈④:满配队 11-18s 秒杀 boss、机制零触发)——只作用于注册了
@@ -253,6 +253,13 @@ export function createBattle(
   const hpFactor = hasCurve ? ENEMY_HP_MULT : 1
   const difficultyHp = dungeon.difficultyMods?.enemyHp ?? 1
   const difficultyAttack = dungeon.difficultyMods?.enemyAttack ?? 1
+  // #0.2:缩放因子只算一次,初始怪/boss/召唤增援共用同一份(反接缝:唯一乘算点在 difficulty.applyEnemyScaling)
+  const factors: EnemyScaleFactors = {
+    power: (dungeon.enemyPower ?? 1) * enemyScale,
+    hpFactor,
+    difficultyHp,
+    difficultyAttack,
+  }
   const combatants: Combatant[] = members.map(toCombatant)
   if (mods) {
     for (const c of combatants) {
@@ -268,11 +275,7 @@ export function createBattle(
   for (const gid of enc.enemyGroupIds) {
     for (const e of dungeon.enemyGroups[gid] ?? []) {
       const raw = enemyToCombatant(e)
-      if (power !== 1 || hpFactor !== 1 || difficultyHp !== 1 || difficultyAttack !== 1) {
-        raw.maxHp = Math.round(raw.maxHp * power * hpFactor * difficultyHp)
-        raw.hp = raw.maxHp
-        raw.attack = Math.round(raw.attack * power * difficultyAttack)
-      }
+      applyScaling(raw, factors)
       combatants.push(raw)
     }
   }
@@ -282,14 +285,12 @@ export function createBattle(
     boss.boss = true
     boss.bossMechanics = def.mechanics
     boss.mech = {}
-    if (power !== 1 || hpFactor !== 1 || difficultyHp !== 1 || difficultyAttack !== 1) {
-      boss.maxHp = Math.round(boss.maxHp * power * hpFactor * difficultyHp)
-      boss.hp = boss.maxHp
-      boss.attack = Math.round(boss.attack * power)
-      boss.attack = Math.round(boss.attack * difficultyAttack)
-    }
+    applyScaling(boss, factors)
     const sumMech = def.mechanics.find((m) => m.kind === 'summon')
-    if (sumMech) boss.summonPool = dungeon.enemyGroups[String(sumMech.params.groupId)] ?? []
+    if (sumMech) {
+      boss.summonPool = dungeon.enemyGroups[String(sumMech.params.groupId)] ?? []
+      boss.scaleFactors = factors
+    }
     combatants.push(boss)
   }
 

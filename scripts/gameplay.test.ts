@@ -1176,7 +1176,8 @@ test('region two difficulty reaches actual wave and boss combatants without buff
         const raw = definitions[i]
         const attack = raw.attack * dungeon.enemyPower!
         assert.equal(enemy.maxHp, Math.round(raw.maxHp * dungeon.enemyPower! * ENEMY_HP_MULT * dungeon.difficultyMods!.enemyHp!))
-        assert.equal(enemy.attack, Math.round((enc.bossId ? Math.round(attack) : attack) * dungeon.difficultyMods!.enemyAttack!))
+        // #0.2 单舍入语义:攻 = round(raw × power × difficultyAttack)(不再两步取整)
+        assert.equal(enemy.attack, Math.round(attack * dungeon.difficultyMods!.enemyAttack!))
       })
       assert.deepEqual(
         battle.combatants.filter(c => c.team === 'guild').map(c => [c.attack, c.maxHp]),

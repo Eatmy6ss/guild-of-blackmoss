@@ -1,4 +1,4 @@
-import { rollDrop } from './loot'
+import { rollDrop, createLootRng } from './loot'
 import { ITEM_BASES } from '../data/items'
 import { BLACKMOSS, RUSTMINE } from '../data/dungeons'
 import type { BossDef, DungeonDef, EnemyDef, ItemInstance, Member } from './types'
@@ -56,6 +56,8 @@ export interface TowerRun {
   autoMode?: boolean
   /** 遗物安葬 2.0:本层已投保(阵亡装备免赎回费) */
   insuredFloor?: boolean
+  /** #0.9:塔种子(结算掉落确定性) */
+  seed?: number
   /** 休整时购买的下一层保障，进入指定层时生效 */
   insuredNextFloor?: number
   witnessScarredIds?: string[]
@@ -158,6 +160,7 @@ const FLOOR_POOL: EnemyDef[][] = [
 export function startTower(members: Member[], seed: number, potions = { heal: POTION_STOCK, fury: POTION_STOCK }): TowerRun {
   const run: TowerRun = {
     floor: 1,
+    seed,
     phase: 'battle',
     battle: null,
     members: members.filter((m) => m.alive).slice(0, 3),
@@ -195,12 +198,13 @@ export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolea
     const exp = towerExp(run.floor)
     const drops: ItemInstance[] = []
     const isBoss = towerFloorIsBoss(run.floor)
-    if (isBoss || Math.random() < 0.1) {
+    const lootRng = createLootRng((run.seed ?? 0) * 31 + run.floor * 977)
+    if (isBoss || lootRng() < 0.1) {
       const tier = towerItemTier(run.floor)
       const pool = Object.values(ITEM_BASES).filter((x) => x.tier === tier)
       if (pool.length > 0) {
-        const base = pool[Math.floor(Math.random() * pool.length)]!
-        drops.push(rollDrop(base.id, Math.random, { qualityBias: isBoss ? 0.15 : 0 }))
+        const base = pool[Math.floor(lootRng() * pool.length)]!
+        drops.push(rollDrop(base.id, lootRng, { qualityBias: isBoss ? 0.15 : 0 }))
       }
     }
     return { gold, cleared: true, exp, drops }

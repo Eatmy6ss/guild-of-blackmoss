@@ -1,6 +1,7 @@
 import type { ItemBaseDef, ItemInstance, ItemQuality, Slot, StatKey } from './types'
 import { ITEM_BASES } from '../data/items'
 import { AFFIXES } from '../data/affixes'
+import type { AffixDef } from '../sim/types'
 
 // 掉落系统（D10，Q17/Q22）：boss 掉什么固定（掉落表），什么词条掉落时 roll。
 // 装备属性 = 基础盘 + 词条聚合，战斗投影时一次性加算。
@@ -17,21 +18,25 @@ function rollAffixes(rng: () => number, base: ItemBaseDef): ItemInstance['rolls'
   const used = new Set<string>()
   const rolls: ItemInstance['rolls'] = []
   // 装备纪元(宪法 v3.3):词条区间按 tier 表递增——版图一 T1-T2,版图二 T3-T4
-  const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
   const tierScale = TIER_SCALE[base.tier] ?? 1
   for (let i = 0; i < count; i++) {
     const candidates = pool.filter((a) => !used.has(a.id))
     if (candidates.length === 0) break
     const aff = candidates[Math.floor(rng() * candidates.length)]
     used.add(aff.id)
-    const lo = aff.range[0] * tierScale
-    const hi = aff.range[1] * tierScale
-    rolls.push({
-      affixId: aff.id,
-      value: round2(lo + rng() * (hi - lo)),
-    })
+    rolls.push({ affixId: aff.id, value: affixValue(aff, tierScale, rng) })
   }
   return rolls
+}
+
+/** #0.3 单一词条取值函数(B04 修复):普通词条与紫装追加词条共用同一规则——
+ *  range[tierScale 缩放]内均匀 roll;禁止任何分支自带独立取值公式 */
+const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
+
+export function affixValue(aff: AffixDef, tierScale: number, rng: () => number): number {
+  const lo = aff.range[0] * tierScale
+  const hi = aff.range[1] * tierScale
+  return round2(lo + rng() * (hi - lo))
 }
 
 /** 品级(宪法 v3.3 装备三轴):白/绿/紫——紫史诗:词条更多、数值更高 */
@@ -61,7 +66,8 @@ export function rollDrop(
     const pool = Object.values(AFFIXES).filter((x) => !adjusted.some((r) => r.affixId === x.id))
     if (pool.length > 0) {
       const aff = pool[Math.floor(rng() * pool.length)]
-      adjusted.push({ affixId: aff.id, value: round2(aff.range[0] * (base.tier >= 2 ? 1.5 : 1)) })
+      // #0.3:追加词条与普通词条同规则(I4);不再用固定低端×1.5 的独立公式
+      adjusted.push({ affixId: aff.id, value: affixValue(aff, TIER_SCALE[base.tier] ?? 1, rng) })
     }
   }
   return { id: `i${crypto.randomUUID()}`, baseId, quality, rolls: adjusted }
@@ -126,18 +132,20 @@ export function equipmentStats(equipment: Partial<Record<Slot, ItemInstance>>): 
 export function describeItem(item: ItemInstance): string {
   const base = ITEM_BASES[item.baseId]
   const qName = item.quality === 'purple' ? '【史诗】' : item.quality === 'green' ? '【精良】' : ''
-  const parts = [qName + `${STAT_NAME[base.stat]}+${fmt(base.stat, base.value)}`]
+  const parts = [qName + `${STAT_NAME[base.stat]}+${formatStat(base.stat, base.value)}`]
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
-    parts.push(`${aff.name}+${fmt(aff.stat, r.value)}`)
+    parts.push(`${aff.name}+${formatStat(aff.stat, r.value)}`)
   }
   const LEGACY_NAMES: Record<string, string> = { focus: '锋镝', killheal: '饮血', bulwark: '磐石', mend: '春霖', elitewarden: '嗜功', emberward: '烬衣', triumph: '凯歌', scavenger: '拾荒' }
   const legacy = base.legacy ? '〔' + (LEGACY_NAMES[base.legacy] ?? base.legacy) + '〕' : ''
   return `${base.name}${legacy}（${parts.join('，')}）`
 }
 
-function fmt(stat: StatKey, v: number): string {
-  return stat === 'critChance' || stat === 'lifesteal' || stat === 'fireResist'
+/** #0.4 单一格式化入口(B05 修复):由 StatKey 决定格式种类——百分比类漏 healReceived 的缺陷已修 */
+const PERCENT_STATS: ReadonlySet<StatKey> = new Set(['critChance', 'lifesteal', 'fireResist', 'healReceived'])
+export function formatStat(stat: StatKey, v: number): string {
+  return PERCENT_STATS.has(stat)
     ? `${Math.round(v * 100)}%`
     : `${Math.round(v * 10) / 10}`
 }
