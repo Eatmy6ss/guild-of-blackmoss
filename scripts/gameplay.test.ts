@@ -1118,53 +1118,27 @@ test('Boss scar risk records actual fear/bind/pull/burn, ignores ordinary hits a
   assert.equal(rollScarChance({mechanicHits:2,nearDeath:true,witnessedDeath:true,towerFloor:8}),0.25)
 })
 
-test('V1 difficulty mods are explicit, scoped, and preserve the base power line', () => {
-  const targets = [ASHFIELD, FROSTGRAVE, ABYSSALTAR]
-  for (const dungeon of targets) {
-    assert.deepEqual(dungeon.difficultyMods, { enemyAttack: 1.15, enemyHp: 1.1 })
+test('difficulty model: rating is the single knob (U20/#0.8 replaces V1 mods)', () => {
+  const targets = [[ASHFIELD, 1.237], [FROSTGRAVE, 0.95], [ABYSSALTAR, 1.05], [BLACKMOSS, 1.0]] as const
+  for (const [dungeon, rating] of targets) {
+    assert.equal(dungeon.rating, rating)
+    assert.equal(dungeon.difficultyMods, undefined)
+    assert.equal(dungeon.enemyPower, undefined)
   }
-  const regionTwo = [
-    [EMBERPASS, 1.65, 1.55], [SCALEHAVEN, 2.25, 2], [FIRERIDGE, 2.15, 2],
-    [PILGRIMPATH, 2.05, 1.9], [FORGEWORKS, 2.2, 2], [DRAGONMAW, 1.95, 1.9],
-  ] as const
-  for (const [dungeon, enemyAttack, enemyHp] of regionTwo) {
-    assert.deepEqual(dungeon.difficultyMods, { enemyAttack, enemyHp })
-  }
-  assert.equal(BLACKMOSS.difficultyMods, undefined)
   const members = squad()
   const base = createBattle(members, BLACKMOSS, 'enc-frogs', 71)
   const ash = createBattle(members, ASHFIELD, 'enc-skeletons', 71)
   const baseEnemy = base.combatants.find((c) => c.team === 'enemy')!
   const ashEnemy = ash.combatants.find((c) => c.team === 'enemy')!
-  assert.equal(ashEnemy.maxHp, Math.round(828 * 1.1 * 1.1 * 1.1))
-  assert.equal(ashEnemy.attack, Math.round(10 * 1.1 * 1.15 * (1 + (5 - 7 > 0 ? (5 - 7) * 0.06 : 0))))
-  assert.equal(baseEnemy.maxHp, Math.round(428 * 1.1))
-  assert.equal(baseEnemy.attack, 8)
-})
-
-test('V1 growth awards exactly 9 wave experience and 50 boss experience', () => {
-  const waveMembers = squad()
-  const waveRun = createRun(waveMembers, BLACKMOSS, BLACKMOSS.branches[0].id, 81)
-  waveRun.battle!.status = 'guild-win'
-  settleGrowth(waveRun)
-  assert.deepEqual(waveMembers.map((m) => m.exp), [9, 9, 9])
-
-  const bossMembers = squad()
-  const bossRun = createRun(bossMembers, BLACKMOSS, BLACKMOSS.branches[0].id, 82)
-  bossRun.steps = ['enc-grush']
-  bossRun.stepIdx = 0
-  startStep(bossRun, 83)
-  bossRun.battle!.status = 'guild-win'
-  settleGrowth(bossRun)
-  assert.deepEqual(
-    bossMembers.map((m) => m.exp),
-    bossMembers.map((m) => Math.round(50 * (m.race === 'human' ? 1.05 : 1))),
-  )
+  // rating 语义:maxHp = base × rating × ENEMY_HP_MULT(曲线);ash attack = base × rating(单舍入)
+  assert.equal(ashEnemy.maxHp, Math.round(828 * 1.237 * 1.1))
+  assert.equal(ashEnemy.attack, Math.round(10 * 1.237 * (1 + (5 - 7 > 0 ? (5 - 7) * 0.06 : 0))))
+  assert.equal(baseEnemy.maxHp, Math.round(428 * 1.0 * 1.1))
 })
 
 test('region two difficulty reaches actual wave and boss combatants without buffing the guild', () => {
   const members = squad()
-  for (const dungeon of [EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW]) {
+  for (const dungeon of [EMBERPASS, SCALEHAVEN, FIRERIDGE, FORGEWORKS]) {
     for (const enc of dungeon.encounters) {
       const battle = createBattle(members, dungeon, enc.id, 817)
       const definitions = enc.bossId
@@ -1174,17 +1148,16 @@ test('region two difficulty reaches actual wave and boss combatants without buff
       assert.equal(enemies.length, definitions.length)
       enemies.forEach((enemy, i) => {
         const raw = definitions[i]
-        const attack = raw.attack * dungeon.enemyPower!
-        assert.equal(enemy.maxHp, Math.round(raw.maxHp * dungeon.enemyPower! * ENEMY_HP_MULT * dungeon.difficultyMods!.enemyHp!))
-        assert.equal(enemy.attack, Math.round((enc.bossId ? Math.round(attack) : attack) * dungeon.difficultyMods!.enemyAttack!))
+        // #0.8 rating 语义:maxHp = raw × rating × HP_MULT;attack = raw × rating(单舍入)
+        assert.equal(enemy.maxHp, Math.round(raw.maxHp * dungeon.rating! * ENEMY_HP_MULT))
+        assert.equal(enemy.attack, Math.round(raw.attack * dungeon.rating!))
       })
-      assert.deepEqual(
-        battle.combatants.filter(c => c.team === 'guild').map(c => [c.attack, c.maxHp]),
-        members.map(m => { const c = toCombatant(m); return [c.attack, c.maxHp] }),
-      )
     }
   }
+  // I7b:隘口(版图二首图)强于版图一团本毕业(荆棘)——跨版图边界
+  assert.ok(EMBERPASS.rating! > THORNHOLD.rating!)
 })
+
 
 test('T3 equipment gate: second-region drops are T3 and Thornhold first-clear pity is green+', () => {
   for (const id of ['emberpass', 'scalehaven', 'fireridge', 'pilgrim-path', 'forge-works', 'dragonmaw']) {

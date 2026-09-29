@@ -647,8 +647,9 @@ button.primary:hover:not(:disabled) {
 
 /* ===== 透明面板(宪法 v3.2) ===== */
 .stat-layers { margin: 6px 0; padding: 6px 10px; border-left: 3px solid var(--edge-gold); background: rgba(0, 0, 0, 0.28); }
-.stat-layer { display: flex; justify-content: space-between; font-size: 11.5px; line-height: 1.9; }
-.stat-layer .sl-label { color: var(--ink-dim); }
+.stat-layer { display: flex; justify-content: space-between; gap: 12px; font-size: 11.5px; line-height: 1.9; }
+.stat-layer .sl-label { color: var(--ink-dim); flex-shrink: 0; white-space: nowrap; }
+.stat-layer > :last-child { min-width: 0; text-align: right; }
 .stat-layer .good { color: #a8c48a; }
 .stat-layer .bad { color: var(--danger); }
 

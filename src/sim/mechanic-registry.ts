@@ -1,6 +1,7 @@
 import type { BattleState, BossMechanicDef, Combatant, MechanicKind } from './types'
 import { recordScarMechanic } from './scars'
 import { applyHit, battleRandom, controlResist, enemyToCombatant as mkEnemy, pushLog } from './combat'
+import { applyEnemyScaling } from './difficulty'
 
 // One entry owns execution, intent and documentation. Runtime remains keyed by kind;
 // data must not attach two mechanisms of the same kind to one enemy or boss.
@@ -293,7 +294,10 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
         const pool = c.summonPool ?? []
         const count = mechanicParam(m, 'count')
         for (let i = 0; i < count && i < pool.length; i++) {
-          const add = mkEnemy(pool[i], c.summonDifficulty)
+          // #0.2:增援与 boss 共用同一份缩放因子(I3 不变量)
+          const add = mkEnemy(pool[i])
+          add.enemyDef = pool[i]
+          if (c.scaleFactors) applyEnemyScaling(add, c.scaleFactors)
           for (const a of state.combatants) {
             if (a.team === 'guild' && a.alive) add.threat[a.id] = a.role === 'tank' ? 100 : 0
           }

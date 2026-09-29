@@ -1,48 +1,61 @@
-import type { DungeonDef, EnemyDef } from './types'
+// #0.2 统一敌人缩放入口(2026-09-27,实施计划批次 0)
+// 反接缝规则:全项目对敌人数值做乘算的地方必须收敛到这里。
+// createBattle(初始怪/boss)与 summon 机制(增援)都走 applyEnemyScaling;
+// 高塔怪在 startTowerFloor 已预缩放，显式标记防止再次应用场次倍率。
 
-export const ENEMY_HP_MULT = 1.1
+import type { Combatant, EnemyDef } from './types'
+
 export const ELITE_ENEMY_MULT = 1.25
 export const TOWER_SCALING_PER_FLOOR = 0.15
-
-export type EnemyRole = 'trash' | 'elite' | 'boss'
 export interface DifficultyModifiers {
   elite?: boolean
-  /** Only supplied for the first encounter of a rare hunt. */
   rareHunt?: number
   towerFloor?: number
 }
-export interface DifficultyInput {
-  // #0.2 preserves the existing curve. Rating/archetype migration belongs to #0.8.
-  dungeon: Pick<DungeonDef, 'enemyPower' | 'difficultyMods' | 'expectedLevel'>
-  role: EnemyRole
-  modifiers?: DifficultyModifiers
-}
-
 export function towerEnemyScale(floor: number): number {
   return 1 + TOWER_SCALING_PER_FLOOR * (floor - 1)
 }
 
-/** Only construction-time enemy HP/attack multiplication lives here. Buffs are separate. */
-export function scaleEnemy<T extends EnemyDef>(base: T, input: DifficultyInput): T {
-  // Tower definitions already have their floor applied, including the summon pool.
-  if (base.difficultyScaled) return { ...base }
-  const { dungeon, modifiers = {} } = input
-  const encounterScale = (modifiers.elite ? ELITE_ENEMY_MULT : 1) * (modifiers.rareHunt ?? 1)
-  const towerScale = modifiers.towerFloor === undefined ? 1 : towerEnemyScale(modifiers.towerFloor)
-  const power = (dungeon.enemyPower ?? 1) * encounterScale * towerScale
-  const hpFactor = dungeon.expectedLevel === undefined ? 1 : ENEMY_HP_MULT
-  const hpMod = dungeon.difficultyMods?.enemyHp ?? 1
-  const attackMod = dungeon.difficultyMods?.enemyAttack ?? 1
-  if (power === 1 && hpFactor === 1 && hpMod === 1 && attackMod === 1) {
-    return { ...base, difficultyScaled: true }
+/** 敌人缩放因子(power 含曲线系数×精英倍率;difficulty 为地图修正) */
+export interface EnemyScaleFactors {
+  power: number
+  hpFactor: number
+  difficultyAttack: number
+  difficultyHp: number
+  elite?: boolean
+}
+
+export const NO_SCALING: EnemyScaleFactors = { power: 1, hpFactor: 1, difficultyAttack: 1, difficultyHp: 1 }
+
+function scaledStats(base: Pick<EnemyDef, 'maxHp' | 'attack'>, f: EnemyScaleFactors) {
+  return {
+    maxHp: Math.max(1, Math.round(base.maxHp * f.power * f.hpFactor * f.difficultyHp)),
+    attack: Math.max(1, Math.round(base.attack * f.power * f.difficultyAttack)),
   }
+}
+
+/** 初始与召唤共用单舍入语义；预缩放定义不再乘算，精英身份仍继承。 */
+export function applyEnemyScaling(c: Combatant, f: EnemyScaleFactors): void {
+  if (f.elite) c.elite = true
+  if (c.enemyDef?.difficultyScaled) return
+  Object.assign(c, scaledStats(c, f))
+  c.hp = c.maxHp
+}
+
+// ---- #0.8 难度模型(2026-09-27):rating 决定总量,形状由数据表自带 ----
+
+/** 全项目唯一的敌人缩放入口:按副本 rating 等比缩放(几何总量) */
+export function scaleEnemy<T extends EnemyDef>(base: T, rating: number, refRating = 1): T {
+  if (base.difficultyScaled) return { ...base }
+  const k = rating / refRating
   return {
     ...base,
-    difficultyScaled: true,
-    maxHp: Math.round(base.maxHp * power * hpFactor * hpMod),
-    // Preserve the existing boss two-stage rounding; ordinary enemies round once.
-    attack: input.role === 'boss'
-      ? Math.round(Math.round(base.attack * power) * attackMod)
-      : Math.round(base.attack * power * attackMod),
+    ...scaledStats(base, { ...NO_SCALING, power: k }),
+    defense: Math.max(0, Math.round(base.defense * k)),
   }
+}
+
+/** 等效强度估算(I7 单调性断言用):攻血几何均值 */
+export function ratingOfEnemy(e: Pick<EnemyDef, 'attack' | 'maxHp'>): number {
+  return Math.sqrt(Math.max(1, e.attack) * Math.max(1, e.maxHp))
 }

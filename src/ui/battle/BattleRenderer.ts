@@ -103,7 +103,7 @@ class UnitView {
     this.bodyGroup = bodyGroup
     this.bodySprites = bodySprites
     this.body = body
-    this.bobPhase = Math.random() * Math.PI * 2
+    this.bobPhase = Math.random() /* presentation-only */ * Math.PI * 2
     const hpBg = new Graphics()
     hpBg.roundRect(-16, -34, 32, 4, 2).fill(0x262b38)
     this.hpFill = new Graphics()
@@ -320,16 +320,16 @@ export class BattleRenderer {
   /** 环境粒子:尘埃(非 heat/frost 主题的通用点缀) */
   private spawnDust(): void {
     const g = new Graphics()
-    const size = 1.5 + Math.random() * 1.5
+    const size = 1.5 + Math.random() /* presentation-only */ * 1.5
     g.rect(-size / 2, -size / 2, size, size).fill(0xa89878)
-    const x = W * Math.random()
-    const y = H * (0.2 + Math.random() * 0.7)
+    const x = W * Math.random() /* presentation-only */
+    const y = H * (0.2 + Math.random() /* presentation-only */ * 0.7)
     g.position.set(x, y)
     g.alpha = 0.35
     this.root.addChild(g)
-    const drift = (Math.random() < 0.5 ? -1 : 1) * (0.008 + Math.random() * 0.012)
+    const drift = (Math.random() /* presentation-only */ < 0.5 ? -1 : 1) * (0.008 + Math.random() /* presentation-only */ * 0.012)
     let life = 0
-    const dur = 3000 + Math.random() * 3000
+    const dur = 3000 + Math.random() /* presentation-only */ * 3000
     this.effects.push({
       update: (dt) => {
         life += dt
@@ -348,16 +348,16 @@ export class BattleRenderer {
   /** 环境粒子:heat 火星(底部上浮)/ frost 落雪(顶部飘落) */
   private spawnEmber(): void {
     const g = new Graphics()
-    const size = 2 + Math.random() * 2
-    g.rect(-size / 2, -size / 2, size, size).fill(Math.random() < 0.5 ? 0xff7a2a : 0xffb040)
-    const x = W * (0.05 + Math.random() * 0.9)
-    const y = H * (0.86 + Math.random() * 0.1)
+    const size = 2 + Math.random() /* presentation-only */ * 2
+    g.rect(-size / 2, -size / 2, size, size).fill(Math.random() /* presentation-only */ < 0.5 ? 0xff7a2a : 0xffb040)
+    const x = W * (0.05 + Math.random() /* presentation-only */ * 0.9)
+    const y = H * (0.86 + Math.random() /* presentation-only */ * 0.1)
     g.position.set(x, y)
     this.root.addChild(g)
-    const drift = (Math.random() - 0.5) * 0.02
-    const rise = 0.03 + Math.random() * 0.03
+    const drift = (Math.random() /* presentation-only */ - 0.5) * 0.02
+    const rise = 0.03 + Math.random() /* presentation-only */ * 0.03
     let life = 0
-    const dur = 2200 + Math.random() * 1500
+    const dur = 2200 + Math.random() /* presentation-only */ * 1500
     this.effects.push({
       update: (dt) => {
         life += dt
@@ -375,17 +375,17 @@ export class BattleRenderer {
 
   private spawnSnow(): void {
     const g = new Graphics()
-    const size = 1.5 + Math.random() * 1.5
+    const size = 1.5 + Math.random() /* presentation-only */ * 1.5
     g.rect(-size / 2, -size / 2, size, size).fill(0xe8f4ff)
-    const x = W * Math.random()
+    const x = W * Math.random() /* presentation-only */
     const y = -4
     g.position.set(x, y)
     g.alpha = 0.85
     this.root.addChild(g)
-    const drift = (Math.random() - 0.5) * 0.03
-    const fall = 0.02 + Math.random() * 0.02
+    const drift = (Math.random() /* presentation-only */ - 0.5) * 0.03
+    const fall = 0.02 + Math.random() /* presentation-only */ * 0.02
     let life = 0
-    const dur = 6000 + Math.random() * 4000
+    const dur = 6000 + Math.random() /* presentation-only */ * 4000
     this.effects.push({
       update: (dt) => {
         life += dt
@@ -689,9 +689,9 @@ export class BattleRenderer {
   }
 
   private spawnFloat(u: UnitView, text: string, color: number, size: number): void {
-    const x = u.container.x + (Math.random() * 16 - 8)
+    const x = u.container.x + (Math.random() /* presentation-only */ * 16 - 8)
     // y 也抖动：同帧多个飘字错开，避免叠成一坨读不了（D13 修复）
-    const y = u.container.y - 40 - Math.random() * 14
+    const y = u.container.y - 40 - Math.random() /* presentation-only */ * 14
     const label = new Text({
       text,
       style: { fontFamily: 'sans-serif', fontSize: size, fill: color, fontWeight: 'bold' },
@@ -784,10 +784,10 @@ export class BattleRenderer {
     for (let i = 0; i < 10; i++) {
       const g = new Graphics()
       g.rect(-1.5, -1.5, 3, 3).fill(color)
-      g.position.set(u.container.x + (Math.random() * 10 - 5), u.container.y - 14)
+      g.position.set(u.container.x + (Math.random() /* presentation-only */ * 10 - 5), u.container.y - 14)
       this.root.addChild(g)
-      const vx = Math.random() * 240 - 120
-      const vy = -(60 + Math.random() * 140)
+      const vx = Math.random() /* presentation-only */ * 240 - 120
+      const vy = -(60 + Math.random() /* presentation-only */ * 140)
       let t = 0
       const dur = 520
       this.effects.push({

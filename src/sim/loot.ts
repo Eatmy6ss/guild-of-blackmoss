@@ -31,12 +31,10 @@ export function rollAffixes(budget: AffixBudget, pools: readonly AffixDef[], rng
     if (candidates.length === 0) return false
     const aff = candidates[Math.floor(rng() * candidates.length)]
     used.add(aff.id)
-    const lo = aff.range[0] * budget.tierScale
-    const hi = aff.range[1] * budget.tierScale
     // 保留普通词条原有两次取整，避免其他品质及百分比属性漂移。
     rolls.push({
       affixId: aff.id,
-      value: round2(round2(lo + rng() * (hi - lo)) * budget.qualityScale),
+      value: round2(affixValue(aff, budget.tierScale, rng) * budget.qualityScale),
     })
     return true
   }
@@ -46,6 +44,13 @@ export function rollAffixes(budget: AffixBudget, pools: readonly AffixDef[], rng
   const bonusChance = budget.bonusChance ?? 0
   if (bonusChance > 0 && rolls.length < maxC && rng() < bonusChance) rollOne()
   return rolls
+}
+
+/** 阶级区间取值供普通与追加共用；品质倍率由同一个预算入口统一应用。 */
+export function affixValue(aff: AffixDef, tierScale: number, rng: () => number): number {
+  const lo = aff.range[0] * tierScale
+  const hi = aff.range[1] * tierScale
+  return round2(lo + rng() * (hi - lo))
 }
 
 /** 品级(宪法 v3.3 装备三轴):白/绿/紫——紫史诗:词条更多、数值更高 */
@@ -137,20 +142,35 @@ export function equipmentStats(equipment: Partial<Record<Slot, ItemInstance>>): 
 export function describeItem(item: ItemInstance): string {
   const base = ITEM_BASES[item.baseId]
   const qName = item.quality === 'purple' ? '【史诗】' : item.quality === 'green' ? '【精良】' : ''
-  const parts = [qName + `${STAT_NAME[base.stat]}+${fmt(base.stat, base.value)}`]
+  const parts = [qName + `${STAT_NAME[base.stat]}${formatStat(base.stat, base.value, true)}`]
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
-    parts.push(`${aff.name}+${fmt(aff.stat, r.value)}`)
+    parts.push(`${aff.name}${formatStat(aff.stat, r.value, true)}`)
   }
   const LEGACY_NAMES: Record<string, string> = { focus: '锋镝', killheal: '饮血', bulwark: '磐石', mend: '春霖', elitewarden: '嗜功', emberward: '烬衣', triumph: '凯歌', scavenger: '拾荒' }
   const legacy = base.legacy ? '〔' + (LEGACY_NAMES[base.legacy] ?? base.legacy) + '〕' : ''
   return `${base.name}${legacy}（${parts.join('，')}）`
 }
 
-function fmt(stat: StatKey, v: number): string {
-  return stat === 'critChance' || stat === 'lifesteal' || stat === 'fireResist'
-    ? `${Math.round(v * 100)}%`
-    : `${Math.round(v * 10) / 10}`
+/** 新增 StatKey 时必须声明单位，类型检查会阻止遗漏。 */
+export const STAT_FORMAT: Record<StatKey, 'number' | 'percent'> = {
+  attack: 'number', maxHp: 'number', defense: 'number', speed: 'number',
+  critChance: 'percent', lifesteal: 'percent', healReceived: 'percent', fireResist: 'percent',
+}
+
+function formatValue(value: number, unit: 'number' | 'percent', signed: boolean): string {
+  const rounded = Math.round(value * (unit === 'percent' ? 100 : 1) * 10) / 10
+  return `${signed && rounded > 0 ? '+' : ''}${rounded}${unit === 'percent' ? '%' : ''}`
+}
+
+/** 最多一位小数；符号由展示场景决定，零值不加号，不显示负零。 */
+export function formatStat(stat: StatKey, value: number, signed = false): string {
+  return formatValue(value, STAT_FORMAT[stat], signed)
+}
+
+/** 伤害倍率、经验等不是装备 StatKey，使用同一百分比规则。 */
+export function formatPercent(value: number, signed = false): string {
+  return formatValue(value, 'percent', signed)
 }
 
 export const STAT_NAME: Record<StatKey, string> = {

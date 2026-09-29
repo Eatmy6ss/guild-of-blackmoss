@@ -11,6 +11,9 @@ import type {
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
 import { ITEM_BASES } from '../data/items'
+import { equipmentSetBonus } from './equipment-sets'
+import { formatStat, formatPercent, STAT_NAME } from './loot'
+import { applyEnemyScaling as applyScaling, ELITE_ENEMY_MULT, towerEnemyScale, type DifficultyModifiers, type EnemyScaleFactors } from './difficulty'
 import { scarPenalty, recordScarMechanic } from './scars'
 import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
@@ -21,8 +24,6 @@ import { interruptThreshold, MECHANIC_REGISTRY } from './mechanic-registry'
 import { runAutoAI } from './ai'
 import { equipmentStats } from './loot'
 import { bondStars, BOND_MULT_PER_STAR } from './gen'
-import { scaleEnemy, type DifficultyInput, type DifficultyModifiers } from './difficulty'
-export { ENEMY_HP_MULT } from './difficulty'
 
 // 战斗引擎 D8-9 版：威胁表、站位、轻协同、护甲模型 +
 // 团长指挥台（阵型/集火/道具/撤退令）与 boss 机制引擎对接。
@@ -58,6 +59,8 @@ export const EXTRACT_TICKS = 50
 /** 战斗硬上限(试玩反馈:tick 无限拖):软压力/强制撤离 */
 export const TICK_SOFT_CAP = 900
 export const TICK_HARD_CAP = 1200
+/** 副本敌人全局血量系数(试玩反馈④;温和放慢——弱档不磨死,秒杀感主要由等级压制治理) */
+export const ENEMY_HP_MULT = 1.1
 
 let combatantSeq = 0
 
@@ -172,7 +175,7 @@ export function toCombatant(member: Member): Combatant {
         (member.level - 1) * job.growth.defense +
         (eq.defense ?? 0),
     ),
-    critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0) + (setHunt >= 3 ? 0.06 : setHunt >= 2 ? 0.03 : 0),
+    critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0) + equipmentSetBonus('wind-hunt', setHunt),
     attackInterval: Math.max(
       6,
       Math.round(60 / (base.speed + (mods.speed ?? 0) + eff.agi * 0.04 + (eq.speed ?? 0))),
@@ -205,13 +208,12 @@ export function toCombatant(member: Member): Combatant {
   }
 }
 
-export function enemyToCombatant(base: EnemyDef, difficulty: DifficultyInput = { dungeon: {}, role: 'trash' }): Combatant {
-  const def = scaleEnemy(base, difficulty)
+export function enemyToCombatant(def: EnemyDef): Combatant {
   return {
+    enemyDef: def,
     id: `c${++combatantSeq}`,
     name: def.name,
     team: 'enemy',
-    elite: difficulty.role === 'elite',
     maxHp: def.maxHp,
     hp: def.maxHp,
     attack: def.attack,
@@ -247,12 +249,19 @@ export function createBattle(
 ): BattleState {
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
-  // Snapshot only difficulty fields; all spawned enemies inherit this encounter's modifiers.
-  const difficulty: DifficultyInput = {
-    dungeon: { enemyPower: dungeon.enemyPower, expectedLevel: dungeon.expectedLevel,
-      difficultyMods: { ...dungeon.difficultyMods } },
-    modifiers: { ...modifiers },
-    role: modifiers.elite ? 'elite' : 'trash',
+  // 副本节奏系数(试玩反馈④:满配队 11-18s 秒杀 boss、机制零触发)——只作用于注册了
+  // expectedLevel 的副本;高塔有自己的 scaleEnemy 分层缩放,不吃这套
+  // Normal maps have fixed enemies: leveling must not raise the cost of revisiting them.
+  const hasCurve = dungeon.expectedLevel !== undefined
+  const hpFactor = hasCurve ? ENEMY_HP_MULT : 1
+  // #0.2:缩放因子只算一次,初始怪/boss/召唤增援共用同一份(反接缝:唯一乘算点在 difficulty.applyEnemyScaling)
+  const factors: EnemyScaleFactors = {
+    power: dungeon.rating * (modifiers.elite ? ELITE_ENEMY_MULT : 1) * (modifiers.rareHunt ?? 1) *
+      (modifiers.towerFloor === undefined ? 1 : towerEnemyScale(modifiers.towerFloor)),
+    hpFactor,
+    difficultyAttack: 1,
+    difficultyHp: 1,
+    elite: !!modifiers.elite,
   }
   const combatants: Combatant[] = members.map(toCombatant)
   if (mods) {
@@ -268,19 +277,22 @@ export function createBattle(
   }
   for (const gid of enc.enemyGroupIds) {
     for (const e of dungeon.enemyGroups[gid] ?? []) {
-      combatants.push(enemyToCombatant(e, difficulty))
+      const raw = enemyToCombatant(e)
+      applyScaling(raw, factors)
+      combatants.push(raw)
     }
   }
   if (enc.bossId) {
     const def = dungeon.bosses[enc.bossId]
-    const boss = enemyToCombatant(def, { ...difficulty, role: 'boss' })
+    const boss = enemyToCombatant(def)
     boss.boss = true
     boss.bossMechanics = def.mechanics
     boss.mech = {}
+    applyScaling(boss, factors)
     const sumMech = def.mechanics.find((m) => m.kind === 'summon')
     if (sumMech) {
       boss.summonPool = dungeon.enemyGroups[String(sumMech.params.groupId)] ?? []
-      boss.summonDifficulty = difficulty
+      boss.scaleFactors = factors
     }
     combatants.push(boss)
   }
@@ -602,9 +614,8 @@ function dealDamage(
   if (attacker.legacyElitewarden && target.team === 'enemy' && (target.boss || target.elite)) {
     raw *= 1.08
   }
-  // K08 套装·灰冠:2 件伤害 +5%,3 件 +10%
-  if ((attacker.setCrown ?? 0) >= 3) raw *= 1.1
-  else if ((attacker.setCrown ?? 0) >= 2) raw *= 1.05
+  // K08 套装数值与面板共用定义。
+  raw *= 1 + equipmentSetBonus('gray-crown', attacker.setCrown ?? 0)
   const dmg = Math.max(
     1,
     Math.round((raw * MITIGATION_K) / (MITIGATION_K + effectiveDefense(state, target))),
@@ -1171,31 +1182,31 @@ export function statLayers(member: Member): StatLayer[] {
     label: '主属性',
     text: `${job.attackAttr === 'str' ? '力量' : job.attackAttr === 'agi' ? '敏捷' : '智力'} ${member.attrs[job.attackAttr] + (race.attrBonus?.[job.attackAttr] ?? 0)}(每点 +5% 攻击) · 体质 ${member.attrs.vit + (race.attrBonus?.vit ?? 0)} · 精神 ${member.attrs.spr + (race.attrBonus?.spr ?? 0)} · 幸运 ${member.attrs.lck + (race.attrBonus?.lck ?? 0)}`,
   })
-  const br = Math.round((p.bravery - 50) * 0.12)
-  if (br !== 0) layers.push({ label: '性格·勇猛', text: `${br > 0 ? '+' : ''}${br}% 攻击`, good: br > 0, bad: br < 0 })
-  const ca = Math.round((p.caution - 50) * 0.18)
-  if (ca !== 0) layers.push({ label: '性格·谨慎', text: `${ca > 0 ? '+' : ''}${ca}% 防御`, good: ca > 0, bad: ca < 0 })
+  const br = (p.bravery - 50) * 0.0012
+  if (br !== 0) layers.push({ label: '性格·勇猛', text: `${formatPercent(br, true)} 攻击`, good: br > 0, bad: br < 0 })
+  const ca = (p.caution - 50) * 0.0018
+  if (ca !== 0) layers.push({ label: '性格·谨慎', text: `${formatPercent(ca, true)} 防御`, good: ca > 0, bad: ca < 0 })
   if (p.greed !== 50) {
-    const gr = ((p.greed - 50) * 0.05).toFixed(1)
-    layers.push({ label: '性格·贪婪', text: `${Number(gr) > 0 ? '+' : ''}${gr}% 暴击`, good: p.greed > 50, bad: p.greed < 50 })
+    const gr = (p.greed - 50) * 0.0005
+    layers.push({ label: '性格·贪婪', text: `${formatStat('critChance', gr, true)} 暴击`, good: p.greed > 50, bad: p.greed < 50 })
   }
   if (p.loyalty !== 50) {
-    const lo = ((p.loyalty - 50) * 0.12).toFixed(1)
-    layers.push({ label: '性格·忠诚', text: `${Number(lo) > 0 ? '+' : ''}${lo}% 受疗`, good: p.loyalty > 50, bad: p.loyalty < 50 })
+    const lo = (p.loyalty - 50) * 0.0012
+    layers.push({ label: '性格·忠诚', text: `${formatStat('healReceived', lo, true)} 受疗`, good: p.loyalty > 50, bad: p.loyalty < 50 })
   }
   const rp = race.passive
   const raceText = rp.attack
-    ? `攻击 +${rp.attack}`
+    ? `攻击 ${formatStat('attack', rp.attack, true)}`
     : rp.defense
-      ? `防御 +${rp.defense}`
+      ? `防御 ${formatStat('defense', rp.defense, true)}`
       : rp.crit
-        ? `暴击 +${(rp.crit * 100).toFixed(0)}%`
+        ? `暴击 ${formatStat('critChance', rp.crit, true)}`
         : rp.healReceived
-          ? `受疗 +${(rp.healReceived * 100).toFixed(0)}%`
+          ? `受疗 ${formatStat('healReceived', rp.healReceived, true)}`
           : rp.undeadWill
             ? '阵亡冲击减半'
             : rp.expMult
-              ? `经验 +${(rp.expMult * 100).toFixed(0)}%`
+              ? `经验 ${formatPercent(rp.expMult, true)}`
               : '—'
   layers.push({ label: `${'种族·' + race.name}`, text: raceText, good: Object.keys(rp).length > 0 })
   if (member.augments?.length) {
@@ -1207,13 +1218,9 @@ export function statLayers(member: Member): StatLayer[] {
       good: true,
     })
   }
-  const eqParts: string[] = []
-  if (eq.maxHp) eqParts.push(`血 ${Math.round(eq.maxHp)}`)
-  if (eq.attack) eqParts.push(`攻 ${Math.round(eq.attack)}`)
-  if (eq.defense) eqParts.push(`防 ${Math.round(eq.defense)}`)
-  if (eq.critChance) eqParts.push(`暴 ${(eq.critChance * 100).toFixed(0)}%`)
-  if (eq.healReceived) eqParts.push(`受疗 ${(eq.healReceived * 100).toFixed(0)}%`)
-  if (eq.lifesteal) eqParts.push(`吸血 ${(eq.lifesteal * 100).toFixed(0)}%`)
+  const eqParts = (Object.keys(STAT_NAME) as (keyof typeof STAT_NAME)[])
+    .filter(stat => eq[stat])
+    .map(stat => `${STAT_NAME[stat]} ${formatStat(stat, eq[stat]!)}`)
   if (eqParts.length) layers.push({ label: '装备', text: eqParts.join(' · '), good: true })
   const bondTotal = Object.values(member.bonds).reduce((s2, n) => s2 + n, 0)
   if (bondTotal > 0) layers.push({ label: '默契', text: `${bondTotal} 次共同远征(星数换算伤害加成)`, good: true })

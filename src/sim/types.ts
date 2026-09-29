@@ -1,5 +1,3 @@
-import type { DifficultyInput } from './difficulty'
-
 // ============================================================
 // 核心数据 schema（架构铁律：所有内容皆数据表，引擎只解释数据）
 // 上游设计：docs/M0-plan.md + 设计共识 v4
@@ -223,6 +221,10 @@ export interface Combatant {
   /** K08 套装件数:灰冠(T3)/猎风(T2 猎装) */
   setCrown?: number
   setHunt?: number
+  /** #0.2:原始敌人定义(summon 缩放校验用) */
+  enemyDef?: import('./types').EnemyDef
+  /** #0.2:召唤增援继承的缩放因子(summon 机制消费) */
+  scaleFactors?: import('./difficulty').EnemyScaleFactors
   /** 被嘲讽剩余 tick（威胁系统 D3-4 扩展） */
   tauntedTicks: number
   taunterId?: string
@@ -248,8 +250,6 @@ export interface Combatant {
   bossMechanics?: BossMechanicDef[]
   /** 召唤机制的增援池（从副本 enemyGroups 解析） */
   summonPool?: EnemyDef[]
-  /** Captured encounter scaling for reinforcements; never read a later encounter's modifiers. */
-  summonDifficulty?: DifficultyInput
   /** 机制运行时状态：按机制 kind 存 until/next/taken/fired */
   mech?: Record<string, { until?: number; next?: number; taken?: number; fired?: number; resolvedAt?: number }>
   /** 咏唱成功获得的临时攻击加成 */
@@ -406,10 +406,10 @@ export interface DungeonDef {
   /** K05 关系表(U13,B=C 地基):节点关系边列表——岔口从踏过节点的邻居优先抽取;
    *  边列表格式刻意与未来固定地图(C 形态)的连边同构,升级时数据零迁移 */
   routeRelations?: [string, string][]
-  /** 敌方强度倍率(宪法 v3.3 试玩反馈③:拉扯感——按副本阶梯) */
-  enemyPower?: number
+  /** #0.8 难度模型:全游戏唯一允许手调的难度旋钮(等效强度总量,替换旧 enemyPower) */
+  rating: number
   /** V1 二轮收紧:只对登记副本的敌人叠加威胁,不影响高塔/临时战斗 */
-  difficultyMods?: { enemyAttack?: number; enemyHp?: number }
+  /** #0.8:已废弃(被 rating 取代);保留字段说明见 IMPLEMENTATION-PLAN #0.8 */
   /** 副本预期等级(节奏系数+等级压制的锚;未注册=高塔等临时内容不吃补正) */
   expectedLevel?: number
   /** 副本环境(版图二):heat=灼热地形,战斗中周期性全队火伤(可被火抗减免) */

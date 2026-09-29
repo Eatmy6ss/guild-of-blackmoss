@@ -9,6 +9,7 @@ import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance }
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames, rollSpec } from './sim/gen'
 import { statLayers } from './sim/combat'
 import { ITEM_BASES } from './data/items'
+import { describeEquipmentSet } from './sim/equipment-sets'
 import { RACES } from './data/races'
 import { guildGoals } from './sim/goals'
 import { applyDeathShock, applyFeast, applyVictory, applyRestMorale, refusesToMarch } from './sim/morale'
@@ -1377,12 +1378,22 @@ export default function App() {
     const hp = c ? c.hp : m.hp
     const max = c ? c.maxHp : maxHpOf(m)
     const onExpedition = run != null ? run.members.includes(m) : expedition.includes(m)
+    const toggleDetails = () => setDetailOpen(cur => {
+      const next = new Set(cur)
+      if (next.has(m.id)) next.delete(m.id)
+      else next.add(m.id)
+      return next
+    })
   // K08 套装计数(成员侧直接数装备)
   const setCrown = Object.values(m.equipment).filter((e) => e && ITEM_BASES[e.baseId]?.setName === 'gray-crown').length
   const setHunt = Object.values(m.equipment).filter((e) => e && ITEM_BASES[e.baseId]?.setName === 'wind-hunt').length
     return (
       <div key={m.id} className="member-card">
-        <div className="mc-head" style={{ cursor: 'pointer' }} title="点击展开属性明细" onClick={() => setDetailOpen((cur) => { const n = new Set(cur); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n })}>
+        <div className="mc-head" role="button" tabIndex={0} aria-expanded={detailOpen.has(m.id)}
+          style={{ cursor: 'pointer' }} title="点击或按 Enter / 空格展开属性明细" onClick={toggleDetails}
+          onKeyDown={event => {
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleDetails() }
+          }}>
           <span className="name">{m.name}</span>
           <span className="job">
             {RACES[m.race ?? 'human'].name}·{isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
@@ -1404,7 +1415,7 @@ export default function App() {
             {(setCrown > 0 || setHunt > 0) && (
               <div className="stat-layer">
                 <span className="sl-label">套装</span>
-                <span>{setCrown ? `灰冠 ${setCrown} 件${setCrown >= 3 ? '（伤害 +10%）' : setCrown >= 2 ? '（伤害 +5%）' : ''}` : ''}{setCrown && setHunt ? ' · ' : ''}{setHunt ? `猎风 ${setHunt} 件${setHunt >= 3 ? '（暴击 +6%）' : setHunt >= 2 ? '（暴击 +3%）' : ''}` : ''}</span>
+                <span>{[describeEquipmentSet('gray-crown', setCrown), describeEquipmentSet('wind-hunt', setHunt)].filter(Boolean).join(' · ')}</span>
               </div>
             )}
             {(m.scars?.length ?? 0) > 0 && (

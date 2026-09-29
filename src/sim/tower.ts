@@ -1,10 +1,10 @@
-import { rollDrop } from './loot'
+import { rollDrop, createLootRng } from './loot'
 import { ITEM_BASES } from '../data/items'
 import { BLACKMOSS, RUSTMINE } from '../data/dungeons'
 import type { BossDef, DungeonDef, EnemyDef, ItemInstance, Member } from './types'
 import { createBattle, POTION_STOCK } from './combat'
 import type { BattleState } from './types'
-import { scaleEnemy, TOWER_SCALING_PER_FLOOR } from './difficulty'
+import { scaleEnemy, towerEnemyScale, TOWER_SCALING_PER_FLOOR } from './difficulty'
 export { towerEnemyScale } from './difficulty'
 
 // 黑苔高塔(M1 P1,宪法 Q4/Q5/Q6 定稿):
@@ -58,6 +58,8 @@ export interface TowerRun {
   autoMode?: boolean
   /** 遗物安葬 2.0:本层已投保(阵亡装备免赎回费) */
   insuredFloor?: boolean
+  /** #0.9:塔种子(结算掉落确定性) */
+  seed?: number
   /** 休整时购买的下一层保障，进入指定层时生效 */
   insuredNextFloor?: number
   witnessScarredIds?: string[]
@@ -73,8 +75,8 @@ export function towerFloorIsBoss(floor: number): boolean {
 }
 
 /** 敌人按层数缩放(HP/攻击同步上涨,防御/速度不动——强度可读) */
-function towerFloorScale<T extends EnemyDef>(def: T, floor: number, boss = false): T {
-  return scaleEnemy(def, { dungeon: {}, role: boss ? 'boss' : 'trash', modifiers: { towerFloor: floor } })
+function towerFloorScale<T extends EnemyDef>(def: T, floor: number): T {
+  return { ...scaleEnemy(def, towerEnemyScale(floor)), defense: def.defense, difficultyScaled: true }
 }
 
 const BOSS_ROTATION: { boss: BossDef; groups: DungeonDef['enemyGroups'] }[] = [
@@ -104,11 +106,12 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
   const dungeon: DungeonDef = {
     id: `tower-${floor}`,
     name: `黑苔高塔·第 ${floor} 层`,
+    rating: 1,
     size: 3,
     branches: [],
     routeNodes: [],
     enemyGroups,
-    bosses: isBoss ? { boss: towerFloorScale(entry.boss, floor, true) } : {},
+    bosses: isBoss ? { boss: towerFloorScale(entry.boss, floor) } : {},
     encounters: [
       isBoss
         ? { id: 'tower-boss', name: `守塔者(第 ${floor} 层)`, kind: 'boss', enemyGroupIds: [], bossId: 'boss' }
@@ -147,6 +150,7 @@ const FLOOR_POOL: EnemyDef[][] = [
 export function startTower(members: Member[], seed: number, potions = { heal: POTION_STOCK, fury: POTION_STOCK }): TowerRun {
   const run: TowerRun = {
     floor: 1,
+    seed,
     phase: 'battle',
     battle: null,
     members: members.filter((m) => m.alive).slice(0, 3),
@@ -184,12 +188,13 @@ export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolea
     const exp = towerExp(run.floor)
     const drops: ItemInstance[] = []
     const isBoss = towerFloorIsBoss(run.floor)
-    if (isBoss || Math.random() < 0.1) {
+    const lootRng = createLootRng((run.seed ?? 0) * 31 + run.floor * 977)
+    if (isBoss || lootRng() < 0.1) {
       const tier = towerItemTier(run.floor)
       const pool = Object.values(ITEM_BASES).filter((x) => x.tier === tier)
       if (pool.length > 0) {
-        const base = pool[Math.floor(Math.random() * pool.length)]!
-        drops.push(rollDrop(base.id, Math.random, { qualityBias: isBoss ? 0.15 : 0 }))
+        const base = pool[Math.floor(lootRng() * pool.length)]!
+        drops.push(rollDrop(base.id, lootRng, { qualityBias: isBoss ? 0.15 : 0 }))
       }
     }
     return { gold, cleared: true, exp, drops }

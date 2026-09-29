@@ -30,7 +30,7 @@ export function initAudio(): void {
   // 噪声缓冲(SFX 共用)
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate)
   const data = noiseBuf.getChannelData(0)
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() /* presentation-only */ * 2 - 1
   startBgm()
 }
 
@@ -81,7 +81,7 @@ function noise(dur: number, gain: number, hp = 800): void {
 // ---- SFX(audio-design:SFX 变奏 ±6% 音高;高频打击节流)----
 
 function wob(base: number): number {
-  return base * (0.94 + Math.random() * 0.12)
+  return base * (0.94 + Math.random() /* presentation-only */ * 0.12)
 }
 
 export function sfxHit(): void {

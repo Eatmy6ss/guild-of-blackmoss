@@ -5,7 +5,7 @@ import { EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW } 
 export const BLACKMOSS: DungeonDef = {
   id: 'blackmoss',
   name: '黑苔沼泽',
-  enemyPower: 1.0,
+  rating: 1.0,
   expectedLevel: 5,
   size: 3,
   branches: [
@@ -180,7 +180,7 @@ export const BLACKMOSS: DungeonDef = {
 export const RUSTMINE: DungeonDef = {
   id: 'rustmine',
   name: '锈坑矿道',
-  enemyPower: 1.05,
+  rating: 1.05,
   expectedLevel: 6,
   size: 3,
   branches: [
@@ -311,9 +311,8 @@ export const RUSTMINE: DungeonDef = {
 export const ASHFIELD: DungeonDef = {
   id: 'ashfield',
   name: '灰烬旧战场',
-  enemyPower: 1.1,
-  difficultyMods: { enemyAttack: 1.15, enemyHp: 1.1 },
-  expectedLevel: 7,
+  rating: 1.237,
+    expectedLevel: 7,
   size: 3,
   branches: [
     {
@@ -440,9 +439,8 @@ export const ASHFIELD: DungeonDef = {
 export const FROSTGRAVE: DungeonDef = {
   id: 'frostgrave',
   name: '白霜墓园',
-  enemyPower: 0.95,
-  difficultyMods: { enemyAttack: 1.15, enemyHp: 1.1 },
-  expectedLevel: 8,
+  rating: 0.95,
+    expectedLevel: 8,
   size: 3,
   branches: [
     {
@@ -560,9 +558,8 @@ export const FROSTGRAVE: DungeonDef = {
 export const ABYSSALTAR: DungeonDef = {
   id: 'abyssaltar',
   name: '渊底祭坛',
-  enemyPower: 1.05,
-  difficultyMods: { enemyAttack: 1.15, enemyHp: 1.1 },
-  expectedLevel: 9,
+  rating: 1.05,
+    expectedLevel: 9,
   size: 3,
   branches: [
     {
@@ -690,7 +687,7 @@ export const ABYSSALTAR: DungeonDef = {
 export const THORNHOLD: DungeonDef = {
   id: 'thornhold',
   name: '荆棘要塞',
-  enemyPower: 1.32,
+  rating: 1.32,
   expectedLevel: 11,
   size: 5,
   branches: [
