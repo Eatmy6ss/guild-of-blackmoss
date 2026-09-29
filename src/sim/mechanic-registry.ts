@@ -293,7 +293,7 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
         const pool = c.summonPool ?? []
         const count = mechanicParam(m, 'count')
         for (let i = 0; i < count && i < pool.length; i++) {
-          const add = mkEnemy(pool[i])
+          const add = mkEnemy(pool[i], c.summonDifficulty)
           for (const a of state.combatants) {
             if (a.team === 'guild' && a.alive) add.threat[a.id] = a.role === 'tank' ? 100 : 0
           }

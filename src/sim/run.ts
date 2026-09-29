@@ -132,12 +132,9 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     manualBonus,
     run.protectOn,
     run.potions,
-    (run.eliteNow || isElite ? 1.25 : 1) * rareMult,
+    { elite: !!(run.eliteNow || isElite), rareHunt: rareMult },
     Object.keys(mods).length > 0 ? mods : undefined,
   )
-  for (const c of run.battle.combatants) {
-    if (c.team === 'enemy' && !c.boss) c.elite = !!(run.eliteNow || isElite)
-  }
   run.eliteNow = false
   run.battle.commands.autoMode = !!run.autoMode
   run.battle.encounterId = run.steps[run.stepIdx]

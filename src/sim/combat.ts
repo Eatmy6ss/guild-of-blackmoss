@@ -21,6 +21,8 @@ import { interruptThreshold, MECHANIC_REGISTRY } from './mechanic-registry'
 import { runAutoAI } from './ai'
 import { equipmentStats } from './loot'
 import { bondStars, BOND_MULT_PER_STAR } from './gen'
+import { scaleEnemy, type DifficultyInput, type DifficultyModifiers } from './difficulty'
+export { ENEMY_HP_MULT } from './difficulty'
 
 // 战斗引擎 D8-9 版：威胁表、站位、轻协同、护甲模型 +
 // 团长指挥台（阵型/集火/道具/撤退令）与 boss 机制引擎对接。
@@ -56,8 +58,6 @@ export const EXTRACT_TICKS = 50
 /** 战斗硬上限(试玩反馈:tick 无限拖):软压力/强制撤离 */
 export const TICK_SOFT_CAP = 900
 export const TICK_HARD_CAP = 1200
-/** 副本敌人全局血量系数(试玩反馈④;温和放慢——弱档不磨死,秒杀感主要由等级压制治理) */
-export const ENEMY_HP_MULT = 1.1
 
 let combatantSeq = 0
 
@@ -205,11 +205,13 @@ export function toCombatant(member: Member): Combatant {
   }
 }
 
-export function enemyToCombatant(def: EnemyDef): Combatant {
+export function enemyToCombatant(base: EnemyDef, difficulty: DifficultyInput = { dungeon: {}, role: 'trash' }): Combatant {
+  const def = scaleEnemy(base, difficulty)
   return {
     id: `c${++combatantSeq}`,
     name: def.name,
     team: 'enemy',
+    elite: difficulty.role === 'elite',
     maxHp: def.maxHp,
     hp: def.maxHp,
     attack: def.attack,
@@ -239,20 +241,19 @@ export function createBattle(
   manualBonus = 0,
   protectOn = true,
   potions?: { heal: number; fury: number },
-  enemyScale = 1,
+  modifiers: DifficultyModifiers = {},
   /** 远征内事件状态(反馈④事件大项):乘数,只作用于我方 */
   mods?: { atk?: number; def?: number; hp?: number; heal?: number },
 ): BattleState {
-  const power = (dungeon.enemyPower ?? 1) * enemyScale
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
-  // 副本节奏系数(试玩反馈④:满配队 11-18s 秒杀 boss、机制零触发)——只作用于注册了
-  // expectedLevel 的副本;高塔有自己的 scaleEnemy 分层缩放,不吃这套
-  // Normal maps have fixed enemies: leveling must not raise the cost of revisiting them.
-  const hasCurve = dungeon.expectedLevel !== undefined
-  const hpFactor = hasCurve ? ENEMY_HP_MULT : 1
-  const difficultyHp = dungeon.difficultyMods?.enemyHp ?? 1
-  const difficultyAttack = dungeon.difficultyMods?.enemyAttack ?? 1
+  // Snapshot only difficulty fields; all spawned enemies inherit this encounter's modifiers.
+  const difficulty: DifficultyInput = {
+    dungeon: { enemyPower: dungeon.enemyPower, expectedLevel: dungeon.expectedLevel,
+      difficultyMods: { ...dungeon.difficultyMods } },
+    modifiers: { ...modifiers },
+    role: modifiers.elite ? 'elite' : 'trash',
+  }
   const combatants: Combatant[] = members.map(toCombatant)
   if (mods) {
     for (const c of combatants) {
@@ -267,29 +268,20 @@ export function createBattle(
   }
   for (const gid of enc.enemyGroupIds) {
     for (const e of dungeon.enemyGroups[gid] ?? []) {
-      const raw = enemyToCombatant(e)
-      if (power !== 1 || hpFactor !== 1 || difficultyHp !== 1 || difficultyAttack !== 1) {
-        raw.maxHp = Math.round(raw.maxHp * power * hpFactor * difficultyHp)
-        raw.hp = raw.maxHp
-        raw.attack = Math.round(raw.attack * power * difficultyAttack)
-      }
-      combatants.push(raw)
+      combatants.push(enemyToCombatant(e, difficulty))
     }
   }
   if (enc.bossId) {
     const def = dungeon.bosses[enc.bossId]
-    const boss = enemyToCombatant(def)
+    const boss = enemyToCombatant(def, { ...difficulty, role: 'boss' })
     boss.boss = true
     boss.bossMechanics = def.mechanics
     boss.mech = {}
-    if (power !== 1 || hpFactor !== 1 || difficultyHp !== 1 || difficultyAttack !== 1) {
-      boss.maxHp = Math.round(boss.maxHp * power * hpFactor * difficultyHp)
-      boss.hp = boss.maxHp
-      boss.attack = Math.round(boss.attack * power)
-      boss.attack = Math.round(boss.attack * difficultyAttack)
-    }
     const sumMech = def.mechanics.find((m) => m.kind === 'summon')
-    if (sumMech) boss.summonPool = dungeon.enemyGroups[String(sumMech.params.groupId)] ?? []
+    if (sumMech) {
+      boss.summonPool = dungeon.enemyGroups[String(sumMech.params.groupId)] ?? []
+      boss.summonDifficulty = difficulty
+    }
     combatants.push(boss)
   }
 

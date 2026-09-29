@@ -1,3 +1,5 @@
+import type { DifficultyInput } from './difficulty'
+
 // ============================================================
 // 核心数据 schema（架构铁律：所有内容皆数据表，引擎只解释数据）
 // 上游设计：docs/M0-plan.md + 设计共识 v4
@@ -246,6 +248,8 @@ export interface Combatant {
   bossMechanics?: BossMechanicDef[]
   /** 召唤机制的增援池（从副本 enemyGroups 解析） */
   summonPool?: EnemyDef[]
+  /** Captured encounter scaling for reinforcements; never read a later encounter's modifiers. */
+  summonDifficulty?: DifficultyInput
   /** 机制运行时状态：按机制 kind 存 until/next/taken/fired */
   mech?: Record<string, { until?: number; next?: number; taken?: number; fired?: number; resolvedAt?: number }>
   /** 咏唱成功获得的临时攻击加成 */
@@ -306,6 +310,8 @@ export interface Combatant {
 
 // ===== 副本（Q22：3/5/10 人本 + 固定掉落表 + 机制）=====
 export interface EnemyDef {
+  /** Runtime-only scaled definition (e.g. tower floor); prevents a second scaling pass. */
+  difficultyScaled?: true
   id: string
   name: string
   maxHp: number

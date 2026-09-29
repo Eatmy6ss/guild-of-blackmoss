@@ -356,15 +356,17 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
 
 ### #0.2 统一敌人缩放入口（1.5 人日）
 
+**2026-09-29 状态**：已在 `codex/enemy-scaling` 完成 B03 修复与验证，基于最新 `main@4816f3e`（M1 已通过）。初始/召唤/塔层统一生成入口，保持原始数值与取整；完整 verify 通过，见 [实施与验收](enemy-scaling-2026-09-29.md)。本项只引入 `DifficultyInput.dungeon/role/modifiers`，#0.8 再替换为 rating/archetype；不在本项改地图曲线。
+
 **解决**：B03。
 
 **现状**：`createBattle` 对初始怪应用地图倍率，`summonPool` 保留原始定义 —— 同一概念两条路径。
 
-**目标**：新增 `src/sim/difficulty.ts` 的 `scaleEnemy()`（签名见 #0.8），令**全项目只有这一处对敌人数值做乘算**。`createBattle`（`combat.ts:245-287`）与 `summon` 机制的 `mkEnemy`（`mechanics.ts:182`）都走它。高塔已预缩放的怪打标记，防二次放大。
+**目标**：新增 `src/sim/difficulty.ts` 的 `scaleEnemy()`（最终模型签名见 #0.8），令**全项目只有这一处做敌人生成时的数值乘算**。`createBattle` 与 `summon` 机制的 `mkEnemy`（#0.1 后位于 `mechanic-registry.ts`）都走它。高塔已预缩放的怪打标记，防二次放大。战中狂暴、强化属于机制状态变化，保持现状。
 
 **v2 注**：
 - `tower.ts:78` 已经有一个私有的 `scaleEnemy(def, floor)`，**和本任务的函数重名**。本任务先把它改名为 `towerFloorScale`，再改成调用 `difficulty.scaleEnemy`，避免代理 grep 时混淆两者。
-- 精英 ×1.25（`run.ts:134`）与稀有猎杀 `rareHunt.mult` 目前经 `enemyScale` 参数传入 `createBattle`。本任务把它们声明为 `DifficultyInput` 的 `modifiers` 字段，而不是继续当裸乘数传。召唤出来的增援要不要继承精英倍率，由 `scaleEnemy` 统一决定（推荐：继承）。
+- 精英 ×1.25 与稀有猎杀 `rareHunt.mult` 原经裸 `enemyScale` 参数传入 `createBattle`。本任务改为 `DifficultyInput` 的 `modifiers` 字段；增援继承本场精英/猎杀倍率，精英标记与初始怪一致。猎杀仅首场有效。Boss 的原有分步取整保持，不顺带统一成普通怪的一次取整。
 
 **验收**：不变量断言 —— 同一 `EnemyDef` 经初始生成与经 `summon` 生成，属性完全相同。
 
