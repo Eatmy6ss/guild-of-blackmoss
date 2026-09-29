@@ -1,4 +1,4 @@
-import type { ItemBaseDef, ItemInstance, ItemQuality, Slot, StatKey } from './types'
+import type { AffixDef, ItemInstance, ItemQuality, Slot, StatKey } from './types'
 import { ITEM_BASES } from '../data/items'
 import { AFFIXES } from '../data/affixes'
 
@@ -9,28 +9,42 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-/** 词条 roll：条数在装备基础盘区间内，不重复同一条缀 id，数值在区间内 */
-function rollAffixes(rng: () => number, base: ItemBaseDef): ItemInstance['rolls'] {
-  const [minC, maxC] = base.affixCount
+// 装备纪元：版图一 T1-T2，版图二 T3-T4；品质仅提供数值与追加条数预算。
+const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
+
+export interface AffixBudget {
+  count: readonly [number, number]
+  tierScale: number
+  qualityScale: number
+  /** 初始条数未达到上限时，最多追加一条的概率。 */
+  bonusChance?: number
+}
+
+/** 普通/追加共用抽取、去重与数值规则；先抽普通词条，保持既有随机数顺序。 */
+export function rollAffixes(budget: AffixBudget, pools: readonly AffixDef[], rng: () => number): ItemInstance['rolls'] {
+  const [minC, maxC] = budget.count
   const count = minC + Math.floor(rng() * (maxC - minC + 1))
-  const pool = Object.values(AFFIXES)
   const used = new Set<string>()
   const rolls: ItemInstance['rolls'] = []
-  // 装备纪元(宪法 v3.3):词条区间按 tier 表递增——版图一 T1-T2,版图二 T3-T4
-  const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
-  const tierScale = TIER_SCALE[base.tier] ?? 1
-  for (let i = 0; i < count; i++) {
-    const candidates = pool.filter((a) => !used.has(a.id))
-    if (candidates.length === 0) break
+  function rollOne(): boolean {
+    const candidates = pools.filter((a) => !used.has(a.id))
+    if (candidates.length === 0) return false
     const aff = candidates[Math.floor(rng() * candidates.length)]
     used.add(aff.id)
-    const lo = aff.range[0] * tierScale
-    const hi = aff.range[1] * tierScale
+    const lo = aff.range[0] * budget.tierScale
+    const hi = aff.range[1] * budget.tierScale
+    // 保留普通词条原有两次取整，避免其他品质及百分比属性漂移。
     rolls.push({
       affixId: aff.id,
-      value: round2(lo + rng() * (hi - lo)),
+      value: round2(round2(lo + rng() * (hi - lo)) * budget.qualityScale),
     })
+    return true
   }
+  for (let i = 0; i < count; i++) {
+    if (!rollOne()) break
+  }
+  const bonusChance = budget.bonusChance ?? 0
+  if (bonusChance > 0 && rolls.length < maxC && rng() < bonusChance) rollOne()
   return rolls
 }
 
@@ -54,17 +68,14 @@ export function rollDrop(
   let quality = rollQuality(rng, opts?.qualityBias ?? 0)
   if (opts?.minQuality === 'green' && quality === 'white') quality = 'green'
   if (opts?.minQuality === 'purple') quality = 'purple'
-  const rolls = rollAffixes(rng, base)
-  const qAdj = quality === 'purple' ? { mult: 1.25, add: 1 } : quality === 'green' ? { mult: 1.08, add: 0 } : { mult: 0.9, add: -0 }
-  const adjusted = rolls.map((r) => ({ ...r, value: round2(r.value * qAdj.mult) }))
-  if (qAdj.add > 0 && base.affixCount[1] > adjusted.length && rng() < 0.6) {
-    const pool = Object.values(AFFIXES).filter((x) => !adjusted.some((r) => r.affixId === x.id))
-    if (pool.length > 0) {
-      const aff = pool[Math.floor(rng() * pool.length)]
-      adjusted.push({ affixId: aff.id, value: round2(aff.range[0] * (base.tier >= 2 ? 1.5 : 1)) })
-    }
-  }
-  return { id: `i${crypto.randomUUID()}`, baseId, quality, rolls: adjusted }
+  const qAdj = quality === 'purple' ? { mult: 1.25, bonusChance: 0.6 } : quality === 'green' ? { mult: 1.08, bonusChance: 0 } : { mult: 0.9, bonusChance: 0 }
+  const rolls = rollAffixes({
+    count: base.affixCount,
+    tierScale: TIER_SCALE[base.tier] ?? 1,
+    qualityScale: qAdj.mult,
+    bonusChance: qAdj.bonusChance,
+  }, Object.values(AFFIXES), rng)
+  return { id: `i${crypto.randomUUID()}`, baseId, quality, rolls }
 }
 
 /** boss 固定掉落表结算：每条按 chance 独立 roll；pity=true 时空手则保底一件（D14 首杀保底） */
