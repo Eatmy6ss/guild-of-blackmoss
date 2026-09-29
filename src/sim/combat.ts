@@ -251,14 +251,12 @@ export function createBattle(
   // Normal maps have fixed enemies: leveling must not raise the cost of revisiting them.
   const hasCurve = dungeon.expectedLevel !== undefined
   const hpFactor = hasCurve ? ENEMY_HP_MULT : 1
-  const difficultyHp = dungeon.difficultyMods?.enemyHp ?? 1
-  const difficultyAttack = dungeon.difficultyMods?.enemyAttack ?? 1
   // #0.2:缩放因子只算一次,初始怪/boss/召唤增援共用同一份(反接缝:唯一乘算点在 difficulty.applyEnemyScaling)
   const factors: EnemyScaleFactors = {
-    power: (dungeon.enemyPower ?? 1) * enemyScale,
+    power: dungeon.rating * enemyScale,
     hpFactor,
-    difficultyHp,
-    difficultyAttack,
+    difficultyAttack: 1,
+    difficultyHp: 1,
   }
   const combatants: Combatant[] = members.map(toCombatant)
   if (mods) {

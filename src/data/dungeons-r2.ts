@@ -22,12 +22,11 @@ export const EMBERPASS: DungeonDef = {
   id: 'emberpass',
   name: '烬石隘口',
   size: 3,
-  difficultyMods: { enemyAttack: 1.65, enemyHp: 1.55 },
-  branches: [
+    branches: [
     { id: 'shortcut', name: '龙脊小径', risk: 3, reward: 2, desc: '快而险:翻越崩石,鳞音教哨卡密集' },
     { id: 'safepath', name: '盘山官道', risk: 1, reward: 1, desc: '稳而慢:商队踩出来的路,几乎无埋伏' },
   ],
-  enemyPower: 1.2,
+  rating: 1.919,
   expectedLevel: 11,
   enemyGroups: {
     dragonkin: [
@@ -89,12 +88,11 @@ export const SCALEHAVEN: DungeonDef = {
   id: 'scalehaven',
   name: '鳞音圣地带',
   size: 3,
-  difficultyMods: { enemyAttack: 2.25, enemyHp: 2 },
-  branches: [
+    branches: [
     { id: 'shortcut', name: '圣像大道', risk: 3, reward: 2, desc: '快而险:从圣像脚下穿行,教众无处不在' },
     { id: 'safepath', name: '香客绕道', risk: 1, reward: 1, desc: '稳而慢:绕开圣地带的核心' },
   ],
-  enemyPower: 1.25,
+  rating: 2.652,
   expectedLevel: 12,
   enemyGroups: {
     fanatics: [
@@ -153,12 +151,11 @@ export const FIRERIDGE: DungeonDef = {
   id: 'fireridge',
   name: '火脊巢穴',
   size: 3,
-  difficultyMods: { enemyAttack: 2.15, enemyHp: 2 },
-  branches: [
+    branches: [
     { id: 'shortcut', name: '熔岩栈道', risk: 3, reward: 2, desc: '快而险:贴着熔岩走的独木栈' },
     { id: 'safepath', name: '风口斜坡', risk: 1, reward: 1, desc: '稳而慢:风大,但至少凉快些' },
   ],
-  enemyPower: 1.35,
+  rating: 2.799,
   expectedLevel: 13,
   env: 'heat',
   enemyGroups: {
@@ -217,12 +214,11 @@ export const PILGRIMPATH: DungeonDef = {
   id: 'pilgrim-path',
   name: '朝圣者古道',
   size: 3,
-  difficultyMods: { enemyAttack: 2.05, enemyHp: 1.9 },
-  branches: [
+    branches: [
     { id: 'shortcut', name: '雪线垭口', risk: 3, reward: 2, desc: '快而险:雪线之上的风口垭口' },
     { id: 'safepath', name: '古道石阶', risk: 1, reward: 1, desc: '稳而慢:千年古道,台阶被磨得发亮' },
   ],
-  enemyPower: 1.15,
+  rating: 2.27,
   expectedLevel: 11,
   enemyGroups: {
     ghostpilgrims: [
@@ -281,12 +277,11 @@ export const FORGEWORKS: DungeonDef = {
   id: 'forge-works',
   name: '熔铸工坊',
   size: 3,
-  difficultyMods: { enemyAttack: 2.2, enemyHp: 2 },
-  branches: [
+    branches: [
     { id: 'shortcut', name: '熔炉主廊', risk: 3, reward: 2, desc: '快而险:锻炉之间穿行,热浪扑面' },
     { id: 'safepath', name: '矿车轨道', risk: 1, reward: 1, desc: '稳而慢:推着矿车绕行' },
   ],
-  enemyPower: 1.3,
+  rating: 2.727,
   expectedLevel: 12,
   enemyGroups: {
     forgewrought: [
@@ -344,12 +339,11 @@ export const DRAGONMAW: DungeonDef = {
   id: 'dragonmaw',
   name: '龙渊之心',
   size: 5,
-  difficultyMods: { enemyAttack: 1.95, enemyHp: 1.9 },
   branches: [
     { id: 'shortcut', name: '渊口垂降', risk: 3, reward: 2, desc: '快而险:绳索垂进龙渊,没有退路' },
     { id: 'safepath', name: '教团秘道', risk: 1, reward: 1, desc: '稳而慢:教团运祭品的老路' },
   ],
-  enemyPower: 1.5,
+  rating: 2.887,
   expectedLevel: 13,
   env: 'heat',
   enemyGroups: {
