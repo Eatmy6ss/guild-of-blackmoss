@@ -214,11 +214,11 @@ test('normal dungeon enemies stay fixed when the same roster levels up', () => {
   for (const dungeon of [BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD,
     EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW]) {
     for (const enc of dungeon.encounters) {
-      for (const scale of [1, 1.25, 1.5]) {
+      for (const modifiers of [{}, { elite: true }, { rareHunt: 1.5 }]) {
         assert.deepEqual(
-          project(createBattle(low, dungeon, enc.id, 123, 0, 0, true, undefined, scale)),
-          project(createBattle(high, dungeon, enc.id, 123, 0, 0, true, undefined, scale)),
-          `${dungeon.id}/${enc.id}/${scale}`,
+          project(createBattle(low, dungeon, enc.id, 123, 0, 0, true, undefined, modifiers)),
+          project(createBattle(high, dungeon, enc.id, 123, 0, 0, true, undefined, modifiers)),
+          `${dungeon.id}/${enc.id}/${JSON.stringify(modifiers)}`,
         )
       }
     }

@@ -4,6 +4,8 @@ import { BLACKMOSS, RUSTMINE } from '../data/dungeons'
 import type { BossDef, DungeonDef, EnemyDef, ItemInstance, Member } from './types'
 import { createBattle, POTION_STOCK } from './combat'
 import type { BattleState } from './types'
+import { scaleEnemy, towerEnemyScale, TOWER_SCALING_PER_FLOOR } from './difficulty'
+export { towerEnemyScale } from './difficulty'
 
 // 黑苔高塔(M1 P1,宪法 Q4/Q5/Q6 定稿):
 //   无限递增(敌人强度随层数线性上涨)、记录最高层;
@@ -13,7 +15,7 @@ import type { BattleState } from './types'
 
 export const TOWER = {
   /** 每层强度倍率(相对第 1 层):1 + 0.15 × (层-1) */
-  scalingPerFloor: 0.15,
+  scalingPerFloor: TOWER_SCALING_PER_FLOOR,
   /** boss 层间隔 */
   bossEvery: 3,
   /** 保护可用层数上限(9 层起保护失效) */
@@ -64,10 +66,6 @@ export interface TowerRun {
   result?: 'left' | 'defeated'
 }
 
-export function towerEnemyScale(floor: number): number {
-  return 1 + TOWER.scalingPerFloor * (floor - 1)
-}
-
 export function towerGold(floor: number): number {
   return Math.round(TOWER.goldPerFloorBase * (1 + TOWER.goldScalingPerFloor * (floor - 1)))
 }
@@ -77,13 +75,8 @@ export function towerFloorIsBoss(floor: number): boolean {
 }
 
 /** 敌人按层数缩放(HP/攻击同步上涨,防御/速度不动——强度可读) */
-function scaleEnemy(def: EnemyDef, floor: number): EnemyDef {
-  const k = towerEnemyScale(floor)
-  return {
-    ...def,
-    maxHp: Math.round(def.maxHp * k),
-    attack: Math.round(def.attack * k),
-  }
+function towerFloorScale<T extends EnemyDef>(def: T, floor: number): T {
+  return { ...scaleEnemy(def, towerEnemyScale(floor)), defense: def.defense, difficultyScaled: true }
 }
 
 const BOSS_ROTATION: { boss: BossDef; groups: DungeonDef['enemyGroups'] }[] = [
@@ -91,11 +84,6 @@ const BOSS_ROTATION: { boss: BossDef; groups: DungeonDef['enemyGroups'] }[] = [
   { boss: BLACKMOSS.bosses.talma, groups: BLACKMOSS.enemyGroups },
   { boss: RUSTMINE.bosses.delveanchor, groups: RUSTMINE.enemyGroups },
 ]
-
-function scaledBoss(def: BossDef, floor: number): BossDef {
-  const k = towerEnemyScale(floor)
-  return { ...def, maxHp: Math.round(def.maxHp * k), attack: Math.round(def.attack * k) }
-}
 
 /** 生成某一层的战斗(复用 createBattle:威胁/站位/机制全继承) */
 export function startTowerFloor(run: TowerRun, seed: number): void {
@@ -105,14 +93,14 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
   const waveIndex = floor - 1 - Math.floor(floor / TOWER.bossEvery)
   const pool: EnemyDef[] = isBoss
     ? []
-    : FLOOR_POOL[waveIndex % FLOOR_POOL.length].map((e) => scaleEnemy(e, floor))
+    : FLOOR_POOL[waveIndex % FLOOR_POOL.length].map((e) => towerFloorScale(e, floor))
   const entry = BOSS_ROTATION[(Math.floor(floor / TOWER.bossEvery) - 1) % BOSS_ROTATION.length]
   const enemyGroups: DungeonDef['enemyGroups'] = { tower: pool }
   if (isBoss) {
     for (const mechanic of entry.boss.mechanics) {
       if (mechanic.kind !== 'summon') continue
       const groupId = String(mechanic.params.groupId)
-      enemyGroups[groupId] = entry.groups[groupId].map((e) => scaleEnemy(e, floor))
+      enemyGroups[groupId] = entry.groups[groupId].map((e) => towerFloorScale(e, floor))
     }
   }
   const dungeon: DungeonDef = {
@@ -123,7 +111,7 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
     branches: [],
     routeNodes: [],
     enemyGroups,
-    bosses: isBoss ? { boss: scaledBoss(entry.boss, floor) } : {},
+    bosses: isBoss ? { boss: towerFloorScale(entry.boss, floor) } : {},
     encounters: [
       isBoss
         ? { id: 'tower-boss', name: `守塔者(第 ${floor} 层)`, kind: 'boss', enemyGroupIds: [], bossId: 'boss' }
@@ -146,6 +134,7 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
     // 分层残酷:9 层起保护失效
     floor <= TOWER.protectUntilFloor,
     alloc,
+    { towerFloor: floor },
   )
   run.battle.commands.autoMode = !!run.autoMode
   run.phase = 'battle'

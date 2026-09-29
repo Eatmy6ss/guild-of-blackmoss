@@ -1,7 +1,6 @@
-import type { ItemBaseDef, ItemInstance, ItemQuality, Slot, StatKey } from './types'
+import type { AffixDef, ItemInstance, ItemQuality, Slot, StatKey } from './types'
 import { ITEM_BASES } from '../data/items'
 import { AFFIXES } from '../data/affixes'
-import type { AffixDef } from '../sim/types'
 
 // 掉落系统（D10，Q17/Q22）：boss 掉什么固定（掉落表），什么词条掉落时 roll。
 // 装备属性 = 基础盘 + 词条聚合，战斗投影时一次性加算。
@@ -10,29 +9,44 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-/** 词条 roll：条数在装备基础盘区间内，不重复同一条缀 id，数值在区间内 */
-function rollAffixes(rng: () => number, base: ItemBaseDef): ItemInstance['rolls'] {
-  const [minC, maxC] = base.affixCount
+// 装备纪元：版图一 T1-T2，版图二 T3-T4；品质仅提供数值与追加条数预算。
+const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
+
+export interface AffixBudget {
+  count: readonly [number, number]
+  tierScale: number
+  qualityScale: number
+  /** 初始条数未达到上限时，最多追加一条的概率。 */
+  bonusChance?: number
+}
+
+/** 普通/追加共用抽取、去重与数值规则；先抽普通词条，保持既有随机数顺序。 */
+export function rollAffixes(budget: AffixBudget, pools: readonly AffixDef[], rng: () => number): ItemInstance['rolls'] {
+  const [minC, maxC] = budget.count
   const count = minC + Math.floor(rng() * (maxC - minC + 1))
-  const pool = Object.values(AFFIXES)
   const used = new Set<string>()
   const rolls: ItemInstance['rolls'] = []
-  // 装备纪元(宪法 v3.3):词条区间按 tier 表递增——版图一 T1-T2,版图二 T3-T4
-  const tierScale = TIER_SCALE[base.tier] ?? 1
-  for (let i = 0; i < count; i++) {
-    const candidates = pool.filter((a) => !used.has(a.id))
-    if (candidates.length === 0) break
+  function rollOne(): boolean {
+    const candidates = pools.filter((a) => !used.has(a.id))
+    if (candidates.length === 0) return false
     const aff = candidates[Math.floor(rng() * candidates.length)]
     used.add(aff.id)
-    rolls.push({ affixId: aff.id, value: affixValue(aff, tierScale, rng) })
+    // 保留普通词条原有两次取整，避免其他品质及百分比属性漂移。
+    rolls.push({
+      affixId: aff.id,
+      value: round2(affixValue(aff, budget.tierScale, rng) * budget.qualityScale),
+    })
+    return true
   }
+  for (let i = 0; i < count; i++) {
+    if (!rollOne()) break
+  }
+  const bonusChance = budget.bonusChance ?? 0
+  if (bonusChance > 0 && rolls.length < maxC && rng() < bonusChance) rollOne()
   return rolls
 }
 
-/** #0.3 单一词条取值函数(B04 修复):普通词条与紫装追加词条共用同一规则——
- *  range[tierScale 缩放]内均匀 roll;禁止任何分支自带独立取值公式 */
-const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
-
+/** 阶级区间取值供普通与追加共用；品质倍率由同一个预算入口统一应用。 */
 export function affixValue(aff: AffixDef, tierScale: number, rng: () => number): number {
   const lo = aff.range[0] * tierScale
   const hi = aff.range[1] * tierScale
@@ -59,18 +73,14 @@ export function rollDrop(
   let quality = rollQuality(rng, opts?.qualityBias ?? 0)
   if (opts?.minQuality === 'green' && quality === 'white') quality = 'green'
   if (opts?.minQuality === 'purple') quality = 'purple'
-  const rolls = rollAffixes(rng, base)
-  const qAdj = quality === 'purple' ? { mult: 1.25, add: 1 } : quality === 'green' ? { mult: 1.08, add: 0 } : { mult: 0.9, add: -0 }
-  const adjusted = rolls.map((r) => ({ ...r, value: round2(r.value * qAdj.mult) }))
-  if (qAdj.add > 0 && base.affixCount[1] > adjusted.length && rng() < 0.6) {
-    const pool = Object.values(AFFIXES).filter((x) => !adjusted.some((r) => r.affixId === x.id))
-    if (pool.length > 0) {
-      const aff = pool[Math.floor(rng() * pool.length)]
-      // #0.3:追加词条与普通词条同规则(I4);不再用固定低端×1.5 的独立公式
-      adjusted.push({ affixId: aff.id, value: affixValue(aff, TIER_SCALE[base.tier] ?? 1, rng) })
-    }
-  }
-  return { id: `i${crypto.randomUUID()}`, baseId, quality, rolls: adjusted }
+  const qAdj = quality === 'purple' ? { mult: 1.25, bonusChance: 0.6 } : quality === 'green' ? { mult: 1.08, bonusChance: 0 } : { mult: 0.9, bonusChance: 0 }
+  const rolls = rollAffixes({
+    count: base.affixCount,
+    tierScale: TIER_SCALE[base.tier] ?? 1,
+    qualityScale: qAdj.mult,
+    bonusChance: qAdj.bonusChance,
+  }, Object.values(AFFIXES), rng)
+  return { id: `i${crypto.randomUUID()}`, baseId, quality, rolls }
 }
 
 /** boss 固定掉落表结算：每条按 chance 独立 roll；pity=true 时空手则保底一件（D14 首杀保底） */
@@ -132,22 +142,35 @@ export function equipmentStats(equipment: Partial<Record<Slot, ItemInstance>>): 
 export function describeItem(item: ItemInstance): string {
   const base = ITEM_BASES[item.baseId]
   const qName = item.quality === 'purple' ? '【史诗】' : item.quality === 'green' ? '【精良】' : ''
-  const parts = [qName + `${STAT_NAME[base.stat]}+${formatStat(base.stat, base.value)}`]
+  const parts = [qName + `${STAT_NAME[base.stat]}${formatStat(base.stat, base.value, true)}`]
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
-    parts.push(`${aff.name}+${formatStat(aff.stat, r.value)}`)
+    parts.push(`${aff.name}${formatStat(aff.stat, r.value, true)}`)
   }
   const LEGACY_NAMES: Record<string, string> = { focus: '锋镝', killheal: '饮血', bulwark: '磐石', mend: '春霖', elitewarden: '嗜功', emberward: '烬衣', triumph: '凯歌', scavenger: '拾荒' }
   const legacy = base.legacy ? '〔' + (LEGACY_NAMES[base.legacy] ?? base.legacy) + '〕' : ''
   return `${base.name}${legacy}（${parts.join('，')}）`
 }
 
-/** #0.4 单一格式化入口(B05 修复):由 StatKey 决定格式种类——百分比类漏 healReceived 的缺陷已修 */
-const PERCENT_STATS: ReadonlySet<StatKey> = new Set(['critChance', 'lifesteal', 'fireResist', 'healReceived'])
-export function formatStat(stat: StatKey, v: number): string {
-  return PERCENT_STATS.has(stat)
-    ? `${Math.round(v * 100)}%`
-    : `${Math.round(v * 10) / 10}`
+/** 新增 StatKey 时必须声明单位，类型检查会阻止遗漏。 */
+export const STAT_FORMAT: Record<StatKey, 'number' | 'percent'> = {
+  attack: 'number', maxHp: 'number', defense: 'number', speed: 'number',
+  critChance: 'percent', lifesteal: 'percent', healReceived: 'percent', fireResist: 'percent',
+}
+
+function formatValue(value: number, unit: 'number' | 'percent', signed: boolean): string {
+  const rounded = Math.round(value * (unit === 'percent' ? 100 : 1) * 10) / 10
+  return `${signed && rounded > 0 ? '+' : ''}${rounded}${unit === 'percent' ? '%' : ''}`
+}
+
+/** 最多一位小数；符号由展示场景决定，零值不加号，不显示负零。 */
+export function formatStat(stat: StatKey, value: number, signed = false): string {
+  return formatValue(value, STAT_FORMAT[stat], signed)
+}
+
+/** 伤害倍率、经验等不是装备 StatKey，使用同一百分比规则。 */
+export function formatPercent(value: number, signed = false): string {
+  return formatValue(value, 'percent', signed)
 }
 
 export const STAT_NAME: Record<StatKey, string> = {

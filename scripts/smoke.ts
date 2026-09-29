@@ -1099,7 +1099,7 @@ const towerFailures: string[] = []
   {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 666000 + j))
     const b1 = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242)
-    const b2 = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242, 0, 0, true, undefined, 1, { hp: 1.2, atk: 0.9, heal: 1.15 })
+    const b2 = createBattle(squad, BLACKMOSS, 'enc-frogs', 4242, 0, 0, true, undefined, {}, { hp: 1.2, atk: 0.9, heal: 1.15 })
     const g1 = b1.combatants.filter((c) => c.team === 'guild')
     const g2 = b2.combatants.filter((c) => c.team === 'guild')
     const hpOk = g2.every((c, i) => c.maxHp === Math.round(g1[i].maxHp * 1.2))

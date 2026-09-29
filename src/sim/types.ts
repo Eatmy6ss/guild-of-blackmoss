@@ -310,6 +310,8 @@ export interface Combatant {
 
 // ===== 副本（Q22：3/5/10 人本 + 固定掉落表 + 机制）=====
 export interface EnemyDef {
+  /** Runtime-only scaled definition (e.g. tower floor); prevents a second scaling pass. */
+  difficultyScaled?: true
   id: string
   name: string
   maxHp: number
