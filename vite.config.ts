@@ -7,6 +7,8 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const buildDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
 export default defineConfig({
+  cacheDir: '.vite/game-deps',
   plugins: [react()],
   define: { __BUILD_DATE__: JSON.stringify(buildDate) },
+  build: { rollupOptions: { input: { game: 'index.html', resources: 'resources.html' } } },
 })

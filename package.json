@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run test && npm run typecheck:admin && node scripts/verify.mjs",
+    "verify": "npm run test:resources && npm run test && npm run typecheck:admin && node scripts/verify.mjs",
+    "test:resources": "node scripts/check-resources.mjs",
     "test:gameplay": "node scripts/test-gameplay.cjs"
   },
   "dependencies": {

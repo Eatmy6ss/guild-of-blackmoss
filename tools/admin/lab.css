@@ -22,7 +22,7 @@
 .lab-skill-config { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: center; margin: 10px 0; }
 .lab-notice { background: #493725; border: 1px solid #9a7944; padding: 12px; }
 .lab-stage-scroll, .lab-table-scroll { overflow: auto; max-width: 100%; }
-.lab-stage { width: 100%; min-width: 760px; height: 320px; background: #1c1410; }
+.lab-stage { width: 100%; min-width: 0; height: 360px; box-sizing: content-box; background: #121416; }
 .lab-stage canvas { display: block; }
 .lab-units { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 10px; }
 .lab-units article { border-left: 3px solid #8d7548; background: #30251d; padding: 8px 14px; font-size: 13px; }

@@ -1,3 +1,7 @@
+import { HeroPortrait, ArtCanvas } from './ui/art/ArtCanvas'
+import { itemIcon, DOCK_ART } from './ui/art/catalog'
+import { BattleIntel } from './ui/art/BattleIntel'
+import { CreditsDialog } from './ui/art/Credits'
 import { KingdomPanel } from './ui/KingdomPanel'
 import { SaveTransferPanel } from './ui/SaveTransferPanel'
 import { StatisticsPanel } from './ui/StatisticsPanel'
@@ -48,7 +52,7 @@ import { runDungeon, runMembers, runRng } from './sim/run-core'
 import { runReducer, initialRunState, checkpointRunState, pendingRunEvent, type RunUIState } from './sim/run-state'
 import { GUILD_EVENTS } from './data/guild-events'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
-import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
+import { initAudio, setMusicMood, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
 import { bossIntents } from './sim/mechanics'
 import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, insureNextTowerFloor, towerRest, towerNext, towerFloorIsBoss, type TowerRun } from './sim/tower'
@@ -78,19 +82,7 @@ import { MECHANIC_REGISTRY, mechanicBrief } from './sim/mechanic-registry'
 
 const START_JOBS = ['guard', 'priest', 'ranger'] as const
 
-/** 副本→战斗背景主题(版图二龙脊 heat 单独走 env) */
-const THEME_BY_DUNGEON: Record<string, string> = {
-  blackmoss: 'swamp',
-  rustmine: 'mine',
-  ashfield: 'ash',
-  frostgrave: 'frost',
-  'pilgrim-path': 'frost',
-  abyssaltar: 'abyss',
-  thornhold: 'thorn',
-  'forge-works': 'mine',
-  emberpass: 'default',
-  scalehaven: 'abyss',
-}
+
 const ROLE_NAME: Record<string, string> = { tank: '坦克', healer: '治疗', dps: '输出' }
 const SLOT_NAME: Record<Slot, string> = { weapon: '武器', armor: '护甲', trinket: '饰品' }
 const SLOTS: Slot[] = ['weapon', 'armor', 'trinket']
@@ -278,6 +270,7 @@ export default function App() {
   // F13(2026-09-25):内置确认弹窗——微信等内置浏览器不支持 window.confirm/prompt,破坏性操作改游戏内弹窗
   const [confirmAsk, setConfirmAsk] = useState<{ text: string; okLabel?: string; onOk: () => void } | null>(null)
   const [muted, setMuted] = useState(isMuted())
+  const [showCredits, setShowCredits] = useState(false)
   const [gold, setGold] = useState(() => saved?.gold ?? 150)
   const [statistics, setStatistics] = useState(() => saved?.statistics ?? newStatistics())
   const noteStatistics = (action: StatisticsAction | null) => {
@@ -348,6 +341,7 @@ export default function App() {
 
   useEffect(() => {
     const renderer = new BattleRenderer()
+    renderer.setMembers(membersRef.current)
     rendererRef.current = renderer
     renderer.mount(stageRef.current!).catch(() => {})
     // 指挥台：点击场上敌人 = 集火
@@ -365,6 +359,7 @@ export default function App() {
   }, [])
 
   const drainAndSync = (state: BattleState) => {
+    rendererRef.current?.setMembers(membersRef.current)
     if (state !== lastBattleRef.current) {
       lastBattleRef.current = state
       eventCursorRef.current = 0
@@ -394,7 +389,7 @@ export default function App() {
     setResumeNotice('已恢复上次进度；战斗、药水和已到账奖励均已保留。')
     if (active.kind === 'dungeon') {
       const d = runDungeon(active)
-      rendererRef.current?.setTheme(d.env === 'heat' ? 'heat' : THEME_BY_DUNGEON[d.id] ?? 'default')
+      rendererRef.current?.setTheme(d.id)
     }
     if (active.battle) {
       lastBattleRef.current = active.battle
@@ -697,7 +692,7 @@ export default function App() {
     setResumeNotice('')
     // 战斗背景主题(按副本):灼热/冰雪/沼泽/矿道…
     rendererRef.current?.setTheme(
-      activeDungeon.env === 'heat' ? 'heat' : THEME_BY_DUNGEON[activeDungeon.id] ?? 'default',
+      activeDungeon.id,
     )
     setRunning(true)
     syncAll()
@@ -1276,6 +1271,14 @@ export default function App() {
   const [hubScreen, setHubScreen] = useState<UIScreen | null>(null)
   // 透明面板(宪法 v3.2 缺陷二):展开显示乘区逐层明细的成员
   const [detailOpen, setDetailOpen] = useState<Set<string>>(new Set())
+  const battleMapId = towerRun ? 'tower' : run ? runDungeon(run).id : activeDungeon.id
+  const hasBoss = battle?.combatants.some(c => c.boss && c.alive)
+  useEffect(() => { rendererRef.current?.setTheme(battleMapId) }, [battleMapId])
+  useEffect(() => {
+    setMusicMood(hubScreen === 'memorial' || battle?.status === 'guild-wipe' ? 'mourning'
+      : (inBattle || inTowerBattle) && battle?.status === 'running' ? hasBoss ? 'boss' : 'battle'
+      : towerRun || (run && ['rustmine', 'abyssaltar', 'dragonmaw'].includes(battleMapId)) ? 'cavern' : 'hub')
+  }, [hubScreen, battle?.status, hasBoss, inBattle, inTowerBattle, battleMapId, !!towerRun, !!run])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName
@@ -1351,6 +1354,7 @@ export default function App() {
           onKeyDown={event => {
             if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleDetails() }
           }}>
+          <HeroPortrait member={m} />
           <span className="name">{m.name}</span>
           <span className="job">
             {RACES[m.race ?? 'human'].name}·{isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
@@ -1416,8 +1420,11 @@ export default function App() {
               ...inventory.filter((i) => slotsOf(i) === slot),
             ]
             return (
+              <label key={slot} className="gear-control">
+                <ArtCanvas paths={[itemIcon(equipped?.baseId ?? '', slot)]} label={SLOT_NAME[slot]} size={32} />
+                <span>{SLOT_NAME[slot]}</span>
               <select
-                key={slot}
+                aria-label={m.name + '的' + SLOT_NAME[slot]}
                 className="slot-select"
                 value={equipped?.id ?? ''}
                 title={equipped ? describeItem(equipped) : `${SLOT_NAME[slot]}（空）`}
@@ -1430,6 +1437,7 @@ export default function App() {
                   </option>
                 ))}
               </select>
+              </label>
             )
           })}
         </div>
@@ -1438,7 +1446,8 @@ export default function App() {
   }
 
   return (
-    <div>
+    <div className={`game-shell${inBattle || inTowerBattle ? ' combat-shell' : ''}`}>
+      {showCredits && <CreditsDialog onClose={() => setShowCredits(false)} />}
       {confirmAsk && (
         <div className="screen-overlay" style={{ zIndex: 120 }}>
           <div className="screen-panel" style={{ width: 'min(420px, 90vw)' }}>
@@ -1483,6 +1492,7 @@ export default function App() {
           <div className="title-foot">
             M1 · 内部构建 · 暂定名《黑苔公会》
             <span className="title-saveops">
+              <button className="mini-btn" onClick={() => setShowCredits(true)}>素材致谢</button>
               <button className="mini-btn" onClick={() => {
                 const current = loadGuildSave()
                 if (current) setSaveTransfer({ mode: 'export', code: exportSave(current) })
@@ -1495,18 +1505,24 @@ export default function App() {
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
       <button
         className="mute-btn"
+        aria-label={muted ? "开启声音" : "静音"}
+        title={muted ? "开启场景音乐与音效" : "静音"}
         onClick={() => { initAudio(); setMuted(toggleMute()) }}
       >
         {muted ? '🔇' : '🔊'}
       </button>
       <div className="app-header">
+        <button className="credits-link" onClick={() => setShowCredits(true)}>素材图鉴 / 致谢</button>
         <h1>黑 苔 公 会</h1>
         <span className="slice-tag">佣兵纪元 · 任务板上的公会 —— 爬塔 / 招募 / 成长 / 演出</span>
         <span className="slice-tag" style={{ opacity: 0.55 }}>build {__BUILD_DATE__}</span>
       </div>
-      {scarNotices.length > 0 && <div className="panel" role="status">{scarNotices.map((notice, i) => <p className="hint" key={i}>{notice}</p>)}</div>}
+      {scarNotices.length > 0 && <details className="enc-notices" open={!(inBattle || inTowerBattle) || battle?.status !== 'running'}>
+        <summary>{scarNotices[0]} <span>· 查看 {scarNotices.length} 项结算</span></summary>
+        <div role="status">{scarNotices.map((notice, i) => <p className="hint" key={i}>{notice}</p>)}</div>
+      </details>}
       {screen === 'game' && resumeNotice && <p className="hint" role="status">{resumeNotice}</p>}
-      <div className={`layout${inBattle ? ' battle-mode' : ''}`}>
+      <div className={`layout${inBattle || inTowerBattle ? ' battle-mode' : ''}`}>
         <div className="panel hub-panel">
           <div className="hub-topbar">
             <span className="hub-title">🏰 黑苔公会</span>
@@ -1526,7 +1542,7 @@ export default function App() {
                 className={`dock-btn${hubScreen === it.key ? ' open' : ''}`}
                 onClick={() => setHubScreen((cur) => (cur === it.key ? null : it.key))}
               >
-                <span className="dock-icon">{it.icon}</span>
+                <span className="dock-icon"><ArtCanvas paths={[DOCK_ART[it.key] ?? '/assets/icons/book.png']} label="" size={32} /></span>
                 <span className="dock-label">{it.label}</span>
                 <span className="dock-key">{it.hotkey}</span>
               </button>
@@ -1626,6 +1642,7 @@ export default function App() {
             {visitor ? (
               <div className="member-card candidate">
                 <div className="mc-head">
+                  <HeroPortrait member={visitor.member} />
                   <span className="name">🚪 {visitor.member.name}</span>
                   <span className="job">
                     {JOBS[visitor.member.job].name} Lv{visitor.member.level} · {ROLE_NAME[JOBS[visitor.member.job].role]}
@@ -1688,6 +1705,7 @@ export default function App() {
                 {candidates.map((m) => (
                   <div key={m.id} className="member-card candidate">
                     <div className="mc-head">
+                      <HeroPortrait member={m} />
                       <span className="name">{m.name}</span>
                       <span className="job">
                         {RACES[m.race ?? 'human'].name}·{isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
@@ -2101,7 +2119,8 @@ export default function App() {
             )}
         </div>
 
-        <div className="panel">
+        <div className={`panel${inBattle || inTowerBattle ? ' battle-panel' : ''}`}>
+          {(inBattle || inTowerBattle) && battle && <BattleIntel battle={battle} members={members} mapId={battleMapId} paused={inTowerBattle ? !towerRunning : !running} />}
           {/* 舞台常驻：渲染器挂载一次，非战斗阶段隐藏（避免 ref 为 null 导致挂载失败） */}
           <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }} />
 
@@ -2373,7 +2392,7 @@ export default function App() {
                   }}
                   disabled={battle.commands.autoMode || battle.commands.healStock <= 0 || battle.commands.healCd > 0}
                 >
-                  💊 {battle.commands.healStock}
+                  💊 治疗药×{battle.commands.healStock}
                 </button>
                 <button
                   onClick={() => {
@@ -2382,7 +2401,7 @@ export default function App() {
                   }}
                   disabled={battle.commands.autoMode || battle.commands.furyStock <= 0 || battle.commands.furyCd > 0}
                 >
-                  ⚡ {battle.commands.furyStock}
+                  ⚡ 爆发药×{battle.commands.furyStock}
                 </button>
                 {intents?.casting && intents.casterId && !battle.commands.autoMode && (
                   <button

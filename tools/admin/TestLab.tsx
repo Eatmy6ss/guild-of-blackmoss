@@ -196,7 +196,7 @@ export function TestLab() {
           <button onClick={() => command(useFuryPotion)}>爆发药 ×{battle.commands.furyStock}</button>
           <button aria-pressed={battle.commands.autoMode} onClick={() => command(b => { b.commands.autoMode = !b.commands.autoMode })}>自动指挥：{battle.commands.autoMode ? '开' : '关'}</button>
         </div>
-        <p className="lab-help">{intents?.telegraphing ? '范围攻击蓄力中，可切分散应对。' : '点击敌人或下方目标按钮集火；窄屏可横向查看战场。'} 技能冷却在单位可行动时才检查，并非归零就立即释放。</p>
+        <p className="lab-help">{intents?.telegraphing ? '范围攻击蓄力中，可切分散应对。' : '点击敌人或下方目标按钮集火；窄屏按队伍纵向布阵，单位较多时上下查看。'} 技能冷却在单位可行动时才检查，并非归零就立即释放。</p>
         <div className="lab-targets">{battle.combatants.filter(c => c.team === 'enemy').map(unit => <button key={unit.id} disabled={!unit.alive || battle.status !== 'running'} aria-pressed={battle.commands.focusId === unit.id} onClick={() => command(b => setFocus(b, unit.id))}>
           {unit.name} · {unit.hp}/{unit.maxHp}
         </button>)}</div>
