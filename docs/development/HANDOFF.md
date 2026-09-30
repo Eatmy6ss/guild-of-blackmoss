@@ -1,5 +1,9 @@
 # 当前交接
 
+## 附：设计探讨文档（制作人×zcode，2026-09-30）
+
+- 制作人与 zcode 完成一轮方向探讨（三足鼎/怪物词缀/怪猎式闯入/说书人层），结论与未决项沉淀在 [three-pillars-affixes-2026-09-30.md](three-pillars-affixes-2026-09-30.md)。**未定稿，不入 DECISIONS/DESIGN**；制作人将携其与 Claude 续探装备构筑深度与词缀池设计（文档 §7 有交接清单，§8 有基建映射）。不影响当前 #0.10→#0.5→#0.6 工单。
+
 ## 交接：PR #4 已合并，批次 0 剩余工单移交 shldo（2026-09-29，制作人指派）
 
 - **PR #4 审查通过并已合并**：合并提交 `8873d24`（2026-09-29 23:40 北京时间）。本机独立复审结论：云端净增量全部采纳且不覆盖主线语义——追加词条 1.25 品质倍率入 `rollAffixes` 预算（修主线后处理 qAdj 漏乘追加条）、`createBattle` 第 9 参 `enemyScale` 改 `DifficultyModifiers` 对象（elite/rareHunt/towerFloor）、套装数值抽 `equipment-sets.ts` 单一来源、显示层统一 `formatStat`/`formatPercent` 并支持键盘展开、精英标记收进 `applyEnemyScaling` 且 `difficultyScaled` 防塔层二次缩放。本机复跑完整 verify 退出 0（Vitest 34、smoke 47、玩法+王国回归、类型与构建）。审查认可的语义变化：精英场次 Boss 现在也带 `elite` 标记（旧版只标小怪）；塔层防御不随层数上涨的规则保持原样。
