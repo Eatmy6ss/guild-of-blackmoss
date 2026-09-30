@@ -2,6 +2,7 @@ import { COMMISSIONS, COMMISSION_LIMIT, KINGDOM_RANKS, type CommissionDef } from
 import { ECONOMY } from '../data/economy'
 import { dungeonLock } from '../data/regions'
 import type { ItemInstance } from './types'
+import { runDungeon } from './run-core'
 import type { DungeonRun } from './run'
 
 export type RoyalRewardChoice = 'coin' | 'supplies'
@@ -96,10 +97,10 @@ export function advanceCommissions(state: KingdomState, event: KingdomEvent): Ki
 /** Inspect the encounter before advanceRun changes its index. Rest/defeat/retreat cannot count twice. */
 export function settleKingdomBattle(state: KingdomState, run: DungeonRun): KingdomState {
   if (run.phase !== 'battle' || run.battle?.status !== 'guild-win') return state
-  const encounter = run.dungeon.encounters.find((e) => e.id === run.steps[run.stepIdx])
+  const encounter = runDungeon(run).encounters.find((e) => e.id === run.steps[run.stepIdx])
   if (!encounter) return state
-  let next = advanceCommissions(state, { kind: 'battle', dungeonId: run.dungeon.id, bossId: encounter.bossId })
-  if (run.stepIdx === run.steps.length - 1) next = advanceCommissions(next, { kind: 'clear', dungeonId: run.dungeon.id })
+  let next = advanceCommissions(state, { kind: 'battle', dungeonId: runDungeon(run).id, bossId: encounter.bossId })
+  if (run.stepIdx === run.steps.length - 1) next = advanceCommissions(next, { kind: 'clear', dungeonId: runDungeon(run).id })
   return next
 }
 

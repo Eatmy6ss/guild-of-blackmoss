@@ -494,6 +494,8 @@ export function ratingOfEnemy(e: EnemyDef): number
 
 ### #0.10 结算管线收口（3 人日，v2 新增）
 
+**2026-09-30 实施校准**：shldo 基于合并后的 `3f92dcd` 认领。塔掉落的裸随机数已由主线修复，不重复改掉落数值；本轮把正式 UI 的两处结算接到统一入口，并保留 `settleTowerFloor` 为内部阶段/奖励助手。`EncounterOutcome` 返回成员/公会/本趟的更新快照和实际后果，App 只同步状态。I9 除键集合外必须检验真实死亡冲击、故事、遗物与参战边界；同输入同 RNG 的完整输出一致且输入不变。纯函数显式分配本趟物品 ID 和编年史序号，不能依赖 crypto/全局计数器。副本对照分离 RNG 来源变化与规则变化，不重新生成旧数值来掩盖差异。详情与结果见 [本轮专题](settlement-pipeline-2026-09-30.md)。
+
 **解决**：C-3（副本与高塔两条结算管线）；并承接 #0.9 拆出的结算侧 RNG。
 
 **现状**：
@@ -566,17 +568,19 @@ export interface DeathCause {
 
 ### #0.5 物品注册表（3 人日）
 
+**2026-09-30 实施校准**：从 #0.10 `065da59` 认领，存档使用 v20。正式归属统一到 `GuildItems`，存档装备/仓库/遗物全存 UID；模拟 `Member.equipment` 保留从注册表解析的视图，避免此任务扩大为全引擎接口重写。所有转移通过同一归属入口，视图不是第二份物品仓库。重复旧 ID 按出现实例保留全部内容；低优先级实例重新编号入仓库，不按属性相同擅自合并数量。详见 [本轮验收](item-registry-2026-09-30.md)。
+
 **解决**：B06（重复物品 ID）。
 
 **现状**：物品实例同时存在于 `members[].equipment`、`inventory`、`pendingRelics` 三处，**无单一归属不变量**，重复 ID 是直接后果。
 
-**目标**：存档 v19，物品单一仓库 + 引用。
+**目标**：存档 v20，物品单一仓库 + 引用（#0.10 已使用 v19 保存 RNG；本项顺延，不覆盖迁移级别）。
 
 ```ts
 export type ItemUid = string   // `it_${n}`，单调递增，永不复用
 
 export interface GuildSave {
-  version: 19
+  version: 20
   /** 唯一物品仓库。物品实例只存在于此。 */
   items: Record<ItemUid, ItemInstance>
   /** 下一个可用序号，随存档持久化（重启后不得回绕） */
@@ -590,7 +594,7 @@ export interface GuildSave {
 
 **不变量**：每个 uid 在 `members[].equipment` ∪ `inventory` ∪ `pendingRelics` 中**合计出现恰好一次**。
 
-迁移 v18 → v19：
+迁移 v19 → v20（更旧存档先逐级经过 #0.10 的 v18 → v19，保留 rngState）：
 1. 遍历三处，为每个物品实例**重新签发** uid（不要沿用旧 id，旧 id 本身就可能重复）。
 2. 重复实例按「装备中 > 待赎回 > 背包」优先级保留一份，其余**重新签发新 uid 后放入背包**（不要丢弃玩家物品）。
 3. 孤儿 uid（在 `items` 里但无人持有）回收进 `inventory`。
@@ -601,6 +605,8 @@ export interface GuildSave {
 ---
 
 ### #0.6 远征对象可序列化（4.5 人日，本批次最大风险）
+
+**2026-09-30 实施校准**：v20→v21 改造现有 Run；共同 `RunCore` 保存 ID/成员生命/RNG 与预留字段，`RunUIState` 仅容纳原 React 控制与反馈，不是第三种远征。保留 `steps`/`stepIdx`/`nodeIds`，不另外改名为 `nodeIndex`。当前实现与验收见 [专题](run-recovery-2026-09-30.md)，最终验证/交付见 [HANDOFF](HANDOFF.md)。下方“现状”为施工前证据。
 
 **解决**：R04（远征中途刷新丢失）。
 
@@ -617,6 +623,7 @@ export interface GuildSave {
 /** DungeonRun 与 TowerRun 的共同可序列化部分 */
 export interface RunCore {
   schema: 1
+  id: string
   seed: number
   /** 断点续跑必须能复现 —— 不存 RNG 状态就等于没解决 R04 */
   rngState: number
@@ -638,7 +645,9 @@ export interface DungeonRun extends RunCore {
   kind: 'dungeon'
   dungeonId: string             // 取代 dungeon: DungeonDef
   routeTaken: string[]
-  nodeIndex: number
+  steps: string[]
+  stepIdx: number
+  nodeIds: string[]
   // …现有其余字段保留，但必须全部是可 JSON 化的值
 }
 
@@ -654,24 +663,24 @@ export type ActiveRun = DungeonRun | TowerRun
 **重要**：即使 `pendingLoot` / `affixes` / `clauses` 在批次 0 完全不用，**现在就要建**。批次 3 和 5 会挂在这三个字段上；留到那时再加，等于多一次破坏性存档迁移。
 
 改动策略（按此顺序，勿跳步）：
-1. 先给远征流程补 UI 冒烟测试（Vitest + 现有 e2e 脚本），**建立安全网再动刀**。
+1. 先给远征流程补 UI 冒烟测试，**建立安全网再动刀**。本机不执行依赖 Mac Chrome 的历史 E2E；用真实 App 回调自动回归和独立端口的真实页面补充，不宣称旧脚本已跑。
 2. 把 `DungeonRun.dungeon` / `members` 改为 id 引用，并提供 `resolveRun(run, save)` 在运行时解析。
 3. 把远征相关的 `useState` 收拢成一个 `useReducer(runReducer)`，reducer 放在 sim 层，纯函数；结算动作调用 #0.10 的 `settleEncounter`。
-4. `ActiveRun` 接入存档（与 #0.5 同一次 v19 迁移，或紧随其后的 v20）；刷新后可恢复。
+4. `ActiveRun` 接入存档（2026-09-30：#0.5 已单独完成 v20；本项拟用 v21，实施前重新核对最新云端版本）；刷新后可恢复。
 5. **不做**其他 UI 重构。App.tsx 仍会很大，那是可接受的。
 
 **验收**：
-- 远征任意节点（副本与高塔各测一次）刷新页面，恢复后继续跑完，战果与不刷新时**逐字节一致**（依赖 `rngState`）。这是 v1 #0.9「同种子逐字节一致」的最终落点。
-- `JSON.parse(JSON.stringify(run))` 与原对象深相等（无函数、无循环引用、无 def 对象）。
+- 副本/高塔战斗、休整、事件和终局刷新后能继续；战果与不刷新时的完整规范 JSON **逐字节一致**（依赖 `rngState`）。对象键排序，保留全部值/数组/UID/日志，不比较真实保存时间 `lastSeen`；相同可选字段的插入顺序不属于玩法差异。
+- 新生成 Run 的 `JSON.parse(JSON.stringify(run))` 与原对象深相等，无成员引用、整图、函数或循环。后续可选 undefined 在持久检查点统一为 JSON 缺省；战斗技能/敌人/机制配置可保留纯 JSON 快照，不趁机重写引擎。
 - 测试刷新只能用内存或临时 storage mock，**严禁写入用户真实 localStorage**（AGENTS.md 红线）。
 
 **禁止事项**：
 - 不要新建与 `DungeonRun` / `TowerRun` 并列的第三个远征类型。
 - 不要把 49 个 `useState` 全部重构。只动远征相关的那些。范围蔓延是本任务失败的主要方式。
 - 不要引入状态管理库（Redux / Zustand / Jotai）。`useReducer` + sim 层纯函数足够。
-- 不要在本任务里改任何战斗逻辑。
+- 不要改技能/伤害/机制/数值。恢复所需的单位身份从模块全局序号改为本场保存游标，必须新旧对照证明行为一致（本轮 336 组完整战斗通过）。
 
-**若受阻**：可推迟到批次 4 之前，但**不可取消**（批次 4 的精力系统依赖远征生命周期）。推迟必须在 `ISSUE-INVENTORY.md` 留记录。
+**若受阻**：最迟在依赖它的批次 3 前完成，**不可取消**（批次 3 的待结算池及批次 4 的精力依赖生命周期）。推迟必须在 `ISSUE-INVENTORY.md` 留记录。
 
 ---
 
@@ -1112,7 +1121,7 @@ S2 心理怪癖 / S3 永久残缺：批次 4 之后再议，届时精力系统�
 
 | 风险 | 应对 |
 |---|---|
-| #0.6 远征对象序列化受阻（App.tsx 约 2660 行） | 先补冒烟测试再动刀；严格限定范围；可推迟至批次 4 前，不可取消 |
+| #0.6 远征对象序列化受阻（App.tsx 约 2660 行） | 先补冒烟测试再动刀；严格限定范围；最迟批次 3 前完成，不可取消 |
 | 批次 1–2 使全部平衡结论作废 | **预期行为。** 遵守 C4，批次 2 出口才解冻 |
 | #0.1 后版图二变简单 | **预期行为**（死代码变活）。记录，不要调数值 |
 | 新增 7 属性漏接线 → 死属性 | I8 断言 + 7 处接线清单 |

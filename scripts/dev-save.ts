@@ -4,10 +4,12 @@ import { writeFileSync } from 'node:fs'
 import { JOBS } from '../src/data/jobs'
 import { BUILDINGS } from '../src/data/base'
 import { rollDrop } from '../src/sim/loot'
-import { generateMember, levelTo, maxHpOf } from '../src/sim/gen'
+import { generateMember, levelTo, maxHpOf, memberGenerationState } from '../src/sim/gen'
+import { initialRunState } from '../src/sim/run-state'
 import type { GuildSave } from '../src/state/save'
 import { SAVE_VERSION } from '../src/state/save'
 import { newStatistics } from '../src/sim/statistics'
+import { createGuildItems, serializeGuildItems } from '../src/state/item-registry'
 
 const T2 = { weapon: 'wpn-t2-bow', armor: 'arm-t2-plate', trinket: 'trk-t2-totem' } as const
 const SLOTS = ['weapon', 'armor', 'trinket'] as const
@@ -45,12 +47,12 @@ const buildings: Record<string, number> = {}
 for (const b of BUILDINGS) buildings[b.id] = b.maxLevel
 
 const save: GuildSave = {
+  runState: initialRunState(), visitor: null, generationState: memberGenerationState(),
   rareHuntNext: null,
   statistics: newStatistics(20),
-  version: SAVE_VERSION, trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [],
+  version: SAVE_VERSION, rngState: 7777, trainingReady: false, healingMastery: {}, starMarrow: 0,
   kingdom: { active: [], completed: [] },
-  members,
-  inventory,
+  ...serializeGuildItems(createGuildItems(members, inventory), members),
   memorial: [],
   // 试玩直达:研习版图一全部 boss(解锁龙脊山脉)——想从零体验请手动清空此数组
   manual: ['grush', 'talma', 'delveanchor', 'moldreke', 'velhola', 'malsau', 'victor', 'kazraxes', 'ignathos'],

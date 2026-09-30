@@ -1,9 +1,10 @@
 import type { Member } from './types'
 import { ITEM_BASES } from '../data/items'
+import type { Rng } from './rng'
 
 export const TRAIT_LABELS: Record<string, string> = { drinker: '爱喝酒', lucky: '幸运儿', cool: '冷静' }
 /** 已有特性保留，仅为空缺成员立特性。 */
-export function assignTrait(member: Member, rng = Math.random): boolean {
+export function assignTrait(member: Member, rng: Rng): boolean {
   if (member.trait || rng() >= 0.55) return false
   member.trait = ['drinker', 'lucky', 'cool'][Math.floor(rng() * 3)]
   return true

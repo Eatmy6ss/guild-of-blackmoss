@@ -4,6 +4,7 @@
 // 红线(DESIGN 14.3):普通掉血零风险；每人上限 3 条；具体整合口径见 R02。
 
 import type { Member, Combatant, BattleState } from './types'
+import { createRng, type Rng } from './rng'
 
 /** 创伤影响的六维 */
 export type ScarStat = 'str' | 'agi' | 'int' | 'vit' | 'spr' | 'lck'
@@ -66,7 +67,7 @@ export interface ScarRun {
 }
 
 /** 只检查本场实际参战的幸存者；塔深层维持每层随机一人 5% 的额外来源。 */
-export function settleScars(run: ScarRun, witnessedDeath: boolean, towerFloor = 0, rng = Math.random): { member: Member; scar: Scar }[] {
+export function settleScars(run: ScarRun, witnessedDeath: boolean, towerFloor = 0, rng: Rng = createRng(run.battle?.rngState ?? 0)): { member: Member; scar: Scar }[] {
   const b = run.battle
   if (!b || b.status === 'running' || b.scarsSettled) return []
   b.scarsSettled = true

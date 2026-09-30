@@ -1,19 +1,24 @@
-import type { DeadHero, ItemInstance, Member } from '../sim/types'
+import type { DeadHero, Member } from '../sim/types'
+import { readItemFields, itemStateFromSave, resolveMembers, serializeGuildItems, assertItemOwnership, type StoredItemFields } from './item-registry'
 import { JOBS } from '../data/jobs'
 import { RACES } from '../data/races'
 import { isHybrid } from '../data/vocations'
-import { maxHpOf } from '../sim/gen'
+import { maxHpOf, type MemberGenerationState } from '../sim/gen'
 import type { ChronicleEntry } from '../sim/chronicle'
 import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kingdom'
 import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../sim/statistics'
+import { initialRunState, validateRunState, type RunUIState } from '../sim/run-state'
+import type { Visitor } from '../sim/tavern'
 
 // 公会存档(save-systems:版本号 + 迁移链 + 防御式加载)
-// 只在公会阶段落盘(远征中不写):刷新/关闭浏览器后恢复公会资产,
-// 进行中的远征视为放弃(远征前状态为准)。正式存档(离线累积/多栏位)按 M1 路线再做。
+// v21：公会资产与现有远征/事件断点同批落盘，恢复后继续原模拟与结算。
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 18
+export const SAVE_VERSION = 21
+let unreadableSave = false
+let loadNotice = ''
+export const saveLoadNotice = () => loadNotice
 
 export interface PendingConsequence {
   eventId: string
@@ -26,7 +31,13 @@ export interface StoredGuildBuff {
   endDay: number
 }
 
-export interface GuildSave {
+export interface GuildSave extends StoredItemFields {
+  runState: RunUIState
+  /** 事件已兑现的访客要随结果保存，避免刷新丢掉这项报酬。 */
+  visitor: Visitor | null
+  generationState: MemberGenerationState | null
+  /** v19: 公会随机序列的当前位置，刷新/导出后续接。 */
+  rngState: number
   /** v18: 已立约、尚未用于下一次远征的稀有猎杀 */
   rareHuntNext?: { mult: number; rewardMult: number } | null
   /** v17: only measured settlements, never reconstructed historical totals */
@@ -37,13 +48,9 @@ export interface GuildSave {
   kingdom: KingdomState
   /** v13: 星髓(拆解 T3 装备所得,灰冠兑换用) */
   starMarrow: number
-  /** v14: 遗物安葬 2.0——阵亡者装备待赎回清单(赎回制) */
-  pendingRelics: { item: import('../sim/types').ItemInstance; hero: string; redeem: number }[]
   /** v15: 疗养熟练度(维度→尝试次数,DESIGN 14.2) */
   healingMastery: Record<string, number>
   version: number
-  members: Member[]
-  inventory: ItemInstance[]
   memorial: DeadHero[]
   manual: string[]
   protectOn: boolean
@@ -75,6 +82,12 @@ export interface GuildSave {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),
+  19: (d) => {
+    const result = readItemFields(d, true)
+    return { ...d, ...result.fields, itemMigrationIssues: result.issues }
+  },
+  18: (d) => ({ ...d, rngState: legacyRngState(d) }),
   17: (d) => ({ ...d, rareHuntNext: null }),
   16: (d) => ({ ...d, statistics: newStatistics(typeof d.day === 'number' ? Math.max(1, Math.floor(d.day)) : 1) }),
   15: (d) => ({ ...d, trainingReady: d.trainingReady === true }),
@@ -110,6 +123,13 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   10: (d) => ({ ...d, eventsSeen: (d.eventsSeen as string[] | undefined) ?? [], guildBuffs: (d.guildBuffs as unknown[] | undefined) ?? [] }),
 }
 
+/** 老档没有序列，按已有公会时间/日期建立稳定起点；迁移不访问随机数或改资产。 */
+function legacyRngState(d: Record<string, unknown>): number {
+  const time = typeof d.lastSeen === 'number' && Number.isFinite(d.lastSeen) ? d.lastSeen : 7777
+  const day = typeof d.day === 'number' && Number.isFinite(d.day) ? d.day : 1
+  return (time ^ Math.imul(day, 7919)) >>> 0
+}
+
 /** 纯函数迁移:供 loadGuildSave 与 smoke 直接验证 */
 export function migrate(data: Record<string, unknown>): GuildSave {
   let v = (data.version as number) ?? 1
@@ -121,6 +141,8 @@ export function migrate(data: Record<string, unknown>): GuildSave {
     d.version = v
   }
   d.trainingReady = d.trainingReady === true
+  d.rngState = typeof d.rngState === 'number' && Number.isInteger(d.rngState) && d.rngState >= 0 && d.rngState <= 0xffffffff
+    ? d.rngState : legacyRngState(d)
   d.starMarrow = typeof d.starMarrow === 'number' ? d.starMarrow : 0
   d.pendingRelics = Array.isArray(d.pendingRelics) ? d.pendingRelics : []
   d.healingMastery = d.healingMastery && typeof d.healingMastery === 'object' ? d.healingMastery : {}
@@ -130,12 +152,27 @@ export function migrate(data: Record<string, unknown>): GuildSave {
   d.rareHuntNext = hunt && Number.isFinite(hunt.mult) && hunt.mult >= 1 &&
     Number.isFinite(hunt.rewardMult) && hunt.rewardMult >= 1
     ? { mult: hunt.mult, rewardMult: hunt.rewardMult } : null
+  if (!d.items || typeof d.items !== 'object' || Array.isArray(d.items)) throw new Error('存档缺少物品注册表')
+  const repaired = readItemFields(d, false)
+  const issues = [...(Array.isArray(d.itemMigrationIssues) ? d.itemMigrationIssues : []), ...repaired.issues]
+  Object.assign(d, repaired.fields)
+  delete d.itemMigrationIssues
+  if (issues.length) console.warn('公会装备归属已修复：' + [...new Set(issues)].join(' '))
   return d as unknown as GuildSave
 }
 
 function validate(d: GuildSave): boolean {
   return (
     d.version === SAVE_VERSION &&
+    Array.isArray(d.members) &&
+    validateRunState(d.runState, d.members) &&
+    (d.visitor === null || (d.visitor && typeof d.visitor.story === 'string' &&
+      d.visitor.member && typeof d.visitor.member.id === 'string' &&
+      !!JOBS[d.visitor.member.job] && typeof d.visitor.member.alive === 'boolean' &&
+      Number.isFinite(d.visitor.member.hp) && !!d.visitor.member.attrs && !!d.visitor.member.equipment)) &&
+    (d.generationState === null || (d.generationState && Number.isSafeInteger(d.generationState.seq) && d.generationState.seq >= 0 && Array.isArray(d.generationState.usedNames) && d.generationState.usedNames.every(n => typeof n === 'string'))) &&
+    typeof d.rngState === 'number' &&
+    typeof d.items === 'object' && Number.isSafeInteger(d.itemSeq) &&
     Array.isArray(d.members) &&
     d.members.length > 0 &&
     typeof d.gold === 'number' &&
@@ -177,28 +214,75 @@ export function sanitizeMembers(members: Member[]): Member[] {
   })
 }
 
+/** 消毒沿用真实装备投影，随后仍存 UID，避免读档误把字符串当装备计算满血。 */
+function sanitizeSavedMembers(save: GuildSave): void {
+  const items = itemStateFromSave(save)
+  save.members = serializeGuildItems(items, sanitizeMembers(resolveMembers(save.members, items))).members
+  if (save.visitor) save.visitor = { ...save.visitor, member: sanitizeMembers([save.visitor.member])[0] }
+}
+
 /** 防御式加载:解析 → 逐级迁移 → 消毒 → 校验,任何异常回退为无存档 */
 export function loadGuildSave(): GuildSave | null {
+  unreadableSave = false
+  loadNotice = ''
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
-    const migrated = migrate(JSON.parse(raw) as Record<string, unknown>)
-    if (!validate(migrated)) return null
-    migrated.members = sanitizeMembers(migrated.members)
-    return migrated
+    return parseGuildSave(raw)
   } catch {
+    try {
+      const backup = localStorage.getItem(KEY + '.bak')
+      if (backup) {
+        const recovered = parseGuildSave(backup)
+        loadNotice = '当前存档无法读取，已恢复上一份有效备份，请核对远征进度。'
+        console.warn(loadNotice)
+        return recovered
+      }
+    } catch { /* 保留原始数据，交给明确的重开操作处理。 */ }
+    unreadableSave = true
+    loadNotice = '当前存档与备份无法读取，原始数据已保留。请确认后重开公会；自动保存暂已停止。'
+    console.warn(loadNotice)
     return null
   }
 }
 
-export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): void {
+function parseGuildSave(raw: string): GuildSave {
+  const migrated = migrate(JSON.parse(raw) as Record<string, unknown>)
+  if (!validate(migrated)) throw new Error('存档或远征断点不完整')
+  sanitizeSavedMembers(migrated)
+  return migrated
+}
+
+export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): boolean {
+  if (unreadableSave) return false
+  try {
+    assertItemOwnership(itemStateFromSave(s))
+    if (!validateRunState(s.runState, s.members)) throw new Error('无效远征断点')
+  } catch {
+    console.warn('存档未写入：装备归属或远征断点异常，原存档已保留。')
+    return false
+  }
   try {
     const prev = localStorage.getItem(KEY)
-    if (prev) localStorage.setItem(KEY + '.bak', prev) // 上一份好存档做备份,写坏可回退
+    if (prev) {
+      try { parseGuildSave(prev); localStorage.setItem(KEY + '.bak', prev) } catch { /* 坏原档不覆盖好备份。 */ }
+    }
     localStorage.setItem(KEY, JSON.stringify({ ...s, version: SAVE_VERSION, lastSeen: Date.now() }))
+    return true
   } catch {
     // 隐私模式等存储不可用:静默降级为无存档
+    return false
   }
+}
+
+/** 仅在玩家确认导入后解除坏档保护；预览不会覆盖原始数据或解锁自动保存。 */
+export function replaceGuildSave(s: GuildSave): boolean {
+  if (!validate(s)) return false
+  const blocked = unreadableSave
+  unreadableSave = false
+  if (!saveGuild(s)) { unreadableSave = blocked; return false }
+  loadNotice = ''
+  return true
 }
 
 /** 导出存档为可复制的文本码(unicode 安全) */
@@ -212,7 +296,7 @@ export function importSave(text: string): GuildSave | null {
     const json = decodeURIComponent(escape(atob(text.trim())))
     const migrated = migrate(JSON.parse(json) as Record<string, unknown>)
     if (!validate(migrated)) return null
-    migrated.members = sanitizeMembers(migrated.members)
+    sanitizeSavedMembers(migrated)
     return migrated
   } catch {
     return null
@@ -220,6 +304,8 @@ export function importSave(text: string): GuildSave | null {
 }
 
 export function clearGuildSave(): void {
+  unreadableSave = false
+  loadNotice = ''
   try {
     localStorage.removeItem(KEY)
   } catch {

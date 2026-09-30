@@ -1,9 +1,11 @@
+import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, createRun, advanceRun, startStep } from './run-test-compat'
 // 冒烟测试：跑 200 轮 × 全部遭遇战
 // 硬门槛：① 所有战斗必然终结（无死循环）② 杂兵战不允许团灭（玩家不该死在垃圾怪手上）
 // 说明：boss 压迫感依赖 D8-9 机制引擎（狂暴/束缚等），纯数值阶段 boss 偏弱是预期，
 //       最终平衡在 D13-14 统一调。
 // 运行：npx esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=scripts/smoke.mjs && node scripts/smoke.mjs
-import { generateMember } from '../src/sim/gen'
+import { generateMember, memberGenerationState } from '../src/sim/gen'
+import { initialRunState } from '../src/sim/run-state'
 import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit, statLayers } from '../src/sim/combat'
 import { rollBossDrops, rollDrop, rollWaveDrop, describeItem, itemStats, createLootRng } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
@@ -12,13 +14,14 @@ import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGE
 import { dungeonLock } from '../src/data/regions'
 import { sellValue, rollVisitor, bountyCandidate, cooldownNeeded, taleCandidates, redeemCost } from '../src/sim/tavern'
 import { migrate, exportSave, importSave, sanitizeMembers, SAVE_VERSION } from '../src/state/save'
+import { createGuildItems, serializeGuildItems } from '../src/state/item-registry'
 import { newStatistics, recordStatistics, exportStatistics } from '../src/sim/statistics'
 import { offlineGain, sellValue as sellValueFn } from '../src/sim/tavern'
 import { BUILDINGS, baseEffects } from '../src/data/base'
 import { refusesToMarch, applyDeathShock, applyFeast, MORALE, clamp } from '../src/sim/morale'
 import { chronicleRefusal } from '../src/sim/chronicle'
 import { seedMemberSeq } from '../src/sim/gen'
-import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, towerEnemyScale, towerGold, towerExp, towerItemTier, TOWER } from '../src/sim/tower'
+import { towerEnemyScale, towerGold, towerExp, towerItemTier, TOWER } from '../src/sim/tower'
 import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
 import { computeLegacy, memorialAura, legacyQuality, legacyCounts, LEGACY_AURA_CAP } from '../src/sim/memorial'
 import { RACES as RACES_DATA } from '../src/data/races'
@@ -30,7 +33,7 @@ import { bossIntents, processBossMechanics } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
-import { createRun, advanceRun, startStep, markPermadeath, settleGrowth, junctionOptions, revealLevel, applyNodeChoice, MASTERY } from '../src/sim/run'
+import { markPermadeath, settleGrowth, junctionOptions, revealLevel, applyNodeChoice, MASTERY } from '../src/sim/run'
 import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE, type JobId } from '../src/data/jobs'
 import { HYBRIDS } from '../src/data/vocations'
@@ -902,8 +905,8 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
-  const saveObj = { version: SAVE_VERSION, rareHuntNext: null, statistics: newStatistics(2), trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [], members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
-  const code = exportSave({ ...saveObj, kingdom: { active: [], completed: [] } })
+  const saveObj = { version: SAVE_VERSION, rngState: 7777, rareHuntNext: null, statistics: newStatistics(2), trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [], members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
+  const code = exportSave({ ...saveObj, ...serializeGuildItems(createGuildItems(squad), squad), kingdom: { active: [], completed: [] }, runState: initialRunState(), visitor: null, generationState: memberGenerationState() })
   const back = importSave(code)
   const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids) && back.dungeonMastery.blackmoss === 5
   console.log(`⑬ 导出导入:回环 ${roundOk},码长 ${code.length}`)

@@ -25,37 +25,39 @@ export function seedChronicle(existing: ChronicleEntry[]): void {
   seqCounter = existing.reduce((max, e) => Math.max(max, e.seq), 0)
 }
 
-function make(day: number, text: string): ChronicleEntry {
+function make(day: number, text: string, seq?: number): ChronicleEntry {
+  // 结算纯函数提供序号；其他即时操作沿用会话计数器。
+  if (seq !== undefined) return { seq, day, text }
   seqCounter += 1
   return { seq: seqCounter, day, text }
 }
 
 /** 事件结果直接入史(通用包装) */
-export function chronicleRaw(day: number, text: string): ChronicleEntry {
-  return make(day, text)
+export function chronicleRaw(day: number, text: string, seq?: number): ChronicleEntry {
+  return make(day, text, seq)
 }
 
 // ---- 事件生成器(状态 → 故事文本)----
 
-export function chronicleBattleVictory(day: number, floor: string, survivors: Member[]): ChronicleEntry {
+export function chronicleBattleVictory(day: number, floor: string, survivors: Member[], seq?: number): ChronicleEntry {
   const names = survivors.map((m) => m.name).join('、')
-  return make(day, `远征队在${floor}奏凯而归(${names})。`)
+  return make(day, `远征队在${floor}奏凯而归(${names})。`, seq)
 }
 
-export function chronicleHeroFall(day: number, name: string, job: string, place: string): ChronicleEntry {
-  return make(day, `${name}(${job})陨落于${place}。酒馆里那晚没有人说话。`)
+export function chronicleHeroFall(day: number, name: string, job: string, place: string, seq?: number): ChronicleEntry {
+  return make(day, `${name}(${job})陨落于${place}。酒馆里那晚没有人说话。`, seq)
 }
 
-export function chronicleFirstKill(day: number, boss: string, killer: Member): ChronicleEntry {
-  return make(day, `${killer.name} 亲手斩下了${boss}的首级——公会的旗上多了一道疤。`)
+export function chronicleFirstKill(day: number, boss: string, killer: Member, seq?: number): ChronicleEntry {
+  return make(day, `${killer.name} 亲手斩下了${boss}的首级——公会的旗上多了一道疤。`, seq)
 }
 
-export function chronicleLevelUp(day: number, m: Member, level: number): ChronicleEntry {
-  return make(day, `${m.name} 成长到了 Lv${level},在靶场上待到深夜。`)
+export function chronicleLevelUp(day: number, m: Member, level: number, seq?: number): ChronicleEntry {
+  return make(day, `${m.name} 成长到了 Lv${level},在靶场上待到深夜。`, seq)
 }
 
-export function chronicleBondStar(day: number, a: Member, b: Member, stars: number): ChronicleEntry {
-  return make(day, `${a.name} 与 ${b.name} 的默契升到了 ${'★'.repeat(stars)}——生死之交又深了一分。`)
+export function chronicleBondStar(day: number, a: Member, b: Member, stars: number, seq?: number): ChronicleEntry {
+  return make(day, `${a.name} 与 ${b.name} 的默契升到了 ${'★'.repeat(stars)}——生死之交又深了一分。`, seq)
 }
 
 export function chronicleRecruit(day: number, m: Member, path: string): ChronicleEntry {
@@ -80,8 +82,8 @@ export function chronicleBuilding(day: number, name: string, level: number): Chr
   return make(day, `公会的${name}升到了 ${level} 级——炉火与锤声整夜未熄。`)
 }
 
-export function chronicleTowerRecord(day: number, floor: number): ChronicleEntry {
-  return make(day, `远征队踏入了黑苔高塔第 ${floor} 层——公会的最高纪录被刷新。`)
+export function chronicleTowerRecord(day: number, floor: number, seq?: number): ChronicleEntry {
+  return make(day, `远征队踏入了黑苔高塔第 ${floor} 层——公会的最高纪录被刷新。`, seq)
 }
 
 export function chronicleWipeRebuild(day: number): ChronicleEntry {
