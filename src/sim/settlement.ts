@@ -23,6 +23,7 @@ import {
   chronicleLevelUp, chronicleBondStar, chronicleTowerRecord, type ChronicleEntry,
 } from './chronicle'
 import type { Rng } from './rng'
+import { runMembers, runDungeon, runRng, syncRunParty } from './run-core'
 
 export interface EncounterGuild {
   members: Member[]
@@ -69,11 +70,11 @@ export type DungeonOutcome = OutcomeBase & { source: 'dungeon'; run: DungeonRun 
 export type TowerOutcome = OutcomeBase & { source: 'tower'; run: TowerRun }
 export type EncounterOutcome = DungeonOutcome | TowerOutcome
 
-export function settleEncounter(input: DungeonInput, rng: Rng): DungeonOutcome | null
-export function settleEncounter(input: TowerInput, rng: Rng): TowerOutcome | null
-export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutcome | null
+export function settleEncounter(input: DungeonInput, rng?: Rng): DungeonOutcome | null
+export function settleEncounter(input: TowerInput, rng?: Rng): TowerOutcome | null
+export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutcome | null
 /** 输入/React/存档均不修改。随机数是显式依赖，物品身份和编年史序号由本趟上下文确定。 */
-export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutcome | null {
+export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutcome | null {
   const original = input.run
   if (original.phase !== 'battle' || !original.battle || original.battle.status === 'running') return null
   const guild: EncounterGuild = {
@@ -82,9 +83,10 @@ export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutco
     manual: [...input.guild.manual],
     dungeonMastery: { ...input.guild.dungeonMastery },
   }
-  const members = original.members.map(m => guild.members.find(x => x.id === m.id) ?? structuredClone(m))
+  const members = runMembers(original, guild.members)
   // 旧模拟助手只改成员/阶段/药水及 scarsSettled；隔离这些可写对象，战斗日志不复制。
-  const common = { ...original, members, battle: { ...original.battle }, witnessScarredIds: [...(original.witnessScarredIds ?? [])] }
+  const common = { ...original, party: original.party.map(p => ({ ...p })), battle: { ...original.battle }, witnessScarredIds: [...(original.witnessScarredIds ?? [])] }
+  rng ??= runRng(common)
   const outcome = {
     source: input.source,
     run: common,
@@ -105,23 +107,23 @@ export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutco
   const encounterId = input.source === 'dungeon' ? input.run.stepIdx : input.run.floor
   const itemId = () => `i-${original.id}-${encounterId}-${++itemSeq}`
   const effects = baseEffects(guild.buildings)
-  const place = input.source === 'dungeon' ? input.run.dungeon.name : `黑苔高塔第 ${input.run.floor} 层`
+  const place = input.source === 'dungeon' ? runDungeon(input.run).name : `黑苔高塔第 ${input.run.floor} 层`
 
   if (outcome.source === 'dungeon') {
     const r = outcome.run
-    const enc = r.dungeon.encounters.find(e => e.id === r.steps[r.stepIdx])
+    const enc = runDungeon(r).encounters.find(e => e.id === r.steps[r.stepIdx])
     if (outcome.win && enc?.kind === 'boss' && enc.bossId) {
-      const boss = r.dungeon.bosses[enc.bossId]
+      const boss = runDungeon(r).bosses[enc.bossId]
       const pity = !guild.manual.includes(enc.bossId)
-      const entryGate = r.dungeon.id === 'thornhold' && enc.bossId === 'victor' && pity
+      const entryGate = runDungeon(r).id === 'thornhold' && enc.bossId === 'victor' && pity
       outcome.loot.items.push(...rollBossDrops(boss.dropTable, rng,
         entryGate ? { pity, qualityBias: 0.12, minQuality: 'green', itemId } : { pity, itemId }))
       if (pity) {
         guild.manual.push(enc.bossId)
-        c.chronicle.push(chronicleFirstKill(day, boss.name, r.members.find(m => m.alive) ?? r.members[0], ++seq))
+        c.chronicle.push(chronicleFirstKill(day, boss.name, members.find(m => m.alive) ?? members[0], ++seq))
       }
     } else if (outcome.win) {
-      const drop = rollWaveDrop(r.dungeon.id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
+      const drop = rollWaveDrop(runDungeon(r).id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
         waveDropBonus(members.filter(m => common.battle.combatants.some(x => x.memberId === m.id && x.alive))), itemId)
       if (drop) outcome.loot.items.push(drop)
     }
@@ -130,12 +132,12 @@ export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutco
     outcome.loot.gold = outcome.win
       ? Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) * (r.rareHunt && r.stepIdx === 0 ? r.rareHunt.rewardMult : 1)) : 0
     // 必须在推进索引前捕获遭遇奖励/委托；先推进再登记死亡保持副本旧顺序。
-    advanceRun(r)
-    outcome.deaths = markPermadeath(r, place)
+    advanceRun(r, guild.members)
+    outcome.deaths = markPermadeath({ ...r, members }, place)
     if (outcome.win) {
       const gain = enc?.kind === 'boss' ? 2 : 1
-      guild.dungeonMastery[r.dungeon.id] = (guild.dungeonMastery[r.dungeon.id] ?? 0) + gain
-      c.mastery = { dungeonId: r.dungeon.id, gain }
+      guild.dungeonMastery[runDungeon(r).id] = (guild.dungeonMastery[runDungeon(r).id] ?? 0) + gain
+      c.mastery = { dungeonId: runDungeon(r).id, gain }
     }
     guild.recruitCooldown = Math.max(0, guild.recruitCooldown - 1)
     if (r.phase === 'victory') { outcome.loot.clearGold = ECONOMY.clearBonus; outcome.sound = 'victory' }
@@ -144,11 +146,11 @@ export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutco
     if (action) outcome.statistics.push(action)
   } else {
     // 死亡先于创伤和经验，沿用高塔保险/遗物顺序；阶段与药水仍由原塔层助手写回。
-    outcome.deaths = markPermadeath(outcome.run, place)
+    outcome.deaths = markPermadeath({ ...outcome.run, members }, place)
   }
 
   const dead = outcome.deaths
-  const scars = settleScars(outcome.run, dead.length > 0, input.source === 'tower' ? input.run.floor : 0, rng)
+  const scars = settleScars({ ...outcome.run, members }, dead.length > 0, input.source === 'tower' ? input.run.floor : 0, rng)
   c.scars = scars.map(({ member, scar }) => ({ memberId: member.id, scar }))
   for (const { member, scar } of scars) {
     const text = member.name + ' 新增创伤：' + scarStatName(scar.stat) + ' -' + scar.value + '（' + scar.text + '），可回基地疗养。'
@@ -205,15 +207,15 @@ export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutco
   outcome.blessing = dead.length * effects.blessingPerDeath
 
   if (outcome.source === 'tower') {
-    const reward = settleTowerFloor(outcome.run, rng, itemId)
+    const reward = settleTowerFloor(outcome.run, rng, itemId, guild.members)
     outcome.loot.gold = reward.gold
     outcome.loot.items.push(...reward.drops)
-    c.growth = settleGrowth(outcome.run, 1, { exp: reward.exp, bonds: true })
+    c.growth = settleGrowth({ ...outcome.run, members }, 1, { exp: reward.exp, bonds: true })
     if (reward.cleared && !outcome.run.autoMode) {
       guild.towerBest = Math.max(guild.towerBest, outcome.run.floor)
       if (guild.towerBest > input.guild.towerBest) c.chronicle.push(chronicleTowerRecord(day, guild.towerBest, ++seq))
     }
-  } else c.growth = settleGrowth(outcome.run, effects.expMult)
+  } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run) }, effects.expMult)
 
   // 用本场前后的变化记事，避免沿用整趟出征快照而重复登记同一次升级/升星。
   for (const m of members) {
@@ -249,5 +251,6 @@ export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutco
     const def = COMMISSIONS.find(x => x.id === record.id)
     if (def && before && record.progress > before.progress) outcome.notices.push('王国委托「' + def.title + '」进度 ' + record.progress + '/' + def.objective.target + '。')
   }
+  syncRunParty(outcome.run, guild.members)
   return outcome
 }

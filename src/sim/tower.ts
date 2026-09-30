@@ -5,7 +5,8 @@ import type { BossDef, DungeonDef, EnemyDef, ItemInstance, Member } from './type
 import { createBattle, POTION_STOCK } from './combat'
 import type { BattleState } from './types'
 import { scaleEnemy, towerEnemyScale, TOWER_SCALING_PER_FLOOR } from './difficulty'
-import { createRng, type Rng } from './rng'
+import type { Rng } from './rng'
+import { createRunCore, runMembers, syncRunParty, type RunCore } from './run-core'
 import { markPermadeath } from './run'
 export { towerEnemyScale } from './difficulty'
 
@@ -47,14 +48,11 @@ export function towerItemTier(floor: number): number {
 
 export type TowerPhase = 'battle' | 'rest' | 'ended'
 
-export interface TowerRun {
-  id: string
-  rng: Rng
+export interface TowerRun extends RunCore {
+  kind: 'tower'
   floor: number
   phase: TowerPhase
   battle: BattleState | null
-  /** 引用公会花名册的远征队成员(死亡=永久,与副本一致) */
-  members: Member[]
   goldEarned: number
   /** 携带药水(药水经济):进塔时从公会库存带出,逐层延续,离开时退回剩余 */
   potions: { heal: number; fury: number }
@@ -62,8 +60,6 @@ export interface TowerRun {
   autoMode?: boolean
   /** 遗物安葬 2.0:本层已投保(阵亡装备免赎回费) */
   insuredFloor?: boolean
-  /** #0.9:塔种子(结算掉落确定性) */
-  seed?: number
   /** 休整时购买的下一层保障，进入指定层时生效 */
   insuredNextFloor?: number
   witnessScarredIds?: string[]
@@ -90,7 +86,7 @@ const BOSS_ROTATION: { boss: BossDef; groups: DungeonDef['enemyGroups'] }[] = [
 ]
 
 /** 生成某一层的战斗(复用 createBattle:威胁/站位/机制全继承) */
-export function startTowerFloor(run: TowerRun, seed: number): void {
+export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = []): void {
   const floor = run.floor
   const isBoss = towerFloorIsBoss(floor)
   // 普通层独立计数,避免第三组永远被每三层一次的 Boss 占用。
@@ -129,7 +125,7 @@ export function startTowerFloor(run: TowerRun, seed: number): void {
   }
   run.potions = { heal: run.potions.heal - alloc.heal, fury: run.potions.fury - alloc.fury }
   run.battle = createBattle(
-    run.members.filter((m) => m.alive),
+    runMembers(run, roster).filter((m) => m.alive),
     dungeon,
     isBoss ? 'tower-boss' : 'tower-wave',
     seed + floor * 101,
@@ -153,17 +149,15 @@ const FLOOR_POOL: EnemyDef[][] = [
 
 export function startTower(members: Member[], seed: number, potions = { heal: POTION_STOCK, fury: POTION_STOCK }): TowerRun {
   const run: TowerRun = {
-    id: crypto.randomUUID(),
-    rng: createRng(seed),
+    ...createRunCore(members.filter(m => m.alive).slice(0, 3), seed),
+    kind: 'tower',
     floor: 1,
-    seed,
     phase: 'battle',
     battle: null,
-    members: members.filter((m) => m.alive).slice(0, 3),
     goldEarned: 0,
     potions,
   }
-  startTowerFloor(run, seed)
+  startTowerFloor(run, seed, members)
   return run
 }
 
@@ -173,7 +167,7 @@ export function startTower(members: Member[], seed: number, potions = { heal: PO
  *   撤退 → 塔结束(带着收益离开);团灭 → 塔结束(阵亡全款,由 markPermadeath 同款逻辑在外层登记)。
  * 返回 { gold, cleared }:gold 为本层入账金币;cleared 表示本层打通(可继续深入)。
  */
-export function settleTowerFloor(run: TowerRun, rng?: Rng, itemId?: () => string): { gold: number; cleared: boolean; exp: number; drops: ItemInstance[] } {
+export function settleTowerFloor(run: TowerRun, rng?: Rng, itemId?: () => string, roster: Member[] = []): { gold: number; cleared: boolean; exp: number; drops: ItemInstance[] } {
   const b = run.battle
   if (!b || b.status === 'running') return { gold: 0, cleared: false, exp: 0, drops: [] }
   const gold = b.status === 'guild-win' ? towerGold(run.floor) : 0
@@ -184,9 +178,10 @@ export function settleTowerFloor(run: TowerRun, rng?: Rng, itemId?: () => string
   // 每层满血开局,跨层消耗的紧张感完全失效(审查算例:255max 战末 10,休整 20% 应 61)
   for (const c of b.combatants) {
     if (!c.memberId) continue
-    const m = run.members.find((x) => x.id === c.memberId)
+    const m = runMembers(run, roster).find((x) => x.id === c.memberId)
     if (m) m.hp = c.alive ? c.hp : 0
   }
+  syncRunParty(run, roster)
   if (b.status === 'guild-win') {
     run.phase = 'rest'
     // K03 大秘境奖励(2026-09-25):经验曲线+装备掉落——boss 层必掉,普通层 10%;
@@ -212,8 +207,8 @@ export function settleTowerFloor(run: TowerRun, rng?: Rng, itemId?: () => string
 
 /** 层间休整:幸存者回复(塔内比副本更紧);不推进层数——推进由 towerNext
  *  F05 修复(2026-09-25):接通疗养所加成(towerRestHealPct),不再吃固定常量 */
-export function towerRest(run: TowerRun, healPct: number = TOWER.restHealPct): void {
-  for (const m of run.members) {
+export function towerRest(run: TowerRun, healPct: number = TOWER.restHealPct, roster: Member[] = []): void {
+  for (const m of runMembers(run, roster)) {
     if (!m.alive) continue
     const c = run.battle?.combatants.find((x) => x.memberId === m.id)
     const max = c?.maxHp ?? m.hp
@@ -222,16 +217,16 @@ export function towerRest(run: TowerRun, healPct: number = TOWER.restHealPct): v
 }
 
 /** 深入下一层(层间休整界面点击后) */
-export function towerNext(run: TowerRun, seed: number): void {
+export function towerNext(run: TowerRun, seed: number, roster: Member[] = []): void {
   run.floor += 1
   run.insuredFloor = run.insuredNextFloor === run.floor
-  run.insuredNextFloor = undefined
-  startTowerFloor(run, seed)
+  delete run.insuredNextFloor
+  startTowerFloor(run, seed, roster)
 }
 
 /** 兼容旧脚本入口；阵亡判定只有 run.markPermadeath 一份。 */
-export function towerMarkPermadeath(run: TowerRun, dungeonName: string): Array<{ id: string; name: string; job: Member['job']; level: number; cause: string }> {
-  return markPermadeath(run, `${dungeonName}第 ${run.floor} 层`)
+export function towerMarkPermadeath(run: TowerRun, dungeonName: string, roster: Member[] = []): Array<{ id: string; name: string; job: Member['job']; level: number; cause: string }> {
+  return markPermadeath({ ...run, members: runMembers(run, roster) }, `${dungeonName}第 ${run.floor} 层`)
 }
 
 /** 下一层投保：重复购买、非休整、资金不足均不扣款。 */

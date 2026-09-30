@@ -16,7 +16,7 @@ test('v18→v19 不丢资产/训练/稀有猎杀；相同旧档迁移到稳定�
   expect(a).toEqual(b)
   expect(a.version).toBe(SAVE_VERSION)
   for (const key of ['members', 'inventory', 'manual', 'gold', 'blessing', 'starMarrow', 'healingMastery', 'rareHuntNext', 'trainingReady'] as const) expect(a[key]).toEqual(data[key])
-  for (let version = 1; version < SAVE_VERSION; version++) expect(migrate({ ...data, version }).version).toBe(SAVE_VERSION)
+  for (let version = 1; version <= 19; version++) expect(migrate({ ...data, version }).version).toBe(SAVE_VERSION)
   for (const bad of [undefined, NaN, -1, 1.5, Infinity, 0x100000000]) {
     expect(migrate({ ...a, rngState: bad }).rngState).toBe(a.rngState)
   }

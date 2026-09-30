@@ -64,6 +64,12 @@ export const ENEMY_HP_MULT = 1.1
 
 let combatantSeq = 0
 
+/** 本场身份分配，不改变召唤、伤害或抽样规则。 */
+export function allocateBattleId(state: BattleState, prefix = 'c'): string {
+  state.unitSeq ??= state.combatants.reduce((max, c) => Math.max(max, Number(c.id.slice(1)) || 0), 0)
+  return `${prefix}${++state.unitSeq}`
+}
+
 export function pushLog(state: BattleState, kind: LogKind, text: string): void {
   state.log.push({ tick: state.tick, kind, text })
   if (state.log.length > 400) state.log.splice(0, state.log.length - 400)
@@ -297,6 +303,8 @@ export function createBattle(
     combatants.push(boss)
   }
 
+  // 单位身份归本场战斗，不能依赖跨页面的模块序号（恢复后会撞号）。
+  combatants.forEach((c, index) => { c.id = `c${index + 1}` })
   // 初始仇恨：坦克开局 100，其他人 0（开怪站位的意义）
   const guild = combatants.filter((c) => c.team === 'guild')
   for (const e of combatants) {
@@ -323,6 +331,7 @@ export function createBattle(
   }
 
   const state: BattleState = {
+    unitSeq: combatants.length,
     tick: 0,
     combatants,
     log: [],
@@ -342,7 +351,7 @@ export function createBattle(
     pushLog(state, 'system', '地面滚烫,热浪灼人——没有火抗的队伍会一直流血汗。')
   }
   pushLog(state, 'system', `—— ${enc.name} 战斗开始 ——`)
-  return state
+  return JSON.parse(JSON.stringify(state)) as BattleState
 }
 
 /** 战斗内确定性随机（mulberry32 步进，与 sim/rng.ts 同族） */
@@ -550,7 +559,7 @@ export function applyHit(
       traitHint(state, 'call-reinforce')
       const clone: Combatant = {
         ...target,
-        id: `c${++combatantSeq}`,
+        id: allocateBattleId(state),
         hp: Math.max(1, Math.round(target.maxHp * 0.5)),
         alive: true,
         traits: target.traits?.filter((t2) => t2 !== 'call-reinforce'),
@@ -797,7 +806,7 @@ function useSkill(
     case 'summon-pet': {
       // 召唤物(战狼/小鬼/契灵):每场一只,存活期间技能不可用(回落平砍)
       if (state.combatants.some((x) => x.petOf === c.id && x.alive)) return false
-      const pet = summonPet(c)
+      const pet = summonPet(c, state)
       state.combatants.push(pet)
       state.events.push({ tick: state.tick, type: 'summoned', targetId: pet.id })
       pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，${pet.name} 出现在战场上！`)
@@ -881,11 +890,11 @@ export function controlResist(target: Combatant, ticks: number): number {
 }
 
 /** 召唤物:属性随召唤者成长,无 memberId(阵亡不进纪念堂) */
-function summonPet(caster: Combatant): Combatant {
+function summonPet(caster: Combatant, state: BattleState): Combatant {
   const atk = Math.max(3, Math.round(caster.attack * 0.6))
   const hp = Math.round(caster.maxHp * 0.45)
   return {
-    id: `p${++combatantSeq}`,
+    id: allocateBattleId(state, 'p'),
     name: caster.specId?.includes('warlock') ? '契约小鬼' : '战狼',
     team: 'guild',
     maxHp: hp,

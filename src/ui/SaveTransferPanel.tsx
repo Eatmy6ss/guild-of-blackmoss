@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { importSave, saveGuild, type GuildSave } from '../state/save'
+import { importSave, replaceGuildSave, type GuildSave } from '../state/save'
 import { kingdomTrust } from '../sim/kingdom'
 
 export function SaveTransferPanel({ mode, initialCode, onClose }: { mode: 'import' | 'export'; initialCode: string; onClose: () => void }) {
@@ -26,7 +26,7 @@ export function SaveTransferPanel({ mode, initialCode, onClose }: { mode: 'impor
   }}>
     <section ref={panel} className="screen-panel save-transfer" role="dialog" aria-modal="true" aria-labelledby="save-transfer-title">
       <div className="screen-head"><h2 id="save-transfer-title">{mode === 'export' ? '备份公会存档' : '导入公会存档'}</h2><button onClick={onClose}>关闭</button></div>
-      <p>{mode === 'export' ? '复制下方完整代码，保存到自己的文档。成员、装备、王国委托与已领报酬都会一并保留。' : '粘贴完整存档代码，先核对预览，再确认替换。建议先导出本机存档作为备份。'}</p>
+      <p>{mode === 'export' ? '复制下方完整代码，保存到自己的文档。成员、装备、王国委托、已领报酬与远征进度都会一并保留。' : '粘贴完整存档代码，先核对预览，再确认替换。建议先导出本机存档作为备份。'}</p>
       <label htmlFor="save-code">存档代码</label>
       <textarea ref={field} id="save-code" value={code} readOnly={mode === 'export'} spellCheck={false} onChange={(event) => { setCode(event.target.value); setPreview(null); setNotice('') }} />
       {notice && <p role="status" className="royal-notice">{notice}</p>}
@@ -48,8 +48,12 @@ export function SaveTransferPanel({ mode, initialCode, onClose }: { mode: 'impor
         {preview && <div className="save-preview">
           <p>第 {preview.day} 日 · {preview.members.filter((m) => m.alive).length} 位存活成员 · {preview.gold} 金 · {preview.blessing} 祝福</p>
           <p>王国信任 {kingdomTrust(preview.kingdom)} · 在办 {preview.kingdom.active.length} 份 · 已结案 {preview.kingdom.completed.length} 份</p>
+          {preview.runState.activeRun && <p>正在{preview.runState.activeRun.kind === 'tower' ? `挑战高塔第 ${preview.runState.activeRun.floor} 层` : `进行副本远征（第 ${preview.runState.activeRun.stepIdx + 1} 场）`} · 战斗与已到账奖励将一起恢复。</p>}
           <p>确认后将替换这台设备上当前的公会进度。</p>
-          <button className="primary" onClick={() => { saveGuild(preview); window.location.reload() }}>确认导入并替换当前进度</button>
+          <button className="primary" onClick={() => {
+            if (replaceGuildSave(preview)) window.location.reload()
+            else setNotice('导入未能保存，当前进度没有改变。请检查浏览器存储后重试。')
+          }}>确认导入并替换当前进度</button>
         </div>}
       </>}
     </section>

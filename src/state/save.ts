@@ -3,18 +3,22 @@ import { readItemFields, itemStateFromSave, resolveMembers, serializeGuildItems,
 import { JOBS } from '../data/jobs'
 import { RACES } from '../data/races'
 import { isHybrid } from '../data/vocations'
-import { maxHpOf } from '../sim/gen'
+import { maxHpOf, type MemberGenerationState } from '../sim/gen'
 import type { ChronicleEntry } from '../sim/chronicle'
 import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kingdom'
 import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../sim/statistics'
+import { initialRunState, validateRunState, type RunUIState } from '../sim/run-state'
+import type { Visitor } from '../sim/tavern'
 
 // 公会存档(save-systems:版本号 + 迁移链 + 防御式加载)
-// 只在公会阶段落盘(远征中不写):刷新/关闭浏览器后恢复公会资产,
-// 进行中的远征视为放弃(远征前状态为准)。正式存档(离线累积/多栏位)按 M1 路线再做。
+// v21：公会资产与现有远征/事件断点同批落盘，恢复后继续原模拟与结算。
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 20
+export const SAVE_VERSION = 21
+let unreadableSave = false
+let loadNotice = ''
+export const saveLoadNotice = () => loadNotice
 
 export interface PendingConsequence {
   eventId: string
@@ -28,6 +32,10 @@ export interface StoredGuildBuff {
 }
 
 export interface GuildSave extends StoredItemFields {
+  runState: RunUIState
+  /** 事件已兑现的访客要随结果保存，避免刷新丢掉这项报酬。 */
+  visitor: Visitor | null
+  generationState: MemberGenerationState | null
   /** v19: 公会随机序列的当前位置，刷新/导出后续接。 */
   rngState: number
   /** v18: 已立约、尚未用于下一次远征的稀有猎杀 */
@@ -74,6 +82,7 @@ export interface GuildSave extends StoredItemFields {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),
   19: (d) => {
     const result = readItemFields(d, true)
     return { ...d, ...result.fields, itemMigrationIssues: result.issues }
@@ -155,6 +164,13 @@ export function migrate(data: Record<string, unknown>): GuildSave {
 function validate(d: GuildSave): boolean {
   return (
     d.version === SAVE_VERSION &&
+    Array.isArray(d.members) &&
+    validateRunState(d.runState, d.members) &&
+    (d.visitor === null || (d.visitor && typeof d.visitor.story === 'string' &&
+      d.visitor.member && typeof d.visitor.member.id === 'string' &&
+      !!JOBS[d.visitor.member.job] && typeof d.visitor.member.alive === 'boolean' &&
+      Number.isFinite(d.visitor.member.hp) && !!d.visitor.member.attrs && !!d.visitor.member.equipment)) &&
+    (d.generationState === null || (d.generationState && Number.isSafeInteger(d.generationState.seq) && d.generationState.seq >= 0 && Array.isArray(d.generationState.usedNames) && d.generationState.usedNames.every(n => typeof n === 'string'))) &&
     typeof d.rngState === 'number' &&
     typeof d.items === 'object' && Number.isSafeInteger(d.itemSeq) &&
     Array.isArray(d.members) &&
@@ -202,36 +218,71 @@ export function sanitizeMembers(members: Member[]): Member[] {
 function sanitizeSavedMembers(save: GuildSave): void {
   const items = itemStateFromSave(save)
   save.members = serializeGuildItems(items, sanitizeMembers(resolveMembers(save.members, items))).members
+  if (save.visitor) save.visitor = { ...save.visitor, member: sanitizeMembers([save.visitor.member])[0] }
 }
 
 /** 防御式加载:解析 → 逐级迁移 → 消毒 → 校验,任何异常回退为无存档 */
 export function loadGuildSave(): GuildSave | null {
+  unreadableSave = false
+  loadNotice = ''
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
-    const migrated = migrate(JSON.parse(raw) as Record<string, unknown>)
-    if (!validate(migrated)) return null
-    sanitizeSavedMembers(migrated)
-    return migrated
+    return parseGuildSave(raw)
   } catch {
+    try {
+      const backup = localStorage.getItem(KEY + '.bak')
+      if (backup) {
+        const recovered = parseGuildSave(backup)
+        loadNotice = '当前存档无法读取，已恢复上一份有效备份，请核对远征进度。'
+        console.warn(loadNotice)
+        return recovered
+      }
+    } catch { /* 保留原始数据，交给明确的重开操作处理。 */ }
+    unreadableSave = true
+    loadNotice = '当前存档与备份无法读取，原始数据已保留。请确认后重开公会；自动保存暂已停止。'
+    console.warn(loadNotice)
     return null
   }
 }
 
-export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): void {
+function parseGuildSave(raw: string): GuildSave {
+  const migrated = migrate(JSON.parse(raw) as Record<string, unknown>)
+  if (!validate(migrated)) throw new Error('存档或远征断点不完整')
+  sanitizeSavedMembers(migrated)
+  return migrated
+}
+
+export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): boolean {
+  if (unreadableSave) return false
   try {
     assertItemOwnership(itemStateFromSave(s))
+    if (!validateRunState(s.runState, s.members)) throw new Error('无效远征断点')
   } catch {
-    console.warn('存档未写入：装备归属异常，原存档已保留。')
-    return
+    console.warn('存档未写入：装备归属或远征断点异常，原存档已保留。')
+    return false
   }
   try {
     const prev = localStorage.getItem(KEY)
-    if (prev) localStorage.setItem(KEY + '.bak', prev) // 上一份好存档做备份,写坏可回退
+    if (prev) {
+      try { parseGuildSave(prev); localStorage.setItem(KEY + '.bak', prev) } catch { /* 坏原档不覆盖好备份。 */ }
+    }
     localStorage.setItem(KEY, JSON.stringify({ ...s, version: SAVE_VERSION, lastSeen: Date.now() }))
+    return true
   } catch {
     // 隐私模式等存储不可用:静默降级为无存档
+    return false
   }
+}
+
+/** 仅在玩家确认导入后解除坏档保护；预览不会覆盖原始数据或解锁自动保存。 */
+export function replaceGuildSave(s: GuildSave): boolean {
+  if (!validate(s)) return false
+  const blocked = unreadableSave
+  unreadableSave = false
+  if (!saveGuild(s)) { unreadableSave = blocked; return false }
+  loadNotice = ''
+  return true
 }
 
 /** 导出存档为可复制的文本码(unicode 安全) */
@@ -253,6 +304,8 @@ export function importSave(text: string): GuildSave | null {
 }
 
 export function clearGuildSave(): void {
+  unreadableSave = false
+  loadNotice = ''
   try {
     localStorage.removeItem(KEY)
   } catch {

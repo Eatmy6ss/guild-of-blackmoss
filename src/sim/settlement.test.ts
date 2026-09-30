@@ -1,10 +1,11 @@
+import { createRun, startStep, advanceRun, startTower, startTowerFloor } from '../../scripts/run-test-compat'
 import { describe, expect, it, vi } from 'vitest'
 import { BLACKMOSS, THORNHOLD } from '../data/dungeons'
 import { ECONOMY } from '../data/economy'
 import { ITEM_BASES } from '../data/items'
 import { baseEffects } from '../data/base'
-import { createRun, startStep, advanceRun, markPermadeath, settleGrowth } from './run'
-import { startTower, startTowerFloor, towerGold, towerExp, towerItemTier } from './tower'
+import { markPermadeath, settleGrowth } from './run'
+import { towerGold, towerExp, towerItemTier } from './tower'
 import { generateMember, xpNeeded } from './gen'
 import { createRng } from './rng'
 import { newKingdomState } from './kingdom'
@@ -157,15 +158,15 @@ describe('统一遭遇结算', () => {
           const deadUnit = r.battle!.combatants.find(c => c.memberId === r.members[0].id)!
           deadUnit.alive = false; deadUnit.hp = 0
           const old = { ...r, members: structuredClone(r.members), battle: { ...r.battle! }, potions: { ...r.potions } }
-          advanceRun(old); const dead = markPermadeath(old)
+          advanceRun(old, old.members); const dead = markPermadeath({ ...old, dungeon, members: old.members })
           if (dead.length) applyDeathShock(dead[0].id, old.members.filter(m => m.alive))
           if (status === 'guild-win') applyVictory(old.members)
-          settleGrowth(old, 1)
+          settleGrowth({ ...old, dungeon }, 1)
           const o = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!
           expect(o.run.phase).toBe(old.phase)
           expect(o.run.stepIdx).toBe(old.stepIdx)
           expect(o.run.potions).toEqual(old.potions)
-          expect(o.run.members).toEqual(old.members)
+          expect(o.guild.members.filter(m => o.run.memberIds.includes(m.id))).toEqual(old.members)
           expect(o.loot.gold).toBe(status === 'guild-win' ? ECONOMY.battleGold.wave * 2 : 0)
           expect(o.loot.clearGold).toBe(status === 'guild-win' && terminal ? ECONOMY.clearBonus : 0)
           expect(o.guild.recruitCooldown).toBe(1)
@@ -181,7 +182,7 @@ describe('统一遭遇结算', () => {
     const first = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!
     expect(first.consequences.chronicle.filter(x => x.text.includes('成长到了'))).toHaveLength(1)
     first.guild.chronicle = [...g.chronicle, ...first.consequences.chronicle]
-    startStep(first.run, 10); first.run.battle!.status = 'guild-win'
+    startStep(first.run, 10, 0, first.guild.members); first.run.battle!.status = 'guild-win'
     const next = settleEncounter({ source: 'dungeon', run: first.run, guild: first.guild }, () => 0.99)!
     expect(next.consequences.chronicle.filter(x => x.text.includes('成长到了'))).toEqual([])
     expect(next.guild.members[0].level).toBe(6)

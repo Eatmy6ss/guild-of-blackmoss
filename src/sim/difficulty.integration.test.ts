@@ -1,10 +1,11 @@
+import { createRun, startStep, startTower, startTowerFloor } from '../../scripts/run-test-compat'
 import { expect, test } from 'vitest'
 import { BLACKMOSS, DUNGEONS, RUSTMINE } from '../data/dungeons'
 import { createBattle, enemyToCombatant } from './combat'
 import { scaleEnemy, type DifficultyModifiers } from './difficulty'
 import { processBossMechanics } from './mechanics'
-import { createRun, startStep } from './run'
-import { startTower, startTowerFloor, towerEnemyScale } from './tower'
+
+import { towerEnemyScale } from './tower'
 import type { BattleState, Combatant, DungeonDef } from './types'
 
 const summonCases = DUNGEONS.flatMap(dungeon => Object.entries(dungeon.bosses)

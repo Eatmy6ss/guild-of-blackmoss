@@ -2,7 +2,7 @@ import type { BattleState, DeadHero, DungeonDef, Member, RouteNodeDef } from './
 import type { RunBuffDef } from '../data/guild-events'
 import { createBattle, POTION_STOCK, toCombatant } from './combat'
 import { grantExp, xpNeeded } from './gen'
-import { createRng, type Rng } from './rng'
+import { createRunCore, runDungeon, runMembers, syncRunParty, type RunCore } from './run-core'
 
 // 远征状态机（D7/D11）：岔路 → 逐场战斗 → 血量延续 → 战间歇整 → 通关/团灭/撤退。
 // D11：战斗死亡 = 永久死亡（markPermadeath），纪念堂接收亡者，休整不再复活亡者。
@@ -12,20 +12,16 @@ export const REST_HEAL_PCT = 0.3
 
 export type RunPhase = 'battle' | 'rest' | 'victory' | 'defeat' | 'retreated'
 
-export interface DungeonRun {
-  /** 本趟身份用于结算物品 ID，重放同一遭遇不会创造第二件物品。 */
-  id: string
-  seed: number
-  rng: Rng
-  dungeon: DungeonDef
+export interface DungeonRun extends RunCore {
+  kind: 'dungeon'
+  dungeonId: string
+  routeTaken: string[]
   /** 本条路线的遭遇战序列（岔路决定） */
   steps: string[]
   stepIdx: number
   phase: RunPhase
   /** phase === 'battle' 且战斗未结束时为当前战斗；终局后保留引用供结算读取 */
   battle: BattleState | null
-  /** 远征队成员引用（与公会花名册同对象，死亡即减员） */
-  members: Member[]
   /** 纪念堂光环加成（创建远征时由公会状态带入） */
   auraBonus: number
   /** 公会层面的撤退保护开关（D13 修复接线：每场战斗以此初始化） */
@@ -96,16 +92,12 @@ export function createRun(
 ): DungeonRun {
   const plan = routePlan(dungeon, branchId, seed)
   const run: DungeonRun = {
-    id: crypto.randomUUID(),
-    seed,
-    rng: createRng(seed),
-    dungeon,
+    ...createRunCore(members.filter(m => m.alive).slice(0, dungeon.size), seed),
+    kind: 'dungeon', dungeonId: dungeon.id, routeTaken: [branchId],
     steps: plan.steps,
     stepIdx: 0,
     phase: 'battle',
     battle: null,
-    // 编制随副本:3 人本照旧,团本(5 人)要求并允许更多人上阵(Q22 人本路线)
-    members: members.filter((m) => m.alive).slice(0, dungeon.size),
     auraBonus,
     protectOn,
     potions,
@@ -113,13 +105,13 @@ export function createRun(
     nodeIds: [],
     eliteAt: plan.eliteAt,
     buffs: [...buffs],
-    rareHunt,
+    ...(rareHunt ? { rareHunt } : {}),
   }
-  startStep(run, seed)
+  startStep(run, seed, 0, members)
   return run
 }
 
-export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void {
+export function startStep(run: DungeonRun, seed: number, manualBonus = 0, roster: Member[] = []): void {
   const isElite = run.eliteAt.includes(run.stepIdx)
   // 稀有猎杀:首场遭遇敌方强化(奖励倍率由结算层消费)
   const rareMult = run.rareHunt && run.stepIdx === 0 ? run.rareHunt.mult : 1
@@ -132,8 +124,8 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
     }
   }
   run.battle = createBattle(
-    run.members.filter((m) => m.alive),
-    run.dungeon,
+    runMembers(run, roster).filter((m) => m.alive),
+    runDungeon(run),
     run.steps[run.stepIdx],
     seed,
     run.auraBonus,
@@ -150,15 +142,16 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0): void 
 }
 
 /** 战斗结算：血量写回成员（倒地记 0，永久死亡由 markPermadeath 登记）；未用完的药水退回携带量 */
-export function advanceRun(run: DungeonRun): void {
+export function advanceRun(run: DungeonRun, roster: Member[] = []): void {
   const b = run.battle
   if (!b || b.status === 'running') return
   run.potions = { heal: b.commands.healStock, fury: b.commands.furyStock }
   for (const c of b.combatants) {
     if (!c.memberId) continue
-    const m = run.members.find((x) => x.id === c.memberId)
+    const m = runMembers(run, roster).find((x) => x.id === c.memberId)
     if (m) m.hp = c.alive ? c.hp : 0
   }
+  syncRunParty(run, roster)
   if (b.status === 'guild-wipe') {
     run.phase = 'defeat'
     return
@@ -171,11 +164,12 @@ export function advanceRun(run: DungeonRun): void {
     run.phase = 'victory'
     return
   }
-  for (const m of run.members) {
+  for (const m of runMembers(run, roster)) {
     if (!m.alive) continue // 亡者不归（D11）：休整只惠及幸存者
     const max = toCombatant(m).maxHp
     m.hp = Math.min(max, Math.max(m.hp, 0) + Math.round(max * REST_HEAL_PCT))
   }
+  syncRunParty(run, roster)
   run.stepIdx++
   run.phase = 'rest'
 }
@@ -270,10 +264,11 @@ export function settleGrowth(run: GrowthRun, expMult = 1, floorReward?: { exp: n
 }
 
 /** 撤退（休整界面直接回城）：幸存者保留现状 */
-export function retreatRun(run: DungeonRun): void {
-  for (const m of run.members) {
+export function retreatRun(run: DungeonRun, roster: Member[] = []): void {
+  for (const m of runMembers(run, roster)) {
     if (m.alive && m.hp <= 0) m.hp = 1
   }
+  syncRunParty(run, roster)
   run.phase = 'retreated'
 }
 
@@ -302,11 +297,11 @@ export function revealLevel(mastery: number): RevealLevel {
 
 /** 岔口选项:未踏过的节点抽 2-3 个(确定性);踏满 3 个节点后只剩 boss */
 export function junctionOptions(run: DungeonRun, seed: number, count = 4): RouteNodeDef[] {
-  const unvisited = run.dungeon.routeNodes.filter((n) => !run.nodeIds.includes(n.id))
+  const unvisited = runDungeon(run).routeNodes.filter((n) => !run.nodeIds.includes(n.id))
   if (unvisited.length <= count) return [...unvisited]
   // K05 关系表(U13):与已踏节点有边相连者优先入选(最多占 2 席)——
   // 「蛙人哨兵旁常伴水蛭洼地」的地理记忆成立;关系表=边列表,可升级为固定地图连边(U13 分期)
-  const rel = run.dungeon.routeRelations ?? []
+  const rel = runDungeon(run).routeRelations ?? []
   const neighbors = new Set<string>()
   for (const [a, b] of rel) {
     if (run.nodeIds.includes(a)) neighbors.add(b)
@@ -333,7 +328,7 @@ export function junctionOptions(run: DungeonRun, seed: number, count = 4): Route
  *  (F02 修复 2026-09-25:选路发生在 rest 相,advanceRun 已把 stepIdx 指向「下一场待打」——
  *   改写/消耗都应作用于 steps[stepIdx] 本位,此前 +1 一格造成「选蛙人打狼群」错位) */
 export function applyNodeChoice(run: DungeonRun, nodeId: string): 'battle' | 'elite' | 'event' | 'rest' | 'treasure' | null {
-  const node = run.dungeon.routeNodes.find((n) => n.id === nodeId)
+  const node = runDungeon(run).routeNodes.find((n) => n.id === nodeId)
   if (!node || run.nodeIds.includes(node.id)) return null
   run.nodeIds.push(node.id)
   if (node.kind === 'battle' || node.kind === 'elite') {

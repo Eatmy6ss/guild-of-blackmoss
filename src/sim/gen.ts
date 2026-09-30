@@ -19,6 +19,15 @@ const EPITHETS = [
 
 let memberSeq = 0
 
+export interface MemberGenerationState { seq: number; usedNames: string[] }
+/** 招募身份/重名避让也会影响事件结果，和随机位置一起续接。 */
+export const memberGenerationState = (): MemberGenerationState => ({ seq: memberSeq, usedNames: [...usedNames] })
+export function restoreMemberGeneration(state: MemberGenerationState): void {
+  memberSeq = state.seq
+  usedNames.clear()
+  state.usedNames.forEach(name => usedNames.add(name))
+}
+
 /** 全局已用名字：避免同一存档里出现无数个同名英雄 */
 const usedNames = new Set<string>()
 

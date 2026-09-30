@@ -1,3 +1,7 @@
+import { runMembers as resolveRunMembers, runDungeon as resolveRunDungeon, runRng as dataRunRng } from '../src/sim/run-core'
+import { initialRunState, checkpointRunState, runReducer } from '../src/sim/run-state'
+import { memberGenerationState, restoreMemberGeneration } from '../src/sim/gen'
+import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor } from './run-test-compat'
 import assert from 'node:assert/strict'
 import './mechanics.test'
 import { test } from 'node:test'
@@ -7,8 +11,8 @@ import { generateMember, grantExp, maxHpOf, levelTo } from '../src/sim/gen'
 import { createBattle, stepBattle, toCombatant, applyHit, ENEMY_HP_MULT } from '../src/sim/combat'
 import { processBossMechanics, bossIntents } from '../src/sim/mechanics'
 import { runAutoAI } from '../src/sim/ai'
-import { createRun, startStep, settleGrowth, advanceRun, retreatRun, applyNodeChoice } from '../src/sim/run'
-import { startTower, startTowerFloor, towerEnemyScale, insureNextTowerFloor, towerNext, settleTowerFloor } from '../src/sim/tower'
+import { settleGrowth, applyNodeChoice } from '../src/sim/run'
+import { towerEnemyScale, insureNextTowerFloor } from '../src/sim/tower'
 import { redeemCost, sellValue } from '../src/sim/tavern'
 import { rollDrop, rollWaveDrop, rollBossDrops, dungeonItemTier, describeItem } from '../src/sim/loot'
 import { wishDone } from '../src/sim/wish'
@@ -400,7 +404,13 @@ function callback(snippet: string, scope: Record<string, unknown>) {
 /** 旧界面测试改为显式注入新随机依赖，保留原来的脚本抽样与数值断言。 */
 function rngScope(scope: Record<string, unknown>) {
   const random = (scope.Math as { random?: () => number } | undefined)?.random ?? (() => Math.random())
-  return { int, createStatefulRng, newRngSeed, createGuildItems, itemStateFromSave, resolveMembers, serializeGuildItems,
+  const defaultProgress = initialRunState()
+  return { initialRunState, checkpointRunState, memberGenerationState, restoreMemberGeneration,
+    progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
+    membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
+    runMembers: (r: any, ms: Member[]) => r.memberIds ? resolveRunMembers(r, ms?.length ? ms : r.members ?? []) : r.members,
+    runDungeon: (r: any) => r.dungeonId ? resolveRunDungeon(r) : r.dungeon,
+    runRng: (r: any) => r.rng ?? dataRunRng(r), int, createStatefulRng, newRngSeed, createGuildItems, itemStateFromSave, resolveMembers, serializeGuildItems,
     addInventoryItems, applyEncounterItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic, registerMemberItems, guildRng: random,
     guildRngRef: { current: createStatefulRng(7777) }, chronicleRef: { current: [] }, ...scope }
 }
@@ -715,6 +725,7 @@ test('actual restart handler resets persistent fields before saving a new guild'
   assert.equal(scope.guildRngRef.current.state(),54321)
   const store = new Map<string,string>(); (globalThis as any).localStorage = {getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>store.set(k,v)}
   state.rngState = scope.guildRngRef.current.state()
+  state.runState = initialRunState(); state.visitor = null; state.generationState = memberGenerationState()
   saveGuild(state as any)
   const saved = loadGuildSave()!
   assert(saved); assert.equal(saved.starMarrow,0); assert.deepEqual(saved.pendingRelics,[]); assert.equal(saved.trainingReady,false)
@@ -1001,12 +1012,12 @@ test('retreat from rest cancels automatic repeat before returning to the guild',
   r.phase='rest'; r.autoMode=true
   const autoLoopRef={current:true}
   let stats = newStatistics()
-  handler('retreat',{runRef:{current:r},autoLoopRef,retreatRun,expeditionStatistics,noteStatistics:(action:any)=>{if(action)stats=recordStatistics(stats,action)},setRunning:()=>{},syncAll:()=>{}})()
+  handler('retreat',{runRef:{current:r},membersRef:{current:r.members},autoLoopRef,retreatRun,expeditionStatistics,noteStatistics:(action:any)=>{if(action)stats=recordStatistics(stats,action)},setRunning:()=>{},syncAll:()=>{}})()
   assert.equal(r.phase,'retreated'); assert.equal(r.autoMode,false); assert.equal(autoLoopRef.current,false)
   assert.equal(stats.expeditions.retreats,1); assert.equal(stats.expeditionBattles.retreats,0)
 })
 
-test('terminal saves use returned expedition or tower potions, never stale guild stock', () => {
+test('active and terminal saves preserve carried potions; stale uncommitted renders cannot save assets', () => {
   let saved:any
   const rng = createStatefulRng(17)
   for(let i=0;i<23;i++) rng()
@@ -1022,7 +1033,10 @@ test('terminal saves use returned expedition or tower potions, never stale guild
   save(null,{phase:'ended',potions:{heal:0,fury:3}})
   assert.deepEqual(saved.potions,{heal:0,fury:3})
   saved=null
-  save({phase:'battle'},null)
+  save({phase:'battle',potions:{heal:1,fury:0}},null)
+  assert.deepEqual(saved.potions,{heal:1,fury:0})
+  saved=null
+  callback('saveGuild({ trainingReady', {...scope,progress:initialRunState(),progressRef:{current:initialRunState()}})()
   assert.equal(saved,null)
 })
 
@@ -1180,7 +1194,7 @@ test('expedition end statistics settle once, including victory before the return
 test('offline grant is counted once even if mount effects are replayed', () => {
   let stats=newStatistics(), gold=0
   const apply=callback('offlineAppliedRef.current = true',{
-    offlineAppliedRef:{current:false},saved:{members:[],memorial:[],chronicle:[],lastSeen:0},
+    offlineAppliedRef:{current:false},saved:{members:[],memorial:[],chronicle:[],lastSeen:0,runState:initialRunState(),generationState:null,visitor:null},
     initialGuild:{members:[]},
     seedMemberSeq:()=>{},reserveNames:()=>{},seedChronicle:()=>{},
     offlineGain:()=>({hours:2,gold:50}),setOfflineNote:()=>{},
@@ -1201,7 +1215,7 @@ test('actual expedition settlement counts once, pays rare gold only on first bat
   // Complete a short fixture route through the same production settlement.
   const next = ui.scope.runRef.current
   next.steps=next.steps.slice(0,next.stepIdx+1)
-  startStep(next,50)
+  startStep(next,50,0,ui.state.members)
   next.battle.status='guild-win'; ui.dungeon(next); ui.dungeon(next)
   const stats = ui.state.statistics
   assert.equal(stats.expeditionBattles.wins,2)
@@ -1363,4 +1377,47 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
       assert.equal(gold, 60)
     }
   }
+})
+
+
+test('recovery: authoritative progress publishes changes made by run and pending refs atomically', () => {
+  const original = initialRunState(), progressRef = {current:original}, dispatched: any[] = []
+  const changeProgress = handler('changeProgress', {progressRef,runReducer,dispatchProgress:(a:any)=>dispatched.push(a)})
+  changeProgress({playing:true}); changeProgress({pendingDeparture:'shortcut'}); changeProgress({autoLoop:true})
+  assert.equal(original.playing,false)
+  assert.deepEqual(progressRef.current,{...original,playing:true,pendingDeparture:'shortcut',autoLoop:true})
+  assert.equal(dispatched.at(-1).state,progressRef.current)
+})
+
+test('recovery: title does not simulate, entering the game restores once without replaying old visual events', () => {
+  const r = createRun(squad(),BLACKMOSS,'shortcut',53)
+  r.battle!.events.push({tick:0,type:'damage',targetId:r.battle!.combatants[0].id,amount:1})
+  const resumeHandledRef={current:false}, eventCursorRef={current:0}, lastBattleRef={current:null}
+  let themes=0, frames=0, notices=0, scheduled=0, timers=0
+  const scope:any = {saved:{runState:{activeRun:r}},progressRef:{current:{...initialRunState(),activeRun:r}},
+    resumeHandledRef,eventCursorRef,lastBattleRef,THEME_BY_DUNGEON:{},
+    membersRef:{current:r.members},rendererRef:{current:{setTheme:()=>themes++,setMembers:()=>{},setBattle:(b:any,events:any[])=>{assert.equal(b,r.battle);assert.deepEqual(events,[]);frames++}}},
+    setResumeNotice:()=>notices++,window:{setTimeout:()=>scheduled++},
+    running:true,towerRunning:false,setInterval:()=>timers++}
+  callback('resumeHandledRef.current = true',{...scope,screen:'title'})()
+  callback('const timer = setInterval',{...scope,screen:'title'})()
+  assert.equal(resumeHandledRef.current,false);assert.equal(timers,0);assert.equal(frames,0)
+  const resume = callback('resumeHandledRef.current = true',{...scope,screen:'game'})
+  resume();resume()
+  assert.equal(eventCursorRef.current,r.battle!.events.length);assert.equal(lastBattleRef.current,r.battle)
+  assert.equal(themes,1);assert.equal(frames,1);assert.equal(notices,1);assert.equal(scheduled,0)
+})
+
+test('recovery: pending and paid automatic events wait on the title; restored results cannot pay again', () => {
+  let scheduled=0, choices=0
+  const scope:any={pendingEvent:GUILD_EVENTS[0],eventResult:null,runRef:{current:null},autoLoopRef:{current:true},
+    resolveEventRef:{current:()=>choices++},setTimeout:()=>{scheduled++;return 1},clearTimeout:()=>{}}
+  const snippet="if (screen !== 'game' || !pendingEvent || eventResult) return"
+  callback(snippet,{...scope,screen:'title'})()
+  callback(snippet,{...scope,screen:'game',eventResult:'已经到账'})()
+  assert.equal(scheduled,0);assert.equal(choices,0)
+  const cleanup=callback(snippet,{...scope,screen:'game'})()
+  assert.equal(scheduled,1);assert.equal(typeof cleanup,'function')
+  callback("if (screen !== 'game' || !eventResult) return",{...scope,screen:'title',eventResult:'已经到账'})()
+  assert.equal(scheduled,1)
 })

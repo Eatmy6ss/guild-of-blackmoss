@@ -495,6 +495,8 @@ export interface BattleEvent {
 }
 
 export interface BattleState {
+  /** 本场单位编号进度；刷新后的召唤继续使用本场序列。 */
+  unitSeq?: number
   /** 战斗创建时固定，结算不使用已经推进的路线索引。 */
   encounterId?: string
   /** 创伤结算幂等标记；新战斗重新初始化 */

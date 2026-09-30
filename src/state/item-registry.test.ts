@@ -1,10 +1,11 @@
+import { createRun, startTower } from '../../scripts/run-test-compat'
 import { describe, expect, it, vi } from 'vitest'
 import { generateMember, maxHpOf } from '../sim/gen'
 import { rollDrop, equipmentStats } from '../sim/loot'
 import { createRng } from '../sim/rng'
 import { toCombatant } from '../sim/combat'
-import { createRun } from '../sim/run'
-import { startTower } from '../sim/tower'
+
+
 import { settleEncounter } from '../sim/settlement'
 import { BLACKMOSS } from '../data/dungeons'
 import { newKingdomState } from '../sim/kingdom'
@@ -39,7 +40,7 @@ describe('物品注册表与唯一归属 I6', () => {
     const before = structuredClone(data), warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const random = vi.spyOn(Math, 'random').mockImplementation(() => { throw new Error('迁移不能抽样') })
     const migrated = migrate(data)
-    expect(migrated.version).toBe(20)
+    expect(migrated.version).toBe(SAVE_VERSION)
     expect(contents(Object.values(migrated.items))).toEqual(contents(originalItems))
     expect(Object.keys(migrated.items)).toHaveLength(6)
     expect(migrated.inventory).toHaveLength(4)
@@ -53,7 +54,7 @@ describe('物品注册表与唯一归属 I6', () => {
   })
 
   it('逐级迁移 v1–v19；正常 v20 读写后身份、物品属性和序号不变', () => {
-    for (let version = 1; version < SAVE_VERSION; version++) {
+    for (let version = 1; version <= 19; version++) {
       const data = oldSave(); data.version = version
       data.members[0].equipment.weapon = gear('wpn-t1-sword', 'weapon')
       const saved = migrate(data), imported = importSave(exportSave(saved))!
