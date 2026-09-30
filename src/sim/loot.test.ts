@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { AFFIXES } from '../data/affixes'
 import { ITEM_BASES } from '../data/items'
 import { exportSave, importSave, migrate } from '../state/save'
+import { itemStateFromSave, addInventoryItems, serializeGuildItems, resolveMembers } from '../state/item-registry'
 import { toCombatant } from './combat'
 import { generateMember } from './gen'
 import { createLootRng, describeItem, equipmentStats, itemStats, rollAffixes, rollBossDrops, rollDrop, rollWaveDrop } from './loot'
@@ -139,18 +140,21 @@ describe('词条预算', () => {
     member.equipment = { weapon: oldPurple }
     const migrated = migrate({ version: 1, members: [member], inventory: [oldWithoutQuality], memorial: [], manual: [], protectOn: true })
     const newItem = rollDrop('wpn-t3-dawn', () => 0)
-    migrated.inventory.push(newItem)
-    migrated.pendingRelics = [{ item: { ...oldPurple, id: 'old-relic' }, hero: '测试亡者', redeem: 10 }]
+    const registered = addInventoryItems(itemStateFromSave(migrated), [newItem, { ...oldPurple, id: 'old-relic' }])
+    registered.state.inventory.pop()
+    registered.state.pendingRelics.push({ uid: registered.items[1].id, hero: '测试亡者', redeem: 10 })
+    Object.assign(migrated, serializeGuildItems(registered.state, resolveMembers(migrated.members, registered.state)))
     const before = structuredClone(migrated)
     const restored = importSave(exportSave(migrated))!
     expect(restored).not.toBeNull()
     expect(restored.inventory).toEqual(before.inventory)
     expect(restored.pendingRelics).toEqual(before.pendingRelics)
-    expect(restored.members[0].equipment).toEqual({ weapon: oldPurple })
-    expect(itemStats(restored.members[0].equipment.weapon!)).toEqual({ attack: 31.25, maxHp: 26.25, defense: 1.5 })
-    expect(equipmentStats({ weapon: restored.inventory[1] })).toEqual({ attack: 31.25, maxHp: 26.25, defense: 2.63 })
-    const oldUnit = toCombatant(restored.members[0])
-    const newUnit = toCombatant({ ...restored.members[0], equipment: { weapon: restored.inventory[1] } })
+    const [restoredMember] = resolveMembers(restored.members, itemStateFromSave(restored))
+    expect(restoredMember.equipment).toEqual({ weapon: { ...oldPurple, id: restored.members[0].equipment.weapon } })
+    expect(itemStats(restoredMember.equipment.weapon!)).toEqual({ attack: 31.25, maxHp: 26.25, defense: 1.5 })
+    expect(equipmentStats({ weapon: restored.items[restored.inventory[1]] })).toEqual({ attack: 31.25, maxHp: 26.25, defense: 2.63 })
+    const oldUnit = toCombatant(restoredMember)
+    const newUnit = toCombatant({ ...restoredMember, equipment: { weapon: restored.items[restored.inventory[1]] } })
     expect(newUnit.defense).toBeGreaterThan(oldUnit.defense)
     expect(newUnit.attack).toBe(oldUnit.attack)
     expect(newUnit.maxHp).toBe(oldUnit.maxHp)

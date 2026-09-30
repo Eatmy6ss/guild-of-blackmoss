@@ -10,7 +10,7 @@ import { runAutoAI } from '../src/sim/ai'
 import { createRun, startStep, settleGrowth, advanceRun, retreatRun, applyNodeChoice } from '../src/sim/run'
 import { startTower, startTowerFloor, towerEnemyScale, insureNextTowerFloor, towerNext, settleTowerFloor } from '../src/sim/tower'
 import { redeemCost, sellValue } from '../src/sim/tavern'
-import { rollDrop, rollWaveDrop, rollBossDrops, dungeonItemTier } from '../src/sim/loot'
+import { rollDrop, rollWaveDrop, rollBossDrops, dungeonItemTier, describeItem } from '../src/sim/loot'
 import { wishDone } from '../src/sim/wish'
 import { assignTrait, waveDropBonus } from '../src/sim/member-traits'
 import { attemptHeal, healingTerms, settleScars, rollScarChance } from '../src/sim/scars'
@@ -25,6 +25,9 @@ import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD } from
 import { EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW } from '../src/data/dungeons-r2'
 import { ECONOMY } from '../src/data/economy'
 import { migrate, saveGuild, loadGuildSave, exportSave, importSave, sanitizeMembers, SAVE_VERSION } from '../src/state/save'
+import { createGuildItems, itemStateFromSave, resolveMembers, serializeGuildItems, inventoryItems, relicItems,
+  addInventoryItems, applyEncounterItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic, registerMemberItems,
+  assertItemOwnership } from '../src/state/item-registry'
 import { newStatistics, recordStatistics, expeditionStatistics, normalizeStatistics, exportStatistics, totalGoldEarned, winRate } from '../src/sim/statistics'
 import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
 import { rollGuildEvent, SECOND_ACT_IDS, eventCount, pickOutcome } from '../src/sim/guild-events'
@@ -158,7 +161,7 @@ test('free visitor signing is synchronous and idempotent before React renders ag
   const visitor = { member: squad()[0], story: 'test visitor' }
   let roster = [...initial], logs = 0, wishes = 0
   const membersRef = { current: roster }
-  const sign = handler('signVisitor', {
+  const scope: Record<string, any> = {
     visitor, membersRef, runRef: { current: null }, towerRunRef: { current: null },
     aliveCount: () => membersRef.current.filter(m => m.alive).length,
     ROSTER_CAP: 6,
@@ -168,7 +171,11 @@ test('free visitor signing is synchronous and idempotent before React renders ag
     },
     day: 1, chronicleRecruit: () => 'recruited',
     logChronicle: () => { logs++ }, setVisitor: () => {},
-  })
+  }
+  scope.itemOwnershipRef = {current:createGuildItems(initial)}
+  scope.setItemOwnership = () => {}
+  scope.updateItemOwnership = handler('updateItemOwnership', scope)
+  const sign = handler('signVisitor', scope)
   sign()
   sign()
   assert.equal(roster.filter(m => m.id === visitor.member.id).length, 1)
@@ -264,11 +271,13 @@ test('legacy preview full-health sentinel is resolved on import and load without
   const text = readFileSync('docs/dev-save.txt', 'utf8').trim()
   const loaded = importSave(text)!
   assert(loaded)
-  assert(loaded.members.every(m => m.hp === maxHpOf(m)))
-  const wounded = { ...loaded.members[0], hp: 7 }
-  const fallen = { ...loaded.members[1], alive: false, hp: 0 }
-  const sentinel = { ...loaded.members[2], hp: -1 }
+  const itemState = itemStateFromSave(loaded), resolved = resolveMembers(loaded.members, itemState)
+  assert(resolved.every(m => m.hp === maxHpOf(m)))
+  const wounded = { ...resolved[0], hp: 7 }
+  const fallen = { ...resolved[1], alive: false, hp: 0, equipment: {} }
+  const sentinel = { ...resolved[2], hp: -1 }
   const input = [wounded, fallen, sentinel]
+  const partialItems = createGuildItems(input)
   const normalized = sanitizeMembers(input)
   assert.equal(normalized[0].hp, 7)
   assert.equal(normalized[1].hp, 0)
@@ -280,9 +289,10 @@ test('legacy preview full-health sentinel is resolved on import and load without
   try {
     Object.defineProperty(globalThis, 'localStorage', {
       configurable: true,
-      value: { getItem: () => JSON.stringify({ ...loaded, members: input }) },
+      value: { getItem: () => JSON.stringify({ ...loaded, ...serializeGuildItems(partialItems, input) }) },
     })
-    assert.deepEqual(loadGuildSave()!.members, normalized)
+    const reloaded = loadGuildSave()!
+    assert.deepEqual(resolveMembers(reloaded.members, itemStateFromSave(reloaded)), sanitizeMembers(resolveMembers(input, partialItems)))
   } finally {
     if (previous) Object.defineProperty(globalThis, 'localStorage', previous)
     else Reflect.deleteProperty(globalThis, 'localStorage')
@@ -390,7 +400,8 @@ function callback(snippet: string, scope: Record<string, unknown>) {
 /** 旧界面测试改为显式注入新随机依赖，保留原来的脚本抽样与数值断言。 */
 function rngScope(scope: Record<string, unknown>) {
   const random = (scope.Math as { random?: () => number } | undefined)?.random ?? (() => Math.random())
-  return { int, createStatefulRng, newRngSeed, guildRng: random,
+  return { int, createStatefulRng, newRngSeed, createGuildItems, itemStateFromSave, resolveMembers, serializeGuildItems,
+    addInventoryItems, applyEncounterItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic, registerMemberItems, guildRng: random,
     guildRngRef: { current: createStatefulRng(7777) }, chronicleRef: { current: [] }, ...scope }
 }
 
@@ -403,6 +414,7 @@ function settlementUi(members: Member[]) {
   }
   const scope: any = {
     runRef: { current: null }, towerRunRef: { current: null }, membersRef: { current: members },
+    itemOwnershipRef: { current: createGuildItems(members) },
     chronicleRef: { current: [] }, recordStatistics, seedChronicle, settleEncounter,
     setRun: () => {}, setTowerRun: () => {}, setTowerRunning: () => {}, drainAndSync: () => {},
     sfxVictory: () => {}, sfxDefeat: () => {}, int, baseEffects: () => ({ towerRestHealPct: 0.2 }),
@@ -414,6 +426,9 @@ function settlementUi(members: Member[]) {
     }
   }
   scope.updateKingdom = (v: unknown) => { state.kingdom = v }
+  scope.setItemOwnership = (v: any) => { state.itemOwnership = v; state.inventory = inventoryItems(v); state.pendingRelics = relicItems(v) }
+  scope.updateItemOwnership = handler('updateItemOwnership', scope)
+  scope.updateItemOwnership(scope.itemOwnershipRef.current)
   scope.encounterGuild = (): EncounterGuild => ({ ...state, members: scope.membersRef.current, chronicle: scope.chronicleRef.current })
   scope.applyOutcome = handler('applyOutcome', scope)
   return {
@@ -422,6 +437,91 @@ function settlementUi(members: Member[]) {
     tower: callback("source: 'tower', run: current", scope),
   }
 }
+
+test('actual item callbacks: atomic equip, sell and dismantle keep one owner and ignore repeated stale selections', () => {
+  const members = squad(); members[0].equipment.weapon = item('wpn-t1-sword')
+  const ui = settlementUi(members), {state,scope} = ui
+  let wishes = 0
+  Object.assign(scope,{day:1,fx:{sellMult:1.2},sellValue,ITEM_BASES,describeItem,sfxCoin:()=>{},logChronicle:()=>{},chronicleRaw:()=>({}),checkWishes:()=>{wishes++},
+    gainGold:(n:number,source:string)=>{assert.equal(source,'sales');state.gold+=n}})
+  const receive = handler('receiveItems',scope)
+  receive([item('wpn-t3-dawn'),item('arm-t3-bulwark')],true)
+  const oldUid = members[0].equipment.weapon!.id, weaponUid = state.inventory[0].id, armorUid = state.inventory[1].id
+  const equip = handler('equip',scope)
+  equip(members[0],'weapon','missing'); assert.equal(members[0].equipment.weapon!.id,oldUid)
+  equip(members[0],'weapon',weaponUid); equip(members[0],'weapon',weaponUid)
+  assert.equal(wishes,1); assert.equal(members[0].equipment.weapon!.id,weaponUid)
+  assert.equal(state.inventory.filter((i:any)=>i.id===oldUid).length,1)
+  equip(members[1],'weapon',weaponUid); assert.equal(members[1].equipment.weapon,undefined)
+  const oldPrice = sellValue(scope.itemOwnershipRef.current.items[oldUid],1.2)
+  const sell = handler('sellItem',scope)
+  sell(oldUid); sell(oldUid)
+  assert.equal(state.gold,oldPrice)
+  const dismantle = handler('dismantleT3',scope)
+  dismantle(armorUid); dismantle(armorUid)
+  assert.equal(state.starMarrow,2)
+  assert.equal(scope.itemOwnershipRef.current.items[oldUid],undefined)
+  assert.equal(scope.itemOwnershipRef.current.items[armorUid],undefined)
+  assert.equal(scope.itemOwnershipRef.current.items[weaponUid],members[0].equipment.weapon)
+  assertItemOwnership(scope.itemOwnershipRef.current)
+  scope.runRef.current={}
+  equip(members[0],'weapon',''); sell(weaponUid)
+  assert.equal(members[0].equipment.weapon!.id,weaponUid)
+})
+
+test('actual item updates preserve expedition member references and serialize only UID ownership', () => {
+  const members = squad(); members[0].equipment.weapon = item('wpn-t1-sword')
+  const ui = settlementUi(members), {scope,state} = ui
+  const run = createRun(members,BLACKMOSS,BLACKMOSS.branches[0].id,49)
+  scope.runRef.current=run
+  const before = run.members[0]
+  handler('receiveItems',scope)([item('wpn-t3-dawn')],true)
+  assert.equal(scope.membersRef.current[0],before)
+  assert.equal(run.members[0],scope.membersRef.current[0])
+  scope.membersRef.current[0].hp=7
+  assert.equal(run.members[0].hp,7)
+  const stored=serializeGuildItems(scope.itemOwnershipRef.current,state.members)
+  assert.equal(typeof stored.members[0].equipment.weapon,'string')
+  assert.equal(typeof stored.inventory[0],'string')
+  assert.equal(Object.keys(stored.items).length,2)
+  assert.equal(stored.itemSeq,3)
+  assertItemOwnership(itemStateFromSave(stored))
+})
+
+test('actual tower entry starts a new loot display while retaining previously exchanged inventory', () => {
+  const ui=settlementUi(squad()),{scope,state}=ui
+  handler('receiveItems',scope)([item('wpn-t3-dawn')],true)
+  const uid=state.inventory[0].id
+  Object.assign(scope,{expedition:scope.membersRef.current,pendingEvent:null,startTower,potions:{heal:3,fury:3},
+    setBattle:()=>{},lastBattleRef:{current:null}})
+  handler('enterTower',scope)()
+  assert.deepEqual(state.lastDrops,[])
+  assert.equal(state.inventory.length,1)
+  assert.equal(state.inventory[0].id,uid)
+  assert.equal(scope.itemOwnershipRef.current.items[uid],state.inventory[0])
+  assertItemOwnership(scope.itemOwnershipRef.current)
+})
+
+test('actual relic redemption is keyed by UID, preserves price and identity, and cannot redeem twice', () => {
+  const members=squad();members[0].equipment.weapon=item('wpn-t3-dawn')
+  const ui=settlementUi(members),{state,scope}=ui
+  const t=startTower(members,12)
+  const victim=t.battle!.combatants.find(c=>c.memberId===members[0].id)!
+  victim.alive=false;victim.hp=0;t.battle!.status='retreated';scope.towerRunRef.current=t
+  ui.tower()
+  const relic=state.pendingRelics[0],uid=relic.uid
+  scope.towerRunRef.current=null
+  Object.assign(scope,{gold:relic.redeem-1,day:1,logChronicle:()=>{},chronicleRaw:()=>({})})
+  handler('redeemRelic',scope)(uid);assert.equal(state.pendingRelics.length,1)
+  scope.gold=state.gold=900
+  const redeem=handler('redeemRelic',scope)
+  redeem(uid);redeem(uid)
+  assert.equal(state.gold,900-relic.redeem)
+  assert.equal(state.inventory.filter((i:any)=>i.id===uid).length,1)
+  assert.equal(state.pendingRelics.length,0)
+  assert.equal(state.inventory[0],scope.itemOwnershipRef.current.items[uid])
+  assertItemOwnership(scope.itemOwnershipRef.current)
+})
 
 test('actual training purchase/start callbacks: one charge, insufficient funds guarded, run consumes once', () => {
   let gold = 300, ready = false
@@ -450,13 +550,13 @@ test('actual training purchase/start callbacks: one charge, insufficient funds g
 test('actual tower death settlement: insured equipment returned once; uninsured charged, heroes stay dead', () => {
   for (const insured of [true,false]) {
     const members = squad(); members[0].equipment.weapon = item('wpn-t3-dawn')
-    const equipment = members[0].equipment.weapon
     const t = startTower(members,1); t.battle!.status='guild-win'; settleTowerFloor(t)
     if (insured) insureNextTowerFloor(t,1000)
     towerNext(t,2)
     const victim = t.battle!.combatants.find(c=>c.memberId===members[0].id)!
     victim.alive=false; victim.hp=0; t.battle!.status='retreated'
     const ui = settlementUi(members)
+    const equipment = members[0].equipment.weapon
     ui.scope.towerRunRef.current = t
     const { state } = ui
     ui.tower(); ui.tower()
@@ -605,6 +705,9 @@ test('actual restart handler resets persistent fields before saving a new guild'
     scope['set'+key] = (v: unknown) => {state[key[0].toLowerCase()+key.slice(1)] = v}
   }
   scope.updateKingdom = (v: unknown) => {state.kingdom = v}
+  scope.itemOwnershipRef = {current:createGuildItems([])}
+  scope.setItemOwnership = (v:any) => Object.assign(state, serializeGuildItems(v, scope.membersRef.current ?? []))
+  scope.updateItemOwnership = handler('updateItemOwnership', scope)
   handler('restartGuild', scope)()
   assert.equal(scope.pendingDepartureRef.current,null)
   assert.equal(scope.pendingConsequenceRef.current,null)
@@ -909,6 +1012,7 @@ test('terminal saves use returned expedition or tower potions, never stale guild
   for(let i=0;i<23;i++) rng()
   const scope:Record<string,unknown> = {saveGuild:(v:unknown)=>{saved=v},statistics:newStatistics(),guildRngRef:{current:rng}}
   for (const key of ['trainingReady','rareHuntNext','starMarrow','pendingRelics','healingMastery','kingdom','members','inventory','memorial','manual','protectOn','gold','blessing','recruitCooldown','towerBest','chronicle','day','buildings','unlockedHybrids','dungeonMastery','pendingConsequences','eventsSeen','guildBuffs']) scope[key]=undefined
+  scope.members = []; scope.itemOwnershipRef = {current:createGuildItems([])}
   const save = (run:unknown,towerRun:unknown) => callback('saveGuild({ trainingReady',{
     ...scope,run,towerRun,potions:{heal:9,fury:9},
   })()
@@ -991,14 +1095,19 @@ test('v16 -> v17 starts fresh statistics without inventing old activity; export/
 })
 
 test('v17 to v18 preserves assets and statistics; unused rare hunts survive export, save and reload', () => {
-  const previous = {...importSave(readFileSync('docs/dev-save.txt','utf8'))!,version:17}
+  const base = importSave(readFileSync('docs/dev-save.txt','utf8'))!, registry = itemStateFromSave(base)
+  const previous: any = { ...base, version:17, members:resolveMembers(base.members,registry), inventory:inventoryItems(registry),
+    pendingRelics:relicItems(registry).map(({item,hero,redeem})=>({item,hero,redeem})) }
+  delete previous.items; delete previous.itemSeq
   previous.statistics = recordStatistics(newStatistics(20),{type:'gold',source:'event',amount:77})
   const current = migrate(previous as any)
   assert.equal(current.version,SAVE_VERSION)
   assert.equal(current.rareHuntNext,null)
-  for (const key of ['gold','members','inventory','manual','statistics','potions','kingdom'] as const) {
+  for (const key of ['gold','manual','statistics','potions','kingdom'] as const) {
     assert.deepEqual(current[key],previous[key],key)
   }
+  assert.deepEqual(resolveMembers(current.members,itemStateFromSave(current)),previous.members)
+  assert.deepEqual(inventoryItems(itemStateFromSave(current)),previous.inventory)
   current.rareHuntNext={mult:1.25,rewardMult:2}
   const imported=importSave(exportSave(current))!
   assert.deepEqual(imported.rareHuntNext,current.rareHuntNext)
@@ -1013,7 +1122,7 @@ test('rare hunt is passed from the actual save effect to departure once, not rep
   const old = importSave(readFileSync('docs/dev-save.txt','utf8'))!
   const hunt = {mult:1.25,rewardMult:2}
   callback('saveGuild({ trainingReady', {
-    ...old,pendingConsequences:[],eventsSeen:[],guildBuffs:[],rareHuntNext:hunt,run:null,towerRun:null,saveGuild,
+    ...old,itemOwnershipRef:{current:itemStateFromSave(old)},pendingConsequences:[],eventsSeen:[],guildBuffs:[],rareHuntNext:hunt,run:null,towerRun:null,saveGuild,
   })()
   assert.deepEqual(loadGuildSave()!.rareHuntNext,hunt)
   const runRef:any = {current:null}
@@ -1072,6 +1181,7 @@ test('offline grant is counted once even if mount effects are replayed', () => {
   let stats=newStatistics(), gold=0
   const apply=callback('offlineAppliedRef.current = true',{
     offlineAppliedRef:{current:false},saved:{members:[],memorial:[],chronicle:[],lastSeen:0},
+    initialGuild:{members:[]},
     seedMemberSeq:()=>{},reserveNames:()=>{},seedChronicle:()=>{},
     offlineGain:()=>({hours:2,gold:50}),setOfflineNote:()=>{},
     gainGold:(amount:number,source:any)=>{gold+=amount;stats=recordStatistics(stats,{type:'gold',source,amount})},
@@ -1236,6 +1346,7 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
         gainGold: (n: number, source: string) => { assert.equal(source, 'event'); gold += n },
         setInventory: (f: (v: unknown[]) => unknown[]) => { inventory = f(inventory) },
         setLastDrops: (f: (v: unknown[]) => unknown[]) => { visible = f(visible) },
+        receiveItems: (items: unknown[], showDrops: boolean) => { inventory.push(...items); if(showDrops) visible.push(...items) },
         day: 1, chronicleRaw: (_day: number, text: string) => text,
         logChronicle: () => { chronicleCount++ }, setRun: () => { updates++ },
         applyRestMorale: () => {}, manual: [], startStep: () => {},

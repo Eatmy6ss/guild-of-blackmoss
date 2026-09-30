@@ -26,7 +26,7 @@ test('随机序列保留旧 mulberry32 结果；状态 0/高位值可导出导�
   for (const seed of [0, 5, 0x80000000, 0xffffffff]) {
     const expected = createRng(seed), running = createStatefulRng(seed)
     for (let i = 0; i < 17; i++) expect(running()).toBe(expected())
-    const saved = migrate({ ...oldSave(), version: SAVE_VERSION, rngState: running.state() })
+    const saved = migrate({ ...migrate(oldSave()), rngState: running.state() })
     const imported = importSave(exportSave(saved))!
     expect(imported.rngState).toBe(running.state())
     const resumed = createStatefulRng(imported.rngState)

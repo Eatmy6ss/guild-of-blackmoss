@@ -39,6 +39,11 @@ import { describeItem, slotsOf, dungeonItemTier } from './sim/loot'
 import { settleEncounter, type EncounterGuild, type EncounterOutcome } from './sim/settlement'
 import { createStatefulRng, newRngSeed, int, type Rng } from './sim/rng'
 import { loadGuildSave, saveGuild, clearGuildSave, exportSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
+import {
+  createGuildItems, itemStateFromSave, resolveMembers, inventoryItems, relicItems, serializeGuildItems,
+  addInventoryItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic,
+  registerMemberItems, applyEncounterItems, type GuildItems,
+} from './state/item-registry'
 import { GUILD_EVENTS } from './data/guild-events'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
@@ -141,7 +146,17 @@ export default function App() {
   const [initialGuildRng] = useState(() => createStatefulRng(saved?.rngState ?? newRngSeed()))
   const guildRngRef = useRef(initialGuildRng)
   const guildRng: Rng = () => guildRngRef.current()
-  const [members, setMembers] = useState<Member[]>(() => saved?.members ?? newRoster(guildRng))
+  const [initialGuild] = useState(() => {
+    if (saved) {
+      const items = itemStateFromSave(saved)
+      return { items, members: resolveMembers(saved.members, items) }
+    }
+    const roster = newRoster(guildRng), items = createGuildItems(roster)
+    return { items, members: resolveMembers(roster, items) }
+  })
+  const [itemOwnership, setItemOwnership] = useState(initialGuild.items)
+  const itemOwnershipRef = useRef(itemOwnership)
+  const [members, setMembers] = useState<Member[]>(initialGuild.members)
   const membersRef = useRef(members)
   useEffect(() => {
     membersRef.current = members
@@ -151,7 +166,7 @@ export default function App() {
   // 装备 2.0:星髓(拆解 T3 所得,灰冠兑换)
   const [starMarrow, setStarMarrow] = useState(() => saved?.starMarrow ?? 0)
   // 遗物安葬 2.0:阵亡装备待赎回清单
-  const [pendingRelics, setPendingRelics] = useState(() => saved?.pendingRelics ?? [])
+  const pendingRelics = relicItems(itemOwnership)
   // S1 创伤一期:疗养熟练度(维度→尝试次数)
   const [healingMastery, setHealingMastery] = useState<HealingMastery>(() => saved?.healingMastery ?? {})
   const [healingNotice, setHealingNotice] = useState('')
@@ -186,8 +201,22 @@ export default function App() {
   const [saveTransfer, setSaveTransfer] = useState<{ mode: 'import' | 'export'; code: string } | null>(null)
   const updateKingdom = (next: typeof kingdom) => { kingdomRef.current = next; setKingdom(next) }
 
-  const [inventory, setInventory] = useState<ItemInstance[]>(() => saved?.inventory ?? [])
+  const inventory = inventoryItems(itemOwnership)
   const [lastDrops, setLastDrops] = useState<ItemInstance[]>([])
+  const updateItemOwnership = (next: GuildItems, roster = membersRef.current) => {
+    itemOwnershipRef.current = next
+    setItemOwnership(next)
+    // 保留远征成员对象的引用，只重绑物品视图；事件与战斗不能分叉成两份成员。
+    const resolved = resolveMembers(roster, next)
+    roster.forEach((m, i) => { m.equipment = resolved[i].equipment })
+    membersRef.current = roster
+    setMembers([...roster])
+  }
+  const receiveItems = (incoming: ItemInstance[], showDrops = false) => {
+    const result = addInventoryItems(itemOwnershipRef.current, incoming)
+    updateItemOwnership(result.state)
+    if (showDrops) setLastDrops(items => [...items, ...result.items])
+  }
   // 副本选择(节奏改版:多副本)——仅决定下一次出征打哪张图,不入存档
   const [dungeonId, setDungeonId] = useState('blackmoss')
   const activeDungeon = DUNGEONS.find((d) => d.id === dungeonId) ?? BLACKMOSS
@@ -247,11 +276,11 @@ export default function App() {
     if (offlineAppliedRef.current) return
     offlineAppliedRef.current = true
     if (saved) {
-      seedMemberSeq(saved.members) // 防新招募与存档成员撞 ID(血量写回会串位)
+      seedMemberSeq(initialGuild.members) // 防新招募与存档成员撞 ID(血量写回会串位)
       reserveNames([...saved.members.map((m) => m.name), ...saved.memorial.map((h) => h.name)])
       seedChronicle(saved.chronicle ?? [])
       // M1 P1 离线累积:离开的时间里,存活英雄们接零工
-      const { hours, gold } = offlineGain(saved.members, saved.lastSeen, Date.now())
+      const { hours, gold } = offlineGain(initialGuild.members, saved.lastSeen, Date.now())
       if (gold > 0) {
         gainGold(gold, 'offline')
         setOfflineNote(`🕯 离开的 ${hours} 小时里,队员们接了些零工,赚了 ${gold} 金。`)
@@ -333,16 +362,14 @@ export default function App() {
 
   // 判定已由 sim 完成；这里仅将结果同步到公会状态和当前玩法。
   const applyOutcome = (o: EncounterOutcome) => {
-    membersRef.current = o.guild.members
-    setMembers(o.guild.members)
+    const gear = applyEncounterItems(itemOwnershipRef.current, o.guild.members, o.loot.items, o.consequences.relics)
+    updateItemOwnership(gear.state, o.guild.members)
     updateKingdom(o.guild.kingdom)
     setManual(o.guild.manual)
     setDungeonMastery(o.guild.dungeonMastery)
     setTowerBest(o.guild.towerBest)
     setRecruitCooldown(o.guild.recruitCooldown)
-    setInventory(inv => [...inv, ...o.loot.items])
-    setLastDrops(items => [...items, ...o.loot.items])
-    setPendingRelics(items => [...items, ...o.consequences.relics])
+    setLastDrops(items => [...items, ...gear.items])
     setMemorial(heroes => [...heroes, ...o.deaths])
     setGold(amount => amount + o.loot.gold + o.loot.clearGold)
     setStarMarrow(amount => amount + o.loot.starMarrow)
@@ -393,8 +420,8 @@ export default function App() {
   useEffect(() => {
     if (run && run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated') return
     if (towerRun && towerRun.phase !== 'ended') return
-    saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, pendingRelics, healingMastery, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
-  }, [trainingReady, rareHuntNext, statistics, starMarrow, pendingRelics, healingMastery, kingdom, members, inventory, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
+    saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs })
+  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -509,20 +536,20 @@ export default function App() {
   }
 
   const equip = (m: Member, slot: Slot, itemId: string) => {
-
-    const old = m.equipment[slot]
-    if (old) setInventory((inv) => [...inv, old])
-    if (itemId) {
-      const item = inventory.find((i) => i.id === itemId)
-      if (item) {
-        setInventory((inv) => inv.filter((i) => i.id !== item.id))
-        m.equipment[slot] = item
-      }
-    } else {
-      delete m.equipment[slot]
-    }
-    setMembers([...membersRef.current])
+    if (runRef.current || towerRunRef.current || !membersRef.current.find(x => x.id === m.id)?.alive) return
+    const next = equipRegisteredItem(itemOwnershipRef.current, m.id, slot, itemId)
+    if (next === itemOwnershipRef.current) return
+    updateItemOwnership(next)
     checkWishes()
+  }
+
+  const redeemRelic = (uid: string) => {
+    if (runRef.current || towerRunRef.current) return
+    const result = redeemRegisteredRelic(itemOwnershipRef.current, uid, gold)
+    if (!result) return
+    updateItemOwnership(result.state)
+    setGold(g => g - result.relic.redeem)
+    logChronicle(chronicleRaw(day, '花 ' + result.relic.redeem + ' 金赎回了 ' + result.relic.hero + ' 的遗物。'))
   }
 
   const retreat = () => {
@@ -664,8 +691,7 @@ export default function App() {
           const bases = Object.keys(ITEM_BASES).filter((id) => ITEM_BASES[id].tier === tier)
           const baseId = bases[Math.floor(r.rng() * bases.length)]
           const item = rollDrop(baseId, r.rng, { qualityBias: 0.3 })
-          setInventory((inv) => [...inv, item])
-          setLastDrops((d) => [...d, item])
+          receiveItems([item], true)
           logChronicle(chronicleRaw(day, r.dungeon.name + '的' + node.name + '开出了好东西。'))
           setRun({ ...r })
           if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
@@ -716,7 +742,6 @@ export default function App() {
     setBattle(null)
     lastBattleRef.current = null
     rendererRef.current?.reset()
-    setInventory([])
     setLastDrops([])
     setScarNotices([])
     setMemorial([])
@@ -735,10 +760,8 @@ export default function App() {
     setDungeonMastery({})
     guildRngRef.current = createStatefulRng(newRngSeed())
     const roster = newRoster(guildRng)
-    membersRef.current = roster
-    setMembers(roster)
+    updateItemOwnership(createGuildItems(roster), roster)
     setStarMarrow(0)
-    setPendingRelics([])
     setHealingMastery({})
     setHealingNotice('')
     healingBusyRef.current = false
@@ -788,7 +811,7 @@ export default function App() {
     // Reserve the recruit before a second click can replay this render's visitor.
     membersRef.current = [...membersRef.current, visitor.member]
     rollWishFor(visitor.member); rollTraitFor(visitor.member)
-    setMembers([...membersRef.current])
+    updateItemOwnership(registerMemberItems(itemOwnershipRef.current, visitor.member))
     logChronicle(chronicleRecruit(day, visitor.member, '上门投奔'))
     setVisitor(null)
   }
@@ -798,7 +821,7 @@ export default function App() {
     setGold((g) => g - ECONOMY.bountyCost)
     const m = bountyCandidate(guildRng, membersRef.current, job)
     rollWishFor(m); rollTraitFor(m)
-    setMembers((roster) => [...roster, m])
+    updateItemOwnership(registerMemberItems(itemOwnershipRef.current, m), [...membersRef.current, m])
     logChronicle(chronicleRecruit(day, m, '定向悬赏'))
     setRecruitCooldown(cooldownNeeded(aliveCount()))
   }
@@ -813,11 +836,12 @@ export default function App() {
   }
 
   const hire = (m: Member) => {
+    if (runRef.current || towerRunRef.current || membersRef.current.some(x => x.id === m.id) || aliveCount() >= ROSTER_CAP) return
     // 宪法 v3:招募即带专精;F06(2026-09-25):候选已定专精(生成时默认线/三选一可能混合线)——
     // 入职保留之,不再重 roll(否则玩家看中的专精在入职瞬间被替换)
     const recruited = m.spec ? m : { ...m, spec: rollSpec(m.job, guildRng) }
     rollWishFor(recruited); rollTraitFor(recruited)
-    setMembers((roster) => [...roster, recruited])
+    updateItemOwnership(registerMemberItems(itemOwnershipRef.current, recruited), [...membersRef.current, recruited])
     logChronicle(chronicleRecruit(day, recruited, '酒馆传闻'))
     setCandidates([])
   }
@@ -866,7 +890,7 @@ export default function App() {
     }
     if (fx.item) {
       const d = rollDrop(fx.item!, rng)
-      setInventory((inv) => [...inv, d])
+      receiveItems([d])
       chip(`获得装备:${describeItem(d)}`, 'pos')
     }
     if (fx.recruit) {
@@ -992,36 +1016,40 @@ export default function App() {
 
   // 装备 2.0:拆解 T3 得星髓;灰冠兑换(信任 100 解锁)用星髓+金币换指定 T3
   const dismantleT3 = (id: string) => {
-    const item = inventory.find((i) => i.id === id)
+    if (runRef.current || towerRunRef.current) return
+    const item = itemOwnershipRef.current.items[id]
     if (!item || ITEM_BASES[item.baseId].tier !== 3) return
-    setInventory((inv) => inv.filter((i) => i.id !== id))
+    const removed = removeInventoryItem(itemOwnershipRef.current, id)
+    if (!removed) return
+    updateItemOwnership(removed.state)
     setStarMarrow((m) => m + 2)
     logChronicle(chronicleRaw(day, '拆解了 ' + describeItem(item) + ',取得 2 枚星髓。'))
     sfxCoin()
   }
   const EXCHANGE_LIST = ['wpn-t3-dawn', 'arm-t3-bulwark', 'trk-t3-seer']
   const exchangeT3 = (baseId: string) => {
-    if (kingdomTrust(kingdom) < 100 || gold < 800 || blessing < 10 || starMarrow < 2) return
+    if (runRef.current || towerRunRef.current || !EXCHANGE_LIST.includes(baseId) || kingdomTrust(kingdom) < 100 || gold < 800 || blessing < 10 || starMarrow < 2) return
     setGold((g) => g - 800)
     setBlessing((b) => b - 10)
     setStarMarrow((m) => m - 2)
     const d = rollDrop(baseId, guildRng, { qualityBias: 0.3 })
-    setInventory((inv) => [...inv, d])
-    setLastDrops((d2) => [...d2, d])
+    receiveItems([d], true)
     logChronicle(chronicleRaw(day, '凭灰冠信任兑换了 ' + describeItem(d) + '。'))
     sfxCoin()
   }
   const sellItem = (id: string) => {
-    const item = inventory.find((i) => i.id === id)
-    if (!item) return
-    gainGold(sellValue(item, fx.sellMult), 'sales'); sfxCoin()
-    setInventory((inv) => inv.filter((i) => i.id !== id))
+    if (runRef.current || towerRunRef.current) return
+    const removed = removeInventoryItem(itemOwnershipRef.current, id)
+    if (!removed) return
+    updateItemOwnership(removed.state)
+    gainGold(sellValue(removed.item, fx.sellMult), 'sales'); sfxCoin()
   }
 
   // ---- M1 P1 黑苔高塔 ----
   const enterTower = () => {
     if (runRef.current || towerRunRef.current || pendingEvent || expedition.length < 3) return
     setScarNotices([])
+    setLastDrops([])
     const t = startTower(expedition, int(guildRng, 1, 100000) * 9973, potions)
     towerRunRef.current = t
     setTowerRun({ ...t })
@@ -1229,7 +1257,7 @@ export default function App() {
     gainGold(r.gold, 'kingdom')
     setBlessing((b) => b + r.blessing)
     setPotions((p) => ({ heal: p.heal + r.heal, fury: p.fury + r.fury }))
-    if (r.item) setInventory((inv) => [...inv, r.item!])
+    if (r.item) receiveItems([r.item])
     const nextRank = kingdomRank(result.state)
     const promotion = nextRank.name !== previousRank.name ? ` 晋升「${nextRank.name}」，补给优惠${Math.round(nextRank.discount * 100)}%。` : ''
     const rewardLine = `${r.gold}金${r.blessing ? `、祝福×${r.blessing}` : ''}${r.heal ? `、治疗药×${r.heal}` : ''}${r.fury ? `、爆发药×${r.fury}` : ''}${r.item ? `、${describeItem(r.item)}` : ''}`
@@ -1648,16 +1676,10 @@ export default function App() {
             {pendingRelics.length > 0 && (
               <div className="potion-supply">
                 <span className="hint">⚰ 遗物安葬（{pendingRelics.length}）——阵亡者的装备在此待赎,赎回费随品级与词条上涨;T3 可改拆星髓</span>
-                {pendingRelics.map((r, i) => (
-                  <div key={i} className="tavern-row">
+                {pendingRelics.map((r) => (
+                  <div key={r.uid} className="tavern-row">
                     <span className="hint">⚰ {r.hero} 的 {describeItem(r.item)}</span>
-                    <button disabled={!!run || !!towerRun || gold < r.redeem} onClick={() => {
-                      if (gold < r.redeem) return
-                      setGold((g) => g - r.redeem)
-                      setInventory((inv) => [...inv, r.item])
-                      setPendingRelics((q) => q.filter((_, j) => j !== i))
-                      logChronicle(chronicleRaw(day, '花 ' + r.redeem + ' 金赎回了 ' + r.hero + ' 的遗物。'))
-                    }}>
+                    <button disabled={!!run || !!towerRun || gold < r.redeem} onClick={() => redeemRelic(r.uid)}>
                       ⚰ 赎回（{r.redeem} 金）
                     </button>
                   </div>

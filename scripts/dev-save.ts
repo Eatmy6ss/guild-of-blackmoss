@@ -8,6 +8,7 @@ import { generateMember, levelTo, maxHpOf } from '../src/sim/gen'
 import type { GuildSave } from '../src/state/save'
 import { SAVE_VERSION } from '../src/state/save'
 import { newStatistics } from '../src/sim/statistics'
+import { createGuildItems, serializeGuildItems } from '../src/state/item-registry'
 
 const T2 = { weapon: 'wpn-t2-bow', armor: 'arm-t2-plate', trinket: 'trk-t2-totem' } as const
 const SLOTS = ['weapon', 'armor', 'trinket'] as const
@@ -47,10 +48,9 @@ for (const b of BUILDINGS) buildings[b.id] = b.maxLevel
 const save: GuildSave = {
   rareHuntNext: null,
   statistics: newStatistics(20),
-  version: SAVE_VERSION, rngState: 7777, trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [],
+  version: SAVE_VERSION, rngState: 7777, trainingReady: false, healingMastery: {}, starMarrow: 0,
   kingdom: { active: [], completed: [] },
-  members,
-  inventory,
+  ...serializeGuildItems(createGuildItems(members, inventory), members),
   memorial: [],
   // 试玩直达:研习版图一全部 boss(解锁龙脊山脉)——想从零体验请手动清空此数组
   manual: ['grush', 'talma', 'delveanchor', 'moldreke', 'velhola', 'malsau', 'victor', 'kazraxes', 'ignathos'],

@@ -556,6 +556,8 @@ export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutco
 
 ### #0.5 物品注册表（3 人日）
 
+**2026-09-30 实施校准**：从 #0.10 `065da59` 认领，存档使用 v20。正式归属统一到 `GuildItems`，存档装备/仓库/遗物全存 UID；模拟 `Member.equipment` 保留从注册表解析的视图，避免此任务扩大为全引擎接口重写。所有转移通过同一归属入口，视图不是第二份物品仓库。重复旧 ID 按出现实例保留全部内容；低优先级实例重新编号入仓库，不按属性相同擅自合并数量。详见 [本轮验收](item-registry-2026-09-30.md)。
+
 **解决**：B06（重复物品 ID）。
 
 **现状**：物品实例同时存在于 `members[].equipment`、`inventory`、`pendingRelics` 三处，**无单一归属不变量**，重复 ID 是直接后果。
@@ -643,7 +645,7 @@ export type ActiveRun = DungeonRun | TowerRun
 1. 先给远征流程补 UI 冒烟测试（Vitest + 现有 e2e 脚本），**建立安全网再动刀**。
 2. 把 `DungeonRun.dungeon` / `members` 改为 id 引用，并提供 `resolveRun(run, save)` 在运行时解析。
 3. 把远征相关的 `useState` 收拢成一个 `useReducer(runReducer)`，reducer 放在 sim 层，纯函数；结算动作调用 #0.10 的 `settleEncounter`。
-4. `ActiveRun` 接入存档（与 #0.5 同一次 v20 迁移，或紧随其后的 v21；实施前重新核对最新已发布版本）；刷新后可恢复。
+4. `ActiveRun` 接入存档（2026-09-30：#0.5 已单独完成 v20；本项拟用 v21，实施前重新核对最新云端版本）；刷新后可恢复。
 5. **不做**其他 UI 重构。App.tsx 仍会很大，那是可接受的。
 
 **验收**：

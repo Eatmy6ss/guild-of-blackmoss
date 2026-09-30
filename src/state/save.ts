@@ -1,4 +1,5 @@
-import type { DeadHero, ItemInstance, Member } from '../sim/types'
+import type { DeadHero, Member } from '../sim/types'
+import { readItemFields, itemStateFromSave, resolveMembers, serializeGuildItems, assertItemOwnership, type StoredItemFields } from './item-registry'
 import { JOBS } from '../data/jobs'
 import { RACES } from '../data/races'
 import { isHybrid } from '../data/vocations'
@@ -13,7 +14,7 @@ import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 19
+export const SAVE_VERSION = 20
 
 export interface PendingConsequence {
   eventId: string
@@ -26,7 +27,7 @@ export interface StoredGuildBuff {
   endDay: number
 }
 
-export interface GuildSave {
+export interface GuildSave extends StoredItemFields {
   /** v19: 公会随机序列的当前位置，刷新/导出后续接。 */
   rngState: number
   /** v18: 已立约、尚未用于下一次远征的稀有猎杀 */
@@ -39,13 +40,9 @@ export interface GuildSave {
   kingdom: KingdomState
   /** v13: 星髓(拆解 T3 装备所得,灰冠兑换用) */
   starMarrow: number
-  /** v14: 遗物安葬 2.0——阵亡者装备待赎回清单(赎回制) */
-  pendingRelics: { item: import('../sim/types').ItemInstance; hero: string; redeem: number }[]
   /** v15: 疗养熟练度(维度→尝试次数,DESIGN 14.2) */
   healingMastery: Record<string, number>
   version: number
-  members: Member[]
-  inventory: ItemInstance[]
   memorial: DeadHero[]
   manual: string[]
   protectOn: boolean
@@ -77,6 +74,10 @@ export interface GuildSave {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  19: (d) => {
+    const result = readItemFields(d, true)
+    return { ...d, ...result.fields, itemMigrationIssues: result.issues }
+  },
   18: (d) => ({ ...d, rngState: legacyRngState(d) }),
   17: (d) => ({ ...d, rareHuntNext: null }),
   16: (d) => ({ ...d, statistics: newStatistics(typeof d.day === 'number' ? Math.max(1, Math.floor(d.day)) : 1) }),
@@ -142,6 +143,12 @@ export function migrate(data: Record<string, unknown>): GuildSave {
   d.rareHuntNext = hunt && Number.isFinite(hunt.mult) && hunt.mult >= 1 &&
     Number.isFinite(hunt.rewardMult) && hunt.rewardMult >= 1
     ? { mult: hunt.mult, rewardMult: hunt.rewardMult } : null
+  if (!d.items || typeof d.items !== 'object' || Array.isArray(d.items)) throw new Error('存档缺少物品注册表')
+  const repaired = readItemFields(d, false)
+  const issues = [...(Array.isArray(d.itemMigrationIssues) ? d.itemMigrationIssues : []), ...repaired.issues]
+  Object.assign(d, repaired.fields)
+  delete d.itemMigrationIssues
+  if (issues.length) console.warn('公会装备归属已修复：' + [...new Set(issues)].join(' '))
   return d as unknown as GuildSave
 }
 
@@ -149,6 +156,7 @@ function validate(d: GuildSave): boolean {
   return (
     d.version === SAVE_VERSION &&
     typeof d.rngState === 'number' &&
+    typeof d.items === 'object' && Number.isSafeInteger(d.itemSeq) &&
     Array.isArray(d.members) &&
     d.members.length > 0 &&
     typeof d.gold === 'number' &&
@@ -190,6 +198,12 @@ export function sanitizeMembers(members: Member[]): Member[] {
   })
 }
 
+/** 消毒沿用真实装备投影，随后仍存 UID，避免读档误把字符串当装备计算满血。 */
+function sanitizeSavedMembers(save: GuildSave): void {
+  const items = itemStateFromSave(save)
+  save.members = serializeGuildItems(items, sanitizeMembers(resolveMembers(save.members, items))).members
+}
+
 /** 防御式加载:解析 → 逐级迁移 → 消毒 → 校验,任何异常回退为无存档 */
 export function loadGuildSave(): GuildSave | null {
   try {
@@ -197,7 +211,7 @@ export function loadGuildSave(): GuildSave | null {
     if (!raw) return null
     const migrated = migrate(JSON.parse(raw) as Record<string, unknown>)
     if (!validate(migrated)) return null
-    migrated.members = sanitizeMembers(migrated.members)
+    sanitizeSavedMembers(migrated)
     return migrated
   } catch {
     return null
@@ -205,6 +219,12 @@ export function loadGuildSave(): GuildSave | null {
 }
 
 export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): void {
+  try {
+    assertItemOwnership(itemStateFromSave(s))
+  } catch {
+    console.warn('存档未写入：装备归属异常，原存档已保留。')
+    return
+  }
   try {
     const prev = localStorage.getItem(KEY)
     if (prev) localStorage.setItem(KEY + '.bak', prev) // 上一份好存档做备份,写坏可回退
@@ -225,7 +245,7 @@ export function importSave(text: string): GuildSave | null {
     const json = decodeURIComponent(escape(atob(text.trim())))
     const migrated = migrate(JSON.parse(json) as Record<string, unknown>)
     if (!validate(migrated)) return null
-    migrated.members = sanitizeMembers(migrated.members)
+    sanitizeSavedMembers(migrated)
     return migrated
   } catch {
     return null
