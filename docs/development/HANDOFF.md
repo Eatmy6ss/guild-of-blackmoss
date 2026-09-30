@@ -1,5 +1,9 @@
 # 当前交接
 
+## 附：说书人/战报卡 grill 材料（制作人×zcode，2026-09-30 晚）
+
+- 制作人确认对 U22 未决第 7 条（说书人层、战报卡）补一轮 grill。材料已备好：[storyteller-battle-report-2026-09-30.md](storyteller-battle-report-2026-09-30.md)——五道题各带选项与 zcode 推荐、约束红线、原料映射。制作人将与 Claude 逐题拍板，结论登记 **U23**。两项依赖均已清（#0.10 已合并），说书人建议与批次 1 并行，待拍板排期。
+
 ## 复审通过：PR #5 已合并，批次 0 出口达成 + 新工单：U22 对齐（2026-09-30，zcode）
 
 - **PR #5 复审通过并已合并**（合并提交 `d0f3b7f`）。本机独立复审（独立 worktree）：完整 verify 退出 0（Vitest 57、smoke 47、玩法/王国回归、构建）；E2E 四脚本全过——battle PASS、f09 PASS（连刷闭环）、cdp PASS、tower 与 main 对照逐字节一致（脚本内 tick/撤退令探针在 main 上同样为空，属脚本过时非回归）。代码审查要点：`settleEncounter` 纯函数统一副本/高塔结算，**C-3 三缺口全部闭合**（塔阵亡触发目睹冲击+编年史、塔胜利发士气、塔经验走 `settleGrowth` 带默契）；创伤/保险/遗物/统计同步统一；#0.5 物品注册表=单一 items 仓库+uid 引用+单调 itemSeq 防复用；#0.6 断点恢复带防御性校验（不完整断点拒绝恢复）。`towerMarkPermadeath` 已无生产调用者（仅测试垫片引用）。
