@@ -8,13 +8,17 @@ import { createBattle, stepBattle, toCombatant, applyHit, ENEMY_HP_MULT } from '
 import { processBossMechanics, bossIntents } from '../src/sim/mechanics'
 import { runAutoAI } from '../src/sim/ai'
 import { createRun, startStep, settleGrowth, advanceRun, retreatRun, applyNodeChoice } from '../src/sim/run'
-import { startTower, startTowerFloor, towerEnemyScale, insureNextTowerFloor, towerNext, settleTowerFloor, towerMarkPermadeath } from '../src/sim/tower'
+import { startTower, startTowerFloor, towerEnemyScale, insureNextTowerFloor, towerNext, settleTowerFloor } from '../src/sim/tower'
 import { redeemCost, sellValue } from '../src/sim/tavern'
 import { rollDrop, rollWaveDrop, rollBossDrops, dungeonItemTier } from '../src/sim/loot'
 import { wishDone } from '../src/sim/wish'
 import { assignTrait, waveDropBonus } from '../src/sim/member-traits'
 import { attemptHeal, healingTerms, settleScars, rollScarChance } from '../src/sim/scars'
 import { applyDeathShock, applyMoraleDelta } from '../src/sim/morale'
+import { settleEncounter, type EncounterGuild } from '../src/sim/settlement'
+import { createRng, createStatefulRng, newRngSeed, int } from '../src/sim/rng'
+import { newKingdomState } from '../src/sim/kingdom'
+import { seedChronicle } from '../src/sim/chronicle'
 import { ITEM_BASES } from '../src/data/items'
 import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD } from '../src/data/dungeons'
@@ -359,6 +363,7 @@ test('third tower boss pulls a backliner, who returns after the duration expires
 
 const ast = ts.createSourceFile('App.tsx', readFileSync('src/App.tsx', 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 function handler(name: string, scope: Record<string, unknown>) {
+  scope = rngScope(scope)
   let expression: ts.Expression | undefined
   function visit(n: ts.Node) {
     if (ts.isVariableDeclaration(n) && n.name.getText(ast) === name) expression = n.initializer
@@ -371,6 +376,7 @@ function handler(name: string, scope: Record<string, unknown>) {
 }
 
 function callback(snippet: string, scope: Record<string, unknown>) {
+  scope = rngScope(scope)
   let expression: ts.ArrowFunction | undefined
   function visit(n: ts.Node) {
     if (ts.isArrowFunction(n) && n.getText(ast).includes(snippet) && (!expression || n.getWidth(ast) < expression.getWidth(ast))) expression = n
@@ -379,6 +385,42 @@ function callback(snippet: string, scope: Record<string, unknown>) {
   visit(ast); assert(expression, snippet)
   const js = ts.transpileModule(`const fn = ${expression.getText(ast)}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
   return new Function(...Object.keys(scope), js + ';return fn;')(...Object.values(scope))
+}
+
+/** 旧界面测试改为显式注入新随机依赖，保留原来的脚本抽样与数值断言。 */
+function rngScope(scope: Record<string, unknown>) {
+  const random = (scope.Math as { random?: () => number } | undefined)?.random ?? (() => Math.random())
+  return { int, createStatefulRng, newRngSeed, guildRng: random,
+    guildRngRef: { current: createStatefulRng(7777) }, chronicleRef: { current: [] }, ...scope }
+}
+
+/** 运行真实 App 的 applyOutcome 和结算回调；不再为每种玩法造一份假结算。 */
+function settlementUi(members: Member[]) {
+  const state: any = {
+    members, manual: [], kingdom: newKingdomState(), dungeonMastery: {}, towerBest: 0,
+    recruitCooldown: 2, day: 1, buildings: {}, chronicle: [], inventory: [], lastDrops: [],
+    pendingRelics: [], memorial: [], gold: 0, starMarrow: 0, blessing: 0, statistics: newStatistics(), scarNotices: [],
+  }
+  const scope: any = {
+    runRef: { current: null }, towerRunRef: { current: null }, membersRef: { current: members },
+    chronicleRef: { current: [] }, recordStatistics, seedChronicle, settleEncounter,
+    setRun: () => {}, setTowerRun: () => {}, setTowerRunning: () => {}, drainAndSync: () => {},
+    sfxVictory: () => {}, sfxDefeat: () => {}, int, baseEffects: () => ({ towerRestHealPct: 0.2 }),
+  }
+  for (const key of ['Members', 'Manual', 'DungeonMastery', 'TowerBest', 'RecruitCooldown', 'Inventory', 'LastDrops', 'PendingRelics', 'Memorial', 'Gold', 'StarMarrow', 'Blessing', 'Statistics', 'Chronicle', 'ScarNotices']) {
+    scope['set' + key] = (v: any) => {
+      const field = key[0].toLowerCase() + key.slice(1)
+      state[field] = typeof v === 'function' ? v(state[field]) : v
+    }
+  }
+  scope.updateKingdom = (v: unknown) => { state.kingdom = v }
+  scope.encounterGuild = (): EncounterGuild => ({ ...state, members: scope.membersRef.current, chronicle: scope.chronicleRef.current })
+  scope.applyOutcome = handler('applyOutcome', scope)
+  return {
+    state, scope,
+    dungeon: handler('settleBattleEnd', scope),
+    tower: callback("source: 'tower', run: current", scope),
+  }
 }
 
 test('actual training purchase/start callbacks: one charge, insufficient funds guarded, run consumes once', () => {
@@ -414,21 +456,20 @@ test('actual tower death settlement: insured equipment returned once; uninsured 
     towerNext(t,2)
     const victim = t.battle!.combatants.find(c=>c.memberId===members[0].id)!
     victim.alive=false; victim.hp=0; t.battle!.status='retreated'
-    const state:any = {inventory:[],pendingRelics:[],memorial:[],blessing:0,lastDrops:[]}
-    const scope:any = {towerRunRef:{current:t},membersRef:{current:members},settleScars,scarStatName:()=>'力量',setScarNotices:()=>{},towerMarkPermadeath,redeemCost,withLegacy:(x:any)=>x,fx:{blessingPerDeath:1},settleTowerFloor,setMembers:()=>{},setTowerRunning:()=>{},setTowerRun:()=>{},drainAndSync:()=>{},logChronicle:()=>{},chronicleRaw:()=>({}),day:1}
-    let stats = newStatistics()
-    scope.noteStatistics = (action:any) => {stats=recordStatistics(stats,action)}
-    for(const key of ['Inventory','PendingRelics','Memorial','Blessing','LastDrops']) scope['set'+key]=(f:any)=>{const k=key[0].toLowerCase()+key.slice(1);state[k]=f(state[k])}
-    const settle = callback("towerMarkPermadeath(t, '黑苔高塔')",scope)
-    settle(); settle()
-    assert.equal(members[0].alive,false); assert.equal(members[0].equipment.weapon,undefined)
+    const ui = settlementUi(members)
+    ui.scope.towerRunRef.current = t
+    const { state } = ui
+    ui.tower(); ui.tower()
+    assert.equal(state.members[0].alive,false); assert.equal(state.members[0].equipment.weapon,undefined)
     assert.equal(state.memorial.length,1)
-    assert.equal(stats.towerFloors.retreats,1)
-    assert.equal(stats.towerFloors.deaths,1)
+    assert.equal(state.statistics.towerFloors.retreats,1)
+    assert.equal(state.statistics.towerFloors.deaths,1)
     assert.equal(state.inventory.length,insured?1:0)
     assert.equal(state.pendingRelics.length,insured?0:1)
     if(insured) assert.equal(state.inventory[0].id,equipment!.id)
     else assert.equal(state.pendingRelics[0].redeem,redeemCost(equipment!,2))
+    assert(state.chronicle.some((e:any)=>e.text.includes('酒馆里那晚没有人说话')))
+    assert(state.scarNotices.some((s:string)=>s.includes('已记入编年史')))
   }
 })
 
@@ -555,6 +596,9 @@ test('actual restart handler resets persistent fields before saving a new guild'
   scope.pendingDepartureRef = {current:'old-branch'}
   scope.pendingConsequenceRef = {current:{eventId:'old-event',dueDay:1}}
   scope.eventResolvingRef = {current:true}
+  scope.guildRngRef = {current:createStatefulRng(900)}
+  scope.guildRng = () => scope.guildRngRef.current()
+  scope.newRngSeed = () => 54321
   scope.newStatistics = newStatistics
   scope.setStatistics = (v:unknown) => {state.statistics=v}
   for (const key of ['Running','Run','Battle','Inventory','LastDrops','Memorial','Manual','Candidates','Visitor','Gold','Blessing','RecruitCooldown','Potions','RoyalNotice','HubScreen','UnlockedHybrids','DungeonMastery','Members','StarMarrow','PendingRelics','Buildings','Day','TowerBest','Chronicle','PendingConsequences','GuildBuffs','EventsSeen','RareHuntNext','PendingEvent','EventResult','EventImpacts','OfflineNote','ProtectOn','DungeonId','ExpeditionIds','DetailOpen','SaveTransfer','TowerRun','TowerRunning','TrainingReady','HealingMastery','HealingNotice','ScarNotices']) {
@@ -565,7 +609,9 @@ test('actual restart handler resets persistent fields before saving a new guild'
   assert.equal(scope.pendingDepartureRef.current,null)
   assert.equal(scope.pendingConsequenceRef.current,null)
   assert.equal(scope.eventResolvingRef.current,false)
+  assert.equal(scope.guildRngRef.current.state(),54321)
   const store = new Map<string,string>(); (globalThis as any).localStorage = {getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>store.set(k,v)}
+  state.rngState = scope.guildRngRef.current.state()
   saveGuild(state as any)
   const saved = loadGuildSave()!
   assert(saved); assert.equal(saved.starMarrow,0); assert.deepEqual(saved.pendingRelics,[]); assert.equal(saved.trainingReady,false)
@@ -859,13 +905,16 @@ test('retreat from rest cancels automatic repeat before returning to the guild',
 
 test('terminal saves use returned expedition or tower potions, never stale guild stock', () => {
   let saved:any
-  const scope:Record<string,unknown> = {saveGuild:(v:unknown)=>{saved=v},statistics:newStatistics()}
+  const rng = createStatefulRng(17)
+  for(let i=0;i<23;i++) rng()
+  const scope:Record<string,unknown> = {saveGuild:(v:unknown)=>{saved=v},statistics:newStatistics(),guildRngRef:{current:rng}}
   for (const key of ['trainingReady','rareHuntNext','starMarrow','pendingRelics','healingMastery','kingdom','members','inventory','memorial','manual','protectOn','gold','blessing','recruitCooldown','towerBest','chronicle','day','buildings','unlockedHybrids','dungeonMastery','pendingConsequences','eventsSeen','guildBuffs']) scope[key]=undefined
   const save = (run:unknown,towerRun:unknown) => callback('saveGuild({ trainingReady',{
     ...scope,run,towerRun,potions:{heal:9,fury:9},
   })()
   save({phase:'victory',potions:{heal:2,fury:1}},null)
   assert.deepEqual(saved.potions,{heal:2,fury:1})
+  assert.equal(saved.rngState,rng.state())
   save(null,{phase:'ended',potions:{heal:0,fury:3}})
   assert.deepEqual(saved.potions,{heal:0,fury:3})
   saved=null
@@ -945,7 +994,7 @@ test('v17 to v18 preserves assets and statistics; unused rare hunts survive expo
   const previous = {...importSave(readFileSync('docs/dev-save.txt','utf8'))!,version:17}
   previous.statistics = recordStatistics(newStatistics(20),{type:'gold',source:'event',amount:77})
   const current = migrate(previous as any)
-  assert.equal(current.version,18)
+  assert.equal(current.version,SAVE_VERSION)
   assert.equal(current.rareHuntNext,null)
   for (const key of ['gold','members','inventory','manual','statistics','potions','kingdom'] as const) {
     assert.deepEqual(current[key],previous[key],key)
@@ -1033,33 +1082,23 @@ test('offline grant is counted once even if mount effects are replayed', () => {
 
 test('actual expedition settlement counts once, pays rare gold only on first battle and clear bonus separately', () => {
   const r=createRun(squad(),BLACKMOSS,BLACKMOSS.branches[0].id,49,0,true,{heal:3,fury:3},false,[],{mult:2,rewardMult:2})
-  let stats=newStatistics(), gold=0
-  const noteStatistics=(action:any)=>{if(action)stats=recordStatistics(stats,action)}
-  const scope:any={
-    manual:[],rollWaveDrop:()=>null,waveDropBonus:()=>0,
-    updateKingdom:()=>{},settleKingdomBattle:()=>({}),kingdomRef:{current:{}},
-    advanceRun,markPermadeath:()=>[],settleScars:()=>[],setScarNotices:()=>{},
-    applyVictory:()=>{},logChronicle:()=>{},chronicleBattleVictory:()=>({}),day:1,
-    ITEM_BASES,checkWishes:()=>{},settleGrowth,fx:{expMult:1},
-    growthSnapshotRef:{current:new Map()},bondStars:()=>0,ECONOMY,
-    setRecruitCooldown:()=>{},setDungeonMastery:()=>{},sfxVictory:()=>{},
-    noteStatistics,expeditionStatistics,
-    gainGold:(amount:number,source:any)=>{gold+=amount;noteStatistics({type:'gold',source,amount})},
-  }
-  const settle=handler('settleBattleEnd',scope)
-  r.battle!.status='guild-win'; settle(r); settle(r)
-  assert.equal(stats.expeditionBattles.wins,1)
-  assert.equal(stats.expeditions.wins,0)
-  assert.equal(gold,ECONOMY.battleGold.wave*2)
+  const ui = settlementUi(r.members)
+  ui.scope.runRef.current = r
+  r.battle!.status='guild-win'; ui.dungeon(r); ui.dungeon(r)
+  assert.equal(ui.state.statistics.expeditionBattles.wins,1)
+  assert.equal(ui.state.statistics.expeditions.wins,0)
+  assert.equal(ui.state.gold,ECONOMY.battleGold.wave*2)
   // Complete a short fixture route through the same production settlement.
-  r.steps=r.steps.slice(0,r.stepIdx+1)
-  startStep(r,50)
-  r.battle!.status='guild-win'; settle(r); settle(r)
+  const next = ui.scope.runRef.current
+  next.steps=next.steps.slice(0,next.stepIdx+1)
+  startStep(next,50)
+  next.battle.status='guild-win'; ui.dungeon(next); ui.dungeon(next)
+  const stats = ui.state.statistics
   assert.equal(stats.expeditionBattles.wins,2)
   assert.equal(stats.expeditions.wins,1)
   assert.equal(stats.goldEarned.expedition,ECONOMY.battleGold.wave*3)
   assert.equal(stats.goldEarned.clear,ECONOMY.clearBonus)
-  assert.equal(gold,totalGoldEarned(stats))
+  assert.equal(ui.state.gold,totalGoldEarned(stats))
 })
 
 test('scar settlement: reserves/dead excluded, ordinary boss combat safe, near-death and deep tower work once', () => {
@@ -1190,6 +1229,7 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
       let inventory: unknown[] = [], visible: unknown[] = []
       let gold = 0, chronicleCount = 0, updates = 0
       const values = [0, (index + 0.5) / pool.length]
+      run.rng = () => values.shift() ?? 0.4
       const open = handler('continueDeep', {
         runRef: { current: run }, dungeonMastery: {}, applyNodeChoice, dungeonItemTier,
         ITEM_BASES, rollDrop, Math: { random: () => values.shift() ?? 0.4, floor: Math.floor },

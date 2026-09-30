@@ -1,7 +1,8 @@
 import type { BattleState, DeadHero, DungeonDef, Member, RouteNodeDef } from './types'
 import type { RunBuffDef } from '../data/guild-events'
 import { createBattle, POTION_STOCK, toCombatant } from './combat'
-import { grantExp } from './gen'
+import { grantExp, xpNeeded } from './gen'
+import { createRng, type Rng } from './rng'
 
 // 远征状态机（D7/D11）：岔路 → 逐场战斗 → 血量延续 → 战间歇整 → 通关/团灭/撤退。
 // D11：战斗死亡 = 永久死亡（markPermadeath），纪念堂接收亡者，休整不再复活亡者。
@@ -12,6 +13,10 @@ export const REST_HEAL_PCT = 0.3
 export type RunPhase = 'battle' | 'rest' | 'victory' | 'defeat' | 'retreated'
 
 export interface DungeonRun {
+  /** 本趟身份用于结算物品 ID，重放同一遭遇不会创造第二件物品。 */
+  id: string
+  seed: number
+  rng: Rng
   dungeon: DungeonDef
   /** 本条路线的遭遇战序列（岔路决定） */
   steps: string[]
@@ -91,6 +96,9 @@ export function createRun(
 ): DungeonRun {
   const plan = routePlan(dungeon, branchId, seed)
   const run: DungeonRun = {
+    id: crypto.randomUUID(),
+    seed,
+    rng: createRng(seed),
     dungeon,
     steps: plan.steps,
     stepIdx: 0,
@@ -176,7 +184,7 @@ export function advanceRun(run: DungeonRun): void {
  * 永久死亡登记（D11）：战斗中倒地的远征队员从花名册划去，进入纪念堂。
  * 在 advanceRun 之后、下一次 startStep 之前调用。
  */
-export function markPermadeath(run: DungeonRun): DeadHero[] {
+export function markPermadeath(run: { members: Member[]; battle: BattleState | null; dungeon?: DungeonDef }, place = run.dungeon?.name ?? '未知之地'): DeadHero[] {
   const b = run.battle
   if (!b) return []
   const dead: DeadHero[] = []
@@ -191,7 +199,7 @@ export function markPermadeath(run: DungeonRun): DeadHero[] {
         name: m.name,
         job: m.job,
         level: m.level,
-        cause: `陨落于${run.dungeon.name}`,
+        cause: `陨落于${place}`,
       })
     }
   }
@@ -202,15 +210,32 @@ export function markPermadeath(run: DungeonRun): DeadHero[] {
  * M1 P0 成长发放:胜场经验 + 终局默契。在 advanceRun/markPermadeath 之后调用
  * (阵亡者被 markPermadeath 划去,天然不参与)。App 的 settleBattleEnd 调用,smoke 可直接测。
  */
-export function settleGrowth(run: DungeonRun, expMult = 1): void {
+export interface GrowthResult {
+  experience: { memberId: string; amount: number; fromLevel: number; toLevel: number }[]
+  bonds: { a: string; b: string; amount: number }[]
+}
+
+interface GrowthRun {
+  members: Member[]
+  battle: BattleState | null
+  phase: string
+  dungeon?: DungeonDef
+  steps?: string[]
+  stepIdx?: number
+  trainingExpMultiplier?: number
+}
+
+/** 塔层传入原有经验和共同经历边界；两种来源共享参战、种族经验和默契发放。 */
+export function settleGrowth(run: GrowthRun, expMult = 1, floorReward?: { exp: number; bonds: boolean }): GrowthResult {
+  const result: GrowthResult = { experience: [], bonds: [] }
   const b = run.battle
-  if (!b) return
+  if (!b) return result
   if (b.status === 'guild-win') {
-    const enc = run.dungeon.encounters.find((e) => e.id === (b.encounterId ?? run.steps[run.stepIdx]))
+    const enc = run.dungeon?.encounters.find((e) => e.id === (b.encounterId ?? run.steps?.[run.stepIdx ?? 0]))
     // V1 难度二轮收紧(2026-09-26):威胁升档但不降收益;经验只收紧为波9/Boss50。
     // 一轮约11波×9+50=149, 对 xpNeeded 750→1200 约为5-8遍升一级。
-    const exp = enc?.kind === 'boss' ? 50 : 9
-    const expected = run.dungeon.expectedLevel
+    const exp = floorReward?.exp ?? (enc?.kind === 'boss' ? 50 : 9)
+    const expected = floorReward ? undefined : run.dungeon?.expectedLevel
     const over = expected !== undefined
       ? Math.max(0, run.members.reduce((s, m) => s + m.level, 0) / Math.max(1, run.members.length) - expected)
       : 0
@@ -218,10 +243,18 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
     for (const c of b.combatants) {
       if (c.team !== 'guild' || !c.alive || !c.memberId) continue
       const m = run.members.find((x) => x.id === c.memberId)
-      if (m?.alive) grantExp(m, Math.round(exp * expMult * (run.trainingExpMultiplier ?? 1) * underMult))
+      if (m?.alive) {
+        const fromLevel = m.level
+        const beforeExp = m.exp
+        const amount = Math.round(exp * expMult * (run.trainingExpMultiplier ?? 1) * underMult)
+        grantExp(m, amount)
+        let earned = m.exp - beforeExp
+        for (let level = fromLevel; level < m.level; level++) earned += xpNeeded(level)
+        result.experience.push({ memberId: m.id, amount: earned, fromLevel, toLevel: m.level })
+      }
     }
   }
-  if (run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated') {
+  if (floorReward?.bonds || run.phase === 'victory' || run.phase === 'defeat' || run.phase === 'retreated') {
     const survivors = run.members.filter((m) => m.alive)
     for (let i = 0; i < survivors.length; i++) {
       for (let j = i + 1; j < survivors.length; j++) {
@@ -229,9 +262,11 @@ export function settleGrowth(run: DungeonRun, expMult = 1): void {
         const q = survivors[j]
         p.bonds[q.id] = (p.bonds[q.id] ?? 0) + 1
         q.bonds[p.id] = (q.bonds[p.id] ?? 0) + 1
+        result.bonds.push({ a: p.id, b: q.id, amount: 1 })
       }
     }
   }
+  return result
 }
 
 /** 撤退（休整界面直接回城）：幸存者保留现状 */

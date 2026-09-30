@@ -1,6 +1,7 @@
 import type { AffixDef, ItemInstance, ItemQuality, Slot, StatKey } from './types'
 import { ITEM_BASES } from '../data/items'
 import { AFFIXES } from '../data/affixes'
+import { createRng, type Rng } from './rng'
 
 // 掉落系统（D10，Q17/Q22）：boss 掉什么固定（掉落表），什么词条掉落时 roll。
 // 装备属性 = 基础盘 + 词条聚合，战斗投影时一次性加算。
@@ -67,7 +68,7 @@ function rollQuality(rng: () => number, bias = 0): ItemQuality {
 export function rollDrop(
   baseId: string,
   rng: () => number,
-  opts?: { qualityBias?: number; minQuality?: ItemQuality },
+  opts?: { qualityBias?: number; minQuality?: ItemQuality; id?: string },
 ): ItemInstance {
   const base = ITEM_BASES[baseId]
   let quality = rollQuality(rng, opts?.qualityBias ?? 0)
@@ -80,37 +81,30 @@ export function rollDrop(
     qualityScale: qAdj.mult,
     bonusChance: qAdj.bonusChance,
   }, Object.values(AFFIXES), rng)
-  return { id: `i${crypto.randomUUID()}`, baseId, quality, rolls }
+  return { id: opts?.id ?? `i${crypto.randomUUID()}`, baseId, quality, rolls }
 }
 
 /** boss 固定掉落表结算：每条按 chance 独立 roll；pity=true 时空手则保底一件（D14 首杀保底） */
 export function rollBossDrops(
   dropTable: { baseId: string; chance: number }[],
-  seed: number,
-  opts?: { pity?: boolean; qualityBias?: number; minQuality?: ItemQuality },
+  seed: number | Rng,
+  opts?: { pity?: boolean; qualityBias?: number; minQuality?: ItemQuality; itemId?: () => string },
 ): ItemInstance[] {
-  const rng = createLootRng(seed)
+  const rng = typeof seed === 'number' ? createLootRng(seed) : seed
   const drops: ItemInstance[] = []
   for (const entry of dropTable) {
-    if (rng() < entry.chance) drops.push(rollDrop(entry.baseId, rng, opts))
+    if (rng() < entry.chance) drops.push(rollDrop(entry.baseId, rng, { ...opts, id: opts?.itemId?.() }))
   }
   if (drops.length === 0 && opts?.pity && dropTable.length > 0) {
     // 保底掉 chance 最高的条目（通常即本 boss 的代表掉落）
     const best = dropTable.reduce((a, b) => (b.chance >= a.chance ? b : a))
-    drops.push(rollDrop(best.baseId, rng, opts))
+    drops.push(rollDrop(best.baseId, rng, { ...opts, id: opts?.itemId?.() }))
   }
   return drops
 }
 
 export function createLootRng(seed: number): () => number {
-  let s = seed | 0
-  return () => {
-    s = (s + 0x6d2b79f5) | 0
-    let t = s
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
+  return createRng(seed)
 }
 
 // ===== 属性聚合 =====
@@ -229,7 +223,7 @@ export function dungeonItemTier(dungeonId: string): number {
 /** 杂兵小概率掉装备(反馈②:8%→12%,阵亡损耗与装备获取对齐)——白/绿为主
  *  特化加权:50% 先抽本图招牌池,刷对应副本有专属目标
  *  F10 修复(2026-09-25):精英节点兑现「掉落翻倍」承诺——概率 ×2(24%),品质略优 */
-export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false, scavBonus = 0): ItemInstance | null {
+export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false, scavBonus = 0, itemId?: () => string): ItemInstance | null {
   if (rng() >= (elite ? 0.24 : 0.12) + scavBonus) return null
   const tier = dungeonItemTier(dungeonId)
   const signIds = DUNGEON_SIGNS[dungeonId] ?? []
@@ -238,10 +232,10 @@ export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false
     .filter((b) => b && b.tier === tier)
   if (signPool.length > 0 && rng() < 0.5) {
     const base = signPool[Math.floor(rng() * signPool.length)]
-    return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05 })
+    return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05, id: itemId?.() })
   }
   const pool = Object.values(ITEM_BASES).filter((b) => b.tier === tier)
   if (pool.length === 0) return null
   const base = pool[Math.floor(rng() * pool.length)]
-  return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05 })
+  return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05, id: itemId?.() })
 }

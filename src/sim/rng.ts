@@ -3,15 +3,31 @@
 
 export type Rng = () => number
 
-export function createRng(seed: number): Rng {
+/** 快照保存的是下一次抽样前的内部状态，可直接续接而不重抽。 */
+export interface StatefulRng extends Rng {
+  state(): number
+}
+
+export function createStatefulRng(seed: number): StatefulRng {
   let s = seed | 0
-  return () => {
+  const rng = () => {
     s = (s + 0x6d2b79f5) | 0
     let t = s
     t = Math.imul(t ^ (t >>> 15), t | 1)
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+  rng.state = () => s >>> 0
+  return rng
+}
+
+export function createRng(seed: number): Rng {
+  return createStatefulRng(seed)
+}
+
+/** 只用于新公会的初始种子；后续玩法抽样全部使用保存的序列。 */
+export function newRngSeed(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0]
 }
 
 export function int(rng: Rng, min: number, max: number): number {

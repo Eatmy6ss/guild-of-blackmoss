@@ -47,7 +47,7 @@ for (const b of BUILDINGS) buildings[b.id] = b.maxLevel
 const save: GuildSave = {
   rareHuntNext: null,
   statistics: newStatistics(20),
-  version: SAVE_VERSION, trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [],
+  version: SAVE_VERSION, rngState: 7777, trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [],
   kingdom: { active: [], completed: [] },
   members,
   inventory,

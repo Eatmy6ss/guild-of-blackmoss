@@ -5,6 +5,8 @@
 
 import type { Member } from './types'
 import { ITEM_BASES } from '../data/items'
+import { assignTrait, TRAIT_LABELS } from './member-traits'
+import type { Rng } from './rng'
 
 export type WishKind = 'gear' | 'dungeon' | 'tower'
 
@@ -55,3 +57,41 @@ export function wishDone(m: Member, wish: Wish, ctx: { dungeonCleared: (id: stri
 
 /** 心愿达成奖励:士气 */
 export const WISH_MORALE = 12
+
+export interface WishContext {
+  dungeons: { id: string; name: string }[]
+  towerBest: number
+  dungeonCleared: (id: string) => boolean
+}
+
+/** 装备变动和战斗结算共用原有心愿/特性规则，不另造人物成长路径。 */
+export function settleWishes(members: Member[], ctx: WishContext, rng: Rng) {
+  const progress: { memberId: string; text: string }[] = []
+  const stories: string[] = []
+  let changed = false
+  const rollFor = (m: Member) => {
+    m.wish = rollWish(rng, { slots: ['weapon', 'armor'], dungeons: ctx.dungeons, towerBest: ctx.towerBest, level: m.level }) ?? undefined
+  }
+  const traitFor = (m: Member) => {
+    if (!assignTrait(m, rng)) return
+    changed = true
+    stories.push(m.name + ' 显露出特性：' + TRAIT_LABELS[m.trait!] + '。')
+  }
+  for (const m of members) {
+    if (!m.alive) continue
+    if (!m.wish) {
+      if (rng() < 0.15) { rollFor(m); changed = true }
+      traitFor(m)
+      continue
+    }
+    if (!wishDone(m, m.wish, ctx)) continue
+    const text = m.wish.text
+    m.morale = Math.min(100, (m.morale ?? 60) + WISH_MORALE)
+    progress.push({ memberId: m.id, text })
+    stories.push(m.name + ' 了却心愿:「' + text + '」。士气昂扬。')
+    rollFor(m)
+    traitFor(m)
+    changed = true
+  }
+  return { changed, progress, stories }
+}

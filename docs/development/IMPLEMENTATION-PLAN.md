@@ -494,6 +494,8 @@ export function ratingOfEnemy(e: EnemyDef): number
 
 ### #0.10 结算管线收口（3 人日，v2 新增）
 
+**2026-09-30 实施校准**：shldo 基于合并后的 `3f92dcd` 认领。塔掉落的裸随机数已由主线修复，不重复改掉落数值；本轮把正式 UI 的两处结算接到统一入口，并保留 `settleTowerFloor` 为内部阶段/奖励助手。`EncounterOutcome` 返回成员/公会/本趟的更新快照和实际后果，App 只同步状态。I9 除键集合外必须检验真实死亡冲击、故事、遗物与参战边界；同输入同 RNG 的完整输出一致且输入不变。纯函数显式分配本趟物品 ID 和编年史序号，不能依赖 crypto/全局计数器。副本对照分离 RNG 来源变化与规则变化，不重新生成旧数值来掩盖差异。详情与结果见 [本轮专题](settlement-pipeline-2026-09-30.md)。
+
 **解决**：C-3（副本与高塔两条结算管线）；并承接 #0.9 拆出的结算侧 RNG。
 
 **现状**：
@@ -558,13 +560,13 @@ export function settleEncounter(input: EncounterInput, rng: Rng): EncounterOutco
 
 **现状**：物品实例同时存在于 `members[].equipment`、`inventory`、`pendingRelics` 三处，**无单一归属不变量**，重复 ID 是直接后果。
 
-**目标**：存档 v19，物品单一仓库 + 引用。
+**目标**：存档 v20，物品单一仓库 + 引用（#0.10 已使用 v19 保存 RNG；本项顺延，不覆盖迁移级别）。
 
 ```ts
 export type ItemUid = string   // `it_${n}`，单调递增，永不复用
 
 export interface GuildSave {
-  version: 19
+  version: 20
   /** 唯一物品仓库。物品实例只存在于此。 */
   items: Record<ItemUid, ItemInstance>
   /** 下一个可用序号，随存档持久化（重启后不得回绕） */
@@ -578,7 +580,7 @@ export interface GuildSave {
 
 **不变量**：每个 uid 在 `members[].equipment` ∪ `inventory` ∪ `pendingRelics` 中**合计出现恰好一次**。
 
-迁移 v18 → v19：
+迁移 v19 → v20（更旧存档先逐级经过 #0.10 的 v18 → v19，保留 rngState）：
 1. 遍历三处，为每个物品实例**重新签发** uid（不要沿用旧 id，旧 id 本身就可能重复）。
 2. 重复实例按「装备中 > 待赎回 > 背包」优先级保留一份，其余**重新签发新 uid 后放入背包**（不要丢弃玩家物品）。
 3. 孤儿 uid（在 `items` 里但无人持有）回收进 `inventory`。
@@ -641,7 +643,7 @@ export type ActiveRun = DungeonRun | TowerRun
 1. 先给远征流程补 UI 冒烟测试（Vitest + 现有 e2e 脚本），**建立安全网再动刀**。
 2. 把 `DungeonRun.dungeon` / `members` 改为 id 引用，并提供 `resolveRun(run, save)` 在运行时解析。
 3. 把远征相关的 `useState` 收拢成一个 `useReducer(runReducer)`，reducer 放在 sim 层，纯函数；结算动作调用 #0.10 的 `settleEncounter`。
-4. `ActiveRun` 接入存档（与 #0.5 同一次 v19 迁移，或紧随其后的 v20）；刷新后可恢复。
+4. `ActiveRun` 接入存档（与 #0.5 同一次 v20 迁移，或紧随其后的 v21；实施前重新核对最新已发布版本）；刷新后可恢复。
 5. **不做**其他 UI 重构。App.tsx 仍会很大，那是可接受的。
 
 **验收**：

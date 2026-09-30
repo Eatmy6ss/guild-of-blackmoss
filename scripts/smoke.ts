@@ -902,7 +902,7 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
-  const saveObj = { version: SAVE_VERSION, rareHuntNext: null, statistics: newStatistics(2), trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [], members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
+  const saveObj = { version: SAVE_VERSION, rngState: 7777, rareHuntNext: null, statistics: newStatistics(2), trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [], members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
   const code = exportSave({ ...saveObj, kingdom: { active: [], completed: [] } })
   const back = importSave(code)
   const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids) && back.dungeonMastery.blackmoss === 5

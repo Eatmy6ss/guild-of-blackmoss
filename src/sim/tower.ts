@@ -5,6 +5,8 @@ import type { BossDef, DungeonDef, EnemyDef, ItemInstance, Member } from './type
 import { createBattle, POTION_STOCK } from './combat'
 import type { BattleState } from './types'
 import { scaleEnemy, towerEnemyScale, TOWER_SCALING_PER_FLOOR } from './difficulty'
+import { createRng, type Rng } from './rng'
+import { markPermadeath } from './run'
 export { towerEnemyScale } from './difficulty'
 
 // 黑苔高塔(M1 P1,宪法 Q4/Q5/Q6 定稿):
@@ -46,6 +48,8 @@ export function towerItemTier(floor: number): number {
 export type TowerPhase = 'battle' | 'rest' | 'ended'
 
 export interface TowerRun {
+  id: string
+  rng: Rng
   floor: number
   phase: TowerPhase
   battle: BattleState | null
@@ -149,6 +153,8 @@ const FLOOR_POOL: EnemyDef[][] = [
 
 export function startTower(members: Member[], seed: number, potions = { heal: POTION_STOCK, fury: POTION_STOCK }): TowerRun {
   const run: TowerRun = {
+    id: crypto.randomUUID(),
+    rng: createRng(seed),
     floor: 1,
     seed,
     phase: 'battle',
@@ -167,7 +173,7 @@ export function startTower(members: Member[], seed: number, potions = { heal: PO
  *   撤退 → 塔结束(带着收益离开);团灭 → 塔结束(阵亡全款,由 markPermadeath 同款逻辑在外层登记)。
  * 返回 { gold, cleared }:gold 为本层入账金币;cleared 表示本层打通(可继续深入)。
  */
-export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolean; exp: number; drops: ItemInstance[] } {
+export function settleTowerFloor(run: TowerRun, rng?: Rng, itemId?: () => string): { gold: number; cleared: boolean; exp: number; drops: ItemInstance[] } {
   const b = run.battle
   if (!b || b.status === 'running') return { gold: 0, cleared: false, exp: 0, drops: [] }
   const gold = b.status === 'guild-win' ? towerGold(run.floor) : 0
@@ -188,13 +194,13 @@ export function settleTowerFloor(run: TowerRun): { gold: number; cleared: boolea
     const exp = towerExp(run.floor)
     const drops: ItemInstance[] = []
     const isBoss = towerFloorIsBoss(run.floor)
-    const lootRng = createLootRng((run.seed ?? 0) * 31 + run.floor * 977)
+    const lootRng = rng ?? createLootRng((run.seed ?? 0) * 31 + run.floor * 977)
     if (isBoss || lootRng() < 0.1) {
       const tier = towerItemTier(run.floor)
       const pool = Object.values(ITEM_BASES).filter((x) => x.tier === tier)
       if (pool.length > 0) {
         const base = pool[Math.floor(lootRng() * pool.length)]!
-        drops.push(rollDrop(base.id, lootRng, { qualityBias: isBoss ? 0.15 : 0 }))
+        drops.push(rollDrop(base.id, lootRng, { qualityBias: isBoss ? 0.15 : 0, id: itemId?.() }))
       }
     }
     return { gold, cleared: true, exp, drops }
@@ -223,21 +229,9 @@ export function towerNext(run: TowerRun, seed: number): void {
   startTowerFloor(run, seed)
 }
 
-/** 塔内阵亡登记(与副本同款:倒地=永久牺牲) */
+/** 兼容旧脚本入口；阵亡判定只有 run.markPermadeath 一份。 */
 export function towerMarkPermadeath(run: TowerRun, dungeonName: string): Array<{ id: string; name: string; job: Member['job']; level: number; cause: string }> {
-  const b = run.battle
-  const dead: Array<{ id: string; name: string; job: Member['job']; level: number; cause: string }> = []
-  if (!b) return dead
-  for (const c of b.combatants) {
-    if (c.team !== 'guild' || c.alive || !c.memberId) continue
-    const m = run.members.find((x) => x.id === c.memberId)
-    if (m && m.alive) {
-      m.alive = false
-      m.hp = 0
-      dead.push({ id: m.id, name: m.name, job: m.job, level: m.level, cause: `陨落于${dungeonName}第 ${run.floor} 层` })
-    }
-  }
-  return dead
+  return markPermadeath(run, `${dungeonName}第 ${run.floor} 层`)
 }
 
 /** 下一层投保：重复购买、非休整、资金不足均不扣款。 */

@@ -13,7 +13,7 @@ import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 18
+export const SAVE_VERSION = 19
 
 export interface PendingConsequence {
   eventId: string
@@ -27,6 +27,8 @@ export interface StoredGuildBuff {
 }
 
 export interface GuildSave {
+  /** v19: 公会随机序列的当前位置，刷新/导出后续接。 */
+  rngState: number
   /** v18: 已立约、尚未用于下一次远征的稀有猎杀 */
   rareHuntNext?: { mult: number; rewardMult: number } | null
   /** v17: only measured settlements, never reconstructed historical totals */
@@ -75,6 +77,7 @@ export interface GuildSave {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  18: (d) => ({ ...d, rngState: legacyRngState(d) }),
   17: (d) => ({ ...d, rareHuntNext: null }),
   16: (d) => ({ ...d, statistics: newStatistics(typeof d.day === 'number' ? Math.max(1, Math.floor(d.day)) : 1) }),
   15: (d) => ({ ...d, trainingReady: d.trainingReady === true }),
@@ -110,6 +113,13 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   10: (d) => ({ ...d, eventsSeen: (d.eventsSeen as string[] | undefined) ?? [], guildBuffs: (d.guildBuffs as unknown[] | undefined) ?? [] }),
 }
 
+/** 老档没有序列，按已有公会时间/日期建立稳定起点；迁移不访问随机数或改资产。 */
+function legacyRngState(d: Record<string, unknown>): number {
+  const time = typeof d.lastSeen === 'number' && Number.isFinite(d.lastSeen) ? d.lastSeen : 7777
+  const day = typeof d.day === 'number' && Number.isFinite(d.day) ? d.day : 1
+  return (time ^ Math.imul(day, 7919)) >>> 0
+}
+
 /** 纯函数迁移:供 loadGuildSave 与 smoke 直接验证 */
 export function migrate(data: Record<string, unknown>): GuildSave {
   let v = (data.version as number) ?? 1
@@ -121,6 +131,8 @@ export function migrate(data: Record<string, unknown>): GuildSave {
     d.version = v
   }
   d.trainingReady = d.trainingReady === true
+  d.rngState = typeof d.rngState === 'number' && Number.isInteger(d.rngState) && d.rngState >= 0 && d.rngState <= 0xffffffff
+    ? d.rngState : legacyRngState(d)
   d.starMarrow = typeof d.starMarrow === 'number' ? d.starMarrow : 0
   d.pendingRelics = Array.isArray(d.pendingRelics) ? d.pendingRelics : []
   d.healingMastery = d.healingMastery && typeof d.healingMastery === 'object' ? d.healingMastery : {}
@@ -136,6 +148,7 @@ export function migrate(data: Record<string, unknown>): GuildSave {
 function validate(d: GuildSave): boolean {
   return (
     d.version === SAVE_VERSION &&
+    typeof d.rngState === 'number' &&
     Array.isArray(d.members) &&
     d.members.length > 0 &&
     typeof d.gold === 'number' &&
