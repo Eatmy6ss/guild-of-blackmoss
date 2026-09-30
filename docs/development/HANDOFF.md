@@ -1,5 +1,14 @@
 # 当前交接
 
+## 最新：怪物词缀 grill 完成，U22 登记（2026-09-30，纯文档）
+
+- 制作人与 Claude 完成 grill，结论登记 DECISIONS **U22**，规格见 [monster-affixes-grill-2026-09-30.md](monster-affixes-grill-2026-09-30.md)。实施计划批次 3 已改为「高塔赌局化 + 怪物词缀」17 人日，总计约 109 人日，M2 移至约第 33 周。
+- **给 shldo 的即时影响（正在做的工单）**：
+  - **#0.10**：`DeathCause` 定成结构化类型（kind / killerName / mechanic / affixes / where），不要沿用字符串 `陨落于…`。见实施计划 #0.10「U22 补充」。
+  - **#0.6**：`RunCore` 额外预留 `spares?: ItemUid[]`（营地换装备用格）与 `monsterAffixes?: Record<string, string[]>`，避免批次 3 再迁移存档。
+- 修改文件：新增 `monster-affixes-grill-2026-09-30.md`；`IMPLEMENTATION-PLAN.md`（第 2 节时间表、批次 3、#0.10、#0.6、§13）；`DECISIONS.md`（U22）；`three-pillars-affixes-2026-09-30.md`（§9 登记与事实更正）；本文件。未改代码，纯文档提交未跑 verify。
+- 提交状态：本地提交，待制作人推送。
+
 ## 附：设计探讨文档（制作人×zcode，2026-09-30）
 
 - 制作人与 zcode 完成一轮方向探讨（三足鼎/怪物词缀/怪猎式闯入/说书人层），结论与未决项沉淀在 [three-pillars-affixes-2026-09-30.md](three-pillars-affixes-2026-09-30.md)。**未定稿，不入 DECISIONS/DESIGN**；制作人将携其与 Claude 续探装备构筑深度与词缀池设计（文档 §7 有交接清单，§8 有基建映射）。不影响当前 #0.10→#0.5→#0.6 工单。
