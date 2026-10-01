@@ -1,9 +1,13 @@
 # 当前交接
 
-## 当前接续：A2 事实账本（认领人 zcode/本机，2026-10-01 深夜，shldo 验证期间并行·不碰其验证面）
+## 当前接续：A2 事实账本（认领人 zcode/本机，2026-10-01 深夜，✅ 已交付 de015b8）
 
-- **认领范围**（ROADMAP §3.3）：`sim/fact-ledger.ts`(Fact 结构+追加/修剪/查询纯函数)+存档 v21→v22(旧档账本为空)+写入口接线(settlement consequences/事件结算/遗物赎回;App 不裸写,一律走账本函数)。断言四条照规格;体积策略=近 N 天(占位 30)全量+死亡/遗物类永久保留。
-- **与 shldo 验证的冲突面**:save.ts 会同碰——A13 节流已交付,验证若改 save.ts 会小冲突,以验证方为先 rebased。
+- **交付**：①`sim/fact-ledger.ts`——Fact(11 种 kind/actors/refs/cause/links)+`appendFact`(唯一追加:death 必带 DeathCause 断言、relic-bind 同一 itemUid 单有效断言)+`pruneFacts`(永久类=死亡/遗物族全留,其余留近 30 天占位)+查询(`factsByItem`/`factsByMember`/`latestEventChoice`)+`normalizeLedger` 坏档兜底。②存档 v21→v22(旧档空账本,编年史不迁移)。③写入口:settlement consequences(death/scar/relic-bind/first-kill/bond-star/tower-record/wish-done+末尾修剪)、App 事件选择与延迟兑现建链(consequence-due→event-choice links)、遗物赎回。④测试 4 项。
+- **契约坑(已被 run-recovery 抓到并修)**:settleEncounter 头部浅拷贝 guild 会**穿透账本引用**——appendFact 原地改写输入方,违反"输入不变"契约;修复=结算头显式克隆账本(nextId+facts 浅拷)。**测试垫片坑(第 3 次)**:gameplay.test.ts rngScope 需补账本函数族+factLedger/factLedgerRef/setFactLedger;encounterGuild 构造需带 factLedger。
+- **验证**:完整 verify 退出 0(Vitest 95(+4)、smoke 47、玩法/王国回归、构建)。
+- 提交:认领 `c031a22` + 实现 `de015b8`,已推 origin/main。**A9 说书人 A 步的依赖已清。**
+
+## 新工单：今日施工全量验证（移交 shldo，2026-10-01 晚，制作人指示）
 
 ## 新工单：今日施工全量验证（移交 shldo，2026-10-01 晚，制作人指示）
 
