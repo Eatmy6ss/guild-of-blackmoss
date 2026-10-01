@@ -7,6 +7,7 @@ import { COMMISSIONS } from '../data/kingdom'
 import { baseEffects } from '../data/base'
 import type { DeadHero, ItemInstance, Member } from './types'
 import { advanceRun, markPermadeath, settleGrowth, type DungeonRun, type GrowthResult } from './run'
+import { buildBattleSummary, type BattleSummary } from './battle-summary'
 import { settleTowerFloor, type TowerRun } from './tower'
 import { rollBossDrops, rollWaveDrop } from './loot'
 import { waveDropBonus } from './member-traits'
@@ -65,6 +66,8 @@ interface OutcomeBase {
   statistics: StatisticsAction[]
   notices: string[]
   sound: 'victory' | 'defeat' | null
+  /** A15 战后小结:败因/死因/关键时刻一屏(纯聚合) */
+  summary: BattleSummary
 }
 export type DungeonOutcome = OutcomeBase & { source: 'dungeon'; run: DungeonRun }
 export type TowerOutcome = OutcomeBase & { source: 'tower'; run: TowerRun }
@@ -99,9 +102,11 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       growth: { experience: [], bonds: [] }, kingdom: undefined, mastery: undefined,
     },
     statistics: [], notices: [], sound: null,
+    summary: { status: common.battle.status, win: false, wiped: false, deaths: [], topDamage: [], moments: [] },
   } as EncounterOutcome
   const c = outcome.consequences
   const day = guild.day
+  const moments: string[] = []
   let seq = guild.chronicle.reduce((max, e) => Math.max(max, e.seq), 0)
   let itemSeq = 0
   const encounterId = input.source === 'dungeon' ? input.run.stepIdx : input.run.floor
@@ -121,6 +126,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       if (pity) {
         guild.manual.push(enc.bossId)
         c.chronicle.push(chronicleFirstKill(day, boss.name, members.find(m => m.alive) ?? members[0], ++seq))
+        moments.push('公会首杀:' + boss.name)
       }
     } else if (outcome.win) {
       const drop = rollWaveDrop(runDungeon(r).id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
@@ -213,21 +219,30 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     c.growth = settleGrowth({ ...outcome.run, members }, 1, { exp: reward.exp, bonds: true })
     if (reward.cleared && !outcome.run.autoMode) {
       guild.towerBest = Math.max(guild.towerBest, outcome.run.floor)
-      if (guild.towerBest > input.guild.towerBest) c.chronicle.push(chronicleTowerRecord(day, guild.towerBest, ++seq))
+      if (guild.towerBest > input.guild.towerBest) {
+        c.chronicle.push(chronicleTowerRecord(day, guild.towerBest, ++seq))
+        moments.push('高塔纪录刷新:第 ' + guild.towerBest + ' 层')
+      }
     }
   } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run) }, effects.expMult)
 
   // 用本场前后的变化记事，避免沿用整趟出征快照而重复登记同一次升级/升星。
   for (const m of members) {
     const before = input.guild.members.find(x => x.id === m.id)
-    if (before && m.level > before.level) c.chronicle.push(chronicleLevelUp(day, m, m.level, ++seq))
+    if (before && m.level > before.level) {
+      c.chronicle.push(chronicleLevelUp(day, m, m.level, ++seq))
+      moments.push(m.name + ' Lv' + before.level + '→' + m.level)
+    }
   }
   for (let i = 0; i < alive.length; i++) {
     for (let j = i + 1; j < alive.length; j++) {
       const a = alive[i], b = alive[j]
       const before = input.guild.members.find(x => x.id === a.id)?.bonds[b.id] ?? 0
       const stars = bondStars(a.bonds[b.id] ?? 0)
-      if (stars > bondStars(before)) c.chronicle.push(chronicleBondStar(day, a, b, stars, ++seq))
+      if (stars > bondStars(before)) {
+        c.chronicle.push(chronicleBondStar(day, a, b, stars, ++seq))
+        moments.push(a.name + ' × ' + b.name + ' 默契 ' + stars + '★')
+      }
     }
   }
   c.morale = guild.members.flatMap(m => {
@@ -251,6 +266,13 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     const def = COMMISSIONS.find(x => x.id === record.id)
     if (def && before && record.progress > before.progress) outcome.notices.push('王国委托「' + def.title + '」进度 ' + record.progress + '/' + def.objective.target + '。')
   }
+  outcome.summary = buildBattleSummary({
+    status: common.battle.status,
+    combatants: common.battle.combatants,
+    events: common.battle.events ?? [],
+    deaths: outcome.deaths,
+    moments,
+  })
   syncRunParty(outcome.run, guild.members)
   return outcome
 }

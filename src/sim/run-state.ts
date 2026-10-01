@@ -5,6 +5,7 @@ import type { GuildEventDef } from '../data/guild-events'
 import { DUNGEONS } from '../data/dungeons'
 import { GUILD_EVENTS } from '../data/guild-events'
 import { syncRunParty } from './run-core'
+import type { BattleSummary } from './battle-summary'
 
 export type ActiveRun = DungeonRun | TowerRun
 type Impact = { t: string; tone?: 'pos' | 'neg' | 'hook' }
@@ -26,6 +27,8 @@ export interface RunUIState {
   dropIds: string[]
   notices: string[]
   growthSnapshot: Record<string, GrowthSnapshot>
+  /** A15 战后小结:最近一场战斗的败因/死因/关键时刻(战斗结束横幅下展示) */
+  lastSummary?: BattleSummary
 }
 
 export function initialRunState(): RunUIState {
@@ -86,6 +89,11 @@ export function validateRunState(value: unknown, roster: { id: string; hp: numbe
   if (r.spares !== undefined && !strings(r.spares)) return false
   if (r.monsterAffixes !== undefined && (!object(r.monsterAffixes) ||
       Object.values(r.monsterAffixes).some((v) => !strings(v)))) return false
+  // A15 战后小结:可选,存在即做轻量形态校验
+  const s2 = s.lastSummary
+  if (s2 !== undefined && (!object(s2) || typeof s2.win !== 'boolean' || typeof s2.wiped !== 'boolean' ||
+      !Array.isArray(s2.deaths) || s2.deaths.some((d: unknown) => !object(d) || typeof (d as { cause?: unknown }).cause !== 'string') ||
+      !Array.isArray(s2.topDamage) || !strings(s2.moments))) return false
   if (r.memberIds.some((id: string, i: number) => !roster.some(m => m.id === id) ||
       !object(r.party[i]) || r.party[i].memberId !== id || !finite(r.party[i].hp) || r.party[i].hp < 0)) return false
   if (r.kind === 'dungeon') {

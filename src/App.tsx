@@ -420,6 +420,7 @@ export default function App() {
 
   // 判定已由 sim 完成；这里仅将结果同步到公会状态和当前玩法。
   const applyOutcome = (o: EncounterOutcome) => {
+    changeProgress({ lastSummary: o.summary })
     const gear = applyEncounterItems(itemOwnershipRef.current, o.guild.members, o.loot.items, o.consequences.relics)
     updateItemOwnership(gear.state, o.guild.members)
     updateKingdom(o.guild.kingdom)
@@ -2334,6 +2335,34 @@ export default function App() {
                     : battle!.status === 'retreated'
                       ? '🏳 已撤离'
                       : '✝ 队伍全灭'}
+                </div>
+              )}
+              {battleOver && progress.lastSummary && (
+                <div className="battle-summary">
+                  {progress.lastSummary.deaths.length > 0 && (
+                    <div className="bs-row">
+                      <span className="bs-label">阵亡</span>
+                      <span className="bs-text">
+                        {progress.lastSummary.deaths.map((d) =>
+                          d.name + '(' + d.cause + (d.killerName ? ' · 出手者 ' + d.killerName : '') + ')',
+                        ).join(';')}
+                      </span>
+                    </div>
+                  )}
+                  {progress.lastSummary.wiped && progress.lastSummary.topDamage.length > 0 && (
+                    <div className="bs-row">
+                      <span className="bs-label">败因</span>
+                      <span className="bs-text">
+                        {progress.lastSummary.topDamage.map((t) => t.name + ' 输出 ' + t.amount).join(' · ')}
+                      </span>
+                    </div>
+                  )}
+                  {progress.lastSummary.moments.length > 0 && (
+                    <div className="bs-row">
+                      <span className="bs-label">关键时刻</span>
+                      <span className="bs-text">{progress.lastSummary.moments.join(' · ')}</span>
+                    </div>
+                  )}
                 </div>
               )}
               {battle && (

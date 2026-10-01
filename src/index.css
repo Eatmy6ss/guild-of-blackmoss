@@ -228,6 +228,20 @@ button.primary:hover:not(:disabled) {
 }
 .result-banner.wipe { background: #3a1a14; color: var(--danger); border-color: #6a2a1e; }
 
+/* ===== A15 战后小结:败因/死因/关键时刻(与透明面板同调) ===== */
+.battle-summary {
+  margin: 6px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--edge-gold);
+  border-left: 3px solid var(--edge-gold);
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 11.5px;
+  line-height: 1.8;
+}
+.battle-summary .bs-row { display: flex; gap: 10px; justify-content: space-between; }
+.battle-summary .bs-label { flex-shrink: 0; color: var(--ink-dim); white-space: nowrap; }
+.battle-summary .bs-text { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+
 /* 战报:文书誊录(暖黑底,可读性优先) */
 .log-box {
   margin-top: 12px;
