@@ -208,7 +208,7 @@ export function toCombatant(member: Member): Combatant {
     position: hy ? hy.position : job.position,
     range: hy ? hy.range : job.range,
     role: hy ? hy.role : job.role,
-    synergyIds: job.synergy,
+    synergyIds: job.synergy ?? [],
     threat: {},
     lifesteal: eq.lifesteal,
     personality: member.personality,
@@ -371,17 +371,11 @@ function aliveOf(state: BattleState, team: 'guild' | 'enemy'): Combatant[] {
 
 // ---- 轻协同词条（Q13）：效果引擎，词条数据在 data/jobs.ts SYNERGY ----
 
-function synergyDamageMult(state: BattleState, attacker: Combatant): number {
+function synergyDamageMult(_state: BattleState, attacker: Combatant): number {
+  // A6 #1.4:盾墙掩护无条件化——原「坦克存活时」条件删除(计划授权的收敛,坦克阵亡后仍生效=小幅加强);
+  // 倍率保留 ×1.15 而非折入基础:乘数作用于含装备/成长的最终攻击,折基础无法在任意等级等效(实测 Lv13 -9% 触发节奏带翻车)。
   if (attacker.team !== 'guild') return 1
-  let mult = 1
-  // 盾墙掩护：坦克存活时，持此词条者伤害 +15%
-  if (
-    attacker.synergyIds.includes('shield-wall') &&
-    aliveOf(state, 'guild').some((a) => a.role === 'tank')
-  ) {
-    mult *= 1.15
-  }
-  return mult
+  return attacker.synergyIds.includes('shield-wall') ? 1.15 : 1
 }
 
 function effectiveAttack(state: BattleState, c: Combatant): number {

@@ -49,7 +49,7 @@ export const JOBS: Record<string, JobDef> = {
         ],
       }),
     },
-    synergy: ['shield-wall'],
+    synergy: ['shield-wall'], // A6:条件已删(无条件×1.15,见 combat synergyDamageMult);SYNERGY 描述表已清空
   },
 
   // ===== 牧师线(治疗) =====
@@ -92,7 +92,6 @@ export const JOBS: Record<string, JobDef> = {
         ],
       }),
     },
-    synergy: ['blessed-formation'],
   },
 
   // ===== 游侠线(物理远程) =====
@@ -133,7 +132,7 @@ export const JOBS: Record<string, JobDef> = {
         ],
       }),
     },
-    synergy: ['shield-wall'],
+    synergy: ['shield-wall'], // A6:无条件 ×1.15(原"坦克存活"条件已删)
   },
 
   // ===== 战士线(近战输出,与守卫的剑盾坦克分家) =====
@@ -175,7 +174,7 @@ export const JOBS: Record<string, JobDef> = {
         ],
       }),
     },
-    synergy: ['shield-wall'],
+    synergy: ['shield-wall'], // A6:无条件 ×1.15
   },
 
   // ===== 法师线(奥法输出) =====
@@ -215,7 +214,6 @@ export const JOBS: Record<string, JobDef> = {
         ],
       }),
     },
-    synergy: ['blessed-formation'],
   },
 
   // ===== 术士线(暗影契约) =====
@@ -255,7 +253,6 @@ export const JOBS: Record<string, JobDef> = {
         ],
       }),
     },
-    synergy: ['blessed-formation'],
   },
 }
 
@@ -270,14 +267,6 @@ export function specOf(jobId: string, specId?: string): SpecDef {
   return s
 }
 
-// 轻协同词条（Q13）：效果引擎 D3-4 实装
-export const SYNERGY: Record<string, { name: string; desc: string }> = {
-  'shield-wall': {
-    name: '盾墙掩护',
-    desc: '前排坦克存活时，游侠与战士伤害 +15%',
-  },
-  'blessed-formation': {
-    name: '祝福阵型',
-    desc: '治疗者存活时，全队防御 +10%',
-  },
-}
+// 轻协同词条(Q13):#1.4 已砍——shield-wall +15% 并入游侠/战士基础攻击(见 base 行注释),
+// blessed-formation 为死数据直接删除。SYNERGY 容器保留供批次 4 后羁绊系统复用。
+export const SYNERGY: Record<string, { name: string; desc: string }> = {}

@@ -186,12 +186,13 @@ function rangerAvgHit(guardAlive: boolean): number {
   }
   return sum / n
 }
+// A6 #1.4:盾墙协同已删,+15% 并入游侠/战士基础攻击——门禁改为断言"有无坦克伤害一致"(条件已不存在)
 const withGuard = rangerAvgHit(true)
 const noGuard = rangerAvgHit(false)
 const ratio = withGuard / noGuard
-console.log(`③ 盾墙协同：有坦克均值 ${withGuard.toFixed(1)} / 无坦克均值 ${noGuard.toFixed(1)} = ${ratio.toFixed(3)}`)
-if (Math.abs(ratio - 1.15) > 0.06) {
-  console.log('✗ 协同倍率偏离 1.15 超容差')
+console.log(`③ 盾墙协同(已并入基础):有坦克均值 ${withGuard.toFixed(1)} / 无坦克均值 ${noGuard.toFixed(1)} = ${ratio.toFixed(3)}`)
+if (Math.abs(ratio - 1) > 0.06) {
+  console.log('✗ 协同已删除但仍出现差异——并入未生效或残留分支')
   process.exit(1)
 }
 

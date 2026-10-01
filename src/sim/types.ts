@@ -105,8 +105,8 @@ export interface JobDef {
     critChance: number
   }
   growth: { maxHp: number; attack: number; defense: number }
-  /** 轻协同词条 id，效果表见 data/jobs.ts SYNERGY */
-  synergy: string[]
+  /** 轻协同词条 id(#1.4 已清空;容器留给批次 4 后羁绊系统) */
+  synergy?: string[]
 }
 
 // ===== 装备与词缀（Q17：掉什么固定，什么词条随机）=====
