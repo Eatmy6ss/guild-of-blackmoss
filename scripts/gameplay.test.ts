@@ -410,7 +410,7 @@ function rngScope(scope: Record<string, unknown>) {
   return { initialRunState, checkpointRunState, memberGenerationState, restoreMemberGeneration,
     progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
     combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
-    scarNotices: [] as string[],
+    scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
     appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER, tellExpedition, createRng,
     factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
     storyCursorRef: { current: 0 }, expeditionStartFactRef: { current: 0 },
@@ -461,6 +461,7 @@ test('actual item callbacks: atomic equip, sell and dismantle keep one owner and
   const ui = settlementUi(members), {state,scope} = ui
   let wishes = 0
   Object.assign(scope,{day:1,fx:{sellMult:1.2},sellValue,ITEM_BASES,describeItem,sfxCoin:()=>{},logChronicle:()=>{},chronicleRaw:()=>({}),checkWishes:()=>{wishes++},
+    setConfirmAsk:(ask:any)=>ask.onOk(), // A16:变卖走确认弹窗,测试桩模拟玩家点确定
     gainGold:(n:number,source:string)=>{assert.equal(source,'sales');state.gold+=n}})
   const receive = handler('receiveItems',scope)
   receive([item('wpn-t3-dawn'),item('arm-t3-bulwark')],true)

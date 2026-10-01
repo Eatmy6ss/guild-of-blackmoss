@@ -61,7 +61,7 @@ import { runDungeon, runMembers, runRng } from './sim/run-core'
 import { runReducer, initialRunState, checkpointRunState, pendingRunEvent, type RunUIState } from './sim/run-state'
 import { GUILD_EVENTS } from './data/guild-events'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
-import { initAudio, setMusicMood, toggleMute, isMuted, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
+import { initAudio, setMusicMood, toggleMute, isMuted, setVolume, getVolume, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
 import { bossIntents } from './sim/mechanics'
 import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, insureNextTowerFloor, towerRest, towerNext, towerFloorIsBoss, type TowerRun } from './sim/tower'
@@ -297,6 +297,8 @@ export default function App() {
   const [screen, setScreen] = useState<'title' | 'game'>('title')
   // F13(2026-09-25):内置确认弹窗——微信等内置浏览器不支持 window.confirm/prompt,破坏性操作改游戏内弹窗
   const [confirmAsk, setConfirmAsk] = useState<{ text: string; okLabel?: string; onOk: () => void } | null>(null)
+  const [battleSpeed, setBattleSpeed] = useState<1 | 2>(() => { try { return localStorage.getItem('gg-speed') === '2' ? 2 : 1 } catch { return 1 } })
+  const [volume, setVolumeState] = useState(getVolume())
   const [muted, setMuted] = useState(isMuted())
   const [showCredits, setShowCredits] = useState(false)
   const [gold, setGold] = useState(() => saved?.gold ?? 150)
@@ -562,10 +564,10 @@ export default function App() {
         return
       }
       drainAndSync(b)
-    }, TICK_MS)
+    }, battleSpeed === 2 ? TICK_MS / 2 : TICK_MS)
     return () => clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, towerRunning, screen])
+  }, [running, towerRunning, screen, battleSpeed])
 
   // 战斗终态兜底（D13 修复软锁）：×10 步进/暂停步进跳过实时循环时，
   // 终局结算（血量写回/永久死亡/掉落）依然必须发生。幂等由 settleBattleEnd 的
@@ -1158,10 +1160,20 @@ export default function App() {
   }
   const sellItem = (id: string) => {
     if (runRef.current || towerRunRef.current) return
-    const removed = removeInventoryItem(itemOwnershipRef.current, id)
-    if (!removed) return
-    updateItemOwnership(removed.state)
-    gainGold(sellValue(removed.item, fx.sellMult), 'sales'); sfxCoin()
+    // A16:变卖二次确认(仓库物品不可恢复,一键变卖曾误伤)
+    const removed0 = itemOwnershipRef.current.inventory.find((x) => x === id)
+    const item0 = removed0 ? itemOwnershipRef.current.items[id] : undefined
+    if (!item0) return
+    setConfirmAsk({
+      text: `变卖【${ITEM_BASES[item0.baseId].name}】?可获得 ${sellValue(item0, fx.sellMult)} 金,变卖后无法赎回。`,
+      okLabel: '变卖',
+      onOk: () => {
+        const removed = removeInventoryItem(itemOwnershipRef.current, id)
+        if (!removed) return
+        updateItemOwnership(removed.state)
+        gainGold(sellValue(removed.item, fx.sellMult), 'sales'); sfxCoin()
+      },
+    })
   }
 
   // ---- M1 P1 黑苔高塔 ----
@@ -1567,14 +1579,21 @@ export default function App() {
         </div>
       )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
-      <button
-        className="mute-btn"
-        aria-label={muted ? "开启声音" : "静音"}
-        title={muted ? "开启场景音乐与音效" : "静音"}
-        onClick={() => { initAudio(); setMuted(toggleMute()) }}
-      >
-        {muted ? '🔇' : '🔊'}
-      </button>
+      <div className="volume-wrap">
+        <button
+          className="mute-btn"
+          aria-label={muted ? "开启声音" : "静音"}
+          title={muted ? "开启场景音乐与音效" : "静音"}
+          onClick={() => { initAudio(); setMuted(toggleMute()) }}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <input
+          className="volume-slider" type="range" min={0} max={100} value={Math.round(volume * 100)}
+          aria-label="主音量" title="主音量"
+          onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }}
+        />
+      </div>
       <div className="app-header">
         <button className="credits-link" onClick={() => setShowCredits(true)}>素材图鉴 / 致谢</button>
         <h1>黑 苔 公 会</h1>
@@ -2396,6 +2415,14 @@ export default function App() {
                 </button>
                 <button onClick={finishBattle} disabled={battleOver || running}>
                   ⏭ 跑到结束
+                </button>
+                <button
+                  className="speed-btn"
+                  disabled={battleOver}
+                  title="实时推进速度"
+                  onClick={() => { const next = battleSpeed === 1 ? 2 : 1; setBattleSpeed(next); try { localStorage.setItem('gg-speed', String(next)) } catch { /* 会话级回落 */ } }}
+                >
+                  ⏩ {battleSpeed}×
                 </button>
                 <span className="tick-info">tick {battle?.tick ?? 0}</span>
               </div>

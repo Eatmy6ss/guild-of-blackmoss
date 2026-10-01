@@ -10,6 +10,9 @@ let sfxBus: GainNode | null = null
 let noiseBuf: AudioBuffer | null = null
 let muted = false
 try { muted = localStorage.getItem('gg-muted') === '1' } catch { /* 无存储仍可播放。 */ }
+/** A16:主音量 0-1(持久化;静音开关独立于此) */
+let volume = 0.5
+try { const v = Number(localStorage.getItem('gg-volume')); if (Number.isFinite(v) && v >= 0 && v <= 1) volume = v } catch { /* 默认音量。 */ }
 let bgmTimer: number | null = null
 let bgmStep = 0
 let lastHitAt = 0
@@ -22,7 +25,7 @@ export function initAudio(): void {
   }
   ctx = new AudioContext()
   master = ctx.createGain()
-  master.gain.value = muted ? 0 : 0.5
+  master.gain.value = muted ? 0 : volume
   master.connect(ctx.destination)
   musicBus = ctx.createGain()
   musicBus.gain.value = 0.4
@@ -42,9 +45,19 @@ export function initAudio(): void {
 export function toggleMute(): boolean {
   muted = !muted
   try { localStorage.setItem('gg-muted', muted ? '1' : '0') } catch { /* 存储不可用不影响声音按钮。 */ }
-  if (master && ctx) master.gain.setTargetAtTime(muted ? 0 : 0.5, ctx.currentTime, 0.02)
+  if (master && ctx) master.gain.setTargetAtTime(muted ? 0 : volume, ctx.currentTime, 0.02)
   if (muted) { musicElement?.pause(); stopFallback() } else resumeMusic()
   return muted
+}
+
+export function setVolume(v: number): void {
+  volume = Math.max(0, Math.min(1, v))
+  try { localStorage.setItem('gg-volume', String(volume)) } catch { /* 存储不可用不影响本次会话。 */ }
+  if (master && ctx && !muted) master.gain.setTargetAtTime(volume, ctx.currentTime, 0.02)
+}
+
+export function getVolume(): number {
+  return volume
 }
 
 export function isMuted(): boolean {
