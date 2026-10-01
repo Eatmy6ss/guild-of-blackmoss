@@ -42,7 +42,7 @@ import { powerScore } from './sim/combat'
 import { describeItem, slotsOf, dungeonItemTier } from './sim/loot'
 import { settleEncounter, type EncounterGuild, type EncounterOutcome } from './sim/settlement'
 import { createStatefulRng, newRngSeed, int, type Rng } from './sim/rng'
-import { loadGuildSave, saveGuild, clearGuildSave, exportSave, saveLoadNotice, type PendingConsequence, type StoredGuildBuff } from './state/save'
+import { loadGuildSave, saveGuild, clearGuildSave, exportSave, saveLoadNotice, combatSaveDue, type PendingConsequence, type StoredGuildBuff } from './state/save'
 import {
   createGuildItems, itemStateFromSave, resolveMembers, inventoryItems, relicItems, serializeGuildItems,
   addInventoryItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic,
@@ -154,6 +154,8 @@ export default function App() {
   const membersRef = useRef(members)
   const [progress, dispatchProgress] = useReducer(runReducer, saved?.runState ?? initialRunState())
   const progressRef = useRef(progress)
+  const lastCombatSaveRef = useRef(0)
+  const [saveFailed, setSaveFailed] = useState(false)
   const changeProgress = (patch: Partial<RunUIState>) => {
     const next = runReducer(progressRef.current, { type: 'patch', patch })
     progressRef.current = next
@@ -473,9 +475,18 @@ export default function App() {
   }, [towerRun?.battle?.status])
 
   // 在 React 同一批资产/阶段提交后保存；跳过 effect 中刚结算、资产尚未提交的旧渲染。
+  // A13 节流:战斗进行中每 5 秒写一次断点(原每 tick ≈10 次/秒);战斗结束/节点边界立即写;写失败可见。
   useEffect(() => {
     if (progress !== progressRef.current) return
-    saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState() })
+    const ar = progress.activeRun
+    const combatRunning = !!ar?.battle && ar.battle.status === 'running'
+    if (combatRunning) {
+      const now = Date.now()
+      if (!combatSaveDue(now, lastCombatSaveRef.current)) return
+      lastCombatSaveRef.current = now
+    } else lastCombatSaveRef.current = 0
+    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState() })
+    setSaveFailed(!ok)
   }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
@@ -1518,6 +1529,9 @@ export default function App() {
         <span className="slice-tag">佣兵纪元 · 任务板上的公会 —— 爬塔 / 招募 / 成长 / 演出</span>
         <span className="slice-tag" style={{ opacity: 0.55 }}>build {__BUILD_DATE__}</span>
       </div>
+      {saveFailed && (
+        <div className="save-warning" role="alert">⚠ 存档写入失败:浏览器存储已满或不可用,近期进度可能未保存(游戏仍可继续,建议导出存档备份)。</div>
+      )}
       {scarNotices.length > 0 && <details className="enc-notices" open={!(inBattle || inTowerBattle) || battle?.status !== 'running'}>
         <summary>{scarNotices[0]} <span>· 查看 {scarNotices.length} 项结算</span></summary>
         <div role="status">{scarNotices.map((notice, i) => <p className="hint" key={i}>{notice}</p>)}</div>

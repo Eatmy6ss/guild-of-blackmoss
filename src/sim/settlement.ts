@@ -20,7 +20,7 @@ import { bondStars } from './gen'
 import { settleKingdomBattle, type KingdomState } from './kingdom'
 import { expeditionStatistics, type StatisticsAction } from './statistics'
 import {
-  chronicleRaw, chronicleHeroFall, chronicleFirstKill, chronicleBattleVictory,
+  chronicleRaw, chronicleHeroFall, chronicleFirstKill, chronicleBattleVictory, chronicleWipeRebuild,
   chronicleLevelUp, chronicleBondStar, chronicleTowerRecord, type ChronicleEntry,
 } from './chronicle'
 import type { Rng } from './rng'
@@ -193,6 +193,8 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       outcome.notices.push(d.name + ' 陨落于' + place + '，已记入编年史与纪念堂。')
     }
   }
+  // A13:团灭重建的故事进编年史(chronicleWipeRebuild 此前从未被调用,审计更正项)
+  if (common.battle.status === 'guild-wipe') c.chronicle.push(chronicleWipeRebuild(day, ++seq))
   if (outcome.win) {
     applyVictory(alive)
     c.chronicle.push(chronicleBattleVictory(day, place, alive, ++seq))

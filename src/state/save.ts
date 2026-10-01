@@ -16,6 +16,13 @@ import type { Visitor } from '../sim/tavern'
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
 export const SAVE_VERSION = 21
+
+/** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
+export const COMBAT_SAVE_INTERVAL_MS = 5000
+export function combatSaveDue(now: number, last: number): boolean {
+  return now - last >= COMBAT_SAVE_INTERVAL_MS
+}
+
 let unreadableSave = false
 let loadNotice = ''
 export const saveLoadNotice = () => loadNotice

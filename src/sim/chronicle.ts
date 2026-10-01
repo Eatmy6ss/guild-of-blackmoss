@@ -86,8 +86,8 @@ export function chronicleTowerRecord(day: number, floor: number, seq?: number): 
   return make(day, `远征队踏入了黑苔高塔第 ${floor} 层——公会的最高纪录被刷新。`, seq)
 }
 
-export function chronicleWipeRebuild(day: number): ChronicleEntry {
-  return make(day, `团灭之后,公会的旗重新升了起来。酒馆又挂出了招募告示。`)
+export function chronicleWipeRebuild(day: number, seq?: number): ChronicleEntry {
+  return make(day, `团灭之后,公会的旗重新升了起来。酒馆又挂出了招募告示。`, seq)
 }
 
 /** 成员卡士气摘要(与默契星同行的读数) */

@@ -28,7 +28,7 @@ import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD } from '../src/data/dungeons'
 import { EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW } from '../src/data/dungeons-r2'
 import { ECONOMY } from '../src/data/economy'
-import { migrate, saveGuild, loadGuildSave, exportSave, importSave, sanitizeMembers, SAVE_VERSION } from '../src/state/save'
+import { migrate, saveGuild, loadGuildSave, exportSave, importSave, sanitizeMembers, SAVE_VERSION, combatSaveDue } from '../src/state/save'
 import { createGuildItems, itemStateFromSave, resolveMembers, serializeGuildItems, inventoryItems, relicItems,
   addInventoryItems, applyEncounterItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic, registerMemberItems,
   assertItemOwnership } from '../src/state/item-registry'
@@ -407,6 +407,7 @@ function rngScope(scope: Record<string, unknown>) {
   const defaultProgress = initialRunState()
   return { initialRunState, checkpointRunState, memberGenerationState, restoreMemberGeneration,
     progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
+    combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {},
     membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
     runMembers: (r: any, ms: Member[]) => r.memberIds ? resolveRunMembers(r, ms?.length ? ms : r.members ?? []) : r.members,
     runDungeon: (r: any) => r.dungeonId ? resolveRunDungeon(r) : r.dungeon,
