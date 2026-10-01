@@ -496,6 +496,10 @@ export function applyHit(
     target.burnUntilTick = state.tick + 40
     target.burnFrom = attacker.id
   }
+  // A5 #1.3 火法叠灼烧:火焰法师(及其宠物)的命中为目标 +1 层灼烧(资源挂目标身上,禁全局资源系统)
+  if (attacker.team === 'guild' && (attacker.specId === 'mage-fire' || attacker.petOf && state.combatants.find((x) => x.id === attacker.petOf)?.specId === 'mage-fire') && target.alive) {
+    target.burnStacks = Math.min(5, (target.burnStacks ?? 0) + 1)
+  }
   // 特质·dragon-fear(龙威,版图二):命中压制目标,攻击暂降
   if (attacker.traits?.includes('dragon-fear') && target.alive) {
     traitHint(state, 'dragon-fear')
@@ -1166,9 +1170,12 @@ export function useSignature(state: BattleState, memberId: string, targetId?: st
   const skill = SIGNATURE_SKILLS[c.specId]
   if (!skill) return false
   if (state.tick < (state.signatureCd?.[memberId] ?? 0)) return false
-  // 打断系招牌技:没有在读条的目标就不受理(UI 据此禁用);其余按各自 targetShape 校验
+  // 打断系招牌技:没有在读条的目标就不受理(UI 据此禁用);引爆系:目标无灼烧层不受理;其余按各自 targetShape 校验
   if (skill.effect.startsWith('interrupt')) {
     if (!hasActiveCast(state, targetId)) return false
+  } else if (skill.effect === 'detonate-burn') {
+    const t = state.combatants.find((x) => x.id === targetId && x.alive && x.team === 'enemy')
+    if (!t || (t.burnStacks ?? 0) === 0) return false
   } else if (skill.targeting === 'ally') {
     if (!state.combatants.some((x) => x.memberId === targetId && x.alive && x.team === 'guild')) return false
   }
@@ -1204,6 +1211,18 @@ export function executeSignature(state: BattleState, cmd: { memberId: string; sk
     }
   }
   switch (skill.effect) {
+    case 'detonate-burn': {
+      if (!target) break
+      const stacks = target.burnStacks ?? 0
+      if (stacks === 0) {
+        pushLog(state, 'guild', `${c.name} 释放【${skill.name}】,但目标身上没有火焰可引爆——先用火球烧它!`)
+        break
+      }
+      target.burnStacks = undefined
+      target.burnUntilTick = undefined
+      dealDamage(state, c, target, 1.2 + 0.9 * stacks, `释放【${skill.name}】引爆 ${stacks} 层灼烧`)
+      break
+    }
     case 'interrupt-shield': {
       const shield = Math.round(c.attack * 4)
       c.absorbShield = (c.absorbShield ?? 0) + shield

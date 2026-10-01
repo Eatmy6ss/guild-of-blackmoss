@@ -19,6 +19,13 @@ export function SignatureBar(props: {
   const lowest = foes.reduce<BattleState['combatants'][number] | undefined>(
     (a, b) => (!a || b.hp / b.maxHp < a.hp / a.maxHp ? b : a), undefined,
   )
+  const targetId = (specId?: string) => {
+    const skill = specId ? SIGNATURE_SKILLS[specId] : undefined
+    if (!skill) return undefined
+    if (skill.effect.startsWith('interrupt')) return casterId
+    if (skill.targeting === 'enemy') return focusId ?? casterId ?? lowest?.id
+    return undefined
+  }
   return (
     <div className="signature-bar" role="group" aria-label="招牌技能">
       {casters.map((c) => {
@@ -26,19 +33,22 @@ export function SignatureBar(props: {
         const readyAt = battle.signatureCd?.[c.memberId!] ?? 0
         const remaining = Math.max(0, readyAt - battle.tick)
         const isInterrupt = skill.effect.startsWith('interrupt')
-        const targetId = isInterrupt
-          ? casterId
-          : skill.targeting === 'enemy'
-            ? (focusId ?? casterId ?? lowest?.id)
-            : undefined
-        const disabled = remaining > 0 || (isInterrupt && !casterId)
+        const isDetonate = skill.effect === 'detonate-burn'
+        const tid = targetId(c.specId)
+        const stacks = isDetonate && tid ? foes.find((f) => f.id === tid)?.burnStacks ?? 0 : 0
+        const blocked = (isInterrupt && !casterId) || (isDetonate && stacks === 0)
+        const disabled = remaining > 0 || blocked
         const meta = remaining > 0
           ? ` · 冷却 ${remaining}`
           : isInterrupt && !casterId
             ? ' · 无读条'
-            : skill.targeting === 'enemy'
-              ? ' · 对集火目标'
-              : ''
+            : isDetonate && stacks === 0
+              ? ' · 未叠灼烧'
+              : isDetonate
+                ? ` · ${stacks} 层灼烧`
+                : skill.targeting === 'enemy'
+                  ? ' · 对集火目标'
+                  : ''
         return (
           <div key={c.id} className="sig-group">
             <button
@@ -46,7 +56,7 @@ export function SignatureBar(props: {
               disabled={disabled || skill.targeting === 'ally'}
               title={skill.desc}
               onClick={() => {
-                if (!disabled && skill.targeting !== 'ally') onUse(c.memberId!, targetId)
+                if (!disabled && skill.targeting !== 'ally') onUse(c.memberId!, tid)
               }}
             >
               <span className="sig-name">【{skill.name}】</span>

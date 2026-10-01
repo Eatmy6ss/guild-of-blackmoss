@@ -279,6 +279,8 @@ export interface Combatant {
   burnFrom?: string
   /** A3 荆棘咆哮:反甲——受击时将部分伤害奉还攻击者 */
   thornsUntilTick?: number
+  /** A5 #1.3 灼烧层数(火法叠层→引爆的资源,挂在目标身上;每次刷新灼烧 +1) */
+  burnStacks?: number
   /** 龙威(版图二 dragon-fear 特质/龙威光环):被压制,出伤 ×0.85 */
   fearUntilTick?: number
   /** 被拉拽(敌人侧机制):到 tick 前站位被强制为前排 */

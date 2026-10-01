@@ -4,6 +4,7 @@
 // 保证打断日志/演出/rt.next 语义单一路径;rt.brokenBy 让编年史与战报区分"集火奏效"与"招牌拍碎"。
 
 export type SignatureEffect =
+  | 'detonate-burn'         // A5 #1.3:消耗目标灼烧层数换爆发(火法身份:叠灼烧→选时机引爆)
   | 'interrupt-shield'      // 打断 + 自身护盾
   | 'interrupt-bind'        // 打断 + 束缚目标
   | 'interrupt-curse'       // 打断 + 目标易伤
@@ -26,8 +27,17 @@ export interface SignatureSkill {
   desc: string
 }
 
-/** 键 = 专精 id(src/data/jobs.ts 现读);火焰法师的招牌(引爆灼烧)属 A5/#1.3,不在此处 */
+/** 键 = 专精 id(src/data/jobs.ts 现读) */
 export const SIGNATURE_SKILLS: Record<string, SignatureSkill> = {
+  'mage-fire': {
+    id: 'sig-fire-detonate',
+    specId: 'mage-fire',
+    name: '引燃引爆',
+    cdTicks: 75,
+    effect: 'detonate-burn',
+    targeting: 'enemy',
+    desc: '点燃积攒的火焰:消耗目标身上的全部灼烧层数换一次爆发——攒得越久越痛,烧尽即清空。',
+  },
   'guard-ironwall': {
     id: 'sig-ironwall-break',
     specId: 'guard-ironwall',

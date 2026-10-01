@@ -50,7 +50,7 @@ describe('A3 #1.1 招牌技:真打断', () => {
     expect(SIGNATURE_SKILLS['priest-discipline']?.name).toBe('诫命沉默')
     for (const s of Object.values(SIGNATURE_SKILLS)) expect(s.cdTicks).toBeGreaterThan(0)
     for (const id of ['guard-ironwall', 'warrior-charge', 'priest-discipline']) expect(SIGNATURE_SKILLS[id].cdTicks).toBe(60)
-    expect(SIGNATURE_SKILLS['mage-fire']).toBeUndefined() // 火法引爆属 A5/#1.3
+    expect(SIGNATURE_SKILLS['mage-fire'].effect).toBe('detonate-burn') // A5:火法招牌=引爆
   })
 })
 
@@ -117,5 +117,33 @@ describe('A3 第二批:新动词招牌技', () => {
     useSignature(state, me.memberId!, enemy.id)
     executeSignature(state, state.commands.signature!)
     expect(enemy.burnUntilTick ?? 0).toBeLessThanOrEqual(state.tick)
+  })
+})
+
+describe('A5 #1.3 火法引爆', () => {
+  function fireBattle() {
+    const b = castingBattle()
+    b.me.specId = 'mage-fire'
+    return b
+  }
+  test('无层不受理;叠层后引爆清层换爆发,伤害随层数涨', () => {
+    const { state, me, enemy } = fireBattle()
+    expect(useSignature(state, me.memberId!, enemy.id)).toBe(false)
+    enemy.burnStacks = 3
+    expect(useSignature(state, me.memberId!, enemy.id)).toBe(true)
+    const hpBefore = enemy.hp
+    executeSignature(state, state.commands.signature!)
+    expect(enemy.burnStacks ?? 0).toBeLessThanOrEqual(1) // 引爆清层;随后的普攻叠层测试另跑
+    expect(enemy.hp).toBeLessThan(hpBefore)
+  })
+  test('火法命中叠层,上限 5', () => {
+    const { state, me, enemy } = fireBattle()
+    enemy.burnStacks = undefined
+    applyHit(state, me, enemy, 5, '普攻')
+    applyHit(state, me, enemy, 5, '普攻')
+    expect(enemy.burnStacks).toBe(2)
+    enemy.burnStacks = 5
+    applyHit(state, me, enemy, 5, '普攻')
+    expect(enemy.burnStacks).toBe(5)
   })
 })
