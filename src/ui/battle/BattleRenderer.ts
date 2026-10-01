@@ -1,15 +1,15 @@
-import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture, TilingSprite } from 'pixi.js'
-import { pixelTexture, spriteKeyFor, spriteScale, spriteLayersFor, tryGetTex, weaponSpriteKey, cache_get, preloadUrlSprites } from './pixelSprites'
+import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
+import { pixelTexture, spriteKeyFor, tryGetTex, cache_get, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { TICK_MS } from '../../sim/combat'
+import { heroLayers, sceneArt, type Appearance } from '../art/catalog'
+import { battleLayout } from '../art/battleLayout'
+import { paintScene } from '../art/scene'
 
 // 演出层（D5-6）：模拟是唯一事实源，这里只消费 BattleState + BattleEvent 播动画。
-// 素材是色块占位（Q9：目标像素风，M1 统一换皮），但动画结构（突进/弹道/飘字/倒地）
-// 就是最终结构，换皮只换 body 的绘制。
+// 共享素材清单负责地图与人物外观；动画只改变演出，不回写模拟。
 
-const W = 760
-const H = 300
 
 const COL = {
   guildTank: 0x5a8fd4,
@@ -61,8 +61,8 @@ class UnitView {
   bodyGroup = new Container()
   bodySprites: Sprite[] = []
   bobPhase: number
-  private weapon: Sprite | null = null
-  private lastWeapon = ''
+  private hpTrack = new Container()
+  bodyScale = 2
   /** 素材帧待就绪替换:非空且 tryGetTex 命中时,替换占位纹理 */
   texKey: string | null = null
   nameText: Text
@@ -71,61 +71,56 @@ class UnitView {
   private hpFill: Graphics
   private hpColor: number
 
-  constructor(public combatant: Combatant, x: number, y: number) {
+  private appearanceKey = ''
+  constructor(public combatant: Combatant, x: number, y: number, urls?: string[], bodyScale = 2, labelChars = 10, spriteOverride?: string) {
     this.slot = { x, y }
     this.hpColor = combatant.team === 'guild' ? COL.hpGuild : COL.hpEnemy
     this.baseScale = 1
 
     // M1 演出验证:像素精灵(换皮只换 pixelSprites.ts 的像素图与调色板)
     // 素材包分层(DCSS):职业/龙裔怪为多层叠加(32×32 同网格);其余单精灵
-    const bodyKey = spriteKeyFor(combatant)
-    const layers = spriteLayersFor(bodyKey)
+    const bodyKey = spriteOverride ?? spriteKeyFor(combatant)
+    const layers = urls?.filter(url => cache_get(url))
+    this.bodyScale = bodyScale
     const bodyGroup = new Container()
     bodyGroup.position.set(0, 6)
     const bodySprites: Sprite[] = []
-    if (layers) {
+    if (layers?.length) {
       for (const url of layers) {
         const s = new Sprite(pixelTexture(url))
         s.anchor.set(0.5, 1)
-        s.scale.set(spriteScale(url))
+        s.scale.set(bodyScale)
         bodyGroup.addChild(s)
         bodySprites.push(s)
       }
     } else {
-      const s = new Sprite(pixelTexture(bodyKey))
+      const s = new Sprite(tryGetTex(bodyKey) ?? pixelTexture(combatant.team === 'enemy' ? 'ogre' : 'guard'))
       s.anchor.set(0.5, 1)
-      s.scale.set(spriteScale(bodyKey))
+      s.scale.set(bodyScale)
       bodyGroup.addChild(s)
       bodySprites.push(s)
     }
     const body = bodySprites[0]
-    if (!tryGetTex(bodyKey)) this.texKey = bodyKey // 占位中,加载完成后自愈替换
+    if (!layers?.length && !tryGetTex(bodyKey)) this.texKey = bodyKey // 占位中,加载完成后自愈替换
     this.bodyGroup = bodyGroup
     this.bodySprites = bodySprites
+    this.appearanceKey = urls?.join('|') ?? ''
     this.body = body
     this.bobPhase = Math.random() /* presentation-only */ * Math.PI * 2
     const hpBg = new Graphics()
-    hpBg.roundRect(-16, -34, 32, 4, 2).fill(0x262b38)
+    hpBg.rect(-22, 0, 44, 5).fill(0x121416)
     this.hpFill = new Graphics()
     const nameText = new Text({
-      text: combatant.name,
-      style: { fontFamily: 'Fusion Pixel 12px Proportional SC', fontSize: 9, fill: 0x9aa3b5 },
+      text: combatant.name.length > labelChars ? combatant.name.slice(0, labelChars) + '…' : combatant.name,
+      style: { fontFamily: 'Fusion Pixel 12px Proportional SC', fontSize: 12, fill: 0xf4edcf },
     })
     nameText.anchor.set(0.5)
-    nameText.position.set(0, -42)
+    nameText.position.set(0, -32 * bodyScale - 18)
     this.nameText = nameText
 
-    this.container.addChild(bodyGroup, hpBg, this.hpFill, nameText)
-    // 武器贴图挂点(换装可见):guild 单位手侧
-    if (combatant.team === 'guild') {
-      const wp = new Sprite(Texture.WHITE)
-      wp.anchor.set(0.5, 1)
-      wp.scale.set(2)
-      wp.position.set(10, -6)
-      wp.visible = false
-      this.weapon = wp
-      this.container.addChild(wp)
-    }
+    this.hpTrack.addChild(hpBg, this.hpFill)
+    this.hpTrack.y = -32 * bodyScale - 9
+    this.container.addChild(bodyGroup, this.hpTrack, nameText)
     this.container.position.set(x, y)
     this.container.scale.set(this.baseScale)
     this.updateHp(1)
@@ -133,31 +128,45 @@ class UnitView {
     // 不依赖 Graphics 几何（腿间空隙会让原点点击落空）
     this.container.eventMode = 'static'
     this.container.cursor = combatant.team === 'enemy' ? 'pointer' : 'default'
-    this.container.hitArea = new Rectangle(-18, -46, 36, 52)
+    this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), -32 * bodyScale - 26, Math.max(44, 32 * bodyScale), 32 * bodyScale + 34)
     this.container.on('pointerdown', () => this.onClick?.(this.combatant))
+    if (!combatant.alive) {
+      this.settleFall()
+      this.container.y += 6
+    }
   }
 
-  /** 换装可见(试玩反馈④):按装备武器基底切换贴图与成色 */
-  updateWeapon(baseId: string | undefined): void {
-    if (!this.weapon) return
-    const id = baseId ?? ''
-    if (id === this.lastWeapon) return
-    this.lastWeapon = id
-    if (!id) { this.weapon.visible = false; return }
-    // DCSS 分层武器帧(手持级细节);品级 tint 区分普装/精良/史诗
-    const wkey = weaponSpriteKey(id)
-    if (wkey) {
-      this.weapon.texture = pixelTexture(wkey)
-      this.weapon.tint = id.includes('dragon-brand') ? 0xffd0a0 : id.includes('line-') ? 0xb89ad4 : 0xffffff
-      this.weapon.scale.set(1.6)
-      this.weapon.position.set(14, -2)
-    } else {
-      this.weapon.texture = pixelTexture('wpn-sword')
-      this.weapon.tint = 0xe8c67a
-      this.weapon.scale.set(2)
-      this.weapon.position.set(10, -6)
-    }
-    this.weapon.visible = true
+  settleFall(): void {
+    this.bodyGroup.tint = 0x798582
+    this.container.rotation = Math.PI / 2 * (this.combatant.team === 'enemy' ? -1 : 1)
+    this.container.alpha = .35
+    this.hpTrack.visible = false
+    this.nameText.visible = false
+    this.container.eventMode = 'none'
+  }
+
+  resize(bodyScale: number, labelChars: number): void {
+    this.bodyScale = bodyScale
+    for (const sprite of this.bodySprites) sprite.scale.set(bodyScale)
+    this.nameText.y = -32 * bodyScale - 18
+    this.nameText.text = this.combatant.name.length > labelChars ? this.combatant.name.slice(0, labelChars) + '…' : this.combatant.name
+    this.hpTrack.y = -32 * bodyScale - 9
+    this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), -32 * bodyScale - 26, Math.max(44, 32 * bodyScale), 32 * bodyScale + 34)
+  }
+
+  updateAppearance(urls: string[]): void {
+    const key = urls.join('|')
+    if (key === this.appearanceKey) return
+    const available = urls.flatMap(url => { const texture = cache_get(url); return texture ? [texture] : [] })
+    if (!available.length) return
+    this.appearanceKey = key
+    this.bodyGroup.removeChildren().forEach(child => child.destroy())
+    this.bodySprites = available.map(texture => {
+      const sprite = new Sprite(texture)
+      sprite.anchor.set(.5, 1); sprite.scale.set(this.bodyScale)
+      this.bodyGroup.addChild(sprite); return sprite
+    })
+    this.body = this.bodySprites[0]; this.texKey = null
   }
 
   /** 近战突进冲量(试玩反馈④:攻击节奏可见)——靠回位插值的弹簧自然收回 */
@@ -172,7 +181,7 @@ class UnitView {
   updateHp(pct: number): void {
     this.hpFill.clear()
     if (pct > 0) {
-      this.hpFill.roundRect(-15, -33, Math.max(2, 30 * pct), 2, 1).fill(this.hpColor)
+      this.hpFill.rect(-20, 1, Math.max(1, 40 * pct), 3).fill(this.hpColor)
     }
   }
 }
@@ -185,6 +194,12 @@ export class BattleRenderer {
   private battle: BattleState | null = null
   private pendingEvents: BattleEvent[] = []
   private disposed = false
+  private ready = false
+  private host: HTMLElement | null = null
+  private observer: ResizeObserver | null = null
+  private width = 760
+  private height = 360
+  private backdrop: Sprite | null = null
   // trauma 震动（game-feel）：值随事件叠加、按秒衰减，shake = trauma²
   private trauma = 0
   private traumaT = 0
@@ -209,13 +224,12 @@ export class BattleRenderer {
 
   async mount(container: HTMLElement): Promise<void> {
     const app = new Application()
-    // 反馈:战斗填满舞台——渲染分辨率翻倍(1520×600),root 整体 ×2,
-    // 内部逻辑坐标仍用 760×300 世界(槽位自动铺满,内部代码零改动)
+    // 按容器宽度重新布阵；人物保留整数像素倍率，名称始终12px。
     await app.init({
-      width: W * 2,
-      height: H * 2,
+      width: this.width,
+      height: this.height,
       background: 0x1c1410,
-      antialias: true,
+      antialias: false,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
     })
@@ -227,19 +241,14 @@ export class BattleRenderer {
       return
     }
     this.app = app
+    this.host = container
     container.appendChild(app.canvas)
     await preloadUrlSprites() // 素材包 PNG 预加载(失败静默降级)
-    // cover 填充:测量容器实际尺寸,渲染器按容器出图,root 按比例 cover(填满,允许裁边)
-    const fit = () => {
-      const cw = Math.max(320, container.clientWidth || W * 2)
-      const ch = Math.max(240, container.clientHeight || H * 2)
-      this.app?.renderer.resize(cw, ch)
-      const s = Math.max(cw / W, ch / H)
-      this.root.scale.set(s)
-      this.root.position.set((cw - W * s) / 2, (ch - H * s) / 2)
-    }
-    fit()
-    window.addEventListener('resize', fit)
+    if (this.disposed) return
+    this.ready = true
+    this.observer = new ResizeObserver(() => { this.fit(); if (this.battle) this.syncUnits(this.battle) })
+    this.observer.observe(container)
+    this.fit()
     app.stage.addChild(this.root)
     this.drawBackdrop(this.theme)
     app.ticker.add((t) => this.tick(t.deltaMS))
@@ -250,14 +259,22 @@ export class BattleRenderer {
   }
 
   /** 每次模拟推进后调用：battle 引用变化（新一战）时自动重建场景 */
-  membersById = new Map<string, { weapon?: string }>()
+  private membersById = new Map<string, Appearance>()
+  setMembers(members: (Appearance & { id: string })[]): void {
+    this.membersById = new Map(members.map(member => [member.id, member]))
+  }
 
-  /** 花名册注入(换装可见):成员的武器基底 id 供贴图切换 */
-  setMembers(members: Array<{ id: string; equipment?: Partial<Record<string, { baseId: string }>> }>): void {
-    this.membersById.clear()
-    for (const m of members) {
-      this.membersById.set(m.id, { weapon: m.equipment?.weapon?.baseId })
+  private fit() {
+    const width = this.host?.clientWidth
+    if (!width || !this.app) return
+    const layout = battleLayout(width, this.battle?.combatants ?? [])
+    if (this.width !== width || this.height !== layout.height) {
+      this.width = width; this.height = layout.height
+      this.host!.style.height = layout.height + 'px'
+      this.app.renderer.resize(width, layout.height)
+      this.drawBackdrop(this.theme)
     }
+    return layout
   }
 
   setBattle(b: BattleState, events: BattleEvent[]): void {
@@ -267,7 +284,7 @@ export class BattleRenderer {
       // 新战斗：阵型重置为标准，不播横幅（换场不等于换阵）
       this.lastStance = b.commands?.stance ?? null
     }
-    if (!this.app) {
+    if (!this.app || !this.ready) {
       this.pendingEvents.push(...events)
       return
     }
@@ -288,6 +305,8 @@ export class BattleRenderer {
 
   destroy(): void {
     this.disposed = true
+    this.observer?.disconnect()
+    this.observer = null
     // releaseGlobalResources：React 严格模式会 挂载→销毁→再挂载，
     // 不释放全局池会导致重建后闪烁/纹理残留（pixijs-application 技能标注的坑）
     this.app?.destroy(
@@ -297,19 +316,6 @@ export class BattleRenderer {
     this.app = null
   }
 
-
-  /** 主题→地砖/墙砖(素材包 DCSS dngn tiles) */
-  private static THEME_TILES: Record<string, { floor: string; wall: string; tint: number; tintAlpha: number }> = {
-    heat: { floor: 'tile-floor-lava', wall: 'tile-wall-brick', tint: 0xff4a1a, tintAlpha: 0.22 },
-    frost: { floor: 'tile-floor-ice', wall: 'tile-wall-gray', tint: 0x8ab8e0, tintAlpha: 0.16 },
-    swamp: { floor: 'tile-floor-swamp', wall: 'tile-wall-brick', tint: 0x6a9a4a, tintAlpha: 0.14 },
-    mine: { floor: 'tile-floor-pebble2', wall: 'tile-wall-gray', tint: 0x8a6a42, tintAlpha: 0.16 },
-    ash: { floor: 'tile-floor-ash', wall: 'tile-wall-brick', tint: 0x9a9aa4, tintAlpha: 0.2 },
-    abyss: { floor: 'tile-floor-cobalt', wall: 'tile-wall-gray', tint: 0x4a2a6a, tintAlpha: 0.24 },
-    thorn: { floor: 'tile-floor-pebble', wall: 'tile-wall-brick', tint: 0x8a8a96, tintAlpha: 0.16 },
-    tower: { floor: 'tile-floor-pebble2', wall: 'tile-wall-gray', tint: 0x6a7a9a, tintAlpha: 0.18 },
-    default: { floor: 'tile-floor-pebble', wall: 'tile-wall-brick', tint: 0x8a6a42, tintAlpha: 0.14 },
-  }
 
   // ---- 场景 ----
 
@@ -322,8 +328,8 @@ export class BattleRenderer {
     const g = new Graphics()
     const size = 1.5 + Math.random() /* presentation-only */ * 1.5
     g.rect(-size / 2, -size / 2, size, size).fill(0xa89878)
-    const x = W * Math.random() /* presentation-only */
-    const y = H * (0.2 + Math.random() /* presentation-only */ * 0.7)
+    const x = this.width * Math.random() /* presentation-only */
+    const y = this.height * (0.2 + Math.random() /* presentation-only */ * 0.7)
     g.position.set(x, y)
     g.alpha = 0.35
     this.root.addChild(g)
@@ -350,8 +356,8 @@ export class BattleRenderer {
     const g = new Graphics()
     const size = 2 + Math.random() /* presentation-only */ * 2
     g.rect(-size / 2, -size / 2, size, size).fill(Math.random() /* presentation-only */ < 0.5 ? 0xff7a2a : 0xffb040)
-    const x = W * (0.05 + Math.random() /* presentation-only */ * 0.9)
-    const y = H * (0.86 + Math.random() /* presentation-only */ * 0.1)
+    const x = this.width * (0.05 + Math.random() /* presentation-only */ * 0.9)
+    const y = this.height * (0.86 + Math.random() /* presentation-only */ * 0.1)
     g.position.set(x, y)
     this.root.addChild(g)
     const drift = (Math.random() /* presentation-only */ - 0.5) * 0.02
@@ -377,7 +383,7 @@ export class BattleRenderer {
     const g = new Graphics()
     const size = 1.5 + Math.random() /* presentation-only */ * 1.5
     g.rect(-size / 2, -size / 2, size, size).fill(0xe8f4ff)
-    const x = W * Math.random() /* presentation-only */
+    const x = this.width * Math.random() /* presentation-only */
     const y = -4
     g.position.set(x, y)
     g.alpha = 0.85
@@ -391,7 +397,7 @@ export class BattleRenderer {
         life += dt
         g.y += fall * dt
         g.x += drift * dt
-        if (life >= dur || g.y > H) {
+        if (life >= dur || g.y > this.height) {
           g.destroy()
           return false
         }
@@ -400,107 +406,61 @@ export class BattleRenderer {
     })
   }
 
-  /** 战斗背景主题(按副本):heat 熔岩 / frost 冰雪 / swamp 沼泽 / mine 矿道 / ash 灰烬 / abyss 深渊 / thorn 军垒 / tower 高塔 / 默认暖黑石 */
   setTheme(theme: string): void {
+    if (this.theme === theme) return
     this.theme = theme
-    if (this.app) {
-      this.root.removeChildren().forEach((ch) => ch.destroy({ children: true }))
-      this.units.clear()
-      this.effects = []
-      this.focusMarker = null
-      this.castBars.clear()
-      this.drawBackdrop(theme)
-      if (this.battle) this.syncUnits(this.battle)
-    }
+    if (this.app) this.drawBackdrop(theme)
   }
 
-  private drawBackdrop(theme = 'default'): void {
-    const t = (this.constructor as typeof BattleRenderer).THEME_TILES[theme] ?? (this.constructor as typeof BattleRenderer).THEME_TILES.default
-    const floorTex = cache_get(t.floor)
-    const wallTex = cache_get(t.wall)
-    // 上半:墙砖带(远景,压暗)
-    const wall = new TilingSprite({ texture: wallTex ?? Texture.WHITE, width: W, height: H * 0.42 })
-    wall.alpha = 0.9
-    this.root.addChild(wall)
-    // 下半:石地板平铺(战斗发生地)
-    const floor = new TilingSprite({ texture: floorTex ?? Texture.WHITE, width: W, height: H * 0.58 })
-    floor.position.set(0, H * 0.42)
-    this.root.addChild(floor)
-    // 主题氛围罩(全屏轻染)
-    const tint = new Graphics()
-    tint.rect(0, 0, W, H).fill({ color: t.tint, alpha: t.tintAlpha })
-    this.root.addChild(tint)
-    // 分界线与中轴
-    const g = new Graphics()
-    g.rect(0, H * 0.42 - 2, W, 4).fill({ color: 0x0f0c12, alpha: 0.9 })
-    g.rect(0, H * 0.42 - 1, W, 1).fill(t.tint)
-    g.rect(W * 0.5 - 1, 0, 2, H).fill({ color: 0x0f0c12, alpha: 0.6 })
-    this.root.addChild(g)
+  private drawBackdrop(theme = this.theme): void {
+    if (!this.app) return
+    this.backdrop?.destroy({ texture: true, textureSource: true })
+    const canvas = document.createElement('canvas')
+    canvas.width = this.width; canvas.height = this.height
+    paintScene(canvas.getContext('2d')!, this.width, this.height, theme)
+    const texture = Texture.from(canvas)
+    texture.source.scaleMode = 'nearest'
+    this.backdrop = new Sprite(texture)
+    this.root.addChildAt(this.backdrop, 0)
   }
 
   private clearUnits(): void {
-    this.root.removeChildren().forEach((ch) => ch.destroy({ children: true }))
-    this.units.clear()
-    this.effects = []
-    // 集火标记随场景销毁——引用必须一并清空，否则下一场战斗
-    // syncUnits 会操作已销毁的 Pixi 对象（position 已为 null → 每帧 TypeError，UI 冻结）
-    this.focusMarker = null
-    this.castBars.clear()
-    this.drawBackdrop()
+    for (const child of [...this.root.children]) if (child !== this.backdrop) { child.removeFromParent(); child.destroy({ children: true }) }
+    this.units.clear(); this.effects = []
+    this.focusMarker = null; this.castBars.clear()
+    this.trauma = 0; this.root.position.set(0)
   }
 
-  /** 按 阵营×站位 分组布阵：前排贴中轴，后排靠边 */
   private syncUnits(b: BattleState): void {
-    const groups: Record<string, Combatant[]> = {
-      'guild-front': [],
-      'guild-back': [],
-      'enemy-front': [],
-      'enemy-back': [],
-    }
+    const layout = this.fit() ?? battleLayout(this.width, b.combatants)
     for (const c of b.combatants) {
-      groups[`${c.team}-${c.position}`].push(c)
+      let u = this.units.get(c.id)
+      const slot = layout.positions[c.id]
+      const member = c.memberId ? this.membersById.get(c.memberId) : undefined
+      const layers = member ? heroLayers(member) : undefined
+      if (!u) {
+        const caster = c.petOf ? b.combatants.find(parent => parent.id === c.petOf) : undefined
+        const petSprite = caster ? caster.specId?.includes('warlock') ? '/assets/mon/imp.png' : 'mon-wolf' : undefined
+        u = new UnitView(c, slot.x, slot.y, layers, layout.bodyScale, layout.labelChars, petSprite)
+        u.onClick = combatant => this.onUnitClick?.(combatant)
+        this.units.set(c.id, u); this.root.addChild(u.container)
+      }
+      u.combatant = c; u.slot = slot
+      if (!c.alive && u.lockCount === 0) u.container.position.set(slot.x, slot.y + 6)
+      if (layers) u.updateAppearance(layers)
+      u.resize(layout.bodyScale, layout.labelChars)
+      u.updateHp(c.hp / c.maxHp)
     }
-    const colX: Record<string, number> = {
-      'guild-front': W * 0.36,
-      'guild-back': W * 0.18,
-      'enemy-front': W * 0.64,
-      'enemy-back': W * 0.82,
-    }
-    for (const [key, list] of Object.entries(groups)) {
-      list.forEach((c, i) => {
-        let u = this.units.get(c.id)
-        if (!u) {
-          u = new UnitView(c, colX[key], H * ((i + 1) / (list.length + 1)))
-          u.onClick = (combatant) => this.onUnitClick?.(combatant)
-          this.units.set(c.id, u)
-          this.root.addChild(u.container)
-        }
-        u.slot = { x: colX[key], y: H * ((i + 1) / (list.length + 1)) }
-        u.updateHp(c.hp / c.maxHp)
-        if (c.memberId) u.updateWeapon(this.membersById.get(c.memberId)?.weapon)
-      })
-    }
-    // 集火标记（D8-9 指挥台）；destroyed 防御：任何路径漏清引用也不得复用销毁对象
-    const fid = b.commands?.focusId
-    const focusUnit = fid ? this.units.get(fid) : undefined
+    const focusUnit = b.commands?.focusId ? this.units.get(b.commands.focusId) : undefined
     if (this.focusMarker?.destroyed) this.focusMarker = null
     if (focusUnit) {
       if (!this.focusMarker) {
-        this.focusMarker = new Text({
-          text: '▼ 集火',
-          style: { fontFamily: 'sans-serif', fontSize: 11, fill: 0xff6b6b, fontWeight: 'bold' },
-        })
-        this.focusMarker.anchor.set(0.5)
-        this.root.addChild(this.focusMarker)
+        this.focusMarker = new Text({ text: '▼ 集火', style: { fontFamily: 'sans-serif', fontSize: 12, fill: 0xedc47b, fontWeight: 'bold' } })
+        this.focusMarker.anchor.set(.5); this.root.addChild(this.focusMarker)
       }
       this.focusMarker.visible = true
-      this.focusMarker.position.set(
-        focusUnit.container.x,
-        focusUnit.container.y - 56 * focusUnit.baseScale,
-      )
-    } else if (this.focusMarker) {
-      this.focusMarker.visible = false
-    }
+      this.focusMarker.position.set(focusUnit.slot.x, focusUnit.slot.y - 32 * layout.bodyScale - 36)
+    } else if (this.focusMarker) this.focusMarker.visible = false
   }
 
   // ---- 事件 → 动画 ----
@@ -726,13 +686,13 @@ export class BattleRenderer {
       text: info.text,
       style: {
         fontFamily: 'sans-serif',
-        fontSize: 20,
+        fontSize: this.width < 640 ? 12 : 20,
         fill: info.color,
         fontWeight: 'bold',
       },
     })
     label.anchor.set(0.5)
-    label.position.set(W / 2, H * 0.32)
+    label.position.set(this.width / 2, this.height * 0.32)
     this.root.addChild(label)
     let t = 0
     const dur = 1000
@@ -740,7 +700,7 @@ export class BattleRenderer {
       update: (dt) => {
         t += dt
         const p = Math.min(t / dur, 1)
-        label.position.set(W / 2, H * 0.32 - p * 14)
+        label.position.set(this.width / 2, this.height * 0.32 - p * 14)
         label.alpha = p < 0.6 ? 1 : 1 - (p - 0.6) / 0.4
         if (p >= 1) {
           label.removeFromParent()
@@ -843,7 +803,7 @@ export class BattleRenderer {
     this.root.addChild(g)
     // 倒计时条:挂单位容器上跟随移动,红条缩到 0 = 蓄力落地;最后 1/3 急促闪烁
     const bar = new Graphics()
-    const barY = -58 * u.baseScale
+    const barY = -32 * u.bodyScale - 31
     u.container.addChild(bar)
     let t = 0
     const dur = durTicks * TICK_MS
@@ -881,7 +841,7 @@ export class BattleRenderer {
       prev.destroy()
     }
     const bar = new Graphics()
-    const barY = -64 * u.baseScale
+    const barY = -32 * u.bodyScale - 31
     u.container.addChild(bar)
     this.castBars.set(u.combatant.id, bar)
     let t = 0
@@ -991,6 +951,7 @@ export class BattleRenderer {
         u.container.alpha = 1 - p * 0.65
         u.container.y = sy + p * 6
         if (p >= 1) {
+          u.settleFall()
           u.lockCount--
           return false
         }
@@ -1035,14 +996,14 @@ export class BattleRenderer {
       u.container.x += (u.slot.x - u.container.x) * k
       u.container.y += (u.slot.y - u.container.y) * k
       // 待机呼吸:像素小人轻轻起伏(活着才有生命)
-      u.bodyGroup.y = 6 + Math.sin(nowT / 320 + u.bobPhase) * 1.2
+      u.bodyGroup.y = Math.round(6 + Math.sin(nowT / 320 + u.bobPhase) * 1.2)
     }
     // 环境粒子(版图二观感:heat 火星上浮 / frost 落雪)——主题背景的"动"的部分
     this.envSpawnAcc += dt
     if (this.envSpawnAcc > 140 && this.effects.length < 200) {
       this.envSpawnAcc = 0
-      if (this.theme === 'heat') this.spawnEmber()
-      else if (this.theme === 'frost') this.spawnSnow()
+      if (sceneArt(this.theme).atmosphere === 'ember') this.spawnEmber()
+      else if (sceneArt(this.theme).atmosphere === 'snow') this.spawnSnow()
       else this.spawnDust()
     }
     // 手动循环而非 filter：弹道命中的 onHit 会在迭代期间向 this.effects

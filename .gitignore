@@ -8,6 +8,7 @@ dist-admin/
 /黑苔公会-*.html
 .vite/
 !scripts/verify.mjs
+!scripts/check-resources.mjs
 !scripts/inline-assets.mjs
 !scripts/e2e-cdp.mjs
 !scripts/e2e-battle.mjs

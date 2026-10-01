@@ -1,0 +1,145 @@
+[
+  {
+    "id": "blackmoss",
+    "name": "黑苔沼泽",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "e82e214a66727a8e3b73ac26e5f88efb5ec4c2ba3fda7c54d428aa9fb2a2b0c1"
+  },
+  {
+    "id": "rustmine",
+    "name": "锈坑矿道",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "45159981d26b980fccdf209d03cdd3e4a8d6ef411426cbeb85a7513a70b246fe"
+  },
+  {
+    "id": "ashfield",
+    "name": "灰烬旧战场",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "dab8c61e72d2b9686e5253d8685f09298e75076f39759656455453d0d36ea7ec"
+  },
+  {
+    "id": "frostgrave",
+    "name": "白霜墓园",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "a84196f7cc57b2c5d385f99144cae3033c3ceeba59b64de5908436473210274f"
+  },
+  {
+    "id": "abyssaltar",
+    "name": "渊底祭坛",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "19edc6a77765efd43fff96ca7dbf34bc1c74b4ac278fe038b0147c1a3efc1188"
+  },
+  {
+    "id": "thornhold",
+    "name": "荆棘要塞",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "b4371866e0fb6b78e189a051743b24c7ef36546421a19f3fa75295b265bdc565"
+  },
+  {
+    "id": "emberpass",
+    "name": "烬石隘口",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "89fb69a38dbae13fe7c4e7fc8cc62a99c843cbdbb9cd975d0572afb284005f66"
+  },
+  {
+    "id": "scalehaven",
+    "name": "鳞音圣地带",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "96bb3419cf72eb62ead35a5f5910713611e19227cb751d0998622a7ad0830445"
+  },
+  {
+    "id": "fireridge",
+    "name": "火脊巢穴",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "7bb17e6ad9680f2399842f17b95ece54f046d5915f2a7d10f83fb50b78aa423b"
+  },
+  {
+    "id": "pilgrim-path",
+    "name": "朝圣者古道",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "370a4521104b5309913b274b95b7968d7fe2bb58b4124607f9ddb6d17b99a8ea"
+  },
+  {
+    "id": "forge-works",
+    "name": "熔铸工坊",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "2d9e9489867dfb991b60d82c3c70f195bd110e4f4a5d006ffa9fbcb9d33c16d4"
+  },
+  {
+    "id": "dragonmaw",
+    "name": "龙渊之心",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "c7c2841e72ec5e50fbdd20862ce0c0f9d4082effe721d600ff4172ce0b0f0c0b"
+  },
+  {
+    "id": "tower",
+    "name": "黑苔高塔",
+    "rect": {
+      "height": 300,
+      "width": 1060,
+      "x": 110,
+      "y": 331
+    },
+    "sha256": "390e78e3347b9eda5e754dd0da65a88f5c07048a23d3426f27a187fc149c244a"
+  }
+]

@@ -1,3 +1,6 @@
+import { SPRITE_PATHS } from '../art/catalog'
+import { loadArt } from '../art/assetLoader'
+import { ENEMY_ART } from '../art/enemyArt'
 import { Texture } from 'pixi.js'
 
 // 像素精灵管线(M1 演出验证切片):ASCII 像素图 → 离屏 canvas → nearest-neighbor 纹理。
@@ -495,78 +498,19 @@ const URL_WEAPONS: Record<string, string> = {
   'w-katana': '/assets/layers/w-katana.png',
 }
 
-/** 武器 baseId → 素材帧 key(装备联动:换装即换手持) */
-export function weaponSpriteKey(baseId: string): string | null {
-  const id = baseId
-  if (id.includes('dragon-brand')) return 'w-katana' // 烙焰长剑:焰纹长刃
-  if (id.includes('greatsword') || id.includes('line-warrior')) return 'w-sword'
-  if (id.includes('katana') || id.includes('rapier')) return 'w-rapier'
-  if (id.includes('axe')) return 'w-axe'
-  if (id.includes('bow') || id.includes('line-ranger')) return 'w-bow'
-  if (id.includes('staff') || id.includes('line-priest') || id.includes('line-mage') || id.includes('line-warlock')) return 'w-staff'
-  if (id.includes('dagger')) return 'w-dagger'
-  if (id.includes('mace') || id.includes('hammer')) return 'w-mace'
-  if (id.includes('sword') || id.includes('line-guard')) return 'w-sword'
-  return null
-}
-
-const URL_LAYERS: Record<string, string[]> = {
-  'hero-guard': [
-    '/assets/layers/human_m.png',
-    '/assets/layers/chainmail.png',
-    '/assets/layers/cloak_blue.png',
-    '/assets/layers/buckler.png',
-    '/assets/layers/long_sword.png',
-  ],
-  'hero-priest': [
-    '/assets/layers/human_m.png',
-    '/assets/layers/robe_white.png',
-    '/assets/layers/cloak_black.png',
-    '/assets/layers/quarterstaff.png',
-  ],
-  'hero-ranger': [
-    '/assets/layers/human_m.png',
-    '/assets/layers/leather.png',
-    '/assets/layers/cloak_brown.png',
-    '/assets/layers/bow.png',
-  ],
-}
-
-/** 全部待预加载 URL(素材帧+职业分层) */
-
 /** 预加载全部素材 PNG(mount 时 await;成功进同一 texture 缓存) */
 export async function preloadUrlSprites(): Promise<void> {
-  const jobs: [string, string][] = [
-    ...Object.entries(URL_TILES),
-    ...Object.entries(URL_WEAPONS),
-    ...Object.entries(URL_SPRITES),
-    ...Object.values(URL_LAYERS).flat().map((url) => [url, url] as [string, string]),
-  ]
-  await Promise.all(
-    jobs.map(
-      ([key, url]) =>
-        new Promise<void>((res) => {
-          const img = new Image()
-          img.onload = () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = img.width
-            canvas.height = img.height
-            canvas.getContext('2d')!.drawImage(img, 0, 0)
-            const tex = Texture.from(canvas)
-            tex.source.scaleMode = 'nearest'
-            tex.source.style.scaleMode = 'nearest'
-            cache.set(key, tex)
-            cache.set(url, tex)
-            res()
-          }
-          img.onerror = () => {
-            console.warn('[pixelSprites] 素材加载失败:', url)
-            res()
-          }
-          img.src = url
-        }),
-    ),
-  )
+  await Promise.all(SPRITE_PATHS.map(async url => {
+    const canvas = await loadArt(url)
+    if (!canvas) return
+    const tex = Texture.from(canvas)
+    tex.source.scaleMode = 'nearest'
+    cache.set(url, tex)
+  }))
+  for (const [key, url] of [...Object.entries(URL_TILES), ...Object.entries(URL_WEAPONS), ...Object.entries(URL_SPRITES)]) {
+    const texture = cache.get(url)
+    if (texture) cache.set(key, texture)
+  }
 }
 
 /** 纹理缓存直读(渲染器 TilingSprite 用;未加载返回 undefined) */
@@ -574,17 +518,7 @@ export function cache_get(key: string): Texture | undefined {
   return cache.get(key)
 }
 
-/** 职业分层帧列表(渲染器逐层叠加);非分层 key 返回 undefined */
-export function spriteLayersFor(key: string): string[] | undefined {
-  return URL_LAYERS[key]
-}
-
 const cache = new Map<string, Texture>()
-
-/** 精灵显示缩放:root ×2 后全部 ×2 显示(素材帧/HD/旧矩阵视觉尺寸统一) */
-export function spriteScale(_key: string): number {
-  return 2
-}
 
 /** 纹理就绪探测(素材帧异步加载完成后由渲染层自愈替换;未就绪返回 undefined) */
 export function tryGetTex(key: string): Texture | undefined {
@@ -653,48 +587,9 @@ export const UNIT_SPRITES: Record<string, PixelDef> = {
 }
 
 /** 按战斗实体挑精灵 key(阵营/职业/boss 名) */
-export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; name?: string }): string {
-  const n = c.name ?? ''
-  if (c.boss) {
-    // 全量 DCSS 精细帧(素材包打底模仿+改造):14 只 boss 一个不落
-    if (n.includes('瓦尔塞隆')) return 'mon-deathdrake'
-    if (n.includes('瓦洛萨里斯')) return 'mon-firedragon'
-    if (n.includes('格鲁什')) return 'mon-ogre'
-    if (n.includes('掘锚')) return 'mon-lindwurm'
-    if (n.includes('塔尔玛') || n.includes('马尔萨乌斯')) return 'mon-hierophant'
-    if (n.includes('摩尔德雷克')) return 'mon-deathknight'
-    if (n.includes('薇尔霍拉')) return 'mon-arcanist'
-    if (n.includes('科尔特')) return 'mon-hellknight'
-    if (n.includes('维克托')) return 'mon-myrmidon'
-    if (n.includes('荆棘')) return 'mon-myrmidon'
-    return 'mon-ogre'
-  }
-  if (c.team === 'enemy') {
-    if (n.includes('蛙人') || n.includes('蛙群') || n.includes('蛙')) return 'mon-goliathfrog'
-    if (n.includes('水蛭') || n.includes('沼腹')) return 'mon-leech'
-    if (n.includes('蝠')) return 'mon-bat'
-    if (n.includes('蛛')) return 'mon-spider'
-    if (n.includes('龙裔鳞卫') || n.includes('狂信卫士') || n.includes('龙裔祭卫')) return 'mon-dracored'
-    if (n.includes('龙渊鳞卫') || n.includes('渊龙亲卫')) return 'mon-dracoknight'
-    if (n.includes('龙裔吐息手') || n.includes('龙裔驭火者') || n.includes('龙渊驭火者') || n.includes('焰背蜥后')) return 'mon-dracoscorcher'
-    if (n.includes('提灯亡魂')) return 'mon-martyredshade' // 橙焰提灯魂
-    if (n.includes('朝圣者亡魂')) return 'mon-ghost'
-    if (n.includes('山脊霜狼') || n.includes('头狼')) return 'mon-wolf'
-    if (n.includes('食尸鬼')) return 'mon-ghoul'
-    if (n.includes('火脊蜥蜴') || n.includes('焰背')) return 'mon-goliathfrog'
-    if (n.includes('龙裔') || n.includes('龙渊') || n.includes('渊龙') || n.includes('幼龙') || n.includes('驭火')) return 'mon-dracored'
-    if (n.includes('朝圣') || n.includes('狂徒') || n.includes('教团') || n.includes('圣火祭司')) return 'mon-occultist'
-    if (n.includes('锻偶') || n.includes('锻炉监工')) return 'mon-myrmidon'
-    if (n.includes('重斧')) return 'mon-gnoll' // 持斧豺狼人
-    if (n.includes('刀盾') || n.includes('弩手') || n.includes('亲卫') || n.includes('佣兵') || n.includes('旗卫') || n.includes('前卫')) return 'mon-myrmidon'
-    if (n.includes('狼')) return 'mon-wolf'
-    if (n.includes('矿工') || n.includes('蝠') || n.includes('蛛') || n.includes('矿灯')) return 'mon-kobold'
-    if (n.includes('骸骨') || n.includes('墓卫') || n.includes('掘墓') || n.includes('墓骑') || n.includes('冰棺')) return 'mon-skelwar'
-    if (n.includes('怨灵') || n.includes('挽歌') || n.includes('观渊') || n.includes('亡魂') || n.includes('提灯') || n.includes('眼')) return 'mon-wraith'
-    if (n.includes('教徒') || n.includes('咏叹') || n.includes('主教') || n.includes('恶')) return 'mon-occultist'
-    if (n.includes('荆棘')) return 'mon-myrmidon'
-    return 'mon-goliathfrog'
-  }
-  const ROLE_KEY: Record<string, string> = { tank: 'guard', healer: 'priest', dps: 'ranger' }
-  return ROLE_KEY[c.role ?? 'dps'] ?? 'ranger'
+export function spriteKeyFor(c: { team: string; role?: string; boss?: boolean; petOf?: string; enemyDef?: { id: string } }): string {
+  if (c.enemyDef && ENEMY_ART[c.enemyDef.id]) return ENEMY_ART[c.enemyDef.id]
+  if (c.petOf) return 'mon-wolf'
+  if (c.team === 'enemy') return c.boss ? 'mon-ogre' : 'mon-kobold'
+  return ({ tank: 'guard', healer: 'priest', dps: 'ranger' } as Record<string, string>)[c.role ?? 'dps'] ?? 'guard'
 }

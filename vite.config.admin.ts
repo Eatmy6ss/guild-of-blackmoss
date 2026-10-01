@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   root: fileURLToPath(new URL('./tools/admin', import.meta.url)),
   publicDir: fileURLToPath(new URL('./public', import.meta.url)),
+  cacheDir: fileURLToPath(new URL('./.vite/admin-deps', import.meta.url)),
   plugins: [react()],
   server: { host: '127.0.0.1', port: 5180, strictPort: true },
   build: { outDir: '../../dist-admin', emptyOutDir: false },
