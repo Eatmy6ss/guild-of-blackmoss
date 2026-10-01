@@ -1,11 +1,12 @@
 # 当前交接
 
-## 当前接续：A3 批次 1 · #1.1 招牌技能（认领人 zcode/本机，2026-10-01，分批交付·第一批=真打断）
+## 当前接续：A3 批次 1 · #1.1 招牌技能（认领人 zcode/本机，2026-10-01，第一批 ✅ 已交付 90ca232）
 
 - **制作人拍板**：即时打断给三个专精——**铁壁卫士/冲锋队长/戒律牧师**(Claude 推荐 2 个+制作人加戒律牧)。
-- **第一批范围**(本批)：真打断动词+系统骨架——`data/signature.ts` 招牌技注册表(3 个即时打断技:破咒盾击/锁足冲锋/诫命沉默,各带一个既有 effect 二段:护盾/束缚/易伤);`useSignature` 指令 API(与 setFocus 同构,写 commands.signature,UI 与 AI 同入口);`stepBattle` 消费+冷却(`BattleState.signatureCd`);打断实现=置 `rt.taken=阈值` 走既有 stepCastWindow 打断管线(`rt.brokenBy` 归属出处,log 区分"集火奏效"与"招牌拍碎");`ui/battle/SignatureBar.tsx` 技能栏(App 只挂载)。
-- **后续批次**：其余 9 专精招牌技(每个须新动词/新目标形状,禁换皮——A3 第二批)+AI 适配(=A7/#1.5)。
-- **边界**：不动数值平衡;旧"打断咏唱"按钮保留(非招牌专精仍走集火累计打断)。
+- **第一批已交付**(90ca232)：①`data/signature.ts` 招牌技注册表——破咒盾击(打断+自身护盾 attack×4)/锁足冲锋(打断+束缚 90 tick)/诫命沉默(打断+易伤 25% 120 tick),cd 均 60 tick(对齐咏唱周期决策窗),二段效果全部复用既有字段(absorbShield/boundUntilTick/vulnUntilTick)。②`useSignature(state, memberId, targetId?)` 指令 API(与 setFocus 同构):校验专精/冷却/目标在读条,写 `commands.signature`;`stepBattle` tick 头消费+`BattleState.signatureCd` 冷却表(持久化)。③打断实现=置 `rt.taken=阈值` 走 stepCastWindow 既有管线(单一路径,≤1 tick 落地),`rt.brokenBy` 归属出处——打断日志区分"【招牌】奏效"与"集火奏效",**措辞保留"被打断"关键词(smoke 5b/㉑ 断言依赖,曾因删词挂门禁)**。④`ui/battle/SignatureBar.tsx`(App 只挂载):每专精一钮,就绪/冷却/无读条三态。⑤3 项测试(受理/执行/拒绝/注册表)。
+- **验证**:完整 verify 退出 0(Vitest 82(+3)、smoke 47、玩法/王国回归、构建)+ e2e-battle PASS。
+- **后续批次**:其余 9 专精招牌技(新动词/新目标形状,禁换皮)+AI 适配(A7/#1.5);旧"打断咏唱"按钮保留(非招牌专精仍走集火累计打断)。
+- 提交:认领 `a149bda` + 实现 `90ca232`,已推 origin/main。
 
 ## 当前接续：A14 公会位阶轻量版（认领人 zcode/本机，2026-10-01，✅ 已交付 1a6800b）
 
