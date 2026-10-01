@@ -1947,20 +1947,22 @@ const towerFailures: string[] = []
 // ============================================================
 {
   const fail27: string[] = []
-  // 27a:18 专精各带 2 个精进技能,效果合法,id 不与主技能冲突
+  // 27a:精进层(#1.2 清换皮后):每专精 ≥1 个精进技能,每个存活选项必须换 effect(不得同 effect 改 CD),id 不与主技能冲突
   let advCount = 0
   for (const job of Object.values(JOB_TABLE)) {
     for (const sp of Object.values(job.specs)) {
       const pool = sp.advancedSkills ?? []
       advCount += pool.length
-      if (pool.length < 2) fail27.push(`㉗ ${sp.id} 精进池不足 2:${pool.length}`)
+      if (pool.length < 1) fail27.push(`㉗ ${sp.id} 精进池为空:${pool.length}`)
       const mainIds = new Set(sp.skills.map((sk) => sk.id))
+      const baseEffects = new Set(sp.skills.map((sk) => sk.effect))
       for (const sk of pool) {
         if (mainIds.has(sk.id)) fail27.push(`㉗ ${sp.id} 精进技能与主技能重名:${sk.id}`)
+        if (baseEffects.has(sk.effect)) fail27.push(`㉗ ${sp.id} 换皮精进:${sk.id} 与主技能同 effect(${sk.effect})`)
       }
     }
   }
-  console.log(`㉗ 精进池:${advCount} 个精进技能(12 专精 × 2,宪法 v3.1)`)
+  console.log(`㉗ 精进池:${advCount} 个精进技能(#1.2 清换皮后,存活选项必须换 effect)`)
 
   // 27b:精进投影——选中技能追加进组,切专精不带过去
   {
