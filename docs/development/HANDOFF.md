@@ -1,5 +1,11 @@
 # 当前交接
 
+## 当前接续：A10 新手最小引导（认领人 zcode/本机，2026-10-01 深夜，✅ 已交付 0d3424c + 8a252f7）
+
+- **交付**(#3.6 最小方案,无剧情教学):①战斗三条一次性提示(招牌技[按队伍适用条件]/集火/撤退,`ui/battle/BattleHints.tsx`,知道了写回存档);②首次远征归来提示条指向大事记(说书人)+位阶晋升委托;③主菜单按天数+**里程碑**逐步解锁(天数=仓库2/委托4/基地4/名人堂5;里程碑=仓库见首件装备/大事记见首条记录/名人堂有首位亡者——纯天数会打架:首归来提示让玩家看大事记时它还锁着);④`hintsSeen` 可选存档字段(免版本迁移,旧档缺省=提示待展示);⑤位阶指针由 A14 位阶行常驻承担。
+- **验证**:完整 verify 退出 0(Vitest 97、smoke 47、玩法/王国回归、构建)+ 4 E2E + QA 全流程(13 截图零控制台错误;QA 脚本已适配渐进解锁=锁定 skip)。
+- 提交:`0d3424c` + `8a252f7`,已推 origin/main。
+
 ## 当前接续：A2 事实账本（认领人 zcode/本机，2026-10-01 深夜，✅ 已交付 de015b8）
 
 - **交付**：①`sim/fact-ledger.ts`——Fact(11 种 kind/actors/refs/cause/links)+`appendFact`(唯一追加:death 必带 DeathCause 断言、relic-bind 同一 itemUid 单有效断言)+`pruneFacts`(永久类=死亡/遗物族全留,其余留近 30 天占位)+查询(`factsByItem`/`factsByMember`/`latestEventChoice`)+`normalizeLedger` 坏档兜底。②存档 v21→v22(旧档空账本,编年史不迁移)。③写入口:settlement consequences(death/scar/relic-bind/first-kill/bond-star/tower-record/wish-done+末尾修剪)、App 事件选择与延迟兑现建链(consequence-due→event-choice links)、遗物赎回。④测试 4 项。
