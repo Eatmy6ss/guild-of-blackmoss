@@ -566,6 +566,17 @@ export class BattleRenderer {
         this.spawnFloat(target, `+${ev.amount}`, COL.heal, 12)
         continue
       }
+      // A8 #1.6:招牌技二段效果的演出(此前 shielded/cursed 静默,玩家感觉不到招牌技的第二半)
+      if (ev.type === 'shielded') {
+        this.spawnFloat(target, `护盾 +${ev.amount}`, 0xe8c67a, 14)
+        this.spawnRing(target)
+        continue
+      }
+      if (ev.type === 'cursed') {
+        this.spawnFloat(target, '受创加深!', 0xb07fd4, 14)
+        this.spawnRing(target)
+        continue
+      }
       const text = `${ev.amount}${ev.crit ? '!' : ''}`
       const color = ev.crit ? COL.dmgCrit : COL.dmgNormal
       const size = ev.crit ? 18 : 12

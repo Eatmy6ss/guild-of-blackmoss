@@ -260,7 +260,13 @@ button.primary:hover:not(:disabled) {
   color: var(--ink); cursor: pointer; font-size: 11.5px; min-height: 44px;
 }
 .signature-bar .sig-btn.ready { border-color: var(--edge-gold-hi); box-shadow: 0 0 6px rgba(200, 160, 74, 0.35); }
+.signature-bar .sig-btn.ready:hover:not(:disabled) { transform: translateY(-1px); }
 .signature-bar .sig-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.signature-bar .sig-btn:not(.ready):not(:disabled) { animation: sig-pulse 1.6s ease-in-out infinite; }
+@keyframes sig-pulse {
+  0%, 100% { box-shadow: 0 0 3px rgba(200, 160, 74, 0.2); }
+  50% { box-shadow: 0 0 9px rgba(200, 160, 74, 0.5); }
+}
 .signature-bar .sig-name { font-weight: 600; color: var(--edge-gold-hi); }
 .signature-bar .sig-meta { color: var(--ink-dim); font-size: 10.5px; }
 
