@@ -12,7 +12,7 @@ const buildDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate()
 
 export default defineConfig({
   plugins: [react(), viteSingleFile()],
-  define: { __BUILD_DATE__: JSON.stringify(buildDate) },
+  define: { __BUILD_DATE__: JSON.stringify(buildDate), __PLAYTEST__: true },
   build: {
     outDir: 'dist-playtest',
     // 字体等资产全部内联为 data URI,消除一切外部请求

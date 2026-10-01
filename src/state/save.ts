@@ -13,7 +13,10 @@ import type { Visitor } from '../sim/tavern'
 // 公会存档(save-systems:版本号 + 迁移链 + 防御式加载)
 // v21：公会资产与现有远征/事件断点同批落盘，恢复后继续原模拟与结算。
 
-const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
+// 键名保持:内部用 schema version 迁移,不换键。
+// A11:试玩构建(__PLAYTEST__)使用独立键,与开发/正式存档完全隔离。
+declare const __PLAYTEST__: boolean
+const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
 export const SAVE_VERSION = 22
 
@@ -43,6 +46,8 @@ export interface GuildSave extends StoredItemFields {
   factLedger: import('../sim/fact-ledger').FactLedger
   /** A10:一次性引导提示的已读标记(可选字段,旧档缺省=待展示) */
   hintsSeen?: string[]
+  /** A11:试玩期轻计数(出发/撤退/玩家手动招牌技;可选,免迁移) */
+  playMeta?: { startedAt?: number; expeditions?: number; retreats?: number; signatureUses?: number }
   runState: RunUIState
   /** 事件已兑现的访客要随结果保存，避免刷新丢掉这项报酬。 */
   visitor: Visitor | null

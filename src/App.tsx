@@ -51,7 +51,7 @@ import { powerScore } from './sim/combat'
 import { describeItem, slotsOf, dungeonItemTier } from './sim/loot'
 import { settleEncounter, type EncounterGuild, type EncounterOutcome } from './sim/settlement'
 import { createStatefulRng, newRngSeed, int, type Rng } from './sim/rng'
-import { loadGuildSave, saveGuild, clearGuildSave, exportSave, saveLoadNotice, combatSaveDue, type PendingConsequence, type StoredGuildBuff } from './state/save'
+import { loadGuildSave, saveGuild, clearGuildSave, exportSave, saveLoadNotice, combatSaveDue, type GuildSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
 import {
   createGuildItems, itemStateFromSave, resolveMembers, inventoryItems, relicItems, serializeGuildItems,
   addInventoryItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic,
@@ -167,6 +167,31 @@ export default function App() {
   const [factLedger, setFactLedger] = useState<FactLedger>(() => normalizeLedger(saved?.factLedger))
   const factLedgerRef = useRef(factLedger)
   const [hintsSeen, setHintsSeen] = useState<string[]>(saved?.hintsSeen ?? [])
+  type PlayMeta = NonNullable<GuildSave['playMeta']>
+  const [playtestEnding, setPlaytestEnding] = useState(false)
+  const exportPlaytestReport = () => {
+    const report = {
+      build: __BUILD_DATE__, exportedAt: Date.now(), day, gold, towerBest,
+      manual, playMeta,
+      memorial: memorial.map((d) => ({ name: d.name, job: d.job, level: d.level, cause: d.cause, death: d.death })),
+      stories: chronicle.filter((c) => c.text.startsWith('📖')).map((c) => ({ day: c.day, text: c.text })),
+      survey: [
+        '你会在明天再打开它吗?(是/可能/否)',
+        '你用过哪个招牌技能?在什么时候用的?为什么那时候用?',
+        '有没有哪一刻让你觉得「这是我的决定改变了结果」?',
+        '有没有哪一刻你完全不知道该干什么?',
+        '有没有哪个佣兵让你记住了名字?为什么?',
+        '如果只能改一个地方,你会改什么?',
+      ],
+    }
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `playtest-report-${__BUILD_DATE__}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+  const [playMeta, setPlayMeta] = useState<PlayMeta>(() => saved?.playMeta ?? { startedAt: Date.now(), expeditions: 0, retreats: 0, signatureUses: 0 })
   const hintsSeenRef = useRef(hintsSeen)
   const dismissHint = (id: string) => {
     if (hintsSeenRef.current.includes(id)) return
@@ -474,6 +499,8 @@ export default function App() {
     if (o.source === 'dungeon') {
       runRef.current = o.run
       setRun({ ...o.run })
+      // A11:试玩版通关版图一 → 「试玩版到此结束」画面
+      if (__PLAYTEST__ && o.run.phase === 'victory' && o.run.dungeonId === 'thornhold') setPlaytestEnding(true)
       // A9 说书人 A 步:远征终局(通关/团灭/撤退)回城后,从上次讲过的水位找最强碰撞,最多 1 条
       if (['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
         if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
@@ -527,9 +554,9 @@ export default function App() {
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
       lastCombatSaveRef.current = now
     } else lastCombatSaveRef.current = 0
-    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen })
+    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
     setSaveFailed(!ok)
-  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen])
+  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, playMeta])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -664,6 +691,7 @@ export default function App() {
   const retreat = () => {
     const r = runRef.current
     if (!r) return
+    setPlayMeta((m: PlayMeta) => ({ ...m, retreats: (m.retreats ?? 0) + 1 }))
     // 战斗中：下撤退令（Q32 撤离过程）；休整中：直接回城
     if (r.phase === 'battle' && r.battle && r.battle.status === 'running') {
       if (orderRetreat(r.battle)) {
@@ -726,6 +754,7 @@ export default function App() {
       expedition.map((m) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s, n) => s + bondStars(n), 0), bonds: { ...m.bonds } }]),
     )
     expeditionStartFactRef.current = factLedgerRef.current.nextId // A9:本趟故事只认出发后的碰撞
+    setPlayMeta((m: PlayMeta) => ({ ...m, expeditions: (m.expeditions ?? 0) + 1 }))
     runRef.current = createRun(
       expedition,
       activeDungeon,
@@ -1579,6 +1608,18 @@ export default function App() {
         </div>
       )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
+      {playtestEnding && (
+        <div className="screen-overlay" style={{ zIndex: 110 }}>
+          <div className="screen-panel" style={{ width: 'min(460px, 92vw)' }}>
+            <div className="screen-head"><h2>🏁 试玩版到此结束</h2></div>
+            <p className="event-text">版图一的故事告一段落。感谢试玩——请点击下方按钮导出你的试玩记录,并把它发回给公会。</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', paddingBottom: 12 }}>
+              <button className="primary" onClick={exportPlaytestReport}>📤 导出试玩记录</button>
+              <button onClick={() => setPlaytestEnding(false)}>继续随便逛逛</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="volume-wrap">
         <button
           className="mute-btn"
@@ -2237,7 +2278,7 @@ export default function App() {
                 <b style={{ color: '#d48f8f' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
               </p>
               <div className="dungeon-picker">
-                {REGIONS.map((rg) => {
+                {REGIONS.filter((rg) => !__PLAYTEST__ || rg.order === 1).map((rg) => {
                   const regionDungeons = DUNGEONS.filter((d) => [...rg.main, ...rg.side, rg.finale].includes(d.id))
                   const ordered = [...rg.main, ...rg.side, rg.finale].map((id) => regionDungeons.find((d) => d.id === id)!).filter(Boolean)
                   return (
@@ -2437,7 +2478,7 @@ export default function App() {
                   battle={battle}
                   casterId={intents?.casterId}
                   focusId={battle.commands.focusId}
-                  onUse={(memberId, targetId) => useSignature(battle, memberId, targetId)}
+                  onUse={(memberId, targetId) => { setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 })); useSignature(battle, memberId, targetId) }}
                 />
               )}
               {battle && !battleOver && (
