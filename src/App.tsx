@@ -32,8 +32,11 @@ import {
   toCombatant,
 } from './sim/combat'
 import { SignatureBar } from './ui/battle/SignatureBar'
+import { BattleHints } from './ui/battle/BattleHints'
+import { BATTLE_HINTS, DOCK_UNLOCK_DAY, FIRST_RETURN_TIP } from './data/tutorial'
 import { appendFact, latestEventChoice, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
+import { SIGNATURE_SKILLS } from './data/signature'
 import { createRng } from './sim/rng'
 import {
   createRun,
@@ -163,6 +166,13 @@ export default function App() {
   const lastCombatSaveRef = useRef(0)
   const [factLedger, setFactLedger] = useState<FactLedger>(() => normalizeLedger(saved?.factLedger))
   const factLedgerRef = useRef(factLedger)
+  const [hintsSeen, setHintsSeen] = useState<string[]>(saved?.hintsSeen ?? [])
+  const hintsSeenRef = useRef(hintsSeen)
+  const dismissHint = (id: string) => {
+    if (hintsSeenRef.current.includes(id)) return
+    hintsSeenRef.current = [...hintsSeenRef.current, id]
+    setHintsSeen(hintsSeenRef.current)
+  }
   const storyCursorRef = useRef(0) // A9:已讲过的账本水位;从上一条故事之后找碰撞
   const expeditionStartFactRef = useRef(0) // A9:本趟出发时的账本水位(碰撞类只认本趟)
   const [saveFailed, setSaveFailed] = useState(false)
@@ -458,6 +468,7 @@ export default function App() {
       setRun({ ...o.run })
       // A9 说书人 A 步:远征终局(通关/团灭/撤退)回城后,从上次讲过的水位找最强碰撞,最多 1 条
       if (['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
+        if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
         const slice = factLedgerRef.current.facts.filter((f) => f.id >= storyCursorRef.current)
         const story = tellExpedition({ facts: slice }, createRng(o.run.seed + o.run.stepIdx * 77 + day), expeditionStartFactRef.current)
         if (story) {
@@ -508,9 +519,9 @@ export default function App() {
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
       lastCombatSaveRef.current = now
     } else lastCombatSaveRef.current = 0
-    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger })
+    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen })
     setSaveFailed(!ok)
-  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger])
+  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -1335,7 +1346,7 @@ export default function App() {
         setHubScreen(null)
         return
       }
-      const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase())
+      const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase() && day >= (DOCK_UNLOCK_DAY[it.key] ?? 1))
       if (hit) setHubScreen((cur) => (cur === hit.key ? null : hit.key))
     }
     window.addEventListener('keydown', onKey)
@@ -1585,26 +1596,37 @@ export default function App() {
           </div>
           <h2>公会大厅</h2>
           <div className="hub-dock">
-            {HUB_DOCK.map((it) => (
+            {HUB_DOCK.map((it) => {
+              const unlockDay = DOCK_UNLOCK_DAY[it.key] ?? 1
+              const locked = day < unlockDay
+              return (
               <button
                 key={it.key}
-                disabled={!!run || !!towerRun}
+                disabled={!!run || !!towerRun || locked}
                 className={`dock-btn${hubScreen === it.key ? ' open' : ''}`}
                 onClick={() => setHubScreen((cur) => (cur === it.key ? null : it.key))}
               >
                 <span className="dock-icon"><ArtCanvas paths={[DOCK_ART[it.key] ?? '/assets/icons/book.png']} label="" size={32} /></span>
-                <span className="dock-label">{it.label}</span>
-                <span className="dock-key">{it.hotkey}</span>
+                <span className="dock-label">{locked ? `${it.label}·第${unlockDay}天` : it.label}</span>
+                <span className="dock-key">{locked ? '🔒' : it.hotkey}</span>
               </button>
-            ))}
+              )
+            })}
           </div>
           {(() => {
             const masteryTotal = Object.values(dungeonMastery).reduce((a, b) => a + b, 0)
             const goals = guildGoals({ members, inventory, manual, expedition, towerBest, masteryTotal, kingdomDone: kingdom.completed.length })
             const cur = goals.find((g) => !g.done)
             const rank = guildRankOf(manual)
+            const showFirstReturnTip = hintsSeen.includes('first-return-done') && !hintsSeen.includes('first-return-tip-done')
             return (
               <>
+                {showFirstReturnTip && (
+                  <div className="first-return-tip">
+                    <span>💡 {FIRST_RETURN_TIP}</span>
+                    <button onClick={() => dismissHint('first-return-tip-done')}>知道了</button>
+                  </div>
+                )}
                 <p className="hub-goal">
                   🏅 公会位阶:{rank.name}{rank.promotion
                     ? ` —— 晋升委托:${rank.promotion.text}`
@@ -2371,6 +2393,12 @@ export default function App() {
                 </button>
                 <span className="tick-info">tick {battle?.tick ?? 0}</span>
               </div>
+              {(inBattle || inTowerBattle) && battle && battle.status === 'running' && !battleOver && (
+                <BattleHints
+                  hints={BATTLE_HINTS.filter((h) => !hintsSeen.includes(h.id) && (h.applies?.({ hasSignature: battle.combatants.some((c) => c.team === 'guild' && c.alive && !!c.specId && SIGNATURE_SKILLS[c.specId]) }) ?? true)).map(({ id, text }) => ({ id, text }))}
+                  onDismiss={dismissHint}
+                />
+              )}
               {(inBattle || inTowerBattle) && battle && battle.status === 'running' && (
                 <SignatureBar
                   battle={battle}

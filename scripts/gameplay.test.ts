@@ -414,6 +414,7 @@ function rngScope(scope: Record<string, unknown>) {
     appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER, tellExpedition, createRng,
     factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
     storyCursorRef: { current: 0 }, expeditionStartFactRef: { current: 0 },
+    hintsSeen: [] as string[], hintsSeenRef: { current: [] as string[] }, dismissHint: () => {},
     membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
     runMembers: (r: any, ms: Member[]) => r.memberIds ? resolveRunMembers(r, ms?.length ? ms : r.members ?? []) : r.members,
     runDungeon: (r: any) => r.dungeonId ? resolveRunDungeon(r) : r.dungeon,

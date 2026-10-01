@@ -41,6 +41,8 @@ export interface StoredGuildBuff {
 export interface GuildSave extends StoredItemFields {
   /** v22: 结构化事实账本(说书人查询层;编年史继续存成品句子) */
   factLedger: import('../sim/fact-ledger').FactLedger
+  /** A10:一次性引导提示的已读标记(可选字段,旧档缺省=待展示) */
+  hintsSeen?: string[]
   runState: RunUIState
   /** 事件已兑现的访客要随结果保存，避免刷新丢掉这项报酬。 */
   visitor: Visitor | null
