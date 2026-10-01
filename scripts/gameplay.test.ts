@@ -1,6 +1,7 @@
 import { runMembers as resolveRunMembers, runDungeon as resolveRunDungeon, runRng as dataRunRng } from '../src/sim/run-core'
 import { initialRunState, checkpointRunState, runReducer } from '../src/sim/run-state'
 import { appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER } from '../src/sim/fact-ledger'
+import { tellExpedition } from '../src/sim/storyteller'
 import { memberGenerationState, restoreMemberGeneration } from '../src/sim/gen'
 import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor } from './run-test-compat'
 import assert from 'node:assert/strict'
@@ -408,9 +409,11 @@ function rngScope(scope: Record<string, unknown>) {
   const defaultProgress = initialRunState()
   return { initialRunState, checkpointRunState, memberGenerationState, restoreMemberGeneration,
     progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
-    combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {},
-    appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER,
+    combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
+    scarNotices: [] as string[],
+    appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER, tellExpedition, createRng,
     factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
+    storyCursorRef: { current: 0 },
     membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
     runMembers: (r: any, ms: Member[]) => r.memberIds ? resolveRunMembers(r, ms?.length ? ms : r.members ?? []) : r.members,
     runDungeon: (r: any) => r.dungeonId ? resolveRunDungeon(r) : r.dungeon,

@@ -33,6 +33,8 @@ import {
 } from './sim/combat'
 import { SignatureBar } from './ui/battle/SignatureBar'
 import { appendFact, latestEventChoice, normalizeLedger, type FactLedger } from './sim/fact-ledger'
+import { tellExpedition } from './sim/storyteller'
+import { createRng } from './sim/rng'
 import {
   createRun,
   startStep,
@@ -161,6 +163,7 @@ export default function App() {
   const lastCombatSaveRef = useRef(0)
   const [factLedger, setFactLedger] = useState<FactLedger>(() => normalizeLedger(saved?.factLedger))
   const factLedgerRef = useRef(factLedger)
+  const storyCursorRef = useRef(0) // A9:已讲过的账本水位;从上一条故事之后找碰撞
   const [saveFailed, setSaveFailed] = useState(false)
   const changeProgress = (patch: Partial<RunUIState>) => {
     const next = runReducer(progressRef.current, { type: 'patch', patch })
@@ -452,6 +455,16 @@ export default function App() {
     if (o.source === 'dungeon') {
       runRef.current = o.run
       setRun({ ...o.run })
+      // A9 说书人 A 步:远征终局(通关/团灭/撤退)回城后,从上次讲过的水位找最强碰撞,最多 1 条
+      if (['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
+        const slice = factLedgerRef.current.facts.filter((f) => f.id >= storyCursorRef.current)
+        const story = tellExpedition({ facts: slice }, createRng(o.run.seed + o.run.stepIdx * 77 + day))
+        if (story) {
+          storyCursorRef.current = factLedgerRef.current.nextId
+          logChronicle(chronicleRaw(day, '📖 ' + story.text))
+          setScarNotices([...scarNotices, '📖 ' + story.text])
+        }
+      }
     } else {
       towerRunRef.current = o.run
       setTowerRun({ ...o.run })
