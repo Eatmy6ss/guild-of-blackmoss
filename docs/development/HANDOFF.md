@@ -1,9 +1,11 @@
 # 当前交接
 
-## 当前接续：A15 战后小结（认领人 zcode/本机，2026-10-01，A1 交付后顺位）
+## 当前接续：A15 战后小结（认领人 zcode/本机，2026-10-01，✅ 已交付 834d6b2）
 
-- **认领范围**（ROADMAP §3.1 A15，1 人日）：战斗结束一屏小结——**败因**（对我方输出最高的敌方单位，来自 battle events 聚合）、**死因**（消费 A1 的结构化 `DeadHero.death`/`renderDeathCause`）、**关键时刻**（首杀/升级/默契/塔纪录，settlement 已有数据）。实现：`sim/battle-summary.ts` 纯函数聚合 → `settleEncounter` 产出 `summary` 挂进 OutcomeBase → `RunUIState.lastSummary` 持久化（断点恢复可见）→ App 战斗结束横幅下渲染面板。
-- **边界**：纯表现/聚合层，不改战斗数值与结算行为；`App.tsx` 只加挂载点（唯一冲突点，改动最小化）；模板文本中文、克制（编年史同基调）。
+- **交付**：①`sim/battle-summary.ts` 纯聚合——`buildBattleSummary` 从 battle events 聚合敌方对我方输出前 3（**败因**，含我方输出/治疗排除与 0 值过滤）、映射阵亡者（**死因**=渲染串+结构化 killerName/mechanic/affixes，批次 3 碑文直接消费）、关键时刻透传截 4 条。②`settleEncounter` 产出 `summary` 挂 OutcomeBase，途中收集关键时刻（首杀/高塔纪录/升级 Lv 旧→新/默契升星）。③`RunUIState.lastSummary` 可选持久化（validateRunState 轻量形态校验，断点恢复可见）。④App 战斗结束横幅下渲染 `.battle-summary`（阵亡/败因[仅全灭]/关键时刻三行，文书风与面板同调）。⑤3 项聚合测试。
+- **边界**：纯聚合层零数值行为变化；塔层结束小结未做（塔结束流归批次 3 赌局化，届时接）；`App.tsx` 仅加挂载点。
+- **验证**：完整 verify 退出 0（Vitest 72(+3)、smoke 47、玩法/王国回归、构建）+ build 后 e2e-battle PASS 零控制台错误。
+- 提交：认领 `1bd9b0e` + 实现 `834d6b2`，均已推 origin/main。
 
 ## 当前接续：U22 对齐工单（认领人 zcode/本机，2026-10-01，✅ 已交付 c7a01b8）
 
