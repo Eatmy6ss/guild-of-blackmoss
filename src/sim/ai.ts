@@ -1,6 +1,7 @@
 import type { BattleState, Combatant } from './types'
 import { mechanicIntents } from './mechanic-registry'
-import { orderRetreat, pushLog, setFocus, setStance, useFuryPotion, useHealPotion } from './combat'
+import { orderRetreat, pushLog, setFocus, setStance, useFuryPotion, useHealPotion, useSignature } from './combat'
+import { SIGNATURE_SKILLS } from '../data/signature'
 
 // 挂机 AI（D12）：队长性格代打。与手动指挥台共用同一套指令函数（Q27 红利），
 // 只是执行者从玩家换成队长性格。每 5 tick 决策一次（0.5 秒节奏）。
@@ -65,6 +66,31 @@ export function runAutoAI(state: BattleState): void {
   const healThreshold = (p.caution / 100) * 0.6 // 谨慎的队长更早交药
   if (lowestPct < healThreshold) useHealPotion(state)
   if (enraged && p.bravery >= 40) useFuryPotion(state)
+
+  // ---- 招牌技能(A7/#1.5):全员共用同一决策系统——AI 只调 useSignature,与手动同构 ----
+  // 时机纪律:打断系=有人读条就交( 与"集火打断"同窗口);引爆系=攒到 3 层以上才放(攒还是放);
+  // 圣疗=点名最残队友;其余输出技=对当前集火目标释放。
+  for (const ally of allies) {
+    if (!ally.memberId || !ally.specId) continue
+    const skill = SIGNATURE_SKILLS[ally.specId]
+    if (!skill) continue
+    const cd = state.signatureCd?.[ally.memberId] ?? 0
+    if (state.tick < cd) continue
+    if (skill.effect.startsWith('interrupt')) {
+      if (casting) useSignature(state, ally.memberId, caster!.id)
+    } else if (skill.effect === 'detonate-burn') {
+      const stacks = caster?.burnStacks ?? foes.reduce((a, f) => Math.max(a, f.burnStacks ?? 0), 0)
+      const best = foes.find((f) => (f.burnStacks ?? 0) === stacks && (f.burnStacks ?? 0) > 0)
+      if (stacks >= 3 && best) useSignature(state, ally.memberId, best.id)
+    } else if (skill.effect === 'heal-target-cleanse') {
+      if (lowestPct < 0.5) useSignature(state, ally.memberId, lowest.memberId)
+    } else if (skill.targeting === 'enemy') {
+      const target = state.commands.focusId ? foes.find((f) => f.id === state.commands.focusId) ?? caster ?? foes[0] : caster ?? foes[0]
+      if (target) useSignature(state, ally.memberId, target.id)
+    } else {
+      useSignature(state, ally.memberId)
+    }
+  }
 
   // ---- 撤退（仅保护关闭时由性格决定；保护开启时系统兜底）----
   // 谨慎的队长：队友阵亡即撤（不喂更多人头），或有人濒危
