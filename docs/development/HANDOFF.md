@@ -1,5 +1,10 @@
 # 当前交接
 
+## 当前接续：A15 战后小结（认领人 zcode/本机，2026-10-01，A1 交付后顺位）
+
+- **认领范围**（ROADMAP §3.1 A15，1 人日）：战斗结束一屏小结——**败因**（对我方输出最高的敌方单位，来自 battle events 聚合）、**死因**（消费 A1 的结构化 `DeadHero.death`/`renderDeathCause`）、**关键时刻**（首杀/升级/默契/塔纪录，settlement 已有数据）。实现：`sim/battle-summary.ts` 纯函数聚合 → `settleEncounter` 产出 `summary` 挂进 OutcomeBase → `RunUIState.lastSummary` 持久化（断点恢复可见）→ App 战斗结束横幅下渲染面板。
+- **边界**：纯表现/聚合层，不改战斗数值与结算行为；`App.tsx` 只加挂载点（唯一冲突点，改动最小化）；模板文本中文、克制（编年史同基调）。
+
 ## 当前接续：U22 对齐工单（认领人 zcode/本机，2026-10-01，✅ 已交付 c7a01b8）
 
 - **交付**：①`DeathCause` 结构化类型入 `sim/types.ts`（kind/killerName/mechanic/affixes/where，affixes 只预留批次 3 填）；`markPermadeath` 按 run.kind 派生 `where`（副本=source+副本id，高塔=source+层数），`DeadHero` 新增 `death?: DeathCause`，碑文 `cause` 由唯一渲染函数 `renderDeathCause` 生成（塔=`黑苔高塔第 N 层`、副本=查 DUNGEONS 表名，smoke 7a 口径不变）。②`RunCore` 补可选字段 `spares?: ItemUid[]` 与 `monsterAffixes?: Record<string,string[]>`（schema 保持 1，createRunCore 不初始化，旧档缺省合法），`run-state.validateRunState` 对其存在即校验形态。③新增 `death-cause.test.ts` 4 项（副本/高塔碑文渲染、空战斗、JSON 往返）。编年史叙述句（chronicleHeroFall"酒馆"风味句）按施工边界未动，批次 3 说书人消费 `DeadHero.death`。

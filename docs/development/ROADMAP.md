@@ -87,7 +87,7 @@ G5 M3 全验收
 
 | # | 工单 | 人日 | 建议负责 | 依赖 | 状态 |
 |---|---|---|---|---|---|
-| A1 | **U22 对齐**:DeathCause 结构化;RunCore 预留 `spares`/`monsterAffixes` | 0.5–1 | shldo | — | 已发单,未开工 |
+| A1 | **U22 对齐**:DeathCause 结构化;RunCore 预留 `spares`/`monsterAffixes` | 0.5–1 | zcode(本机) | — | ✅ 已完成(c7a01b8) |
 | A2 | **事实账本**(§3.3) | 1–1.5 | shldo(与 A1 同一个 PR 或紧接着做) | A1 | 新增 |
 | A3 | 批次 1 · #1.1 招牌技能(含真打断,§3.2) | 7 | Codex / shldo | — | 待开工 |
 | A4 | 批次 1 · #1.2 清换皮技能 | 2 | 同上 | #1.1 | 待开工 |
