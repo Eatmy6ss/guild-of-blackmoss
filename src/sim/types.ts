@@ -250,8 +250,8 @@ export interface Combatant {
   bossMechanics?: BossMechanicDef[]
   /** 召唤机制的增援池（从副本 enemyGroups 解析） */
   summonPool?: EnemyDef[]
-  /** 机制运行时状态：按机制 kind 存 until/next/taken/fired */
-  mech?: Record<string, { until?: number; next?: number; taken?: number; fired?: number; resolvedAt?: number }>
+  /** 机制运行时状态：按机制 kind 存 until/next/taken/fired;brokenBy=A3 招牌技打断出处 */
+  mech?: Record<string, { until?: number; next?: number; taken?: number; fired?: number; resolvedAt?: number; brokenBy?: string }>
   /** 咏唱成功获得的临时攻击加成 */
   buffAttack?: number
   buffUntil?: number
@@ -442,6 +442,8 @@ export interface BattleCommands {
   furyUntil: number
   /** 撤离过程：到该 tick 完成撤离（Q32：免费下令+可被干扰的撤离过程） */
   extractingUntil?: number
+  /** A3 招牌技指令:待执行的玩家点名技能(下一次 stepBattle 消费) */
+  signature?: { memberId: string; skillId: string; targetId?: string }
   /** 撤退保护（Q7，默认开启）：有人濒危自动下撤退令 */
   protectRetreat: boolean
   /** 挂机模式（D12）：队长性格代打全部指令 */
@@ -510,6 +512,8 @@ export interface BattleEvent {
 export interface BattleState {
   /** 本场单位编号进度；刷新后的召唤继续使用本场序列。 */
   unitSeq?: number
+  /** A3 招牌技冷却:memberId → 就绪 tick */
+  signatureCd?: Record<string, number>
   /** 战斗创建时固定，结算不使用已经推进的路线索引。 */
   encounterId?: string
   /** 创伤结算幂等标记；新战斗重新初始化 */

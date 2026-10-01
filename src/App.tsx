@@ -27,9 +27,11 @@ import {
   useHealPotion,
   useFuryPotion,
   orderRetreat,
+  useSignature,
   STANCE_NAME,
   toCombatant,
 } from './sim/combat'
+import { SignatureBar } from './ui/battle/SignatureBar'
 import {
   createRun,
   startStep,
@@ -2337,6 +2339,13 @@ export default function App() {
                 </button>
                 <span className="tick-info">tick {battle?.tick ?? 0}</span>
               </div>
+              {(inBattle || inTowerBattle) && battle && battle.status === 'running' && (
+                <SignatureBar
+                  battle={battle}
+                  casterId={intents?.casterId}
+                  onUse={(memberId, targetId) => useSignature(battle, memberId, targetId)}
+                />
+              )}
               {battle && !battleOver && (
                 <p className="hint">
                   点击场上敌人 = 集火 · boss 蓄力出现红条倒计时 = 切「分散」减伤 · boss 出现紫条咏唱 = 点「打断咏唱！」 ·

@@ -11,6 +11,7 @@ import type {
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
 import { ITEM_BASES } from '../data/items'
+import { SIGNATURE_SKILLS } from '../data/signature'
 import { equipmentSetBonus } from './equipment-sets'
 import { formatStat, formatPercent, STAT_NAME } from './loot'
 import { applyEnemyScaling as applyScaling, ELITE_ENEMY_MULT, towerEnemyScale, type DifficultyModifiers, type EnemyScaleFactors } from './difficulty'
@@ -920,6 +921,12 @@ function summonPet(caster: Combatant, state: BattleState): Combatant {
 export function stepBattle(state: BattleState): void {
   if (state.status !== 'running') return
   state.tick++
+  // A3 招牌技指令消费:tick 开始时执行玩家点名的技能
+  if (state.commands.signature) {
+    const sig = state.commands.signature
+    state.commands.signature = undefined
+    executeSignature(state, sig)
+  }
   // 灼热地形(版图二):周期性全队火伤,火抗按比例减免——逼装备取舍的环境压力
   if (state.envHeat && state.tick >= state.envHeat.next) {
     state.envHeat.next = state.tick + state.envHeat.everyTicks
@@ -1117,6 +1124,88 @@ export function setFocus(state: BattleState, targetId?: string): void {
   } else if (state.commands.focusId === undefined && targetId) {
     pushLog(state, 'guild', '集火目标已失效')
   }
+}
+
+// ===== A3 #1.1 招牌技能:玩家可点名释放的主动技(UI 与 ai.ts 只调 useSignature) =====
+
+/** 目标是否有可打断的进行中咏唱(任一 boss 机制处于 cast 窗口且可打断) */
+function hasActiveCast(state: BattleState, targetId?: string): boolean {
+  if (!targetId) return false
+  const target = state.combatants.find((c) => c.id === targetId && c.alive && c.team === 'enemy')
+  if (!target?.bossMechanics || !target.mech) return false
+  for (const def of target.bossMechanics) {
+    if (interruptThreshold(def) === undefined) continue
+    const rt = target.mech[def.kind]
+    if (rt?.until !== undefined && state.tick < rt.until) return true
+  }
+  return false
+}
+
+/** 玩家点名释放招牌技:校验通过则写入指令队列,由下一次 stepBattle 消费;返回是否受理 */
+export function useSignature(state: BattleState, memberId: string, targetId?: string): boolean {
+  if (state.status !== 'running') return false
+  const c = state.combatants.find((x) => x.memberId === memberId && x.alive && x.team === 'guild')
+  if (!c?.specId) return false
+  const skill = SIGNATURE_SKILLS[c.specId]
+  if (!skill) return false
+  if (state.tick < (state.signatureCd?.[memberId] ?? 0)) return false
+  // 本批招牌技全部以敌方咏唱为靶:没有在读条的目标就不受理(UI 据此禁用按钮)
+  if (!hasActiveCast(state, targetId)) return false
+  state.commands.signature = { memberId, skillId: skill.id, targetId }
+  return true
+}
+
+/** 消费招牌技指令:打断走 stepCastWindow 既有管线(置 taken=阈值,brokenBy 归属),二段效果复用既有字段 */
+export function executeSignature(state: BattleState, cmd: { memberId: string; skillId: string; targetId?: string }): void {
+  const skill = Object.values(SIGNATURE_SKILLS).find((s) => s.id === cmd.skillId)
+  if (!skill) return
+  const c = state.combatants.find((x) => x.memberId === cmd.memberId && x.alive && x.team === 'guild')
+  if (!c) return
+  state.signatureCd = { ...state.signatureCd, [cmd.memberId]: state.tick + skill.cdTicks }
+  const target = state.combatants.find((x) => x.id === cmd.targetId && x.alive && x.team === 'enemy')
+  let broken = false
+  if (target?.bossMechanics && target.mech) {
+    for (const def of target.bossMechanics) {
+      const threshold = interruptThreshold(def)
+      if (threshold === undefined) continue
+      const rt = target.mech[def.kind]
+      if (rt?.until !== undefined && state.tick < rt.until) {
+        rt.taken = threshold
+        rt.brokenBy = skill.name
+        broken = true
+      }
+    }
+  }
+  switch (skill.effect) {
+    case 'interrupt-shield': {
+      const shield = Math.round(c.attack * 4)
+      c.absorbShield = (c.absorbShield ?? 0) + shield
+      state.events.push({ tick: state.tick, type: 'shielded', targetId: c.id, amount: shield })
+      break
+    }
+    case 'interrupt-bind': {
+      if (target) {
+        target.boundUntilTick = state.tick + 90
+        state.events.push({ tick: state.tick, type: 'bound', targetId: target.id })
+      }
+      break
+    }
+    case 'interrupt-curse': {
+      if (target) {
+        target.vulnUntilTick = state.tick + 120
+        target.vulnMult = 1.25
+        state.events.push({ tick: state.tick, type: 'cursed', targetId: target.id })
+      }
+      break
+    }
+  }
+  pushLog(
+    state,
+    'guild',
+    broken
+      ? `${c.name} 使出【${skill.name}】——${target?.name ?? '目标'} 的咏唱被当场拍碎！`
+      : `${c.name} 使出【${skill.name}】，但目标并没有在读条——时机白费了。`,
+  )
 }
 
 export function useHealPotion(state: BattleState): boolean {

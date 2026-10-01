@@ -252,6 +252,18 @@ button.primary:hover:not(:disabled) {
   font-size: 11.5px;
 }
 
+/* ===== A3 招牌技能栏(#1.1) ===== */
+.signature-bar { display: flex; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+.signature-bar .sig-btn {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 6px 10px; border: 1px solid var(--edge-gold); background: #2a231c;
+  color: var(--ink); cursor: pointer; font-size: 11.5px; min-height: 44px;
+}
+.signature-bar .sig-btn.ready { border-color: var(--edge-gold-hi); box-shadow: 0 0 6px rgba(200, 160, 74, 0.35); }
+.signature-bar .sig-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.signature-bar .sig-name { font-weight: 600; color: var(--edge-gold-hi); }
+.signature-bar .sig-meta { color: var(--ink-dim); font-size: 10.5px; }
+
 /* 战报:文书誊录(暖黑底,可读性优先) */
 .log-box {
   margin-top: 12px;

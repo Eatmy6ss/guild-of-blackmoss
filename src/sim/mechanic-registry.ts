@@ -73,8 +73,10 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
       delete rt.until
       rt.taken = 0
       rt.next = state.tick + opts.everyTicks
+      const by = rt.brokenBy
+      rt.brokenBy = undefined
       state.events.push({ tick: state.tick, type: 'interrupted', targetId: self.id })
-      pushLog(state, 'guild', '集火奏效！' + self.name + ' 的【' + def.name + '】被打断了！')
+      pushLog(state, 'guild', (by ? `【${by}】奏效——` : '集火奏效！') + self.name + ' 的【' + def.name + '】被打断了！')
     } else if (state.tick >= rt.until) {
       delete rt.until
       rt.next = state.tick + opts.everyTicks
@@ -83,6 +85,7 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
   } else if ((rt.next ?? opts.firstTick) <= state.tick) {
     rt.until = state.tick + opts.castTicks
     rt.taken = 0
+    rt.brokenBy = undefined
     state.events.push({ tick: state.tick, type: 'casting', targetId: self.id, amount: opts.castTicks })
     pushLog(state, 'enemy', opts.startLog)
   }
