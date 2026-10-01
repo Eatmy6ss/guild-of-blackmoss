@@ -47,9 +47,9 @@ export const SIGNATURE_SKILLS: Record<string, SignatureSkill> = {
     targeting: 'enemy',
     desc: '盾面拍碎咒文:立即打断目标的咏唱,并举盾格挡接下来的几下攻击。',
   },
-  'warrior-charge': {
+  'warrior-vanguard': {
     id: 'sig-charge-lock',
-    specId: 'warrior-charge',
+    specId: 'warrior-vanguard',
     name: '锁足冲锋',
     cdTicks: 60,
     effect: 'interrupt-bind',
@@ -92,9 +92,9 @@ export const SIGNATURE_SKILLS: Record<string, SignatureSkill> = {
     targeting: 'self',
     desc: '唤起战狼的血性:召唤(若不在场)并强化它——攻击提升,伤势回复。',
   },
-  'warrior-weaponmaster': {
+  'warrior-weapons': {
     id: 'sig-weapon-execute',
-    specId: 'warrior-weaponmaster',
+    specId: 'warrior-weapons',
     name: '处决',
     cdTicks: 75,
     effect: 'execute-strike',

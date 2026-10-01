@@ -3,6 +3,7 @@ import { createBattle, useSignature, executeSignature, applyHit } from './combat
 import { generateMember } from './gen'
 import { BLACKMOSS } from '../data/dungeons'
 import { SIGNATURE_SKILLS } from '../data/signature'
+import { JOBS } from '../data/jobs'
 
 function castingBattle() {
   const state = createBattle(
@@ -44,12 +45,24 @@ describe('A3 #1.1 招牌技:真打断', () => {
     expect(useSignature(state, me.memberId!, enemy.id)).toBe(false)
   })
 
+  test('批次 1 出口:全部专精(含混合)各有一个招牌技,behavior 完整(spec 规格断言)', () => {
+    const specIds: string[] = []
+    for (const job of Object.values(JOBS)) for (const sp of Object.values(job.specs)) specIds.push(sp.id)
+    for (const id of specIds) {
+      const sig = SIGNATURE_SKILLS[id]
+      expect(sig, id + ' 缺招牌技').toBeTruthy()
+      expect(sig.name.length, id).toBeGreaterThan(0)
+      expect(sig.desc.length, id).toBeGreaterThan(10)
+      expect(['enemy', 'ally', 'self', 'none']).toContain(sig.targeting)
+    }
+  })
+
   test('制作人拍板的三个专精注册表齐备,cd 一致(决策窗对齐咏唱周期)', () => {
     expect(SIGNATURE_SKILLS['guard-ironwall']?.name).toBe('破咒盾击')
-    expect(SIGNATURE_SKILLS['warrior-charge']?.name).toBe('锁足冲锋')
+    expect(SIGNATURE_SKILLS['warrior-vanguard']?.name).toBe('锁足冲锋')
     expect(SIGNATURE_SKILLS['priest-discipline']?.name).toBe('诫命沉默')
     for (const s of Object.values(SIGNATURE_SKILLS)) expect(s.cdTicks).toBeGreaterThan(0)
-    for (const id of ['guard-ironwall', 'warrior-charge', 'priest-discipline']) expect(SIGNATURE_SKILLS[id].cdTicks).toBe(60)
+    for (const id of ['guard-ironwall', 'warrior-vanguard', 'priest-discipline']) expect(SIGNATURE_SKILLS[id].cdTicks).toBe(60)
     expect(SIGNATURE_SKILLS['mage-fire'].effect).toBe('detonate-burn') // A5:火法招牌=引爆
   })
 })
