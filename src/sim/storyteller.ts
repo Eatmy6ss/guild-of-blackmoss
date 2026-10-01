@@ -27,10 +27,11 @@ const bossName = (bossId?: string): string => {
 /** 优先级即"最强"排序:延迟兑现(能证明的跨时间因果)> 首杀陪葬 > 创伤生还 > 遗物待赎 > 心愿 > 默契 */
 const PRIORITY: StoryType[] = ['consequence-due', 'firstkill-death', 'scar-survive', 'relic-wait', 'wish-done', 'bond-star']
 
-export function tellExpedition(ledger: Pick<FactLedger, 'facts'>, rng: () => number): StoryEntry | null {
+export function tellExpedition(ledger: Pick<FactLedger, 'facts'>, rng: () => number, startId = 0): StoryEntry | null {
+  // startId=本趟远征第一笔事实的 id:碰撞类只查本趟,延迟兑现(跨时间因果)查全窗
   const slots: StorySlots = {}
   for (const type of PRIORITY) {
-    const factIds = collide(type, ledger.facts, slots)
+    const factIds = collide(type, type === 'consequence-due' ? ledger.facts : ledger.facts.filter((f) => f.id >= startId), slots)
     if (!factIds) continue
     const templates = TEMPLATES[type]
     const text = templates[Math.floor(rng() * templates.length) % templates.length](slots)

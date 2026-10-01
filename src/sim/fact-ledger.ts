@@ -15,6 +15,8 @@ export interface Fact {
   kind: FactKind
   /** memberId 列表(事件类可为空) */
   actors: string[]
+  /** id→名字映射(写入口顺手带,说书人模板取人名用;不必全员) */
+  names?: Record<string, string>
   refs: { itemUid?: string; eventId?: string; bossId?: string; dungeonId?: string; floor?: number }
   /** kind = death 时必填(断言守) */
   cause?: DeathCause

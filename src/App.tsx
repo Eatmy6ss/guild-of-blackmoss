@@ -164,6 +164,7 @@ export default function App() {
   const [factLedger, setFactLedger] = useState<FactLedger>(() => normalizeLedger(saved?.factLedger))
   const factLedgerRef = useRef(factLedger)
   const storyCursorRef = useRef(0) // A9:已讲过的账本水位;从上一条故事之后找碰撞
+  const expeditionStartFactRef = useRef(0) // A9:本趟出发时的账本水位(碰撞类只认本趟)
   const [saveFailed, setSaveFailed] = useState(false)
   const changeProgress = (patch: Partial<RunUIState>) => {
     const next = runReducer(progressRef.current, { type: 'patch', patch })
@@ -458,7 +459,7 @@ export default function App() {
       // A9 说书人 A 步:远征终局(通关/团灭/撤退)回城后,从上次讲过的水位找最强碰撞,最多 1 条
       if (['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
         const slice = factLedgerRef.current.facts.filter((f) => f.id >= storyCursorRef.current)
-        const story = tellExpedition({ facts: slice }, createRng(o.run.seed + o.run.stepIdx * 77 + day))
+        const story = tellExpedition({ facts: slice }, createRng(o.run.seed + o.run.stepIdx * 77 + day), expeditionStartFactRef.current)
         if (story) {
           storyCursorRef.current = factLedgerRef.current.nextId
           logChronicle(chronicleRaw(day, '📖 ' + story.text))
@@ -705,6 +706,7 @@ export default function App() {
     growthSnapshotRef.current = new Map(
       expedition.map((m) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s, n) => s + bondStars(n), 0), bonds: { ...m.bonds } }]),
     )
+    expeditionStartFactRef.current = factLedgerRef.current.nextId // A9:本趟故事只认出发后的碰撞
     runRef.current = createRun(
       expedition,
       activeDungeon,
