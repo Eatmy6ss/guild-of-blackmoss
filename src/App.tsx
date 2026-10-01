@@ -33,7 +33,7 @@ import {
 } from './sim/combat'
 import { SignatureBar } from './ui/battle/SignatureBar'
 import { BattleHints } from './ui/battle/BattleHints'
-import { BATTLE_HINTS, DOCK_UNLOCK_DAY, FIRST_RETURN_TIP } from './data/tutorial'
+import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE, FIRST_RETURN_TIP } from './data/tutorial'
 import { appendFact, latestEventChoice, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
 import { SIGNATURE_SKILLS } from './data/signature'
@@ -172,6 +172,12 @@ export default function App() {
     if (hintsSeenRef.current.includes(id)) return
     hintsSeenRef.current = [...hintsSeenRef.current, id]
     setHintsSeen(hintsSeenRef.current)
+  }
+  // A10:主菜单解锁=天数或里程碑(仓库见第一件装备/大事记见第一条记录/名人堂有第一位亡者)
+  const dockUnlocked = (key: string): boolean => {
+    if (day >= (DOCK_UNLOCK_DAY[key] ?? 1)) return true
+    const milestone = DOCK_UNLOCK_MILESTONE[key]
+    return milestone ? milestone({ inventoryCount: inventory.length, chronicleCount: chronicle.length, memorialCount: memorial.length }) : false
   }
   const storyCursorRef = useRef(0) // A9:已讲过的账本水位;从上一条故事之后找碰撞
   const expeditionStartFactRef = useRef(0) // A9:本趟出发时的账本水位(碰撞类只认本趟)
@@ -1346,7 +1352,7 @@ export default function App() {
         setHubScreen(null)
         return
       }
-      const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase() && day >= (DOCK_UNLOCK_DAY[it.key] ?? 1))
+      const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase() && dockUnlocked(it.key))
       if (hit) setHubScreen((cur) => (cur === hit.key ? null : hit.key))
     }
     window.addEventListener('keydown', onKey)
@@ -1598,7 +1604,7 @@ export default function App() {
           <div className="hub-dock">
             {HUB_DOCK.map((it) => {
               const unlockDay = DOCK_UNLOCK_DAY[it.key] ?? 1
-              const locked = day < unlockDay
+              const locked = !dockUnlocked(it.key)
               return (
               <button
                 key={it.key}

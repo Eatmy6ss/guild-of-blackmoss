@@ -104,6 +104,12 @@ const screens = [
   ['手册', '手册'],
 ]
 for (const [btn, label] of screens) {
+  // A10 渐进解锁:锁定的入口(按钮带 🔒)按设计打不开——记录为 skip 而非 issue
+  const locked = await evalJs(`(() => { const b = [...document.querySelectorAll('.dock-btn')].find(x => x.textContent.includes('${label}')); return b ? (b.disabled && b.textContent.includes('🔒')) : 'nofind' })()`)
+  if (locked === true || locked === 'true') {
+    console.log(`  [skip] ${label} 按设计未解锁(第 1 日)`)
+    continue
+  }
   await clickBtn(label)
   const opened = await evalJs(`!!document.querySelector('.screen-panel')`)
   if (!opened) issue(`浮层「${label}」打不开`)

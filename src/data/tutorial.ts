@@ -8,10 +8,17 @@ export const DOCK_UNLOCK_DAY: Record<string, number> = {
   tavern: 1,
   manual: 1,
   warehouse: 2,
-  chronicle: 2,
+  chronicle: 1,
   kingdom: 4,
   base: 4,
   memorial: 5,
+}
+
+/** 里程碑提前解锁:锁定的入口在其功能首次相关时立即开放(纯天数会与游戏事件打架) */
+export const DOCK_UNLOCK_MILESTONE: Record<string, (ctx: { inventoryCount: number; chronicleCount: number; memorialCount: number }) => boolean> = {
+  warehouse: (c) => c.inventoryCount > 0,
+  chronicle: (c) => c.chronicleCount > 0,
+  memorial: (c) => c.memorialCount > 0,
 }
 
 export interface BattleHint {
