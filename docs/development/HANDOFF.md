@@ -1,5 +1,12 @@
 # 当前交接
 
+## 当前接续：A13 存档写入节流（认领人 zcode/本机，2026-10-01，✅ 已交付 6968184）
+
+- **交付**：①`state/save.ts` 新增 `COMBAT_SAVE_INTERVAL_MS=5000` + 纯函数 `combatSaveDue`；App 存档 effect 战斗进行中按 5 秒窗节流（原每 tick ≈10 次/秒写 .bak+主档），战斗结束/节点边界/大厅操作立即写（非战斗态窗口归零）。②写失败不再静默——`saveGuild` 返回 false 时 `setSaveFailed(true)`,游戏壳顶部出现可见警告条(`.save-warning`,建议导出备份)。③README 死链(eatmy6ss.github.io 404)替换为本地试玩说明。④`chronicleWipeRebuild` 首次被调用——团灭结算时进编年史(加 seq 参数),审计更正项闭环。⑤节流回归测试 `save-throttle.test.ts`(审计 #9 盲区)。
+- **#0.6 复核**：断点粒度从"每 tick"放宽为"≤5 秒"——战斗中刷新最多回退 5 秒 tick;run-recovery 7 项测试与 e2e-battle/cdp 全过,恢复链路未变。battle.events 不裁剪(恢复保真需要,超出 A13 范围,记为后续项)。
+- **验证**：完整 verify 退出 0(Vitest 76(+2)、smoke 47、玩法/王国回归、构建)+ e2e-battle/cdp PASS。
+- 提交：`6968184`,已推 origin/main。**测试垫片注意**:gameplay.test.ts 的 rngScope 默认作用域补了 combatSaveDue/lastCombatSaveRef/setSaveFailed——以后动存档 effect 的标识符需同步该处。
+
 ## 当前接续：A15 战后小结（认领人 zcode/本机，2026-10-01，✅ 已交付 834d6b2）
 
 - **交付**：①`sim/battle-summary.ts` 纯聚合——`buildBattleSummary` 从 battle events 聚合敌方对我方输出前 3（**败因**，含我方输出/治疗排除与 0 值过滤）、映射阵亡者（**死因**=渲染串+结构化 killerName/mechanic/affixes，批次 3 碑文直接消费）、关键时刻透传截 4 条。②`settleEncounter` 产出 `summary` 挂 OutcomeBase，途中收集关键时刻（首杀/高塔纪录/升级 Lv 旧→新/默契升星）。③`RunUIState.lastSummary` 可选持久化（validateRunState 轻量形态校验，断点恢复可见）。④App 战斗结束横幅下渲染 `.battle-summary`（阵亡/败因[仅全灭]/关键时刻三行，文书风与面板同调）。⑤3 项聚合测试。
