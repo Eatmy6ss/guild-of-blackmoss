@@ -1,5 +1,6 @@
-import type { BattleState, DeadHero, DungeonDef, Member, RouteNodeDef } from './types'
+import type { BattleState, DeadHero, DeathCause, DungeonDef, Member, RouteNodeDef } from './types'
 import type { RunBuffDef } from '../data/guild-events'
+import { DUNGEONS } from '../data/dungeons'
 import { createBattle, POTION_STOCK, toCombatant } from './combat'
 import { grantExp, xpNeeded } from './gen'
 import { createRunCore, runDungeon, runMembers, syncRunParty, type RunCore } from './run-core'
@@ -178,9 +179,24 @@ export function advanceRun(run: DungeonRun, roster: Member[] = []): void {
  * 永久死亡登记（D11）：战斗中倒地的远征队员从花名册划去，进入纪念堂。
  * 在 advanceRun 之后、下一次 startStep 之前调用。
  */
-export function markPermadeath(run: { members: Member[]; battle: BattleState | null; dungeon?: DungeonDef }, place = run.dungeon?.name ?? '未知之地'): DeadHero[] {
+/** 死因渲染(U22 对齐):唯一把 DeathCause 变成碑文文本的地方;smoke 7a 依赖碑文含地名 */
+export function renderDeathCause(dc: DeathCause): string {
+  const place = dc.where.source === 'tower'
+    ? `黑苔高塔第 ${dc.where.floor ?? '?'} 层`
+    : DUNGEONS.find((d) => d.id === dc.where.id)?.name ?? dc.where.id
+  return `陨落于${place}`
+}
+
+export function markPermadeath(
+  run: { members: Member[]; battle: BattleState | null; dungeon?: DungeonDef; kind?: 'dungeon' | 'tower'; dungeonId?: string; floor?: number },
+  place = run.dungeon?.name ?? '未知之地',
+): DeadHero[] {
   const b = run.battle
   if (!b) return []
+  const where: DeathCause['where'] = run.kind === 'tower'
+    ? { source: 'tower', id: 'tower', floor: run.floor }
+    : { source: 'dungeon', id: run.dungeonId ?? run.dungeon?.id ?? place }
+  const death: DeathCause = { kind: 'battle', where }
   const dead: DeadHero[] = []
   for (const c of b.combatants) {
     if (c.team !== 'guild' || c.alive || !c.memberId) continue
@@ -193,7 +209,8 @@ export function markPermadeath(run: { members: Member[]; battle: BattleState | n
         name: m.name,
         job: m.job,
         level: m.level,
-        cause: `陨落于${place}`,
+        cause: renderDeathCause(death),
+        death,
       })
     }
   }

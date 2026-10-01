@@ -1,5 +1,6 @@
 import { DUNGEONS } from '../data/dungeons'
 import type { Member } from './types'
+import type { ItemUid } from '../state/item-registry'
 import { createStatefulRng, type Rng } from './rng'
 
 /** 两种现有远征的持久数据；运行时的成员/地图/随机函数不放进对象。 */
@@ -13,6 +14,10 @@ export interface RunCore {
   pendingLoot: { items: string[]; gold: number; starMarrow: number; exp: number }
   affixes: string[]
   clauses: string[]
+  /** U22 预留:营地换装全队共享备用格(批次 3 消费);可选字段,旧档缺省兼容 */
+  spares?: ItemUid[]
+  /** U22 预留:已 roll 怪物词缀(按路线节点/塔层记录,进节点时确定供侦查揭示);批次 3 消费 */
+  monsterAffixes?: Record<string, string[]>
 }
 
 export function createRunCore(members: Member[], seed: number): RunCore {

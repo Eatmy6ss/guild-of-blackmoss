@@ -82,6 +82,10 @@ export function validateRunState(value: unknown, roster: { id: string; hp: numbe
       !object(r.pendingLoot) || !strings(r.pendingLoot.items) ||
       !count(r.pendingLoot.gold) || !count(r.pendingLoot.starMarrow) || !count(r.pendingLoot.exp) ||
       !object(r.potions) || !count(r.potions.heal) || !count(r.potions.fury)) return false
+  // U22 预留字段(批次 3 消费):存在即校验形态,缺省合法
+  if (r.spares !== undefined && !strings(r.spares)) return false
+  if (r.monsterAffixes !== undefined && (!object(r.monsterAffixes) ||
+      Object.values(r.monsterAffixes).some((v) => !strings(v)))) return false
   if (r.memberIds.some((id: string, i: number) => !roster.some(m => m.id === id) ||
       !object(r.party[i]) || r.party[i].memberId !== id || !finite(r.party[i].hp) || r.party[i].hp < 0)) return false
   if (r.kind === 'dungeon') {

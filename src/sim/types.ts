@@ -448,13 +448,26 @@ export interface BattleCommands {
   autoMode: boolean
 }
 
+/** 结构化死因(U22 对齐,实施计划 #0.10 补充):碑文/说书由它渲染,不反向拼字符串;affixes 批次 3 填充 */
+export interface DeathCause {
+  kind: 'battle' | 'mechanic' | 'event' | 'scar' | 'other'
+  killerName?: string
+  mechanic?: MechanicKind
+  /** 预留:死于带哪些怪物词缀的敌人(批次 3 填) */
+  affixes?: string[]
+  where: { source: 'dungeon' | 'tower'; id: string; floor?: number }
+}
+
 /** 纪念堂 entries（D11）：阵亡英雄的永久记录 */
 export interface DeadHero {
   id: string
   name: string
   job: JobId
   level: number
+  /** 渲染后的碑文(由 renderDeathCause 从 death 生成;纪念堂展示与 smoke 7a 兼容) */
   cause: string
+  /** 结构化死因(U22):编年史/说书层的消费源;老档无此字段 */
+  death?: DeathCause
   /** K02 纪念品质(U11):生平成就生成的品质记录;老档无此字段 = 凡逝 */
   legacy?: import('./memorial').LegacyRecord
 }
