@@ -16,6 +16,7 @@ import { ITEM_BASES } from './data/items'
 import { describeEquipmentSet } from './sim/equipment-sets'
 import { RACES } from './data/races'
 import { guildGoals } from './sim/goals'
+import { guildRankOf } from './sim/rank'
 import { applyFeast, applyRestMorale, refusesToMarch } from './sim/morale'
 import { chronicleFeast, chronicleRefusal, chronicleRecruit, chronicleBuilding, moraleReadout, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import {
@@ -1567,10 +1568,18 @@ export default function App() {
             const masteryTotal = Object.values(dungeonMastery).reduce((a, b) => a + b, 0)
             const goals = guildGoals({ members, inventory, manual, expedition, towerBest, masteryTotal, kingdomDone: kingdom.completed.length })
             const cur = goals.find((g) => !g.done)
+            const rank = guildRankOf(manual)
             return (
-              <p className="hub-goal">
-                📋 当前目标:{cur ? cur.text : '全部达成!'}{cur?.progress ? `(${cur.progress})` : ''}
-              </p>
+              <>
+                <p className="hub-goal">
+                  🏅 公会位阶:{rank.name}{rank.promotion
+                    ? ` —— 晋升委托:${rank.promotion.text}`
+                    : '(位阶完整版随首轮试玩反馈开启)'}
+                </p>
+                <p className="hub-goal">
+                  📋 当前目标:{cur ? cur.text : '全部达成!'}{cur?.progress ? `(${cur.progress})` : ''}
+                </p>
+              </>
             )
           })()}
           <button className="royal-hub-link" disabled={!!run || !!towerRun} onClick={() => setHubScreen('kingdom')}>

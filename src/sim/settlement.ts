@@ -8,6 +8,7 @@ import { baseEffects } from '../data/base'
 import type { DeadHero, ItemInstance, Member } from './types'
 import { advanceRun, markPermadeath, settleGrowth, type DungeonRun, type GrowthResult } from './run'
 import { buildBattleSummary, type BattleSummary } from './battle-summary'
+import { rankPromotion } from './rank'
 import { settleTowerFloor, type TowerRun } from './tower'
 import { rollBossDrops, rollWaveDrop } from './loot'
 import { waveDropBonus } from './member-traits'
@@ -267,6 +268,12 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     const before = input.guild.kingdom.active.find(x => x.id === record.id)
     const def = COMMISSIONS.find(x => x.id === record.id)
     if (def && before && record.progress > before.progress) outcome.notices.push('王国委托「' + def.title + '」进度 ' + record.progress + '/' + def.objective.target + '。')
+  }
+  // A14 位阶演出:结算后升阶 → 编年史+通知(编年史即持久化,幂等)
+  const promoted = rankPromotion(input.guild.manual, guild.manual)
+  if (promoted) {
+    c.chronicle.push(chronicleRaw(day, promoted, ++seq))
+    outcome.notices.push(promoted)
   }
   outcome.summary = buildBattleSummary({
     status: common.battle.status,
