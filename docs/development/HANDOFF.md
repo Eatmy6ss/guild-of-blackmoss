@@ -1,9 +1,10 @@
 # 当前交接
 
-## 当前接续：U22 对齐工单（认领人 zcode/本机，2026-10-01，制作人气"我们继续推进"授权开工）
+## 当前接续：U22 对齐工单（认领人 zcode/本机，2026-10-01，✅ 已交付 c7a01b8）
 
-- **认领范围**：原发 shldo 的 U22 对齐工单（DeathCause 结构化 + RunCore 预留 spares/monsterAffixes）由本机接手——shldo 已转美术线（PR #6 已合并），工单闲置；制作人气"我们继续推进"。范围与验收照旧：死因改结构化 `DeathCause`（kind/killerName/mechanic/affixes/where，affixes 只预留批次 3 填）、碑文由渲染函数生成、`RunCore` 补可选字段（schema 保持 1）、垫片与测试适配、完整 verify 全绿、不改战斗数值与行为。
-- **施工边界**：一任务一中文 commit；编年史叙述句（chronicleHeroFall 的"酒馆"风味句）属说书层，本工单不改其签名——结构化真源=DeadHero.death，批次 3 说书人消费；`towerMarkPermadeath` 保持兼容垫片不动。完成后本节更新交付状态。
+- **交付**：①`DeathCause` 结构化类型入 `sim/types.ts`（kind/killerName/mechanic/affixes/where，affixes 只预留批次 3 填）；`markPermadeath` 按 run.kind 派生 `where`（副本=source+副本id，高塔=source+层数），`DeadHero` 新增 `death?: DeathCause`，碑文 `cause` 由唯一渲染函数 `renderDeathCause` 生成（塔=`黑苔高塔第 N 层`、副本=查 DUNGEONS 表名，smoke 7a 口径不变）。②`RunCore` 补可选字段 `spares?: ItemUid[]` 与 `monsterAffixes?: Record<string,string[]>`（schema 保持 1，createRunCore 不初始化，旧档缺省合法），`run-state.validateRunState` 对其存在即校验形态。③新增 `death-cause.test.ts` 4 项（副本/高塔碑文渲染、空战斗、JSON 往返）。编年史叙述句（chronicleHeroFall"酒馆"风味句）按施工边界未动，批次 3 说书人消费 `DeadHero.death`。
+- **验证**：完整 verify 退出 0——Vitest 69（+4）、smoke 47（7a 死因断言过）、玩法/王国回归、生产构建。不改战斗数值与行为。
+- 提交：认领 `a559428` + 实现 `c7a01b8`，均已推 origin/main。
 
 ## 当前接续：免费资源库与像素奇幻表现首轮（2026-10-01，shldo，已推送，PR #6待审查）
 
