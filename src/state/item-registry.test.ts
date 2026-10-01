@@ -118,7 +118,7 @@ describe('物品注册表与唯一归属 I6', () => {
       run.battle!.status = 'guild-win'
       const victim = run.battle!.combatants.find(c => c.memberId === resolved[0].id)!
       victim.alive = false; victim.hp = 0
-      const outcome = settleEncounter({ source, run, guild: { members: resolved, manual: [], kingdom: newKingdomState(), dungeonMastery: {}, towerBest: 0, recruitCooldown: 0, day: 8, buildings: {}, chronicle: [] } } as Parameters<typeof settleEncounter>[0], () => 0)!
+      const outcome = settleEncounter({ source, run, guild: { factLedger: { nextId: 1, facts: [] }, members: resolved, manual: [], kingdom: newKingdomState(), dungeonMastery: {}, towerBest: 0, recruitCooldown: 0, day: 8, buildings: {}, chronicle: [] } } as Parameters<typeof settleEncounter>[0], () => 0)!
       const applied = applyEncounterItems(state, outcome.guild.members, outcome.loot.items, outcome.consequences.relics)
       expect(itemOwnershipErrors(applied.state)).toEqual([])
       expect(applied.state.equipment[members[0].id]).toEqual({})

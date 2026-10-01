@@ -15,7 +15,7 @@ import type { Visitor } from '../sim/tavern'
 
 const KEY = 'guild-game-save-v1' // 键名保持:内部用 schema version 迁移,不换键
 
-export const SAVE_VERSION = 21
+export const SAVE_VERSION = 22
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -39,6 +39,8 @@ export interface StoredGuildBuff {
 }
 
 export interface GuildSave extends StoredItemFields {
+  /** v22: 结构化事实账本(说书人查询层;编年史继续存成品句子) */
+  factLedger: import('../sim/fact-ledger').FactLedger
   runState: RunUIState
   /** 事件已兑现的访客要随结果保存，避免刷新丢掉这项报酬。 */
   visitor: Visitor | null
@@ -89,6 +91,8 @@ export interface GuildSave extends StoredItemFields {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  // A2 事实账本(ROADMAP §3.3):v22 起记录,旧档为空账本(编年史不迁移)
+  21: (d) => ({ ...d, factLedger: { nextId: 1, facts: [] } }),
   20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),
   19: (d) => {
     const result = readItemFields(d, true)

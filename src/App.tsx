@@ -32,6 +32,7 @@ import {
   toCombatant,
 } from './sim/combat'
 import { SignatureBar } from './ui/battle/SignatureBar'
+import { appendFact, latestEventChoice, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import {
   createRun,
   startStep,
@@ -158,6 +159,8 @@ export default function App() {
   const [progress, dispatchProgress] = useReducer(runReducer, saved?.runState ?? initialRunState())
   const progressRef = useRef(progress)
   const lastCombatSaveRef = useRef(0)
+  const [factLedger, setFactLedger] = useState<FactLedger>(() => normalizeLedger(saved?.factLedger))
+  const factLedgerRef = useRef(factLedger)
   const [saveFailed, setSaveFailed] = useState(false)
   const changeProgress = (patch: Partial<RunUIState>) => {
     const next = runReducer(progressRef.current, { type: 'patch', patch })
@@ -419,6 +422,7 @@ export default function App() {
   }
 
   const encounterGuild = (): EncounterGuild => ({
+    factLedger: factLedgerRef.current,
     members: membersRef.current, manual, kingdom: kingdomRef.current,
     dungeonMastery, towerBest, recruitCooldown, day, buildings, chronicle: chronicleRef.current,
   })
@@ -426,6 +430,8 @@ export default function App() {
   // 判定已由 sim 完成；这里仅将结果同步到公会状态和当前玩法。
   const applyOutcome = (o: EncounterOutcome) => {
     changeProgress({ lastSummary: o.summary })
+    factLedgerRef.current = o.guild.factLedger
+    setFactLedger(o.guild.factLedger)
     const gear = applyEncounterItems(itemOwnershipRef.current, o.guild.members, o.loot.items, o.consequences.relics)
     updateItemOwnership(gear.state, o.guild.members)
     updateKingdom(o.guild.kingdom)
@@ -488,9 +494,9 @@ export default function App() {
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
       lastCombatSaveRef.current = now
     } else lastCombatSaveRef.current = 0
-    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState() })
+    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger })
     setSaveFailed(!ok)
-  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult])
+  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -617,6 +623,8 @@ export default function App() {
     if (!result) return
     updateItemOwnership(result.state)
     setGold(g => g - result.relic.redeem)
+    appendFact(factLedgerRef.current, day, { kind: 'relic-redeem', actors: [], refs: { itemUid: uid } })
+    setFactLedger({ ...factLedgerRef.current })
     logChronicle(chronicleRaw(day, '花 ' + result.relic.redeem + ' 金赎回了 ' + result.relic.hero + ' 的遗物。'))
   }
 
@@ -665,6 +673,9 @@ export default function App() {
     if (due) {
       const def = GUILD_EVENTS.find((e) => e.id === due.eventId)
       if (def) {
+        const link = latestEventChoice(factLedgerRef.current, due.eventId)
+        appendFact(factLedgerRef.current, day, { kind: 'consequence-due', actors: [], refs: { eventId: due.eventId }, links: link ? [link.id] : undefined })
+        setFactLedger({ ...factLedgerRef.current })
         pendingConsequenceRef.current = due
         pendingDepartureRef.current = branchId
         setPendingEvent(def)
@@ -923,6 +934,9 @@ export default function App() {
     const rng = (runRef.current ? runRng(runRef.current) : guildRng)
     const outcome = pickOutcome(ev, choiceIdx, rng())
     eventResolvingRef.current = true
+    // A2:事件选择入账(说书链头;consequence-due 兑现时经 latestEventChoice 建链)
+    appendFact(factLedgerRef.current, day, { kind: 'event-choice', actors: runRef.current ? runRef.current.memberIds : [], refs: { eventId: ev.id } })
+    setFactLedger({ ...factLedgerRef.current })
     // 决策与奖励同批落盘;仅展示时保留队列,刷新不能跳过未处理后果。
     const due = pendingConsequenceRef.current
     if (due) {
@@ -1033,6 +1047,9 @@ export default function App() {
     setEventsSeen((s) => (s.includes(ev.id) ? s : [...s, ev.id]))
     // 延迟第二幕:入队,dueDay 到期在出征日弹出;引子当场可见(反馈:后续事件要留钩子)
     if (fx.delayed) {
+      const link = latestEventChoice(factLedgerRef.current, fx.delayed!.eventId)
+      appendFact(factLedgerRef.current, day, { kind: 'event-choice', actors: runRef.current ? runRef.current.memberIds : [], refs: { eventId: fx.delayed!.eventId }, links: link ? [link.id] : undefined })
+      setFactLedger({ ...factLedgerRef.current })
       setPendingConsequences((q) => [...(q ?? []), { eventId: fx.delayed!.eventId, dueDay: day + fx.delayed!.dueDays }])
       chip('这件事,还没有完……', 'hook')
     }

@@ -12,6 +12,7 @@ import { newKingdomState } from './kingdom'
 import { applyDeathShock, applyVictory } from './morale'
 import { rollDrop } from './loot'
 import { chronicleRaw, seedChronicle } from './chronicle'
+import { EMPTY_LEDGER } from './fact-ledger'
 import { settleEncounter, type EncounterGuild, type EncounterInput } from './settlement'
 
 function roster() {
@@ -26,7 +27,7 @@ function roster() {
 
 function guild(members = roster()): EncounterGuild {
   return { members, manual: [], kingdom: newKingdomState(), dungeonMastery: {}, towerBest: 0,
-    recruitCooldown: 2, day: 7, buildings: {}, chronicle: [{ seq: 15, day: 6, text: '既有故事' }] }
+    recruitCooldown: 2, day: 7, buildings: {}, factLedger: { ...EMPTY_LEDGER }, chronicle: [{ seq: 15, day: 6, text: '既有故事' }] }
 }
 
 function fixture(source: 'dungeon' | 'tower', status = 'retreated' as 'guild-win' | 'retreated' | 'guild-wipe'): EncounterInput {

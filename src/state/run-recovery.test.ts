@@ -38,7 +38,7 @@ function roster(): Member[] {
 
 function save(members = roster()): GuildSave {
   const fields = serializeGuildItems(createGuildItems(members), members)
-  return { ...fields, version: SAVE_VERSION, rngState: 83299, runState: initialRunState(),
+  return { ...fields, version: SAVE_VERSION, rngState: 83299, runState: initialRunState(), factLedger: { nextId: 1, facts: [] },
     visitor: null, generationState: memberGenerationState(), trainingReady: false, statistics: newStatistics(8),
     kingdom: { active: [], completed: [] }, rareHuntNext: null, gold: 900, blessing: 4, starMarrow: 3,
     healingMastery: {}, memorial: [], manual: ['talma'], protectOn: false, recruitCooldown: 0,
@@ -249,11 +249,11 @@ test('待选/已选事件、待出发与延迟后果是存档数据；访客身�
   expect(resumedRng.state()).toBe(expectedRng)
 })
 
-test('真实 v20 注册表逐级升 v21：公会资产、UID/序号、公会随机数不变，初始化无活动远征', () => {
+test('真实 v20 注册表逐级升 v22：公会资产、UID/序号、公会随机数不变，账本为空、初始化无活动远征', () => {
   const data: any = save()
   data.version = 20; delete data.runState; delete data.visitor; delete data.generationState
   const before = JSON.stringify(data), upgraded = migrate(data)
-  expect(upgraded.version).toBe(21)
+  expect(upgraded.version).toBe(SAVE_VERSION)
   for (const key of Object.keys(data).filter(k => k !== 'version')) expect((upgraded as any)[key]).toEqual(data[key])
   expect(JSON.stringify(data)).toBe(before)
   expect(upgraded.runState).toEqual(initialRunState()); expect(upgraded.generationState).toBeNull()

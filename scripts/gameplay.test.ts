@@ -1,5 +1,6 @@
 import { runMembers as resolveRunMembers, runDungeon as resolveRunDungeon, runRng as dataRunRng } from '../src/sim/run-core'
 import { initialRunState, checkpointRunState, runReducer } from '../src/sim/run-state'
+import { appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER } from '../src/sim/fact-ledger'
 import { memberGenerationState, restoreMemberGeneration } from '../src/sim/gen'
 import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor } from './run-test-compat'
 import assert from 'node:assert/strict'
@@ -408,6 +409,8 @@ function rngScope(scope: Record<string, unknown>) {
   return { initialRunState, checkpointRunState, memberGenerationState, restoreMemberGeneration,
     progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
     combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {},
+    appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER,
+    factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
     membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
     runMembers: (r: any, ms: Member[]) => r.memberIds ? resolveRunMembers(r, ms?.length ? ms : r.members ?? []) : r.members,
     runDungeon: (r: any) => r.dungeonId ? resolveRunDungeon(r) : r.dungeon,
@@ -440,7 +443,7 @@ function settlementUi(members: Member[]) {
   scope.setItemOwnership = (v: any) => { state.itemOwnership = v; state.inventory = inventoryItems(v); state.pendingRelics = relicItems(v) }
   scope.updateItemOwnership = handler('updateItemOwnership', scope)
   scope.updateItemOwnership(scope.itemOwnershipRef.current)
-  scope.encounterGuild = (): EncounterGuild => ({ ...state, members: scope.membersRef.current, chronicle: scope.chronicleRef.current })
+  scope.encounterGuild = (): EncounterGuild => ({ ...state, factLedger: { nextId: 1, facts: [] }, members: scope.membersRef.current, chronicle: scope.chronicleRef.current })
   scope.applyOutcome = handler('applyOutcome', scope)
   return {
     state, scope,

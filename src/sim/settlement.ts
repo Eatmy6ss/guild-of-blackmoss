@@ -9,6 +9,7 @@ import type { DeadHero, ItemInstance, Member } from './types'
 import { advanceRun, markPermadeath, settleGrowth, type DungeonRun, type GrowthResult } from './run'
 import { buildBattleSummary, type BattleSummary } from './battle-summary'
 import { rankPromotion } from './rank'
+import { appendFact, pruneFacts, type FactLedger } from './fact-ledger'
 import { settleTowerFloor, type TowerRun } from './tower'
 import { rollBossDrops, rollWaveDrop } from './loot'
 import { waveDropBonus } from './member-traits'
@@ -28,6 +29,8 @@ import type { Rng } from './rng'
 import { runMembers, runDungeon, runRng, syncRunParty } from './run-core'
 
 export interface EncounterGuild {
+  /** A2 事实账本:settlement 是唯一追加方之一(App 侧只经账本函数) */
+  factLedger: FactLedger
   members: Member[]
   manual: string[]
   kingdom: KingdomState
@@ -86,6 +89,8 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     members: structuredClone(input.guild.members),
     manual: [...input.guild.manual],
     dungeonMastery: { ...input.guild.dungeonMastery },
+    // A2:账本必须显式拷贝——appendFact 原地改写,浅拷贝会穿透到输入方(违反结算契约,run-recovery 抓过)
+    factLedger: { nextId: input.guild.factLedger.nextId, facts: [...input.guild.factLedger.facts] },
   }
   const members = runMembers(original, guild.members)
   // 旧模拟助手只改成员/阶段/药水及 scarsSettled；隔离这些可写对象，战斗日志不复制。
@@ -128,6 +133,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         guild.manual.push(enc.bossId)
         c.chronicle.push(chronicleFirstKill(day, boss.name, members.find(m => m.alive) ?? members[0], ++seq))
         moments.push('公会首杀:' + boss.name)
+        appendFact(guild.factLedger, day, { kind: 'first-kill', actors: members.filter(m => m.alive).map(m => m.id).slice(0, 1), refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id } })
       }
     } else if (outcome.win) {
       const drop = rollWaveDrop(runDungeon(r).id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
@@ -157,8 +163,15 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   }
 
   const dead = outcome.deaths
+  for (const d of dead) {
+    if (d.death) appendFact(guild.factLedger, day, { kind: 'death', actors: [d.id], cause: d.death, refs: { dungeonId: d.death.where.id, floor: d.death.where.floor } })
+  }
   const scars = settleScars({ ...outcome.run, members }, dead.length > 0, input.source === 'tower' ? input.run.floor : 0, rng)
   c.scars = scars.map(({ member, scar }) => ({ memberId: member.id, scar }))
+  for (const { member, scar } of scars) {
+    appendFact(guild.factLedger, day, { kind: 'scar', actors: [member.id], refs: { dungeonId: input.source === 'dungeon' ? input.run.dungeonId : 'tower', floor: input.source === 'tower' ? input.run.floor : undefined } })
+    void scar
+  }
   for (const { member, scar } of scars) {
     const text = member.name + ' 新增创伤：' + scarStatName(scar.stat) + ' -' + scar.value + '（' + scar.text + '），可回基地疗养。'
     outcome.notices.push(text)
@@ -173,7 +186,10 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       if (outcome.source === 'tower' && outcome.run.insuredFloor) {
         outcome.loot.items.push(item)
         insuredRelics++
-      } else c.relics.push({ item, hero: d.name, redeem: redeemCost(item, outcome.source === 'tower' ? outcome.run.floor : undefined) })
+      } else {
+        c.relics.push({ item, hero: d.name, redeem: redeemCost(item, outcome.source === 'tower' ? outcome.run.floor : undefined) })
+        appendFact(guild.factLedger, day, { kind: 'relic-bind', actors: [d.id], refs: { itemUid: item.id } })
+      }
       m.equipment[slot] = undefined
     }
   }
@@ -207,6 +223,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       dungeonCleared: id => input.guild.manual.includes(DUNGEON_FINAL_BOSS[id] ?? ''),
     }, rng)
     c.wishes = wishes.progress
+    for (const w of wishes.progress) appendFact(guild.factLedger, day, { kind: 'wish-done', actors: [w.memberId], refs: {} })
     for (const text of wishes.stories) c.chronicle.push(chronicleRaw(day, text, ++seq))
   }
   outcome.deaths = dead.map(d => ({ ...d, legacy: computeLegacy(d, {
@@ -225,6 +242,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       if (guild.towerBest > input.guild.towerBest) {
         c.chronicle.push(chronicleTowerRecord(day, guild.towerBest, ++seq))
         moments.push('高塔纪录刷新:第 ' + guild.towerBest + ' 层')
+        appendFact(guild.factLedger, day, { kind: 'tower-record', actors: [], refs: { floor: guild.towerBest } })
       }
     }
   } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run) }, effects.expMult)
@@ -245,6 +263,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       if (stars > bondStars(before)) {
         c.chronicle.push(chronicleBondStar(day, a, b, stars, ++seq))
         moments.push(a.name + ' × ' + b.name + ' 默契 ' + stars + '★')
+        appendFact(guild.factLedger, day, { kind: 'bond-star', actors: [a.id, b.id], refs: {} })
       }
     }
   }
@@ -282,6 +301,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     deaths: outcome.deaths,
     moments,
   })
+  pruneFacts(guild.factLedger, day)
   syncRunParty(outcome.run, guild.members)
   return outcome
 }
