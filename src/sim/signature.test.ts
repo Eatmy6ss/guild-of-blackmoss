@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { createBattle, useSignature, executeSignature } from './combat'
+import { createBattle, useSignature, executeSignature, applyHit } from './combat'
 import { generateMember } from './gen'
 import { BLACKMOSS } from '../data/dungeons'
 import { SIGNATURE_SKILLS } from '../data/signature'
@@ -35,7 +35,7 @@ describe('A3 #1.1 招牌技:真打断', () => {
   test('拒绝:专精无招牌技 / 目标没在读条 / 战斗已结束', () => {
     const { state, me, enemy } = castingBattle()
     const other = state.combatants.find((c) => c.team === 'guild' && c.alive && c.id !== me.id)!
-    other.specId = 'ranger-hawk'
+    other.specId = 'mage-fire'
     expect(useSignature(state, other.memberId!, enemy.id)).toBe(false)
     expect(state.commands.signature).toBeUndefined()
     enemy.mech!['telegraph-aoe'].until = state.tick - 1
@@ -48,6 +48,74 @@ describe('A3 #1.1 招牌技:真打断', () => {
     expect(SIGNATURE_SKILLS['guard-ironwall']?.name).toBe('破咒盾击')
     expect(SIGNATURE_SKILLS['warrior-charge']?.name).toBe('锁足冲锋')
     expect(SIGNATURE_SKILLS['priest-discipline']?.name).toBe('诫命沉默')
-    expect(new Set(Object.values(SIGNATURE_SKILLS).map((s) => s.cdTicks)).size).toBe(1)
+    for (const s of Object.values(SIGNATURE_SKILLS)) expect(s.cdTicks).toBeGreaterThan(0)
+    for (const id of ['guard-ironwall', 'warrior-charge', 'priest-discipline']) expect(SIGNATURE_SKILLS[id].cdTicks).toBe(60)
+    expect(SIGNATURE_SKILLS['mage-fire']).toBeUndefined() // 火法引爆属 A5/#1.3
+  })
+})
+
+describe('A3 第二批:新动词招牌技', () => {
+  test('圣疗:点名治疗+清除束缚/灼烧(新目标形状,不吃 heal-lowest 自动化)', () => {
+    const { state, me } = castingBattle()
+    const ally = state.combatants.find((c) => c.team === 'guild' && c.alive && c.id !== me.id)!
+    ally.boundUntilTick = state.tick + 50
+    ally.burnUntilTick = state.tick + 50
+    ally.hp = 10
+    me.specId = 'priest-holy'
+    me.attack = 100
+    expect(useSignature(state, me.memberId!, ally.memberId)).toBe(true)
+    executeSignature(state, state.commands.signature!)
+    expect(ally.hp).toBe(Math.min(10 + 350, ally.maxHp))
+    expect(ally.boundUntilTick ?? 0).toBeLessThanOrEqual(state.tick)
+    expect(ally.burnUntilTick ?? 0).toBeLessThanOrEqual(state.tick)
+  })
+
+  test('冰封咒界:只冻敌方后排,首领冻得短(新目标形状:后排群体)', () => {
+    const { state } = castingBattle()
+    me_freeze(state)
+    const front = state.combatants.filter((c) => c.team === 'enemy' && c.alive && c.position === 'front')
+    for (const e of front) expect(e.boundUntilTick ?? 0).toBeLessThanOrEqual(state.tick)
+  })
+  function me_freeze(state: ReturnType<typeof castingBattle>['state']) {
+    const me = state.combatants.find((c) => c.team === 'guild' && c.alive)!
+    me.specId = 'mage-frost'
+    const foes = state.combatants.filter((c) => c.team === 'enemy' && c.alive)
+    foes.forEach((f, i) => { f.position = i === 0 ? 'front' : 'back'; if (f.position === 'back') f.boundUntilTick = undefined })
+    expect(useSignature(state, me.memberId!)).toBe(true)
+    executeSignature(state, state.commands.signature!)
+  }
+
+  test('荆棘咆哮:全体被嘲讽+反甲奉还 25%(新目标形状:敌方全体)', () => {
+    const { state, me, enemy } = castingBattle()
+    me.specId = 'guard-thorns'
+    expect(useSignature(state, me.memberId!)).toBe(true)
+    executeSignature(state, state.commands.signature!)
+    expect(me.thornsUntilTick).toBe(state.tick + 300)
+    for (const e of state.combatants.filter((c) => c.team === 'enemy' && c.alive)) {
+      expect(e.tauntedTicks).toBeGreaterThanOrEqual(60)
+      expect(e.taunterId).toBe(me.id)
+    }
+    const meHpBefore = me.hp
+    const foeHpBefore = enemy.hp
+    applyHit(state, enemy, me, 40, '测试挥击')
+    expect(me.hp).toBe(meHpBefore - 40)
+    expect(enemy.hp).toBeLessThan(foeHpBefore)
+  })
+
+  test('恶魔献祭:付 12% 最大生命为引;痛楚收割:清灼烧换爆发', () => {
+    const { state, me, enemy } = castingBattle()
+    me.specId = 'warlock-demon'
+    me.maxHp = 1000
+    me.hp = 1000
+    const hpBefore = me.hp
+    useSignature(state, me.memberId!, enemy.id)
+    executeSignature(state, state.commands.signature!)
+    expect(me.hp).toBe(hpBefore - 120)
+    me.specId = 'warlock-affliction'
+    enemy.burnUntilTick = state.tick + 100
+    state.signatureCd = undefined
+    useSignature(state, me.memberId!, enemy.id)
+    executeSignature(state, state.commands.signature!)
+    expect(enemy.burnUntilTick ?? 0).toBeLessThanOrEqual(state.tick)
   })
 })

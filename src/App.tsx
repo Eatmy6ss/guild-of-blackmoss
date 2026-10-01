@@ -2343,6 +2343,7 @@ export default function App() {
                 <SignatureBar
                   battle={battle}
                   casterId={intents?.casterId}
+                  focusId={battle.commands.focusId}
                   onUse={(memberId, targetId) => useSignature(battle, memberId, targetId)}
                 />
               )}

@@ -701,3 +701,12 @@ button.primary:hover:not(:disabled) {
 
 /* ===== 手册小怪图鉴 ===== */
 .inv-item .hint { margin-top: 3px; }
+
+.signature-bar .sig-group { display: flex; align-items: stretch; gap: 4px; }
+.signature-bar .sig-allies { display: flex; gap: 3px; flex-wrap: wrap; }
+.signature-bar .sig-ally {
+  padding: 2px 6px; border: 1px solid var(--edge-gold); background: #221c16;
+  color: var(--ink-dim); cursor: pointer; font-size: 10.5px; min-height: 44px;
+}
+.signature-bar .sig-ally:hover:not(:disabled) { color: var(--edge-gold-hi); border-color: var(--edge-gold-hi); }
+.signature-bar .sig-ally:disabled { opacity: 0.45; cursor: not-allowed; }

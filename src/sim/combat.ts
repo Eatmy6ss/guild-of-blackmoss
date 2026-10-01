@@ -525,6 +525,20 @@ export function applyHit(
     crit: opts?.crit,
     ranged: opts?.ranged,
   })
+  // A3 荆棘咆哮:反甲——击中带荆棘的守卫,部分伤害当场奉还
+  if (
+    target.thornsUntilTick && state.tick < target.thornsUntilTick &&
+    target.alive && attacker.alive && attacker.team === 'enemy'
+  ) {
+    const reflect = Math.max(1, Math.round(amount * 0.25))
+    attacker.hp = Math.max(0, attacker.hp - reflect)
+    state.events.push({ tick: state.tick, type: 'damage', attackerId: target.id, targetId: attacker.id, amount: reflect })
+    pushLog(state, 'guild', `🌵 荆棘反甲刺穿了 ${attacker.name},奉还 ${reflect} 点伤害！`)
+    if (attacker.hp === 0) {
+      attacker.alive = false
+      pushLog(state, 'guild', `🌵 ${attacker.name} 死在了荆棘反甲上！`)
+    }
+  }
   pushLog(
     state,
     attacker.team,
@@ -580,6 +594,7 @@ function dealDamage(
   target: Combatant,
   mult: number,
   label: string,
+  opts?: { ignoreDefense?: boolean },
 ): void {
   // 相位无敌(敌人侧):一切伤害穿身而过
   if (target.invulnUntilTick && state.tick < target.invulnUntilTick) {
@@ -626,10 +641,12 @@ function dealDamage(
   }
   // K08 套装数值与面板共用定义。
   raw *= 1 + equipmentSetBonus('gray-crown', attacker.setCrown ?? 0)
-  const dmg = Math.max(
-    1,
-    Math.round((raw * MITIGATION_K) / (MITIGATION_K + effectiveDefense(state, target))),
-  )
+  const dmg = opts?.ignoreDefense
+    ? Math.max(1, Math.round(raw))
+    : Math.max(
+        1,
+        Math.round((raw * MITIGATION_K) / (MITIGATION_K + effectiveDefense(state, target))),
+      )
   applyHit(state, attacker, target, dmg, label, {
     crit,
     ranged: attacker.range === 'ranged',
@@ -1149,10 +1166,20 @@ export function useSignature(state: BattleState, memberId: string, targetId?: st
   const skill = SIGNATURE_SKILLS[c.specId]
   if (!skill) return false
   if (state.tick < (state.signatureCd?.[memberId] ?? 0)) return false
-  // 本批招牌技全部以敌方咏唱为靶:没有在读条的目标就不受理(UI 据此禁用按钮)
-  if (!hasActiveCast(state, targetId)) return false
+  // 打断系招牌技:没有在读条的目标就不受理(UI 据此禁用);其余按各自 targetShape 校验
+  if (skill.effect.startsWith('interrupt')) {
+    if (!hasActiveCast(state, targetId)) return false
+  } else if (skill.targeting === 'ally') {
+    if (!state.combatants.some((x) => x.memberId === targetId && x.alive && x.team === 'guild')) return false
+  }
   state.commands.signature = { memberId, skillId: skill.id, targetId }
   return true
+}
+
+/** 敌方目标解析:招牌技的敌方点名=集火目标优先(玩家已点名的意图),其余由 UI 兜底 */
+function resolveSignatureEnemy(state: BattleState, targetId?: string): Combatant | undefined {
+  if (!targetId) return undefined
+  return state.combatants.find((x) => x.id === targetId && x.alive && x.team === 'enemy')
 }
 
 /** 消费招牌技指令:打断走 stepCastWindow 既有管线(置 taken=阈值,brokenBy 归属),二段效果复用既有字段 */
@@ -1162,7 +1189,7 @@ export function executeSignature(state: BattleState, cmd: { memberId: string; sk
   const c = state.combatants.find((x) => x.memberId === cmd.memberId && x.alive && x.team === 'guild')
   if (!c) return
   state.signatureCd = { ...state.signatureCd, [cmd.memberId]: state.tick + skill.cdTicks }
-  const target = state.combatants.find((x) => x.id === cmd.targetId && x.alive && x.team === 'enemy')
+  const target = resolveSignatureEnemy(state, cmd.targetId)
   let broken = false
   if (target?.bossMechanics && target.mech) {
     for (const def of target.bossMechanics) {
@@ -1198,13 +1225,92 @@ export function executeSignature(state: BattleState, cmd: { memberId: string; sk
       }
       break
     }
+    case 'heal-target-cleanse': {
+      const t = state.combatants.find((x) => x.memberId === cmd.targetId && x.alive && x.team === 'guild')
+      if (!t) break
+      const amount = Math.round(c.attack * 3.5)
+      t.hp = Math.min(t.maxHp, t.hp + amount)
+      if ((t.boundUntilTick ?? 0) > state.tick) t.boundUntilTick = undefined
+      if ((t.burnUntilTick ?? 0) > state.tick) t.burnUntilTick = undefined
+      state.events.push({ tick: state.tick, type: 'heal', attackerId: c.id, targetId: t.id, amount })
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，${t.name} 恢复 ${amount} 点生命，束缚与灼烧一并清除。`)
+      break
+    }
+    case 'pierce-shot': {
+      if (!target) break
+      dealDamage(state, c, target, 2.6, `释放【${skill.name}】贯穿`, { ignoreDefense: true })
+      break
+    }
+    case 'enchant-pet': {
+      let pet = state.combatants.find((x) => x.petOf === c.id && x.alive)
+      const summoned = !pet
+      if (!pet) {
+        pet = summonPet(c, state)
+        state.combatants.push(pet)
+      }
+      pet.attack = Math.round(pet.attack * 1.5)
+      pet.hp = Math.min(pet.maxHp, pet.hp + Math.round(pet.maxHp * 0.3))
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，${summoned ? '应召而来的' : ''}${pet.name} 双眼泛起红光！`)
+      break
+    }
+    case 'execute-strike': {
+      if (!target) break
+      const bonus = 1 + 1.8 * (1 - target.hp / target.maxHp)
+      dealDamage(state, c, target, 1.2 * bonus, `释放【${skill.name}】斩落`)
+      break
+    }
+    case 'freeze-backline': {
+      const backs = aliveOf(state, 'enemy').filter((e) => e.position === 'back')
+      if (backs.length === 0) {
+        pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，但敌方后排空无一人。`)
+        break
+      }
+      for (const e of backs) {
+        e.boundUntilTick = state.tick + (e.boss ? 30 : 50)
+        state.events.push({ tick: state.tick, type: 'bound', targetId: e.id })
+      }
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】——敌方后排 ${backs.length} 人被冰封在原地！`)
+      break
+    }
+    case 'sacrifice-strike': {
+      if (!target) break
+      const cost = Math.max(1, Math.round(c.maxHp * 0.12))
+      c.hp = Math.max(1, c.hp - cost)
+      dealDamage(state, c, target, 3.2, `以 ${cost} 点生命为引【${skill.name}】轰中`)
+      break
+    }
+    case 'harvest-dots': {
+      if (!target) break
+      let statuses = 0
+      if ((target.burnUntilTick ?? 0) > state.tick) statuses++
+      if ((target.vulnUntilTick ?? 0) > state.tick) statuses++
+      if ((target.fearUntilTick ?? 0) > state.tick) statuses++
+      if (statuses === 0) {
+        pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，但目标身上没有任何痛楚可收割。`)
+        break
+      }
+      target.burnUntilTick = undefined
+      dealDamage(state, c, target, 1.5 * (1 + 0.8 * statuses), `释放【${skill.name}】收割痛楚`)
+      break
+    }
+    case 'taunt-all-thorns': {
+      for (const e of aliveOf(state, 'enemy')) {
+        e.tauntedTicks = Math.max(e.tauntedTicks ?? 0, 60)
+        e.taunterId = c.id
+        e.threat[c.id] = (e.threat[c.id] ?? 0) + 150
+      }
+      c.thornsUntilTick = state.tick + 300
+      state.events.push({ tick: state.tick, type: 'enraged', targetId: c.id })
+      pushLog(state, 'guild', `${c.name} 释放【${skill.name}】——全体敌人被激怒，而荆棘在他的甲上立起！`)
+      break
+    }
   }
   pushLog(
     state,
     'guild',
     broken
       ? `${c.name} 使出【${skill.name}】——${target?.name ?? '目标'} 的咏唱被当场拍碎！`
-      : `${c.name} 使出【${skill.name}】，但目标并没有在读条——时机白费了。`,
+      : `${c.name} 使出【${skill.name}】。`,
   )
 }
 
