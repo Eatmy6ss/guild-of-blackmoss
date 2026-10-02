@@ -1,25 +1,37 @@
 import type { BattleState, Member } from '../../sim/types'
-import { bossIntents } from '../../sim/mechanics'
 import { sceneArt } from './catalog'
-import { HeroPortrait } from './ArtCanvas'
+import { ArtCanvas, HeroPortrait } from './ArtCanvas'
+import { spriteKeyFor } from '../battle/pixelSprites'
+import { combatantBadges, mechanicWindows } from '../battle/mechanicPresentation'
 export function BattleIntel({ battle, members, mapId, paused }: { battle: BattleState; members: Member[]; mapId: string; paused: boolean }) {
-  const intent = bossIntents(battle)
   const guild = battle.combatants.filter(c => c.team === 'guild' && c.memberId)
   const enemies = battle.combatants.filter(c => c.team === 'enemy' && c.alive)
-  const focused = battle.combatants.find(c => c.id === battle.commands.focusId)
+  const focused = enemies.find(c => c.id === battle.commands.focusId)
+  const featured = focused ?? enemies.find(c => c.boss)
+  const windows = enemies.flatMap(c => mechanicWindows(battle, c).map(window => ({ ...window, unit: c })))
   return <>
     <div className="battle-intel">
       <div><strong>{sceneArt(mapId).name}</strong><span>{paused ? '已暂停' : '交战中'} · 敌方 {enemies.length}</span></div>
-      <p className={intent.telegraphing || intent.casting ? 'mechanic-warning' : ''} role="status">
-        {intent.telegraphing ? '⚠ 蓄力中：切换分散阵型减伤' : intent.casting ? '⚠ 可打断咏唱：集中火力打断' : focused?.alive ? `正在集火：${focused.name}` : '点击敌人集火 · 生命延续，倒下即牺牲'}
-      </p>
+      {featured && <div className="enemy-intel">
+        <ArtCanvas paths={[spriteKeyFor(featured).replace(/^mon-(.+)$/, '/assets/mon/$1.png')]} size={48} label={featured.name} />
+        <div><strong>{focused ? '集火' : '首领'} · {featured.name}</strong><span>{featured.hp}/{featured.maxHp}</span>
+          <div className="status-badges">{combatantBadges(featured, battle.tick).map(badge => <span key={badge}>{badge}</span>)}</div>
+        </div>
+      </div>}
+      {windows.length ? windows.map(window => <div className="mechanic-warning" key={`${window.unit.id}-${window.kind}`} role="status">
+        <strong>⚠ {window.unit.name} · {window.name}</strong><span>还剩 {(window.remaining / 10).toFixed(1)}秒 · {window.interruptible ? '可打断' : '准备应对'}</span>
+        <progress value={window.remaining} max={window.total} aria-label={`${window.name}剩余读条`} />
+        <small>{window.counter}{window.interruptible ? ` · 累计伤害 ${Math.floor(window.taken ?? 0)}/${window.breakDamage}` : ''}</small>
+      </div>) : <p role="status">{focused ? `正在集火：${focused.name}` : '点击敌人集火 · 留意阵型与队员状态'}</p>}
     </div>
     <div className="battle-party" aria-label="远征队状态">
       {guild.map(c => {
         const member = members.find(m => m.id === c.memberId)
         return <div key={c.id} className={c.alive ? '' : 'fallen'}>
           {member && <HeroPortrait member={member} size={32} />}
-          <div><span>{c.name}</span><small>{c.alive ? `${c.hp}/${c.maxHp}` : '已倒下'}</small></div>
+          <div><span>{c.name}</span><small>{c.alive ? `${c.hp}/${c.maxHp}` : '已倒下'}</small>
+            <div className="status-badges">{combatantBadges(c, battle.tick).map(badge => <span key={badge}>{badge}</span>)}</div>
+          </div>
         </div>
       })}
     </div>

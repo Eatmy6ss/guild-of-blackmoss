@@ -1431,3 +1431,26 @@ test('recovery: pending and paid automatic events wait on the title; restored re
   callback("if (screen !== 'game' || !eventResult) return",{...scope,screen:'title',eventResult:'已经到账'})()
   assert.equal(scheduled,1)
 })
+
+test('paused combat saves queued commands and read hints inside the 5-second window; active ticks remain throttled', () => {
+  const members = squad(), run = createRun(members, BLACKMOSS, BLACKMOSS.branches[0].id, 912)
+  run.battle!.commands.signature = { memberId: members[0].id, skillId: 'sig-ironwall-break', targetId: run.battle!.combatants.find(c => c.team === 'enemy')!.id }
+  const progress = { ...initialRunState(), activeRun: run, playing: true }
+  const lastCombatSaveRef = { current: 9500 }, writes: any[] = []
+  const scope: Record<string, unknown> = { members, membersRef: { current: members }, run, towerRun: null,
+    progress, progressRef: { current: progress }, lastCombatSaveRef, Date: { now: () => 10000 },
+    itemOwnershipRef: { current: createGuildItems(members) }, statistics: newStatistics(), potions: { heal: 3, fury: 3 },
+    hintsSeen: ['battle-signature'], saveGuild: (value: unknown) => { writes.push(value); return true } }
+  for (const key of ['trainingReady','rareHuntNext','starMarrow','healingMastery','kingdom','memorial','manual','protectOn','gold','blessing','recruitCooldown','towerBest','chronicle','day','buildings','unlockedHybrids','dungeonMastery','pendingConsequences','eventsSeen','guildBuffs']) scope[key] = undefined
+  const saveEffect = callback('saveGuild({ trainingReady', scope)
+  saveEffect(); assert.equal(writes.length, 0)
+  progress.playing = false
+  saveEffect(); assert.equal(writes.length, 1); assert.equal(lastCombatSaveRef.current, 0)
+  const restored = JSON.parse(JSON.stringify(writes[0]))
+  assert.deepEqual(restored.runState.activeRun.battle.commands.signature, run.battle!.commands.signature)
+  assert.deepEqual(restored.hintsSeen, ['battle-signature'])
+  assert.equal(restored.runState.playing, false)
+  progress.playing = true
+  saveEffect(); assert.equal(writes.length, 2); assert.equal(lastCombatSaveRef.current, 10000)
+  saveEffect(); assert.equal(writes.length, 2)
+})

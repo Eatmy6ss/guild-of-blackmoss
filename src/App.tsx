@@ -1,5 +1,6 @@
 import { HeroPortrait, ArtCanvas } from './ui/art/ArtCanvas'
-import { itemIcon, DOCK_ART } from './ui/art/catalog'
+import { ItemArt } from './ui/art/ItemArt'
+import { DOCK_ART } from './ui/art/catalog'
 import { BattleIntel } from './ui/art/BattleIntel'
 import { CreditsDialog } from './ui/art/Credits'
 import { KingdomPanel } from './ui/KingdomPanel'
@@ -544,11 +545,11 @@ export default function App() {
   }, [towerRun?.battle?.status])
 
   // 在 React 同一批资产/阶段提交后保存；跳过 effect 中刚结算、资产尚未提交的旧渲染。
-  // A13 节流:战斗进行中每 5 秒写一次断点(原每 tick ≈10 次/秒);战斗结束/节点边界立即写;写失败可见。
+  // 自动推进中每5秒保存；暂停/下令/提示已读与结算立即保存，避免暂停后无下一tick导致漏写。
   useEffect(() => {
     if (progress !== progressRef.current) return
     const ar = progress.activeRun
-    const combatRunning = !!ar?.battle && ar.battle.status === 'running'
+    const combatRunning = progress.playing && !!ar?.battle && ar.battle.status === 'running'
     if (combatRunning) {
       const now = Date.now()
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
@@ -1526,7 +1527,7 @@ export default function App() {
             ]
             return (
               <label key={slot} className="gear-control">
-                <ArtCanvas paths={[itemIcon(equipped?.baseId ?? '', slot)]} label={SLOT_NAME[slot]} size={32} />
+                <ItemArt item={equipped} slot={slot} />
                 <span>{SLOT_NAME[slot]}</span>
               <select
                 aria-label={m.name + '的' + SLOT_NAME[slot]}
@@ -1608,7 +1609,7 @@ export default function App() {
         </div>
       )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
-      {playtestEnding && (
+      {__PLAYTEST__ && playtestEnding && (
         <div className="screen-overlay" style={{ zIndex: 110 }}>
           <div className="screen-panel" style={{ width: 'min(460px, 92vw)' }}>
             <div className="screen-head"><h2>🏁 试玩版到此结束</h2></div>
@@ -1620,7 +1621,11 @@ export default function App() {
           </div>
         </div>
       )}
-      <div className="volume-wrap">
+      <div className="app-header">
+        <h1>黑 苔 公 会</h1>
+        <div className="header-actions">
+          <button className="credits-link" onClick={() => setShowCredits(true)}>素材图鉴 / 致谢</button>
+          <div className="volume-wrap">
         <button
           className="mute-btn"
           aria-label={muted ? "开启声音" : "静音"}
@@ -1634,10 +1639,8 @@ export default function App() {
           aria-label="主音量" title="主音量"
           onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }}
         />
-      </div>
-      <div className="app-header">
-        <button className="credits-link" onClick={() => setShowCredits(true)}>素材图鉴 / 致谢</button>
-        <h1>黑 苔 公 会</h1>
+          </div>
+        </div>
         <span className="slice-tag">佣兵纪元 · 任务板上的公会 —— 爬塔 / 招募 / 成长 / 演出</span>
         <span className="slice-tag" style={{ opacity: 0.55 }}>build {__BUILD_DATE__}</span>
       </div>
@@ -1928,7 +1931,8 @@ export default function App() {
             ) : (
               inventory.map((i) => (
                 <div key={i.id} className="inv-item">
-                  {describeItem(i)}
+                  <ItemArt item={i} slot={ITEM_BASES[i.baseId].slot} />
+                  <span className="inv-description">{describeItem(i)}</span>
                   {ITEM_BASES[i.baseId].tier === 3 && (
                     <button className="sell-btn" onClick={() => dismantleT3(i.id)}>
                       ♻ 拆解 +2 星髓
@@ -2270,6 +2274,24 @@ export default function App() {
           {/* 舞台常驻：渲染器挂载一次，非战斗阶段隐藏（避免 ref 为 null 导致挂载失败） */}
           <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }} />
 
+          {(inBattle || inTowerBattle) && battle && battle.status === 'running' && <>
+            <BattleHints
+              hints={BATTLE_HINTS.filter((h) => !hintsSeen.includes(h.id) && (h.applies?.({ hasSignature: battle.combatants.some((c) => c.team === 'guild' && c.alive && !!c.specId && SIGNATURE_SKILLS[c.specId]) }) ?? true)).map(({ id, text }) => ({ id, text }))}
+              onDismiss={dismissHint}
+            />
+            <SignatureBar
+              battle={battle}
+              members={members}
+              casterId={intents?.casterId}
+              focusId={battle.commands.focusId}
+              onUse={(memberId, targetId) => {
+                if (!useSignature(battle, memberId, targetId)) return
+                setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))
+                publishProgress()
+              }}
+            />
+          </>}
+
           {!run && !towerRun && (
             <>
               <h2>⚔ 作战板</h2>
@@ -2467,24 +2489,9 @@ export default function App() {
                 </button>
                 <span className="tick-info">tick {battle?.tick ?? 0}</span>
               </div>
-              {(inBattle || inTowerBattle) && battle && battle.status === 'running' && !battleOver && (
-                <BattleHints
-                  hints={BATTLE_HINTS.filter((h) => !hintsSeen.includes(h.id) && (h.applies?.({ hasSignature: battle.combatants.some((c) => c.team === 'guild' && c.alive && !!c.specId && SIGNATURE_SKILLS[c.specId]) }) ?? true)).map(({ id, text }) => ({ id, text }))}
-                  onDismiss={dismissHint}
-                />
-              )}
-              {(inBattle || inTowerBattle) && battle && battle.status === 'running' && (
-                <SignatureBar
-                  battle={battle}
-                  casterId={intents?.casterId}
-                  focusId={battle.commands.focusId}
-                  onUse={(memberId, targetId) => { setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 })); useSignature(battle, memberId, targetId) }}
-                />
-              )}
               {battle && !battleOver && (
                 <p className="hint">
-                  点击场上敌人 = 集火 · boss 蓄力出现红条倒计时 = 切「分散」减伤 · boss 出现紫条咏唱 = 点「打断咏唱！」 ·
-                  狂暴前 = 爆发药或撤退令 · 倒下即永久牺牲
+                  点击场上敌人集火 · 根据顶部机制提示应对读条 · 紫条可打断，红条须应对 · 留意队员生命与撤退时机
                 </p>
               )}
               {battleOver && (

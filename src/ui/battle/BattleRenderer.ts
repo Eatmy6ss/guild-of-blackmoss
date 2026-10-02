@@ -2,7 +2,7 @@ import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } fr
 import { pixelTexture, spriteKeyFor, tryGetTex, cache_get, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
-import { TICK_MS } from '../../sim/combat'
+import { mechanicWindows } from './mechanicPresentation'
 import { heroLayers, sceneArt, type Appearance } from '../art/catalog'
 import { battleLayout } from '../art/battleLayout'
 import { paintScene } from '../art/scene'
@@ -214,6 +214,7 @@ export class BattleRenderer {
   private lastStance: string | null = null
   /** boss 咏唱条（bossId → 条对象）：打断时找条做「碎裂」演出 */
   private castBars = new Map<string, Graphics>()
+  private warningRings = new Map<string, Graphics>()
 
   private static STANCE_BANNER: Record<string, { text: string; color: number }> = {
     advance: { text: '推进阵型 · 输出↑ 防御↓', color: 0xe8a04d },
@@ -246,7 +247,10 @@ export class BattleRenderer {
     await preloadUrlSprites() // 素材包 PNG 预加载(失败静默降级)
     if (this.disposed) return
     this.ready = true
-    this.observer = new ResizeObserver(() => { this.fit(); if (this.battle) this.syncUnits(this.battle) })
+    this.observer = new ResizeObserver(() => {
+      this.fit()
+      if (this.battle) { this.syncUnits(this.battle); this.syncMechanicCues(this.battle) }
+    })
     this.observer.observe(container)
     this.fit()
     app.stage.addChild(this.root)
@@ -255,6 +259,7 @@ export class BattleRenderer {
     if (this.battle) {
       this.syncUnits(this.battle)
       this.play(this.pendingEvents.splice(0))
+      this.syncMechanicCues(this.battle)
     }
   }
 
@@ -290,6 +295,7 @@ export class BattleRenderer {
     }
     this.syncUnits(b)
     this.play(events)
+    this.syncMechanicCues(b)
     // 阵型切换横幅：切阵即所见（D14 反馈）
     const stance = b.commands?.stance
     if (stance && stance !== this.lastStance) {
@@ -427,7 +433,7 @@ export class BattleRenderer {
   private clearUnits(): void {
     for (const child of [...this.root.children]) if (child !== this.backdrop) { child.removeFromParent(); child.destroy({ children: true }) }
     this.units.clear(); this.effects = []
-    this.focusMarker = null; this.castBars.clear()
+    this.focusMarker = null; this.castBars.clear(); this.warningRings.clear()
     this.trauma = 0; this.root.position.set(0)
   }
 
@@ -485,12 +491,10 @@ export class BattleRenderer {
       }
       if (ev.type === 'telegraph') {
         sfxTelegraph()
-        this.spawnTelegraph(target, ev.amount ?? 30)
         this.spawnFloat(target, '⚠ 蓄力', 0xd93a3a, 14)
         continue
       }
       if (ev.type === 'casting') {
-        this.spawnCastBar(target, ev.amount ?? 25)
         continue
       }
       if (ev.type === 'interrupted') {
@@ -805,75 +809,34 @@ export class BattleRenderer {
     })
   }
 
-  /** boss 蓄力预警:脚下红圈脉动 + 头顶倒计时条(前摇必须可读——还剩多久落地) */  private spawnTelegraph(u: UnitView, durTicks: number): void {
-    const g = new Graphics()
-    g.ellipse(0, 8, 40 * u.baseScale, 15 * u.baseScale)
-      .fill({ color: 0xd93a3a, alpha: 0.3 })
-      .stroke({ width: 2, color: 0xd93a3a, alpha: 0.7 })
-    g.position.set(u.container.x, u.container.y)
-    this.root.addChild(g)
-    // 倒计时条:挂单位容器上跟随移动,红条缩到 0 = 蓄力落地;最后 1/3 急促闪烁
-    const bar = new Graphics()
-    const barY = -32 * u.bodyScale - 31
-    u.container.addChild(bar)
-    let t = 0
-    const dur = durTicks * TICK_MS
-    this.effects.push({
-      update: (dt) => {
-        if (bar.destroyed) return false
-        t += dt
-        const p = Math.min(t / dur, 1)
-        const urgent = p >= 0.66
-        g.alpha = urgent ? 0.5 + 0.5 * Math.sin(t / 28) : 0.7 + 0.3 * Math.sin(t / 80)
-        bar.clear()
-        bar.roundRect(-20 * u.baseScale, barY, 40 * u.baseScale, 4, 2).fill({ color: 0x262b38, alpha: 0.9 })
-        if (p < 1) {
-          bar.roundRect(-20 * u.baseScale, barY, 40 * u.baseScale * (1 - p), 4, 2)
-            .fill({ color: 0xd93a3a, alpha: urgent ? 1 : 0.85 })
-        }
-        if (p >= 1) {
-          g.removeFromParent()
-          g.destroy()
-          bar.removeFromParent()
-          bar.destroy()
-          return false
-        }
-        return true
-      },
-    })
-  }
-
-  /** boss 咏唱条:紫色计时条挂在 boss 头顶,被集火打断时由 shatterCastBar 接手演出 */
-  private spawnCastBar(u: UnitView, durTicks: number): void {
-    // 同一 boss 重复开咏唱前先清旧条(mechanics 保证不叠加,这里兜底)
-    const prev = this.castBars.get(u.combatant.id)
-    if (prev && !prev.destroyed) {
-      prev.removeFromParent()
-      prev.destroy()
+  /** 窗口和进度直接读模拟，刷新可恢复，暂停保留，倍速自然跟随 tick。 */
+  private syncMechanicCues(battle: BattleState): void {
+    for (const [id, u] of this.units) {
+      const window = mechanicWindows(battle, u.combatant)[0]
+      let bar = this.castBars.get(id), ring = this.warningRings.get(id)
+      if (!window) {
+        if (bar && !bar.destroyed) { bar.removeFromParent(); bar.destroy() }
+        if (ring && !ring.destroyed) { ring.removeFromParent(); ring.destroy() }
+        this.castBars.delete(id); this.warningRings.delete(id)
+        continue
+      }
+      if (!bar || bar.destroyed) {
+        bar = new Graphics(); u.container.addChild(bar); this.castBars.set(id, bar)
+      }
+      const color = window.interruptible ? 0xb08fd9 : 0xd93a3a
+      const barY = -32 * u.bodyScale - 31, width = 40 * u.baseScale
+      bar.clear().roundRect(-width / 2, barY, width, 4, 2).fill({ color: 0x262b38, alpha: 0.9 })
+      bar.roundRect(-width / 2, barY, width * (1 - window.progress), 4, 2).fill({ color, alpha: 0.95 })
+      if (window.dangerCircle) {
+        if (!ring || ring.destroyed) { ring = new Graphics(); this.root.addChild(ring); this.warningRings.set(id, ring) }
+        ring.clear().ellipse(0, 8, 40 * u.baseScale, 15 * u.baseScale)
+          .fill({ color, alpha: 0.25 }).stroke({ width: 2, color, alpha: 0.7 })
+        ring.position.copyFrom(u.container.position)
+        ring.alpha = window.progress >= 0.66 ? 1 : 0.7
+      } else if (ring) {
+        ring.removeFromParent(); ring.destroy(); this.warningRings.delete(id)
+      }
     }
-    const bar = new Graphics()
-    const barY = -32 * u.bodyScale - 31
-    u.container.addChild(bar)
-    this.castBars.set(u.combatant.id, bar)
-    let t = 0
-    const dur = durTicks * TICK_MS
-    this.effects.push({
-      update: (dt) => {
-        if (bar.destroyed) return false // 被打断演出接管/场景重建时静默退出
-        t += dt
-        const p = Math.min(t / dur, 1)
-        bar.clear()
-        bar.roundRect(-20 * u.baseScale, barY, 40 * u.baseScale, 4, 2).fill({ color: 0x262b38, alpha: 0.9 })
-        bar.roundRect(-20 * u.baseScale, barY, 40 * u.baseScale * (1 - p), 4, 2)
-          .fill({ color: 0xb08fd9, alpha: 0.95 })
-        if (p >= 1) {
-          bar.removeFromParent()
-          bar.destroy()
-          if (this.castBars.get(u.combatant.id) === bar) this.castBars.delete(u.combatant.id)
-        }
-        return true
-      },
-    })
   }
 
   /** 打断演出:咏唱条胀大淡出「碎裂」(interrupted 事件调用,配合白闪/hit-stop) */

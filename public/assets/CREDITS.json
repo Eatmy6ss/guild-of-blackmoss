@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "verifiedOn": "2026-10-01",
+  "verifiedOn": "2026-10-02",
   "note": "逐文件锁定OGA发布包；不主张当前DCSS仓库所有文件使用相同许可。PNG未改，显示经32色映射。字体另遵OFL。",
   "fonts": [
     {
@@ -1878,6 +1878,234 @@
       "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
       "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
       "sha256": "cab2595c6ab1df239601c02ec79cb8248b46830f831b6cf20e7b76594ce93eae",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-grush",
+      "path": "/assets/mon/boss-grush.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/polyphemus_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "c5621435358bae9872b1d03242509fe0fb2dc8df0397b43ca3b7390674fcc13b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-talma",
+      "path": "/assets/mon/boss-talma.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/boris_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "63ee29f9a5f98ff339539095bdd497ffe67b268c3091ec2e017163b67e487cb7",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-velhola",
+      "path": "/assets/mon/boss-velhola.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/fannar.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "b7a63dd148ddead17557fda9e92a30380ccb71d532ae1a30c81c7a6839a06dee",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-malsau",
+      "path": "/assets/mon/boss-malsau.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/ereshkigal_small.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "643a6a13dcebe2ea7bf890d0f67a3838d7c7d8add767bc79b32c3b2c0cba014d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-colt",
+      "path": "/assets/mon/boss-colt.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/urug_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "43b2960f8346a9b241c53e51705a04fb52847376d9b9cae1ce972dad383d46b1",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-victor",
+      "path": "/assets/mon/boss-victor.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/donald_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "292c0cb6713d29b9f60bc4201187fe4f23e20f4d778c6930e5d38c6cb02b84e2",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-kazraxes",
+      "path": "/assets/mon/boss-kazraxes.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/azrael.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "f837bd75dc909d214c40814223493d45af623fcee66cffbbc373eb698bb270f8",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-ignathos",
+      "path": "/assets/mon/boss-ignathos.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/margery_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "1bb1c048065be97541460aa2e7c9e84188827802dfd451cd803b467d4e538994",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-valselon",
+      "path": "/assets/mon/boss-valselon.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/xtahua_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "0f3dbebd8c84ce72783e175a4b2e02189df600423fbddf2ca52e784b78cf51c3",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-oengus",
+      "path": "/assets/mon/boss-oengus.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/norbert.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "cc2342137cba997fd4fffffe7401b652cd38ed14ec35a39b2c5fa0eec33e9afa",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-gramas",
+      "path": "/assets/mon/boss-gramas.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/wiglaf_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "c42ce3c4f494453cfcdebcf073e069df0f7300047e955e66c35f970825aab1db",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-valosaris",
+      "path": "/assets/mon/boss-valosaris.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/dragons/golden_dragon.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "41c3616b6792f4baef74ed23c1c25564e0664277ab1a4a318a155f759d6768e2",
       "modified": false,
       "rendering": "32色运行时量化；原PNG保留",
       "dimensions": [

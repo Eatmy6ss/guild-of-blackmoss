@@ -1,89 +1,39 @@
-// A3 #1.1 招牌技能栏:玩家点名释放的主动技。App 只挂载本组件,不写进 App.tsx(U23 ⑦)。
-// 目标语义:打断系=正在咏唱的敌人(intents.casterId);其余敌方点名=集火目标优先,兜底咏唱者/最残血;
-// 友方系(圣疗)=按钮旁逐一点名队友。无读条只禁打断系,其他技能随时可用。
 import { SIGNATURE_SKILLS } from '../../data/signature'
-import type { BattleState } from '../../sim/types'
+import type { CSSProperties } from 'react'
+import type { BattleState, Member } from '../../sim/types'
+import { HeroPortrait } from '../art/ArtCanvas'
+import { signaturePresentation } from './signaturePresentation'
 
-export function SignatureBar(props: {
-  battle: BattleState
-  casterId?: string
-  focusId?: string
+export function SignatureBar({ battle, members = [], casterId, focusId, onUse }: {
+  battle: BattleState; members?: Member[]; casterId?: string; focusId?: string
   onUse: (memberId: string, targetId?: string) => void
 }) {
-  const { battle, casterId, focusId, onUse } = props
-  const casters = battle.combatants.filter(
-    (c) => c.team === 'guild' && c.alive && c.memberId && c.specId && SIGNATURE_SKILLS[c.specId],
-  )
-  if (casters.length === 0) return null
-  const foes = battle.combatants.filter((c) => c.team === 'enemy' && c.alive)
-  const lowest = foes.reduce<BattleState['combatants'][number] | undefined>(
-    (a, b) => (!a || b.hp / b.maxHp < a.hp / a.maxHp ? b : a), undefined,
-  )
-  const targetId = (specId?: string) => {
-    const skill = specId ? SIGNATURE_SKILLS[specId] : undefined
-    if (!skill) return undefined
-    if (skill.effect.startsWith('interrupt')) return casterId
-    if (skill.targeting === 'enemy') return focusId ?? casterId ?? lowest?.id
-    return undefined
-  }
-  return (
-    <div className="signature-bar" role="group" aria-label="招牌技能">
-      {casters.map((c) => {
-        const skill = SIGNATURE_SKILLS[c.specId!]
-        const readyAt = battle.signatureCd?.[c.memberId!] ?? 0
-        const remaining = Math.max(0, readyAt - battle.tick)
-        const isInterrupt = skill.effect.startsWith('interrupt')
-        const isDetonate = skill.effect === 'detonate-burn'
-        const tid = targetId(c.specId)
-        const stacks = isDetonate && tid ? foes.find((f) => f.id === tid)?.burnStacks ?? 0 : 0
-        const blocked = (isInterrupt && !casterId) || (isDetonate && stacks === 0)
-        const disabled = remaining > 0 || blocked
-        const meta = remaining > 0
-          ? ` · 冷却 ${remaining}`
-          : isInterrupt && !casterId
-            ? ' · 无读条'
-            : isDetonate && stacks === 0
-              ? ' · 未叠灼烧'
-              : isDetonate
-                ? ` · ${stacks} 层灼烧`
-                : skill.targeting === 'enemy'
-                  ? ' · 对集火目标'
-                  : ''
-        return (
-          <div key={c.id} className="sig-group">
-            <button
-              className={`sig-btn${disabled ? '' : ' ready'}`}
-              disabled={disabled || skill.targeting === 'ally'}
-              title={skill.desc}
-              onClick={() => {
-                if (!disabled && skill.targeting !== 'ally') onUse(c.memberId!, tid)
-              }}
-            >
-              <span className="sig-name">【{skill.name}】</span>
-              <span className="sig-meta">{c.name}{meta}</span>
-            </button>
-            {skill.targeting === 'ally' && (
-              <span className="sig-allies">
-                {battle.combatants
-                  .filter((a) => a.team === 'guild' && a.alive && a.memberId)
-                  .map((a) => (
-                    <button
-                      key={a.id}
-                      className="sig-ally"
-                      disabled={remaining > 0}
-                      title={'对 ' + a.name + ' 施放【' + skill.name + '】'}
-                      onClick={() => {
-                        if (remaining <= 0) onUse(c.memberId!, a.memberId)
-                      }}
-                    >
-                      {a.name}
-                    </button>
-                  ))}
-              </span>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
+  const casters = battle.combatants.filter(c => c.team === 'guild' && c.alive && c.memberId && SIGNATURE_SKILLS[c.specId ?? ''])
+  if (!casters.length) return null
+  return <section className="signature-bar" aria-label="招牌技能" style={{ '--sig-columns': Math.min(casters.length, 5) } as CSSProperties}>
+    <div className="signature-heading"><strong>招牌技 · 把握时机</strong><small>冷却按战斗时间 · 暂停时可先下令</small></div>
+    {casters.map(c => {
+      const view = signaturePresentation(battle, c, casterId, focusId)!
+      const member = members.find(m => m.id === c.memberId)
+      const allies = battle.combatants.filter(a => a.team === 'guild' && a.alive && a.memberId)
+      const cooldown = view.remaining ? Math.min(100, view.remaining / view.skill.cdTicks * 100) : 0
+      return <article key={c.id} className={`sig-card${view.unavailable ? '' : ' ready'}${view.ownQueued ? ' queued' : ''}`}>
+        <div className="sig-owner">{member && <HeroPortrait member={member} size={32} />}<span>{c.name}</span><strong>{view.state}</strong></div>
+        {view.skill.targeting === 'ally' ? <h3 className="sig-name">{view.skill.name}</h3> :
+          <button className="sig-btn" disabled={view.unavailable} onClick={() => onUse(c.memberId!, view.target?.id)} title={view.skill.desc}>
+            <span className="sig-name">{view.skill.name}</span><span className="sig-action">{view.ownQueued ? '已下令' : view.unavailable ? '暂不可用' : '施放 →'}</span>
+          </button>}
+        <p className="sig-target">{view.targetText}</p>
+        {view.skill.targeting === 'ally' && <div className="sig-allies" aria-label={`${c.name}的圣疗目标`}>
+          {allies.map(a => <button key={a.id} className="sig-ally" disabled={view.unavailable} onClick={() => onUse(c.memberId!, a.memberId)}>
+            <span>{a.name}</span><small>{a.hp}/{a.maxHp}</small>
+          </button>)}
+        </div>}
+        <div className="sig-cooldown" aria-hidden="true"><span style={{ width: `${100 - cooldown}%` }} /></div>
+      </article>
+    })}
+    <details className="signature-guide"><summary>查看本队招牌技说明</summary>
+      {casters.map(c => <p className="sig-desc" key={c.id}><strong>{SIGNATURE_SKILLS[c.specId!].name}</strong> · {SIGNATURE_SKILLS[c.specId!].desc}</p>)}
+    </details>
+  </section>
 }
