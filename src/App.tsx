@@ -698,10 +698,14 @@ export default function App() {
     logChronicle(chronicleRaw(day, '花 ' + result.relic.redeem + ' 金赎回了 ' + result.relic.hero + ' 的遗物。'))
   }
 
+  const lastRetreatRunRef = useRef<string | null>(null)
   const retreat = () => {
     const r = runRef.current
     if (!r) return
-    setPlayMeta((m: PlayMeta) => ({ ...m, retreats: (m.retreats ?? 0) + 1 }))
+    if (lastRetreatRunRef.current !== r.id) {
+      lastRetreatRunRef.current = r.id
+      setPlayMeta((m: PlayMeta) => ({ ...m, retreats: (m.retreats ?? 0) + 1 })) // S11:同一场战斗只计一次
+    }
     // 战斗中：下撤退令（Q32 撤离过程）；休整中：直接回城
     if (r.phase === 'battle' && r.battle && r.battle.status === 'running') {
       if (orderRetreat(r.battle)) {

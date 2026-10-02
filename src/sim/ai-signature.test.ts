@@ -24,8 +24,9 @@ describe('A7 挂机 AI 适配招牌技', () => {
     state.tick = ((state.tick / 5) | 0) * 5 + 5 // 落在 5tick 决策点
     const before = state.tick
     runAutoAI(state)
-    expect(state.commands.signature).toBeTruthy() // AI 交了招牌指令
-    executeSignature(state, state.commands.signature!) // stepBattle 消费(与真实管线一致)
+    const sigCmd = Object.values(state.commands.signatures ?? {})[0]
+    expect(sigCmd).toBeTruthy() // AI 交了招牌指令
+    executeSignature(state, sigCmd!) // stepBattle 消费(与真实管线一致)
     expect(enemy.mech!['cast-buff'].taken).toBe(100)
     expect(state.tick).toBeGreaterThanOrEqual(before)
   })
@@ -35,11 +36,12 @@ describe('A7 挂机 AI 适配招牌技', () => {
     state.tick = ((state.tick / 5) | 0) * 5 + 5
     enemy.burnStacks = 1
     runAutoAI(state)
-    expect(state.commands.signature).toBeUndefined() // 层数不足,AI 不交引爆
+    expect(Object.values(state.commands.signatures ?? {}).some((c) => c.skillId === 'sig-fire-detonate')).toBe(false) // 层数不足,AI 不交引爆
     enemy.burnStacks = 4
     runAutoAI(state)
-    expect(state.commands.signature?.skillId).toBe('sig-fire-detonate')
-    executeSignature(state, state.commands.signature!)
+    const sigCmd2 = Object.values(state.commands.signatures ?? {}).find((c) => c.skillId === 'sig-fire-detonate')
+    expect(sigCmd2).toBeTruthy()
+    executeSignature(state, sigCmd2!)
     expect(enemy.burnStacks ?? 0).toBeLessThanOrEqual(1)
   })
 })

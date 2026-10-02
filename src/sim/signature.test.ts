@@ -22,8 +22,8 @@ describe('A3 #1.1 招牌技:真打断', () => {
   test('受理→执行:置 taken=阈值走打断管线,brokenBy 归属,护盾二段,冷却记录', () => {
     const { state, me, enemy } = castingBattle()
     expect(useSignature(state, me.memberId!, enemy.id)).toBe(true)
-    expect(state.commands.signature?.skillId).toBe('sig-ironwall-break')
-    executeSignature(state, state.commands.signature!)
+    expect(state.commands.signatures?.[me.memberId!]?.skillId).toBe('sig-ironwall-break')
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
     const rt = enemy.mech!['telegraph-aoe']
     expect(rt.taken).toBe(100)
     expect(rt.brokenBy).toBe('破咒盾击')
@@ -38,7 +38,7 @@ describe('A3 #1.1 招牌技:真打断', () => {
     const other = state.combatants.find((c) => c.team === 'guild' && c.alive && c.id !== me.id)!
     other.specId = 'mage-fire'
     expect(useSignature(state, other.memberId!, enemy.id)).toBe(false)
-    expect(state.commands.signature).toBeUndefined()
+    expect(state.commands.signatures?.[other.memberId!] ?? state.commands.signatures?.[me.memberId!]).toBeUndefined()
     enemy.mech!['telegraph-aoe'].until = state.tick - 1
     expect(useSignature(state, me.memberId!, enemy.id)).toBe(false)
     state.status = 'guild-win'
@@ -77,7 +77,7 @@ describe('A3 第二批:新动词招牌技', () => {
     me.specId = 'priest-holy'
     me.attack = 100
     expect(useSignature(state, me.memberId!, ally.memberId)).toBe(true)
-    executeSignature(state, state.commands.signature!)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
     expect(ally.hp).toBe(Math.min(10 + 350, ally.maxHp))
     expect(ally.boundUntilTick ?? 0).toBeLessThanOrEqual(state.tick)
     expect(ally.burnUntilTick ?? 0).toBeLessThanOrEqual(state.tick)
@@ -95,14 +95,14 @@ describe('A3 第二批:新动词招牌技', () => {
     const foes = state.combatants.filter((c) => c.team === 'enemy' && c.alive)
     foes.forEach((f, i) => { f.position = i === 0 ? 'front' : 'back'; if (f.position === 'back') f.boundUntilTick = undefined })
     expect(useSignature(state, me.memberId!)).toBe(true)
-    executeSignature(state, state.commands.signature!)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
   }
 
   test('荆棘咆哮:全体被嘲讽+反甲奉还 25%(新目标形状:敌方全体)', () => {
     const { state, me, enemy } = castingBattle()
     me.specId = 'guard-thorns'
     expect(useSignature(state, me.memberId!)).toBe(true)
-    executeSignature(state, state.commands.signature!)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
     expect(me.thornsUntilTick).toBe(state.tick + 300)
     for (const e of state.combatants.filter((c) => c.team === 'enemy' && c.alive)) {
       expect(e.tauntedTicks).toBeGreaterThanOrEqual(60)
@@ -122,13 +122,14 @@ describe('A3 第二批:新动词招牌技', () => {
     me.hp = 1000
     const hpBefore = me.hp
     useSignature(state, me.memberId!, enemy.id)
-    executeSignature(state, state.commands.signature!)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
     expect(me.hp).toBe(hpBefore - 120)
     me.specId = 'warlock-affliction'
     enemy.burnUntilTick = state.tick + 100
+    state.commands.signatures = undefined // B7 多槽:清掉上一道已消费的指令
     state.signatureCd = undefined
     useSignature(state, me.memberId!, enemy.id)
-    executeSignature(state, state.commands.signature!)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
     expect(enemy.burnUntilTick ?? 0).toBeLessThanOrEqual(state.tick)
   })
 })
@@ -145,7 +146,7 @@ describe('A5 #1.3 火法引爆', () => {
     enemy.burnStacks = 3
     expect(useSignature(state, me.memberId!, enemy.id)).toBe(true)
     const hpBefore = enemy.hp
-    executeSignature(state, state.commands.signature!)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
     expect(enemy.burnStacks ?? 0).toBeLessThanOrEqual(1) // 引爆清层;随后的普攻叠层测试另跑
     expect(enemy.hp).toBeLessThan(hpBefore)
   })

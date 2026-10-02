@@ -36,7 +36,9 @@ export function runAutoAI(state: BattleState): void {
   const casting = !!caster
   const enraged = boss?.mech?.['enrage']?.fired === 1
 
-  const lowest = allies.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
+  // S6:治疗/保护目标只认真队员(召唤物无 memberId,不该被优先治疗)
+  const realAllies = allies.filter((a) => !!a.memberId)
+  const lowest = (realAllies.length > 0 ? realAllies : allies).reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
   const lowestPct = lowest.hp / lowest.maxHp
 
   // ---- 阵型 ----
