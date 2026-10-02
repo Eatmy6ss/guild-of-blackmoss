@@ -1,0 +1,22 @@
+{
+  "base": "b5e9bc8",
+  "scarStory": {
+    "type": "scar-survive",
+    "text": "铁枝从未知之地活着回来了——带着一条新的伤疤,和一条旧命。",
+    "factIds": [
+      4
+    ]
+  },
+  "duplicateFactIds": [
+    1,
+    1
+  ],
+  "unprovenFinalBlow": {
+    "type": "firstkill-death",
+    "text": "牺牲者没能看到沼泽食人魔·格鲁什倒下的样子——但他确实施出了那一击。",
+    "factIds": [
+      1,
+      2
+    ]
+  }
+}
