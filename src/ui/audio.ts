@@ -12,7 +12,7 @@ let muted = false
 try { muted = localStorage.getItem('gg-muted') === '1' } catch { /* 无存储仍可播放。 */ }
 /** A16:主音量 0-1(持久化;静音开关独立于此) */
 let volume = 0.5
-try { const v = Number(localStorage.getItem('gg-volume')); if (Number.isFinite(v) && v >= 0 && v <= 1) volume = v } catch { /* 默认音量。 */ }
+try { const raw = localStorage.getItem('gg-volume'); if (raw !== null) { const v = Number(raw); if (Number.isFinite(v) && v >= 0 && v <= 1) volume = v } } catch { /* 默认音量。 */ }
 let bgmTimer: number | null = null
 let bgmStep = 0
 let lastHitAt = 0

@@ -1645,6 +1645,12 @@ export default function App() {
           aria-label="主音量" title="主音量"
           onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }}
         />
+        {__PLAYTEST__ && (
+          <>
+            <button className="mini-btn" title="导出试玩记录 JSON" onClick={() => { initAudio(); exportPlaytestReport() }}>📤 导出试玩记录</button>
+            <button className="mini-btn" title="生成战报卡 PNG" onClick={() => { initAudio(); makeWarReportCard() }}>📷 战报卡</button>
+          </>
+        )}
       </div>
       <div className="app-header">
         <button className="credits-link" onClick={() => setShowCredits(true)}>素材图鉴 / 致谢</button>

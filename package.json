@@ -7,6 +7,7 @@
     "dev": "vite",
     "dev:admin": "vite --config vite.config.admin.ts",
     "build": "tsc --noEmit && vite build",
+    "build:playtest": "vite build --config vite.config.playtest.ts && node scripts/inline-assets.mjs",
     "typecheck": "tsc --noEmit",
     "typecheck:admin": "tsc --noEmit -p tsconfig.admin.json",
     "test:kingdom": "node scripts/test-kingdom.cjs",
