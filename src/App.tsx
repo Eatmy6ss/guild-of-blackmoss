@@ -37,6 +37,7 @@ import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE, FIRST_RETURN_TIP 
 import { appendFact, latestEventChoice, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
 import { SIGNATURE_SKILLS } from './data/signature'
+import { renderWarReportCard, downloadWarReportCard } from './ui/war-report-card'
 import { createRng } from './sim/rng'
 import {
   createRun,
@@ -169,6 +170,15 @@ export default function App() {
   const [hintsSeen, setHintsSeen] = useState<string[]>(saved?.hintsSeen ?? [])
   type PlayMeta = NonNullable<GuildSave['playMeta']>
   const [playtestEnding, setPlaytestEnding] = useState(false)
+  const makeWarReportCard = () => {
+    const rank = guildRankOf(manual)
+    const url = renderWarReportCard({
+      build: __BUILD_DATE__, day, rankName: rank.name, kills: manual.length, towerBest,
+      fallen: memorial.map((d) => ({ name: d.name, cause: d.cause })),
+      stories: chronicle.filter((c) => c.text.startsWith('📖')).map((c) => c.text.replace('📖 ', '')),
+    })
+    downloadWarReportCard(url, __BUILD_DATE__)
+  }
   const exportPlaytestReport = () => {
     const report = {
       build: __BUILD_DATE__, exportedAt: Date.now(), day, gold, towerBest,
@@ -1615,6 +1625,7 @@ export default function App() {
             <p className="event-text">版图一的故事告一段落。感谢试玩——请点击下方按钮导出你的试玩记录,并把它发回给公会。</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', paddingBottom: 12 }}>
               <button className="primary" onClick={exportPlaytestReport}>📤 导出试玩记录</button>
+              <button onClick={() => { initAudio(); makeWarReportCard() }}>📷 战报卡</button>
               <button onClick={() => setPlaytestEnding(false)}>继续随便逛逛</button>
             </div>
           </div>
