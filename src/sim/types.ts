@@ -446,8 +446,8 @@ export interface BattleCommands {
   furyUntil: number
   /** 撤离过程：到该 tick 完成撤离（Q32：免费下令+可被干扰的撤离过程） */
   extractingUntil?: number
-  /** A3 招牌技指令:待执行的玩家点名技能(下一次 stepBattle 消费) */
-  signature?: { memberId: string; skillId: string; targetId?: string }
+  /** A3/B7 招牌技指令:每名队员一格(手动与挂机都可入队;下一次 stepBattle 按队员顺序消费并清空) */
+  signatures?: Record<string, { memberId: string; skillId: string; targetId?: string }>
   /** 撤退保护（Q7，默认开启）：有人濒危自动下撤退令 */
   protectRetreat: boolean
   /** 挂机模式（D12）：队长性格代打全部指令 */

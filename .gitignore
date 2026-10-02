@@ -18,3 +18,4 @@ dist-admin/
 !scripts/diag-units.mjs
 !scripts/qa-playthrough.mjs
 !scripts/e2e-f09.mjs
+!scripts/e2e-playtest-full.mjs

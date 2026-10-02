@@ -26,32 +26,40 @@ describe('战斗表现沿真实目标与模拟时钟', () => {
     expect(signaturePresentation(battle, member, undefined, foes[1].id)?.state).toBe('等待敌方读条')
     expect(signaturePresentation(battle, member, undefined, foes[1].id)?.unavailable).toBe(true)
   })
-  it('引爆按当前目标显示层数，暂停中的单条指令不可被另一个按钮覆盖', () => {
+  it('引爆按当前目标显示层数，每位队员可独立排队且不会覆盖他人指令', () => {
     const { battle, member, foes } = fixture()
     expect(signaturePresentation(battle, member, undefined, foes[0].id)?.unavailable).toBe(true)
     foes[0].burnStacks = 3
     expect(signaturePresentation(battle, member, undefined, foes[0].id)?.targetText).toContain('灼烧3层')
     expect(signaturePresentation(battle, member, undefined, foes[0].id)?.unavailable).toBe(false)
-    battle.commands.signature = { memberId: member.memberId!, skillId: 'sig-fire-detonate', targetId: foes[0].id }
+    battle.commands.signatures = { [member.memberId!]: { memberId: member.memberId!, skillId: 'sig-fire-detonate', targetId: foes[0].id } }
     const ally = battle.combatants.find(c => c.team === 'guild' && c !== member)!
     ally.specId = 'priest-holy'
     const before = structuredClone(battle)
     expect(signaturePresentation(battle, member)?.state).toBe('已下令 · 推进后释放')
-    expect(signaturePresentation(battle, ally)?.unavailable).toBe(true)
-    expect(signaturePresentation(battle, ally)?.state).toBe('等待已下达的招牌技释放')
+    expect(signaturePresentation(battle, ally)?.unavailable).toBe(false)
+    expect(signaturePresentation(battle, ally)?.state).toBe('可施放')
     expect(battle).toEqual(before)
   })
   it('圣疗排队目标按成员ID解析，冷却按tick更新而不依赖墙钟', () => {
     const { battle, member } = fixture()
     member.specId = 'priest-holy'
-    battle.commands.signature = { memberId: member.memberId!, skillId: 'sig-holy-mend', targetId: member.memberId }
+    battle.commands.signatures = { [member.memberId!]: { memberId: member.memberId!, skillId: 'sig-holy-mend', targetId: member.memberId } }
     expect(signaturePresentation(battle, member)?.targetText).toBe(member.name)
-    delete battle.commands.signature
+    delete battle.commands.signatures
     battle.signatureCd = { [member.memberId!]: battle.tick + 30 }
     expect(signaturePresentation(battle, member)?.state).toBe('冷却 3.0秒')
     expect(signaturePresentation(structuredClone(battle), member)?.state).toBe('冷却 3.0秒')
     battle.tick += 20
     expect(signaturePresentation(battle, member)?.state).toBe('冷却 1.0秒')
+  })
+  it('束缚中的队员明确提示剩余时间，控制结束才恢复可施放', () => {
+    const { battle, member } = fixture()
+    member.specId = 'priest-holy'
+    member.boundUntilTick = battle.tick + 20
+    expect(signaturePresentation(battle, member)).toMatchObject({ unavailable: true, state: '束缚中 · 2.0秒' })
+    battle.tick += 20
+    expect(signaturePresentation(battle, member)).toMatchObject({ unavailable: false, state: '可施放' })
   })
   it('中途恢复咏唱有相同进度，暂停不消耗窗口，倍速只改变tick推进频率', () => {
     const { battle, foes } = fixture(), enemy = foes[0]

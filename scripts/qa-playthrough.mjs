@@ -1,4 +1,5 @@
 // 新档全流程 QA 实测:真实新玩家路径(开始新公会→黑苔全程→各屏检查→高塔),问题收集模式
+// 前置:dev 服务器已在 5173(npm run dev)——本脚本打的是 dev 环境,不是 preview;5173 没起会报"标题画面没有开始新公会"且 localStorage 被拒
 import { spawn } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -83,7 +84,13 @@ await sleep(3500)
 await evalJs(`localStorage.clear(); 'ok'`)
 await send('Page.reload')
 await sleep(2500)
-if (!(await waitText('开始新公会'))) { issue('标题画面没有「开始新公会」入口'); process.exit(1) }
+if (!(await waitText('开始新公会'))) {
+  issue('标题画面没有「开始新公会」入口')
+  console.log('  [diag] keys:', await evalJs(`JSON.stringify(Object.keys(localStorage))`))
+  console.log('  [diag] saved flag:', await evalJs(`(() => { try { return localStorage.getItem('guild-game-save-v1') ? 'has-save' : 'no-save' } catch (e) { return 'err:' + e.message } })()`))
+  console.log('  [diag] body:', await evalJs(`document.body.textContent.slice(0, 150)`))
+  process.exit(1)
+}
 await clickBtn('开始新公会')
 if (!(await waitText('公会大厅'))) { issue('开新公会后未进入公会大厅'); process.exit(1) }
 console.log('  [ok] 新公会创建')

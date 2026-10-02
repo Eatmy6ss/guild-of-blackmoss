@@ -5,15 +5,15 @@ export interface BattleHintItem {
 }
 
 export function BattleHints(props: { hints: BattleHintItem[]; onDismiss: (id: string) => void }) {
-  if (props.hints.length === 0) return null
+  // S10:一次只弹一条(同屏多条会淹掉战斗);「知道了」后下一条才出现
+  const hint = props.hints[0]
+  if (!hint) return null
   return (
     <div className="battle-hints" role="status">
-      {props.hints.map((h) => (
-        <div key={h.id} className="battle-hint">
-          <span className="bh-text">💡 {h.text}</span>
-          <button className="bh-ok" onClick={() => props.onDismiss(h.id)}>知道了</button>
-        </div>
-      ))}
+      <div className="battle-hint">
+        <span className="bh-text">💡 {hint.text}</span>
+        <button className="bh-ok" onClick={() => props.onDismiss(hint.id)}>知道了</button>
+      </div>
     </div>
   )
 }

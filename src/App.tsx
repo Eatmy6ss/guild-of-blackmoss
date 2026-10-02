@@ -35,9 +35,10 @@ import {
 import { SignatureBar } from './ui/battle/SignatureBar'
 import { BattleHints } from './ui/battle/BattleHints'
 import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE, FIRST_RETURN_TIP } from './data/tutorial'
-import { appendFact, latestEventChoice, normalizeLedger, type FactLedger } from './sim/fact-ledger'
+import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
 import { SIGNATURE_SKILLS } from './data/signature'
+import { renderWarReportCard, downloadWarReportCard } from './ui/war-report-card'
 import { createRng } from './sim/rng'
 import {
   createRun,
@@ -170,6 +171,15 @@ export default function App() {
   const [hintsSeen, setHintsSeen] = useState<string[]>(saved?.hintsSeen ?? [])
   type PlayMeta = NonNullable<GuildSave['playMeta']>
   const [playtestEnding, setPlaytestEnding] = useState(false)
+  const makeWarReportCard = () => {
+    const rank = guildRankOf(manual)
+    const url = renderWarReportCard({
+      build: __BUILD_DATE__, day, rankName: rank.name, kills: manual.length, towerBest,
+      fallen: memorial.map((d) => ({ name: d.name, cause: d.cause })),
+      stories: chronicle.filter((c) => c.text.startsWith('📖')).map((c) => c.text.replace('📖 ', '')),
+    })
+    downloadWarReportCard(url, __BUILD_DATE__)
+  }
   const exportPlaytestReport = () => {
     const report = {
       build: __BUILD_DATE__, exportedAt: Date.now(), day, gold, towerBest,
@@ -205,8 +215,6 @@ export default function App() {
     const milestone = DOCK_UNLOCK_MILESTONE[key]
     return milestone ? milestone({ inventoryCount: inventory.length, chronicleCount: chronicle.length, memorialCount: memorial.length }) : false
   }
-  const storyCursorRef = useRef(0) // A9:已讲过的账本水位;从上一条故事之后找碰撞
-  const expeditionStartFactRef = useRef(0) // A9:本趟出发时的账本水位(碰撞类只认本趟)
   const [saveFailed, setSaveFailed] = useState(false)
   const changeProgress = (patch: Partial<RunUIState>) => {
     const next = runReducer(progressRef.current, { type: 'patch', patch })
@@ -496,23 +504,25 @@ export default function App() {
     chronicleRef.current = [...chronicleRef.current, ...o.consequences.chronicle]
     seedChronicle(chronicleRef.current)
     setChronicle(chronicleRef.current)
-    setScarNotices(o.notices)
+    // A9/B3:远征终局先算故事(说书人只读账本),再一次性写横幅——故事不冲掉结算通知
+    let story: ReturnType<typeof tellExpedition> = null
+    if (o.source === 'dungeon' && ['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
+      if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
+      story = tellExpedition(factLedgerRef.current, createRng(o.run.seed + o.run.stepIdx * 77 + day), {
+        fromId: factLedgerRef.current.toldThrough ?? 0,
+        startId: factLedgerRef.current.expeditionStart ?? 0,
+      })
+      if (story) {
+        markTold(factLedgerRef.current, story.type, story.templateIdx) // B4 水位+U26⑥ 模板下标入账本
+      }
+    }
+    setScarNotices(story ? [...o.notices, '📖 ' + story.text] : o.notices)
     if (o.source === 'dungeon') {
       runRef.current = o.run
       setRun({ ...o.run })
       // A11:试玩版通关版图一 → 「试玩版到此结束」画面
       if (__PLAYTEST__ && o.run.phase === 'victory' && o.run.dungeonId === 'thornhold') setPlaytestEnding(true)
-      // A9 说书人 A 步:远征终局(通关/团灭/撤退)回城后,从上次讲过的水位找最强碰撞,最多 1 条
-      if (['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
-        if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
-        const slice = factLedgerRef.current.facts.filter((f) => f.id >= storyCursorRef.current)
-        const story = tellExpedition({ facts: slice }, createRng(o.run.seed + o.run.stepIdx * 77 + day), expeditionStartFactRef.current)
-        if (story) {
-          storyCursorRef.current = factLedgerRef.current.nextId
-          logChronicle(chronicleRaw(day, '📖 ' + story.text))
-          setScarNotices([...scarNotices, '📖 ' + story.text])
-        }
-      }
+      if (story) logChronicle(chronicleRaw(day, '📖 ' + story.text))
     } else {
       towerRunRef.current = o.run
       setTowerRun({ ...o.run })
@@ -689,10 +699,14 @@ export default function App() {
     logChronicle(chronicleRaw(day, '花 ' + result.relic.redeem + ' 金赎回了 ' + result.relic.hero + ' 的遗物。'))
   }
 
+  const lastRetreatRunRef = useRef<string | null>(null)
   const retreat = () => {
     const r = runRef.current
     if (!r) return
-    setPlayMeta((m: PlayMeta) => ({ ...m, retreats: (m.retreats ?? 0) + 1 }))
+    if (lastRetreatRunRef.current !== r.id) {
+      lastRetreatRunRef.current = r.id
+      setPlayMeta((m: PlayMeta) => ({ ...m, retreats: (m.retreats ?? 0) + 1 })) // S11:同一场战斗只计一次
+    }
     // 战斗中：下撤退令（Q32 撤离过程）；休整中：直接回城
     if (r.phase === 'battle' && r.battle && r.battle.status === 'running') {
       if (orderRetreat(r.battle)) {
@@ -754,7 +768,7 @@ export default function App() {
     growthSnapshotRef.current = new Map(
       expedition.map((m) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s, n) => s + bondStars(n), 0), bonds: { ...m.bonds } }]),
     )
-    expeditionStartFactRef.current = factLedgerRef.current.nextId // A9:本趟故事只认出发后的碰撞
+    markExpeditionStart(factLedgerRef.current) // B4:水位入账本
     setPlayMeta((m: PlayMeta) => ({ ...m, expeditions: (m.expeditions ?? 0) + 1 }))
     runRef.current = createRun(
       expedition,
@@ -868,7 +882,7 @@ export default function App() {
     // M1 P0:回城 roll 上门事件与大事事件(涌现叙事双井;缘分不排队,不受冷却)
     const roll = guildRng()
     if (roll < fx.visitorChance && membersRef.current.filter((m) => m.alive).length < ROSTER_CAP) {
-      setVisitor(rollVisitor(guildRng, membersRef.current, buildings.tavern ?? 0))
+      setVisitor(rollVisitor(guildRng, membersRef.current, buildings.tavern ?? 0, { hybrids: !__PLAYTEST__ }))
     } else if (roll < fx.visitorChance + 0.35 && !pendingEvent) {
       const ev = rollGuildEvent(guildRng)
       if (ev) {
@@ -976,7 +990,7 @@ export default function App() {
     if (gold < ECONOMY.taleCost.gold || blessing < ECONOMY.taleCost.blessing) return
     setGold((g) => g - ECONOMY.taleCost.gold)
     setBlessing((b) => b - ECONOMY.taleCost.blessing)
-    setCandidates(taleCandidates(guildRng, membersRef.current))
+    setCandidates(taleCandidates(guildRng, membersRef.current, 3, { hybrids: !__PLAYTEST__ }))
     setRecruitCooldown(cooldownNeeded(aliveCount()))
   }
 
@@ -1042,7 +1056,7 @@ export default function App() {
       chip(`获得装备:${describeItem(d)}`, 'pos')
     }
     if (fx.recruit) {
-      setVisitor(rollVisitor(rng, membersRef.current))
+      setVisitor(rollVisitor(rng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))
       chip('有访客上门', 'pos')
     }
     if (fx.injure) {
@@ -1308,6 +1322,7 @@ export default function App() {
   // 职阶切换(宪法 v3):基础专精间轻消耗;混合职阶需默契达标+公会一次性解锁(重消耗)
   const bondTotalOf = (m: Member) => Object.values(m.bonds).reduce((s2, n) => s2 + bondStars(n), 0)
   const changeVocation = (memberId: string, newSpecId: string) => {
+    if (__PLAYTEST__ && isHybrid(newSpecId)) return // U26③:试玩版隐藏混合职阶
     if (runRef.current || towerRunRef.current) return
     const m = membersRef.current.find((x) => x.id === memberId)
     if (!m || m.spec === newSpecId) return
@@ -1616,6 +1631,7 @@ export default function App() {
             <p className="event-text">版图一的故事告一段落。感谢试玩——请点击下方按钮导出你的试玩记录,并把它发回给公会。</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', paddingBottom: 12 }}>
               <button className="primary" onClick={exportPlaytestReport}>📤 导出试玩记录</button>
+              <button onClick={() => { initAudio(); makeWarReportCard() }}>📷 战报卡</button>
               <button onClick={() => setPlaytestEnding(false)}>继续随便逛逛</button>
             </div>
           </div>
@@ -1640,6 +1656,12 @@ export default function App() {
           onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }}
         />
           </div>
+        {__PLAYTEST__ && (
+          <>
+            <button className="mini-btn" title="导出试玩记录 JSON" onClick={() => { initAudio(); exportPlaytestReport() }}>📤 导出试玩记录</button>
+            <button className="mini-btn" title="生成战报卡 PNG" onClick={() => { initAudio(); makeWarReportCard() }}>📷 战报卡</button>
+          </>
+        )}
         </div>
         <span className="slice-tag">佣兵纪元 · 任务板上的公会 —— 爬塔 / 招募 / 成长 / 演出</span>
         <span className="slice-tag" style={{ opacity: 0.55 }}>build {__BUILD_DATE__}</span>
@@ -1812,7 +1834,7 @@ export default function App() {
                 <p className="hint">🚪 暂时没有访客——但公会正缺人手,守夜人去酒馆后巷喊一嗓子总会有人应。</p>
                 <button
                   disabled={!!run}
-                  onClick={() => setVisitor(rollVisitor(guildRng, membersRef.current))}
+                  onClick={() => setVisitor(rollVisitor(guildRng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))}
                 >
                   🌙 在酒馆等一晚(必定有人上门)
                 </button>

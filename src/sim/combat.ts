@@ -936,11 +936,15 @@ function summonPet(caster: Combatant, state: BattleState): Combatant {
 export function stepBattle(state: BattleState): void {
   if (state.status !== 'running') return
   state.tick++
-  // A3 招牌技指令消费:tick 开始时执行玩家点名的技能
-  if (state.commands.signature) {
-    const sig = state.commands.signature
-    state.commands.signature = undefined
-    executeSignature(state, sig)
+  // A3/B7 招牌技指令消费:按队员顺序执行并清空(多槽,每人一格)
+  const pendingSigs = state.commands.signatures
+  if (pendingSigs) {
+    state.commands.signatures = undefined
+    for (const m of state.combatants) {
+      if (m.team !== 'guild') continue
+      const sig = pendingSigs[m.memberId ?? '']
+      if (sig) executeSignature(state, sig)
+    }
   }
   // 灼热地形(版图二):周期性全队火伤,火抗按比例减免——逼装备取舍的环境压力
   if (state.envHeat && state.tick >= state.envHeat.next) {
@@ -1164,16 +1168,26 @@ export function useSignature(state: BattleState, memberId: string, targetId?: st
   const skill = SIGNATURE_SKILLS[c.specId]
   if (!skill) return false
   if (state.tick < (state.signatureCd?.[memberId] ?? 0)) return false
+  // S4:被定身(束缚)的队员无法施放招牌技
+  if ((c.boundUntilTick ?? 0) > state.tick) return false
   // 打断系招牌技:没有在读条的目标就不受理(UI 据此禁用);引爆系:目标无灼烧层不受理;其余按各自 targetShape 校验
   if (skill.effect.startsWith('interrupt')) {
     if (!hasActiveCast(state, targetId)) return false
   } else if (skill.effect === 'detonate-burn') {
-    const t = state.combatants.find((x) => x.id === targetId && x.alive && x.team === 'enemy')
+    // S3:无指定目标时,优先引爆正在读条且层数≥3 的敌人
+    let t = state.combatants.find((x) => x.id === targetId && x.alive && x.team === 'enemy')
+    if (!t) {
+      const casters = state.combatants.filter((x) => x.alive && x.team === 'enemy' && (x.burnStacks ?? 0) >= 3 && x.mech && Object.values(x.mech).some((rt) => rt.until !== undefined && state.tick < rt.until))
+      t = casters[0]
+    }
     if (!t || (t.burnStacks ?? 0) === 0) return false
+    targetId = t.id
   } else if (skill.targeting === 'ally') {
     if (!state.combatants.some((x) => x.memberId === targetId && x.alive && x.team === 'guild')) return false
   }
-  state.commands.signature = { memberId, skillId: skill.id, targetId }
+  // B7:该队员已有入队指令就拒绝(手动优先,不被 AI 改写)
+  if (state.commands.signatures?.[memberId]) return false
+  state.commands.signatures = { ...state.commands.signatures, [memberId]: { memberId, skillId: skill.id, targetId } }
   return true
 }
 
@@ -1189,8 +1203,22 @@ export function executeSignature(state: BattleState, cmd: { memberId: string; sk
   if (!skill) return
   const c = state.combatants.find((x) => x.memberId === cmd.memberId && x.alive && x.team === 'guild')
   if (!c) return
-  state.signatureCd = { ...state.signatureCd, [cmd.memberId]: state.tick + skill.cdTicks }
+  if ((c.boundUntilTick ?? 0) > state.tick) return // S4:被定身不能施放
   const target = resolveSignatureEnemy(state, cmd.targetId)
+  // S5:打断类在目标已收招时不算出手——不扣冷却(信息性日志)
+  if (skill.effect.startsWith('interrupt')) {
+    const mechMap = target?.mech
+    const stillCasting = !!target?.bossMechanics && !!mechMap && target.bossMechanics.some((def) => {
+      const th = interruptThreshold(def)
+      const rt = th === undefined ? undefined : mechMap[def.kind]
+      return rt?.until !== undefined && state.tick < rt.until
+    })
+    if (!stillCasting) {
+      pushLog(state, 'guild', `${c.name} 的【${skill.name}】落了空——目标已经收招。`)
+      return
+    }
+  }
+  state.signatureCd = { ...state.signatureCd, [cmd.memberId]: state.tick + skill.cdTicks }
   let broken = false
   if (skill.effect.startsWith('interrupt') && target?.bossMechanics && target.mech) {
     for (const def of target.bossMechanics) {

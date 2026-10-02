@@ -41,7 +41,7 @@ npm run verify     # Vitest、管理员类型检查、历史冒烟/两组回归�
 新增自动化用例放在 `src/**/*.test.ts`，从 `vitest` 显式导入 `test` / `expect`，默认在 Node 环境运行。Vitest 共用 Vite 配置，但只收集源码测试；`scripts/` 中的历史检查沿用原入口，不迁移。新入口在没有找到测试或遗留 `.only` 时会失败，避免漏跑；`npm run verify` 先执行新增测试，再执行完整历史验证。接入说明见 [#0.7a](docs/development/vitest-setup-2026-09-27.md)。
 
 - 满配试玩档:`node scripts/dev-save.mjs [等级 1-15]` 生成导入码(docs/dev-save.txt)
-- 单文件分发版:`npx vite build --config vite.config.playtest.ts` → dist-playtest/
+- 单文件分发版:`npm run build:playtest`(内嵌素材后约 13MB)→ dist-playtest/index.html
 
 管理员实验室是独立本机工具，不在正式游戏菜单和生产包内。支持直接选副本遭遇、配置 1–6 人队伍、等级装备与技能冷却、暂停单步和同条件重战；只保存自己的测试配置，不读写正式存档或发放奖励。启动和测试口径见 [管理员测试指南](docs/development/admin-test-lab-2026-09-27.md)。
 

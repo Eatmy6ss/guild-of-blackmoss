@@ -134,7 +134,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         c.chronicle.push(chronicleFirstKill(day, boss.name, members.find(m => m.alive) ?? members[0], ++seq))
         moments.push('公会首杀:' + boss.name)
         const killer = members.find(m => m.alive) ?? members[0]
-        appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id } })
+        appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: encounterId } })
       }
     } else if (outcome.win) {
       const drop = rollWaveDrop(runDungeon(r).id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
@@ -165,13 +165,13 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
 
   const dead = outcome.deaths
   for (const d of dead) {
-    if (d.death) appendFact(guild.factLedger, day, { kind: 'death', actors: [d.id], names: { [d.id]: d.name }, cause: d.death, refs: { dungeonId: d.death.where.id, floor: d.death.where.floor } })
+    if (d.death) appendFact(guild.factLedger, day, { kind: 'death', actors: [d.id], names: { [d.id]: d.name }, cause: d.death, refs: { dungeonId: d.death.where.id, floor: d.death.where.floor, encounter: encounterId } })
   }
   const scars = settleScars({ ...outcome.run, members }, dead.length > 0, input.source === 'tower' ? input.run.floor : 0, rng)
   c.scars = scars.map(({ member, scar }) => ({ memberId: member.id, scar }))
-  for (const { member, scar } of scars) {
-    appendFact(guild.factLedger, day, { kind: 'scar', actors: [member.id], names: { [member.id]: member.name }, refs: { dungeonId: input.source === 'dungeon' ? input.run.dungeonId : 'tower', floor: input.source === 'tower' ? input.run.floor : undefined } })
-    void scar
+  for (const { member, nearDeath } of scars) {
+    const scarNth = (member.scars?.length ?? 0)
+    appendFact(guild.factLedger, day, { kind: 'scar', actors: [member.id], names: { [member.id]: member.name }, refs: { dungeonId: input.source === 'dungeon' ? input.run.dungeonId : 'tower', floor: input.source === 'tower' ? input.run.floor : undefined, nearDeath, scarNth } })
   }
   for (const { member, scar } of scars) {
     const text = member.name + ' 新增创伤：' + scarStatName(scar.stat) + ' -' + scar.value + '（' + scar.text + '），可回基地疗养。'
@@ -267,7 +267,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       if (stars > bondStars(before)) {
         c.chronicle.push(chronicleBondStar(day, a, b, stars, ++seq))
         moments.push(a.name + ' × ' + b.name + ' 默契 ' + stars + '★')
-        appendFact(guild.factLedger, day, { kind: 'bond-star', actors: [a.id, b.id], names: { [a.id]: a.name, [b.id]: b.name }, refs: {} })
+        appendFact(guild.factLedger, day, { kind: 'bond-star', actors: [a.id, b.id], names: { [a.id]: a.name, [b.id]: b.name }, refs: { stars } })
       }
     }
   }

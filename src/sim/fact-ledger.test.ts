@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { appendFact, EMPTY_LEDGER, factById, factsByItem, factsByMember, latestEventChoice, normalizeLedger, pruneFacts, FACT_KEEP_DAYS, type FactLedger } from './fact-ledger'
+import { appendFact, EMPTY_LEDGER, factById, factsByItem, factsByMember, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, pruneFacts, setStrictAssertions, FACT_KEEP_DAYS, type FactLedger } from './fact-ledger'
+import { tellExpedition } from './storyteller'
 import type { DeathCause } from './types'
 
 const cause: DeathCause = { kind: 'battle', where: { source: 'dungeon', id: 'abyssaltar' } }
@@ -18,9 +19,9 @@ describe('A2 事实账本', () => {
 
   test('链:consequence-due 经 latestEventChoice 指向已存在的 event-choice;id 单调不复用', () => {
     const l: FactLedger = { ...EMPTY_LEDGER, facts: [], nextId: 1 }
-    const choice = appendFact(l, 5, { kind: 'event-choice', actors: ['m1'], refs: { eventId: 'ev-toll' } })
+    const choice = appendFact(l, 5, { kind: 'event-choice', actors: ['m1'], refs: { eventId: 'ev-toll' } })!
     const link = latestEventChoice(l, 'ev-toll')
-    const due = appendFact(l, 12, { kind: 'consequence-due', actors: [], refs: { eventId: 'ev-toll' }, links: link ? [link.id] : undefined })
+    const due = appendFact(l, 12, { kind: 'consequence-due', actors: [], refs: { eventId: 'ev-toll' }, links: link ? [link.id] : undefined })!
     expect(due.links).toEqual([choice.id])
     expect(factById(l, choice.id)?.kind).toBe('event-choice')
     expect(l.nextId).toBe(3)
@@ -52,5 +53,38 @@ describe('A2 事实账本', () => {
     expect(factsByMember(l, 'm1')).toHaveLength(2)
     expect(normalizeLedger(undefined).facts).toEqual([])
     expect(normalizeLedger({ nextId: NaN }).facts).toEqual([])
+  })
+})
+
+describe('第 2 组:B4 水位入账本 / S9 normalize', () => {
+  test('B4:讲一条 → 序列化 → normalize → 再讲 → null(水位持久)', () => {
+    const l = { ...EMPTY_LEDGER, facts: [], nextId: 1 }
+    appendFact(l, 3, { kind: 'first-kill', actors: ['m1'], names: { m1: '甲' }, refs: { bossId: 'grush', dungeonId: 'blackmoss' } })
+    markExpeditionStart(l)
+    appendFact(l, 4, { kind: 'scar', actors: ['m1'], refs: {} })
+    markTold(l)
+    const restored = normalizeLedger(JSON.parse(JSON.stringify(l)))
+    expect(restored.toldThrough).toBe(l.nextId)
+    const after = tellExpedition(restored, () => 0.5, { fromId: restored.toldThrough ?? 0, startId: restored.expeditionStart ?? 0 })
+    expect(after).toBeNull()
+  })
+
+  test('S9:坏账本(nextId 落后、缺 refs/actors)normalize 后能继续追加', () => {
+    const bad = normalizeLedger({ nextId: 1, facts: [{ id: 7, day: 2, kind: 'scar' }] })
+    expect(bad.nextId).toBe(8)
+    expect(bad.facts[0].refs).toEqual({})
+    expect(bad.facts[0].actors).toEqual([])
+    const f = appendFact(bad, 9, { kind: 'wish-done', actors: ['m1'], refs: {} })
+    expect(f?.id).toBe(8)
+  })
+
+  test('S9:正式模式(strict=false)重复 relic-bind 不抛,跳过写入', () => {
+    const l = { ...EMPTY_LEDGER, facts: [], nextId: 1 }
+    appendFact(l, 1, { kind: 'relic-bind', actors: ['m1'], refs: { itemUid: 'it_1' } })
+    setStrictAssertions(false)
+    const before = l.facts.length
+    expect(() => appendFact(l, 2, { kind: 'relic-bind', actors: ['m2'], refs: { itemUid: 'it_1' } })).not.toThrow()
+    expect(l.facts.length).toBe(before)
+    setStrictAssertions(true)
   })
 })

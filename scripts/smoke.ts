@@ -6,7 +6,8 @@ import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, cr
 // 运行：npx esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=scripts/smoke.mjs && node scripts/smoke.mjs
 import { generateMember, memberGenerationState } from '../src/sim/gen'
 import { initialRunState } from '../src/sim/run-state'
-import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit, statLayers } from '../src/sim/combat'
+import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit, useSignature, statLayers } from '../src/sim/combat'
+import { SIGNATURE_SKILLS } from '../src/data/signature'
 import { rollBossDrops, rollDrop, rollWaveDrop, describeItem, itemStats, createLootRng } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
@@ -1390,7 +1391,38 @@ const towerFailures: string[] = []
     none: { protect: true, act: (_b: ReturnType<typeof createBattle>, _encId: string) => {} },
     meh: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const ga = b.combatants.filter((c) => c.alive && c.team === 'guild'); const lowest = ga.length > 0 ? ga.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null; if (lowest && lowest.hp / lowest.maxHp < 0.3) useHealPotion(b) } },
     mid: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (adds.length > 0) { if (!midAddSeen.has(b)) midAddSeen.set(b, b.tick); if (b.tick - (midAddSeen.get(b) ?? b.tick) >= 12) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); } else { midAddSeen.delete(b); if (boss) setFocus(b, boss.id); } if (boss?.mech?.['enrage']?.fired === 1) useFuryPotion(b); const gb = b.combatants.filter((c) => c.alive && c.team === 'guild'); const lowest = gb.length > 0 ? gb.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null; if (lowest && lowest.hp / lowest.maxHp < 0.35) useHealPotion(b) } },
-    good: { protect: false, act: (b: ReturnType<typeof createBattle>, encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const casting = boss?.mech?.['cast-buff'] !== undefined && boss!.mech!['cast-buff'].until !== undefined; const telegraphing = boss?.mech?.['telegraph-aoe'] !== undefined && boss!.mech!['telegraph-aoe'].until !== undefined; const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (telegraphing) setStance(b, 'spread'); else if (b.commands.stance === 'spread') setStance(b, 'standard'); if (casting && boss) setFocus(b, boss.id); else if (adds.length > 0) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); const gc = b.combatants.filter((c) => c.alive && c.team === 'guild'); const lowest = gc.length > 0 ? gc.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null; if (lowest && lowest.hp / lowest.maxHp < 0.55) useHealPotion(b); if (boss && (boss.mech?.['enrage']?.fired === 1 || (encId === 'enc-grush' && boss.hp / boss.maxHp < 0.45))) useFuryPotion(b) } },
+    good: {
+      protect: false,
+      act: (b: ReturnType<typeof createBattle>, encId: string) => {
+        if (b.tick % 5) return
+        const boss = b.combatants.find((c) => c.alive && c.bossMechanics)
+        const casting = boss?.mech?.['cast-buff'] !== undefined && boss!.mech!['cast-buff'].until !== undefined
+        const telegraphing = boss?.mech?.['telegraph-aoe'] !== undefined && boss!.mech!['telegraph-aoe'].until !== undefined
+        const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics)
+        if (telegraphing) setStance(b, 'spread')
+        else if (b.commands.stance === 'spread') setStance(b, 'standard')
+        if (casting && boss) setFocus(b, boss.id)
+        else if (adds.length > 0) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id)
+        else if (boss) setFocus(b, boss.id)
+        const gc = b.combatants.filter((c) => c.alive && c.team === 'guild')
+        const lowest = gc.length > 0 ? gc.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null
+        if (lowest && lowest.hp / lowest.maxHp < 0.55) useHealPotion(b)
+        if (boss && (boss.mech?.['enrage']?.fired === 1 || (encId === 'enc-grush' && boss.hp / boss.maxHp < 0.45))) useFuryPotion(b)
+        // A7 后续:会玩档也用招牌技(与挂机 AI 同入口 useSignature),让 ⑨ 胜率差覆盖新系统
+        for (const g of gc) {
+          if (!g.memberId || !g.specId) continue
+          const sk = SIGNATURE_SKILLS[g.specId]
+          if (!sk) continue
+          if (b.tick < (b.signatureCd?.[g.memberId] ?? 0)) continue
+          if (sk.effect.startsWith('interrupt')) { if (boss && boss.mech?.['cast-buff']?.until !== undefined && b.tick < boss.mech['cast-buff'].until) useSignature(b, g.memberId, boss.id) }
+          else if (sk.effect === 'detonate-burn') { if ((boss?.burnStacks ?? 0) >= 3 && boss) useSignature(b, g.memberId, boss.id) }
+          else if (sk.effect === 'sacrifice-strike') { if (boss && g.hp / g.maxHp > 0.7) useSignature(b, g.memberId, boss.id) }
+          else if (sk.effect === 'execute-strike') { if (boss && boss.hp / boss.maxHp < 0.5) useSignature(b, g.memberId, boss.id) }
+          else if (sk.effect === 'heal-target-cleanse') { if (lowest && lowest.hp / lowest.maxHp < 0.4 && lowest.memberId) useSignature(b, g.memberId, lowest.memberId) }
+          else if (boss) useSignature(b, g.memberId, boss.id)
+        }
+      },
+    },
   } as const
   type Tier = keyof typeof tier
 
