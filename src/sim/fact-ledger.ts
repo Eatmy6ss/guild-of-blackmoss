@@ -17,7 +17,7 @@ export interface Fact {
   actors: string[]
   /** id→名字映射(写入口顺手带,说书人模板取人名用;不必全员) */
   names?: Record<string, string>
-  refs: { itemUid?: string; eventId?: string; bossId?: string; dungeonId?: string; floor?: number }
+  refs: { itemUid?: string; eventId?: string; bossId?: string; dungeonId?: string; floor?: number; encounter?: number; nearDeath?: boolean; scarNth?: number; stars?: number }
   /** kind = death 时必填(断言守) */
   cause?: DeathCause
   /** 本事实由哪些旧事实引起(consequence-due → event-choice) */
@@ -31,6 +31,8 @@ export interface FactLedger {
   toldThrough?: number
   /** B4:本趟远征出发时的账本水位(碰撞类事实只认这之后的) */
   expeditionStart?: number
+  /** U26⑥/Q4-B:每类故事最近用过的模板下标(最多留 2 个,防偏科) */
+  recentTemplates?: Partial<Record<string, number[]>>
 }
 
 export const EMPTY_LEDGER: FactLedger = { nextId: 1, facts: [] }
@@ -76,9 +78,14 @@ export function markExpeditionStart(ledger: FactLedger): void {
   ledger.expeditionStart = ledger.nextId
 }
 
-/** B4:讲完一条故事,把水位推到账本末尾(同趟不再重复讲) */
-export function markTold(ledger: FactLedger): void {
+/** B4:讲完一条故事,水位推到账本末尾;U26⑥:记录模板下标,同类只排除最近 2 个 */
+export function markTold(ledger: FactLedger, storyType?: string, templateIdx?: number): void {
   ledger.toldThrough = ledger.nextId
+  if (!storyType || templateIdx === undefined || !Number.isSafeInteger(templateIdx) || templateIdx < 0) return
+  const recent = { ...(ledger.recentTemplates ?? {}) }
+  const arr = [...(recent[storyType] ?? []), templateIdx].slice(-2)
+  recent[storyType] = arr
+  ledger.recentTemplates = recent
 }
 
 /** 体积修剪:永久类全留,其余只保留最近 keepDays 天内的事实(按 day 字段,倒序保序) */
@@ -123,10 +130,16 @@ export function normalizeLedger(value: unknown): FactLedger {
     links: Array.isArray(f.links) ? f.links.filter((id) => knownIds.has(id)) : undefined,
   }))
   for (const f2 of facts) if (f2.id >= nextId) nextId = f2.id + 1
+  const recent = v.recentTemplates && typeof v.recentTemplates === 'object' ? v.recentTemplates : {}
+  const cleanRecent: Partial<Record<string, number[]>> = {}
+  for (const [k, arr] of Object.entries(recent)) {
+    if (Array.isArray(arr)) cleanRecent[k] = arr.filter((n) => Number.isSafeInteger(n) && (n as number) >= 0)
+  }
   return {
     nextId,
     facts,
     toldThrough: typeof v.toldThrough === 'number' ? v.toldThrough : undefined,
     expeditionStart: typeof v.expeditionStart === 'number' ? v.expeditionStart : undefined,
+    recentTemplates: cleanRecent,
   }
 }

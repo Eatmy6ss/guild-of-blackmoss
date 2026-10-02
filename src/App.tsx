@@ -512,7 +512,7 @@ export default function App() {
         startId: factLedgerRef.current.expeditionStart ?? 0,
       })
       if (story) {
-        markTold(factLedgerRef.current) // B4:水位入账本(序列化持久,同趟不重讲)
+        markTold(factLedgerRef.current, story.type, story.templateIdx) // B4 水位+U26⑥ 模板下标入账本
       }
     }
     setScarNotices(story ? [...o.notices, '📖 ' + story.text] : o.notices)
@@ -877,7 +877,7 @@ export default function App() {
     // M1 P0:回城 roll 上门事件与大事事件(涌现叙事双井;缘分不排队,不受冷却)
     const roll = guildRng()
     if (roll < fx.visitorChance && membersRef.current.filter((m) => m.alive).length < ROSTER_CAP) {
-      setVisitor(rollVisitor(guildRng, membersRef.current, buildings.tavern ?? 0))
+      setVisitor(rollVisitor(guildRng, membersRef.current, buildings.tavern ?? 0, { hybrids: !__PLAYTEST__ }))
     } else if (roll < fx.visitorChance + 0.35 && !pendingEvent) {
       const ev = rollGuildEvent(guildRng)
       if (ev) {
@@ -985,7 +985,7 @@ export default function App() {
     if (gold < ECONOMY.taleCost.gold || blessing < ECONOMY.taleCost.blessing) return
     setGold((g) => g - ECONOMY.taleCost.gold)
     setBlessing((b) => b - ECONOMY.taleCost.blessing)
-    setCandidates(taleCandidates(guildRng, membersRef.current))
+    setCandidates(taleCandidates(guildRng, membersRef.current, 3, { hybrids: !__PLAYTEST__ }))
     setRecruitCooldown(cooldownNeeded(aliveCount()))
   }
 
@@ -1051,7 +1051,7 @@ export default function App() {
       chip(`获得装备:${describeItem(d)}`, 'pos')
     }
     if (fx.recruit) {
-      setVisitor(rollVisitor(rng, membersRef.current))
+      setVisitor(rollVisitor(rng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))
       chip('有访客上门', 'pos')
     }
     if (fx.injure) {
@@ -1317,6 +1317,7 @@ export default function App() {
   // 职阶切换(宪法 v3):基础专精间轻消耗;混合职阶需默契达标+公会一次性解锁(重消耗)
   const bondTotalOf = (m: Member) => Object.values(m.bonds).reduce((s2, n) => s2 + bondStars(n), 0)
   const changeVocation = (memberId: string, newSpecId: string) => {
+    if (__PLAYTEST__ && isHybrid(newSpecId)) return // U26③:试玩版隐藏混合职阶
     if (runRef.current || towerRunRef.current) return
     const m = membersRef.current.find((x) => x.id === memberId)
     if (!m || m.spec === newSpecId) return
@@ -1826,7 +1827,7 @@ export default function App() {
                 <p className="hint">🚪 暂时没有访客——但公会正缺人手,守夜人去酒馆后巷喊一嗓子总会有人应。</p>
                 <button
                   disabled={!!run}
-                  onClick={() => setVisitor(rollVisitor(guildRng, membersRef.current))}
+                  onClick={() => setVisitor(rollVisitor(guildRng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))}
                 >
                   🌙 在酒馆等一晚(必定有人上门)
                 </button>

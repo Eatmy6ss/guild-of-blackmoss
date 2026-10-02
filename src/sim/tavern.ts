@@ -17,7 +17,11 @@ import { ITEM_BASES } from '../data/items'
 export type Rng = () => number
 
 /** 治疗保底(矩阵感知):无存活治疗者 → 必出治疗线,且种族从牧师可用族中 roll(兽人/亡灵无牧师);否则按种族矩阵随机 */
-function pickCandidate(rng: Rng, members: Member[], level: number, forcedJob?: JobId): Member {
+export interface CandidateOpts {
+  /** Q2/U26:试玩版隐藏混合职阶——false 时不刷 hybrid 候选(随机流不变:0.1 抽签照常,不允许时落回普通候选) */
+  hybrids?: boolean
+}
+function pickCandidate(rng: Rng, members: Member[], level: number, forcedJob?: JobId, opts?: CandidateOpts): Member {
   const hasHealer = members.some((m) => m.alive && JOBS[m.job]?.role === 'healer')
   let race: string
   let job: JobId
@@ -48,7 +52,7 @@ function pickCandidate(rng: Rng, members: Member[], level: number, forcedJob?: J
   }
   // 混合职阶可遇(宪法 v3.2 回归):10% 概率候选为混合职阶,种族须两线皆通(矩阵内的稀缺相遇)。
   // 治疗保底优先:无治疗局面绝不抽混合(保底走纯牧师线)
-  if (!forcedJob && hasHealer && rng() < 0.1) {
+  if (!forcedJob && hasHealer && (opts?.hybrids ?? true) && rng() < 0.1) {
     const hyIds = Object.keys(HYBRIDS)
     const hy = HYBRIDS[hyIds[Math.floor(rng() * hyIds.length)] ?? 'hy-saint']
     const racesOk = Object.values(RACES).filter((r) => hy.lines.every((l) => r.allowedLines.includes(l))).map((r) => r.id)
@@ -94,13 +98,13 @@ export interface Visitor {
 }
 
 /** 路径一:随机上门事件——一位带着故事的冒险者(免费签,缘分不排队) */
-export function rollVisitor(rng: Rng, members: Member[], tavernLevel = 0): Visitor {
+export function rollVisitor(rng: Rng, members: Member[], tavernLevel = 0, opts?: CandidateOpts): Visitor {
   const levelBonus = tavernLevel >= 2 ? 1 : 0
   const level = Math.max(
     1,
     avgLevel(members) + ECONOMY.visitorLevel.base + levelBonus + Math.floor(rng() * (ECONOMY.visitorLevel.spread + 1)),
   )
-  const member = pickCandidate(rng, members, level)
+  const member = pickCandidate(rng, members, level, undefined, opts)
   const story = VISITOR_STORIES[Math.floor(rng() * VISITOR_STORIES.length)]
   return { member, story: `${member.name} ${story}` }
 }
@@ -112,9 +116,9 @@ export function bountyCandidate(rng: Rng, members: Member[], job: JobId): Member
 }
 
 /** 路径三:酒馆传闻——花金+祝福抽三选一,候选等级更高 */
-export function taleCandidates(rng: Rng, members: Member[], count = 3): Member[] {
+export function taleCandidates(rng: Rng, members: Member[], count = 3, opts?: CandidateOpts): Member[] {
   const level = Math.max(1, avgLevel(members) + ECONOMY.taleLevelBonus)
-  return Array.from({ length: count }, () => pickCandidate(rng, members, level))
+  return Array.from({ length: count }, () => pickCandidate(rng, members, level, undefined, opts))
 }
 
 /** 离线累积:离开的时间里,存活英雄们接零工赚金币(有上限——世界不替你玩) */

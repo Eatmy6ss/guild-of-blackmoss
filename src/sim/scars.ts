@@ -67,22 +67,23 @@ export interface ScarRun {
 }
 
 /** 只检查本场实际参战的幸存者；塔深层维持每层随机一人 5% 的额外来源。 */
-export function settleScars(run: ScarRun, witnessedDeath: boolean, towerFloor = 0, rng: Rng = createRng(run.battle?.rngState ?? 0)): { member: Member; scar: Scar }[] {
+export function settleScars(run: ScarRun, witnessedDeath: boolean, towerFloor = 0, rng: Rng = createRng(run.battle?.rngState ?? 0)): { member: Member; scar: Scar; nearDeath: boolean }[] {
   const b = run.battle
   if (!b || b.status === 'running' || b.scarsSettled) return []
   b.scarsSettled = true
   const alive = run.members.filter(m => m.alive && canGainScar(m) && b.combatants.some(c => c.team === 'guild' && c.memberId === m.id && c.alive))
   const deepTarget = towerFloor >= 6 ? alive[Math.floor(rng() * alive.length)] : undefined
-  const changes: { member: Member; scar: Scar }[] = []
+  const changes: { member: Member; scar: Scar; nearDeath: boolean }[] = []
   for (const m of alive) {
     const c = b.combatants.find(c => c.team === 'guild' && c.memberId === m.id)!
+    const nearDeath = c.hp / c.maxHp < 0.15
     const witness = witnessedDeath && !(run.witnessScarredIds ?? []).includes(m.id)
-    const p = rollScarChance({ mechanicHits: c.scarMechanicHits ?? 0, nearDeath: c.hp / c.maxHp < 0.15, witnessedDeath: witness, towerFloor: m === deepTarget ? towerFloor : 0 })
+    const p = rollScarChance({ mechanicHits: c.scarMechanicHits ?? 0, nearDeath, witnessedDeath: witness, towerFloor: m === deepTarget ? towerFloor : 0 })
     if (p <= 0 || rng() >= p) continue
     const scar = rollScar(rng)
     m.scars = [...(m.scars ?? []), scar]
     if (witness) (run.witnessScarredIds ??= []).push(m.id)
-    changes.push({ member: m, scar })
+    changes.push({ member: m, scar, nearDeath })
   }
   return changes
 }
