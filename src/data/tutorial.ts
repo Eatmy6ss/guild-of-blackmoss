@@ -10,7 +10,7 @@ export const DOCK_UNLOCK_DAY: Record<string, number> = {
   warehouse: 2,
   chronicle: 1,
   kingdom: 4,
-  base: 4,
+  base: 2,
   memorial: 5,
 }
 
