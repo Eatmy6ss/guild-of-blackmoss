@@ -401,7 +401,7 @@ for (let i = 0; i < 60; i++) {
       lootFailures.push(`6b 词条 ${aff.id} 数值越界 ${r.value}(上界 ${hi.toFixed(2)})`)
     }
   }
-  if (!describeItem(item).includes('逐风长弓')) lootFailures.push('6b 描述缺失')
+  if (!describeItem(item).includes(ITEM_BASES['wpn-t2-bow'].name)) lootFailures.push('6b 当前装备名称缺失')
   if (!itemStats(item).attack) lootFailures.push('6b 属性聚合缺失')
 }
 

@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { DUNGEONS } from '../../data/dungeons'
-import { JOBS } from '../../data/jobs'
-import { RACES } from '../../data/races'
-import { ITEM_BASES } from '../../data/items'
-import type { JobId, Slot } from '../../sim/types'
 import { credits, MUSIC, SCENE_ART, SPRITE_PATHS } from './catalog'
 import { assetUrl, loadArt } from './assetLoader'
-import { HeroPortrait, ArtCanvas } from './ArtCanvas'
-import { ItemArt } from './ItemArt'
+import { ArtCanvas } from './ArtCanvas'
+import { CharacterWardrobe } from './CharacterWardrobe'
 import { BOSS_ART } from './enemyArt'
 import { paintScene } from './scene'
 import { CreditsContent } from './Credits'
@@ -32,9 +28,6 @@ const TABS = { maps: '地域场景', heroes: '人物与装备', bosses: '首领�
 export function ResourceLibrary() {
   const [tab, setTab] = useState<keyof typeof TABS>('maps')
   const [map, setMap] = useState('blackmoss')
-  const [race, setRace] = useState('human')
-  const [gear, setGear] = useState({ weapon: '', armor: '' })
-  const [quality, setQuality] = useState<'white' | 'green' | 'purple'>('white')
   const audio = useRef<HTMLAudioElement[]>([])
   useEffect(() => {
     const pause = () => { if (document.hidden) audio.current.forEach(element => element.pause()) }
@@ -49,21 +42,7 @@ export function ResourceLibrary() {
       <MapPreview id={map} />
       <div className="scene-caption"><strong>{SCENE_ART[map].name}</strong><span>同源32px地景 · 地形、远景与装饰按地区绑定</span></div>
     </section>}
-    {tab === 'heroes' && <section className="panel">
-      <div className="library-controls"><label>种族<select value={race} onChange={e => setRace(e.target.value)}>{Object.values(RACES).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
-        {(['weapon', 'armor'] as Slot[]).map(slot => <label key={slot}>{slot === 'weapon' ? '武器' : '护甲'}<select value={gear[slot as 'weapon' | 'armor']} onChange={e => setGear({ ...gear, [slot]: e.target.value })}><option value="">职业默认装束</option>{Object.values(ITEM_BASES).filter(i => i.slot === slot).map(i => <option value={i.id} key={i.id}>{i.name}</option>)}</select></label>)}
-      </div>
-      <div className="gear-preview"><label>品质纹饰<select value={quality} onChange={e => setQuality(e.target.value as typeof quality)}><option value="white">普通 ·</option><option value="green">精良 ▰</option><option value="purple">史诗 ◆</option></select></label>{(['weapon', 'armor'] as const).map(slot => <div className="preview-equipment" key={slot}>
-        <ItemArt item={gear[slot] ? { baseId: gear[slot], quality } : undefined} slot={slot} size={64} />
-        <span>{gear[slot] ? ITEM_BASES[gear[slot]].name : `${slot === 'weapon' ? '武器' : '护甲'} · 职业默认`}</span>
-      </div>)}<span>挑选武器与护甲，查看队员的装束。默认装束按各自职业展示。</span></div>
-      <div className="hero-gallery">{Object.values(JOBS).map(job => {
-        const equipment = Object.fromEntries(Object.entries(gear).filter(([, baseId]) => baseId).map(([slot, baseId]) => [slot, { id: 'preview-' + slot, baseId, rolls: [] }]))
-        const member = { job: job.id as JobId, race, equipment }
-        return <div key={job.id}><HeroPortrait member={member} size={96} /><h2>{job.name}</h2><p>{RACES[race].name} · {job.position === 'front' ? '前排' : '后排'}</p><small>{gear.weapon ? ITEM_BASES[gear.weapon].name : '职业装束'}</small></div>
-      })}</div>
-      <p className="library-note">这里仅预览素材，不创建人物，不写公会存档。混合职业沿基础职业与当前装备显示；专精独有轮廓和角色动画留待后续打磨。</p>
-    </section>}
+    {tab === 'heroes' && <section className="panel"><CharacterWardrobe /></section>}
     {tab === 'bosses' && <section className="panel">
       <p className="library-note">14位首领分别绑定不同轮廓；新增12张同源原图，另外2张复用已入库素材。以下名称和机制来自当前游戏定义，不写测试存档。</p>
       <div className="boss-gallery">{DUNGEONS.flatMap(d => Object.values(d.bosses).map(b => <article key={b.id}>

@@ -1,5 +1,5 @@
 import { HeroPortrait, ArtCanvas } from './ui/art/ArtCanvas'
-import { ItemArt, ITEM_QUALITY_NAME } from './ui/art/ItemArt'
+import { ItemArt, ItemLore, ITEM_QUALITY_NAME } from './ui/art/ItemArt'
 import { DOCK_ART } from './ui/art/catalog'
 import { BattleIntel } from './ui/art/BattleIntel'
 import { CreditsDialog } from './ui/art/Credits'
@@ -1563,7 +1563,7 @@ export default function App() {
                   </option>
                 ))}
               </select>
-                {equipped && <details className="gear-description"><summary>属性与词条</summary><p>{describeItem(equipped)}</p></details>}
+                {equipped && <details className="gear-description"><summary>属性与词条</summary><p>{describeItem(equipped)}</p><ItemLore baseId={equipped.baseId} /></details>}
               </div>
             )
           })}
@@ -1960,7 +1960,7 @@ export default function App() {
               inventory.map((i) => (
                 <div key={i.id} className="inv-item">
                   <ItemArt item={i} slot={ITEM_BASES[i.baseId].slot} />
-                  <span className="inv-description">{describeItem(i)}</span>
+                  <span className="inv-description">{describeItem(i)}<ItemLore baseId={i.baseId} /></span>
                   {ITEM_BASES[i.baseId].tier === 3 && (
                     <button className="sell-btn" onClick={() => dismantleT3(i.id)}>
                       ♻ 拆解 +2 星髓

@@ -183,6 +183,39 @@ body { background: repeating-linear-gradient(90deg,#121416 0 80px,#171a1c 80px 8
 .hero-gallery .hero-portrait { background: linear-gradient(#121416 0 70%,#403025 70% 74%,#241b17 74%); box-shadow: inset 0 -4px 0 #624635; }
 .hero-gallery h2 { margin: 8px 0; color: #dcba87; }
 .hero-gallery p, .hero-gallery small { font-size: 12px; color: #adb6aa; }
+.wardrobe-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 12px 0 16px; }
+.wardrobe-heading h2 { margin: 4px 0; color: #dcba87; font-size: 20px; }
+.wardrobe-heading p, .wardrobe-heading small { color: #adb6aa; font-size: 12px; }
+.wardrobe-heading .library-tabs { margin: 0; }
+.identity-gallery { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 16px 0 24px; }
+.identity-gallery article { background: #241b17; border: 1px solid #624635; min-width: 0; }
+.identity-gallery h3 { display: flex; justify-content: space-between; color: #dcba87; font-size: 14px; margin: 0; padding: 10px 12px; border-bottom: 1px solid #624635; }
+.identity-gallery h3 small { color: #adb6aa; font-weight: 400; }
+.identity-gallery article>div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.game-shell .identity-gallery button { display: grid; justify-items: center; align-content: start; gap: 8px; padding: 12px 4px; min-width: 0; border: 0; border-bottom: 3px solid transparent; background: transparent; box-shadow: none; }
+.game-shell .identity-gallery button[aria-pressed=true] { background: #3e3021; border-bottom-color: #dcba87; }
+.identity-gallery .hero-portrait, .fitting-figure .hero-portrait { background: radial-gradient(ellipse at 50% 75%,#403025,transparent 68%); }
+.identity-gallery strong { font-size: 13px; color: #f4edcf; font-weight: 400; }
+.identity-gallery button small { font-size: 11px; color: #adb6aa; line-height: 1.7; max-width: 110px; white-space: normal; }
+.wardrobe-fitting { display: grid; grid-template-columns: 180px minmax(0,1fr); gap: 24px; padding: 24px 0; border-block: 1px solid #624635; }
+.fitting-figure { text-align: center; padding-top: 16px; background: linear-gradient(transparent,#241b17); }
+.fitting-figure h2 { font-size: 18px; color: #dcba87; margin: 12px 0 4px; }
+.fitting-figure p { color: #adb6aa; font-size: 12px; }
+.fitting-controls { min-width: 0; }
+.fitting-controls h3 { color: #dcba87; margin: 0; }
+.fitting-controls>.library-note { display: block; font-size: 12px; margin: 8px 0; }
+.fitting-slots { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 16px 0; }
+.fitting-slots label { display: grid; gap: 8px; min-width: 0; color: #adb6aa; font-size: 12px; }
+.fitting-slots .item-art { justify-self: start; align-self: start; }
+.fitting-slots select { width: 100%; min-width: 0; display: block; margin-top: 6px; }
+.equipment-gallery { display: grid; grid-template-columns: repeat(auto-fill,minmax(128px,1fr)); gap: 8px; }
+.game-shell .equipment-gallery button { display: grid; justify-items: center; align-content: start; gap: 8px; min-width: 0; padding: 16px 8px; background: #241b17; border: 1px solid #624635; }
+.game-shell .equipment-gallery button[aria-pressed=true] { border-color: #dcba87; background: #3e3021; }
+.equipment-gallery strong { font-size: 13px; color: #dcba87; white-space: normal; }
+.equipment-gallery small { font-size: 11px; color: #adb6aa; white-space: normal; }
+.item-flavor { display: block; color: #b8a98c; font-size: 12px; line-height: 1.8; font-weight: 400; white-space: normal; overflow-wrap: anywhere; margin: 8px 0; }
+.fitting-lore { padding: 8px 12px; border-left: 2px solid #8b703d; margin: 12px 0; color: #dcba87; overflow-wrap: anywhere; }
+.equipment-gallery .item-flavor { border-top: 1px solid #624635; padding-top: 8px; text-align: left; }
 .gear-preview { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 0; color: #adb6aa; font-size: 12px; }
 .gear-preview label { display: grid; gap: 4px; color: #dcba87; }
 .preview-equipment { display: grid; justify-items: center; gap: 6px; max-width: 160px; text-align: center; }
@@ -205,8 +238,13 @@ body { background: repeating-linear-gradient(90deg,#121416 0 80px,#171a1c 80px 8
 .asset-grid small { display: block; color: #adb6aa; font-size: 11px; overflow-wrap: anywhere; }
 @media(max-width: 1000px) {
   .battle-panel .signature-bar { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .identity-gallery { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media(max-width: 640px) {
+  .identity-gallery { grid-template-columns: 1fr; }
+  .wardrobe-fitting { grid-template-columns: 1fr; gap: 16px; padding: 16px 0; }
+  .fitting-slots { grid-template-columns: 1fr; }
+  .fitting-slots label { grid-template-columns: 52px minmax(0,1fr); align-items: center; }
   #root { padding: 8px; }
   .game-shell .panel { padding: 12px; }
   .game-shell .app-header h1 { font-size: 18px; }

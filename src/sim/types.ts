@@ -134,6 +134,8 @@ export interface AffixDef {
 export interface ItemBaseDef {
   id: string
   name: string
+  /** 展示用的物件来历；不参与词条、战斗和实例存档。 */
+  flavor?: string
   slot: Slot
   tier: number
   /** 基础属性 */
