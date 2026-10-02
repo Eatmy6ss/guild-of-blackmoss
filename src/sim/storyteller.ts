@@ -4,6 +4,7 @@
 // 模板在 src/data/story-templates.ts(手写,禁程序拼句);本模块只做碰撞识别与槽位填充,不读 App 状态。
 import type { Fact, FactLedger } from './fact-ledger'
 import { DUNGEONS } from '../data/dungeons'
+import { GUILD_EVENTS } from '../data/guild-events'
 import { TEMPLATES, type StorySlots, type StoryType } from '../data/story-templates'
 
 export interface StoryEntry {
@@ -12,8 +13,10 @@ export interface StoryEntry {
   factIds: number[]
 }
 
-const dungeonName = (id?: string): string =>
-  DUNGEONS.find((d) => d.id === id)?.name ?? '未知之地'
+const dungeonName = (id?: string): string => {
+  if (id === 'tower') return '黑苔高塔'
+  return DUNGEONS.find((d) => d.id === id)?.name ?? '未知之地'
+}
 
 const bossName = (bossId?: string): string => {
   if (!bossId) return '首领'
@@ -27,11 +30,11 @@ const bossName = (bossId?: string): string => {
 /** 优先级即"最强"排序:延迟兑现(能证明的跨时间因果)> 首杀陪葬 > 创伤生还 > 遗物待赎 > 心愿 > 默契 */
 const PRIORITY: StoryType[] = ['consequence-due', 'firstkill-death', 'scar-survive', 'relic-wait', 'wish-done', 'bond-star']
 
-export function tellExpedition(ledger: Pick<FactLedger, 'facts'>, rng: () => number, startId = 0): StoryEntry | null {
-  // startId=本趟远征第一笔事实的 id:碰撞类只查本趟,延迟兑现(跨时间因果)查全窗
+export function tellExpedition(ledger: Pick<FactLedger, 'facts'>, rng: () => number, window: { fromId: number; startId: number } = { fromId: 0, startId: 0 }): StoryEntry | null {
+  // S8:碰撞照旧只看切片(fromId=已讲水位);延迟兑现的 origin 在全账本里找(不受水位切割)
   const slots: StorySlots = {}
   for (const type of PRIORITY) {
-    const factIds = collide(type, type === 'consequence-due' ? ledger.facts : ledger.facts.filter((f) => f.id >= startId), slots)
+    const factIds = collide(type, type === 'consequence-due' ? ledger.facts : ledger.facts.filter((f) => f.id >= window.fromId), slots, window.startId)
     if (!factIds) continue
     const templates = TEMPLATES[type]
     const text = templates[Math.floor(rng() * templates.length) % templates.length](slots)
@@ -41,17 +44,20 @@ export function tellExpedition(ledger: Pick<FactLedger, 'facts'>, rng: () => num
 }
 
 /** 识别一类碰撞:返回涉及的账本事实 id 并填充槽位;不构成则 null */
-function collide(type: StoryType, facts: Fact[], slots: StorySlots): number[] | null {
+function collide(type: StoryType, facts: Fact[], slots: StorySlots, startId: number): number[] | null {
   const deaths = facts.filter((f) => f.kind === 'death')
   const nameOf = (f: Fact, i = 0): string => f.names?.[f.actors[i]] ?? f.actors[i] ?? '某人'
-  const placeOf = (f: Fact): string => dungeonName(f.cause?.where.id)
+  const placeOf = (f: Fact): string => dungeonName(f.cause?.where.id ?? f.refs.dungeonId)
 
   switch (type) {
     case 'consequence-due': {
-      const due = facts.find((f) => f.kind === 'consequence-due' && (f.links?.length ?? 0) > 0)
+      const due = facts.find((f) => f.kind === 'consequence-due' && (f.links?.length ?? 0) > 0 && f.id >= startId)
       if (!due) return null
       const origin = facts.find((f) => f.id === due.links![0])
       slots.eventId = due.refs.eventId ?? ''
+      const evDef = GUILD_EVENTS.find((e) => e.id === due.refs.eventId)
+      if (!evDef) return null // S8:未知事件无法给出可读标题,不讲(生产中 due 必来自 GUILD_EVENTS)
+      slots.eventTitle = evDef.title.replace(/^第.幕·/, '')
       slots.choiceDay = origin?.day ?? due.day
       slots.dueDay = due.day
       return [due.id, ...(due.links ?? [])]

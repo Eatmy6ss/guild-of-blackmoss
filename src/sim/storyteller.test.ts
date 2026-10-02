@@ -20,7 +20,7 @@ describe('A9 说书人 A 步', () => {
     const l = ledger()
     l.facts = [
       { ...deathFact(1, 'm1', '老盾卫', 'blackmoss'), day: 3 },
-      { id: 2, day: 9, kind: 'consequence-due', actors: [], refs: { eventId: 'ev-toll' }, links: [1] },
+      { id: 2, day: 9, kind: 'consequence-due', actors: [], refs: { eventId: 'cursed-coffin' }, links: [1] },
       { id: 3, day: 3, kind: 'first-kill', actors: ['m2'], names: { m2: '游侠甲' }, refs: { bossId: 'grush', dungeonId: 'blackmoss' } },
     ] as typeof l.facts
     const story = tellExpedition(l, rng)!
@@ -58,5 +58,30 @@ describe('A9 说书人 A 步', () => {
     expect(tellExpedition(l, rng)).toBeNull()
     l.facts.push(deathFact(2, 'm1', '老盾卫', 'rustmine'))
     expect(tellExpedition(l, rng)?.type).toBe('relic-wait')
+  })
+})
+
+describe('第 2 组:B5 地点名 / S8 eventTitle 与窗口', () => {
+  test('B5:只有 refs.dungeonId 的 scar 事实,6 条模板都不含「未知之地」(塔=黑苔高塔)', () => {
+    const l = ledger()
+    l.facts = [{ id: 1, day: 3, kind: 'scar', actors: ['m1'], names: { m1: '老盾卫' }, refs: { dungeonId: 'tower' } }] as typeof l.facts
+    for (let i = 0; i < 6; i++) {
+      const story = tellExpedition(l, () => i / 6)!
+      expect(story.type).toBe('scar-survive')
+      expect(story.text).not.toContain('未知之地')
+    }
+    expect([0, 1, 2, 3, 4, 5].some((i) => tellExpedition(l, () => i / 6)!.text.includes('黑苔高塔'))).toBe(true)
+  })
+
+  test('S8:origin 早于水位时文本用 eventTitle 且两个天数不同;文本不含机制 id', () => {
+    const l = ledger()
+    l.facts = [
+      { id: 1, day: 2, kind: 'event-choice', actors: [], refs: { eventId: 'cursed-coffin' } },
+      { id: 2, day: 9, kind: 'consequence-due', actors: [], refs: { eventId: 'cursed-coffin' }, links: [1] },
+    ] as typeof l.facts
+    const texts = [0, 1, 2, 3, 4, 5].map((i) => tellExpedition(l, () => i / 6, { fromId: 2, startId: 2 })!.text)
+    for (const t of texts) expect(t).not.toMatch(/[a-z]+-[a-z]+/)
+    expect(texts.some((t) => t.includes('受诅咒的报酬'))).toBe(true)
+    expect(texts.some((t) => t.includes('第 2 天') && t.includes('第 9 天'))).toBe(true)
   })
 })

@@ -12,6 +12,7 @@ export type StoryType =
 
 export interface StorySlots {
   eventId?: string
+  eventTitle?: string
   choiceDay?: number
   dueDay?: number
   boss?: string
@@ -28,9 +29,9 @@ export interface StorySlots {
 export const TEMPLATES: Record<StoryType, ((s: StorySlots) => string)[]> = {
   // 延迟后果兑现:因果有账本 links 背书——"这件事,还没有完"的闭环
   'consequence-due': [
-    (s) => `「${s.eventId}」里埋下的那个决定,在这一天找上门来。账,从来不会自己消失。`,
+    (s) => `「${s.eventTitle}」里埋下的那个决定,在这一天找上门来。账,从来不会自己消失。`,
     (s) => `当初那个选择过去了很多天——第 ${s.dueDay} 天,它回来了。远征队的账本上,这笔从来没有被划掉过。`,
-    (s) => `有人以为「${s.eventId}」的事已经翻篇。这一天证明:没有。`,
+    (s) => `有人以为「${s.eventTitle}」的事已经翻篇。这一天证明:没有。`,
     (s) => `第 ${s.choiceDay} 天的旧账,第 ${s.dueDay} 天兑现。公会的经验是:每一个决定都会回来,带着利息。`,
     (s) => `那件事到底还是没有完。第 ${s.dueDay} 天,它按账本上记的日子,准时抵达。`,
     () => `日子一天天过,那个选择静静躺在账本里——直到这一天,它醒了。`,

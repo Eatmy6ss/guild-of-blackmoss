@@ -34,7 +34,7 @@ import {
 import { SignatureBar } from './ui/battle/SignatureBar'
 import { BattleHints } from './ui/battle/BattleHints'
 import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE, FIRST_RETURN_TIP } from './data/tutorial'
-import { appendFact, latestEventChoice, normalizeLedger, type FactLedger } from './sim/fact-ledger'
+import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
 import { SIGNATURE_SKILLS } from './data/signature'
 import { renderWarReportCard, downloadWarReportCard } from './ui/war-report-card'
@@ -214,8 +214,6 @@ export default function App() {
     const milestone = DOCK_UNLOCK_MILESTONE[key]
     return milestone ? milestone({ inventoryCount: inventory.length, chronicleCount: chronicle.length, memorialCount: memorial.length }) : false
   }
-  const storyCursorRef = useRef(0) // A9:已讲过的账本水位;从上一条故事之后找碰撞
-  const expeditionStartFactRef = useRef(0) // A9:本趟出发时的账本水位(碰撞类只认本趟)
   const [saveFailed, setSaveFailed] = useState(false)
   const changeProgress = (patch: Partial<RunUIState>) => {
     const next = runReducer(progressRef.current, { type: 'patch', patch })
@@ -505,23 +503,25 @@ export default function App() {
     chronicleRef.current = [...chronicleRef.current, ...o.consequences.chronicle]
     seedChronicle(chronicleRef.current)
     setChronicle(chronicleRef.current)
-    setScarNotices(o.notices)
+    // A9/B3:远征终局先算故事(说书人只读账本),再一次性写横幅——故事不冲掉结算通知
+    let story: ReturnType<typeof tellExpedition> = null
+    if (o.source === 'dungeon' && ['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
+      if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
+      story = tellExpedition(factLedgerRef.current, createRng(o.run.seed + o.run.stepIdx * 77 + day), {
+        fromId: factLedgerRef.current.toldThrough ?? 0,
+        startId: factLedgerRef.current.expeditionStart ?? 0,
+      })
+      if (story) {
+        markTold(factLedgerRef.current) // B4:水位入账本(序列化持久,同趟不重讲)
+      }
+    }
+    setScarNotices(story ? [...o.notices, '📖 ' + story.text] : o.notices)
     if (o.source === 'dungeon') {
       runRef.current = o.run
       setRun({ ...o.run })
       // A11:试玩版通关版图一 → 「试玩版到此结束」画面
       if (__PLAYTEST__ && o.run.phase === 'victory' && o.run.dungeonId === 'thornhold') setPlaytestEnding(true)
-      // A9 说书人 A 步:远征终局(通关/团灭/撤退)回城后,从上次讲过的水位找最强碰撞,最多 1 条
-      if (['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
-        if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
-        const slice = factLedgerRef.current.facts.filter((f) => f.id >= storyCursorRef.current)
-        const story = tellExpedition({ facts: slice }, createRng(o.run.seed + o.run.stepIdx * 77 + day), expeditionStartFactRef.current)
-        if (story) {
-          storyCursorRef.current = factLedgerRef.current.nextId
-          logChronicle(chronicleRaw(day, '📖 ' + story.text))
-          setScarNotices([...scarNotices, '📖 ' + story.text])
-        }
-      }
+      if (story) logChronicle(chronicleRaw(day, '📖 ' + story.text))
     } else {
       towerRunRef.current = o.run
       setTowerRun({ ...o.run })
@@ -763,7 +763,7 @@ export default function App() {
     growthSnapshotRef.current = new Map(
       expedition.map((m) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s, n) => s + bondStars(n), 0), bonds: { ...m.bonds } }]),
     )
-    expeditionStartFactRef.current = factLedgerRef.current.nextId // A9:本趟故事只认出发后的碰撞
+    markExpeditionStart(factLedgerRef.current) // B4:水位入账本
     setPlayMeta((m: PlayMeta) => ({ ...m, expeditions: (m.expeditions ?? 0) + 1 }))
     runRef.current = createRun(
       expedition,

@@ -1,6 +1,6 @@
 import { runMembers as resolveRunMembers, runDungeon as resolveRunDungeon, runRng as dataRunRng } from '../src/sim/run-core'
 import { initialRunState, checkpointRunState, runReducer } from '../src/sim/run-state'
-import { appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER } from '../src/sim/fact-ledger'
+import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER } from '../src/sim/fact-ledger'
 import { tellExpedition } from '../src/sim/storyteller'
 import { memberGenerationState, restoreMemberGeneration } from '../src/sim/gen'
 import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor } from './run-test-compat'
@@ -412,7 +412,7 @@ function rngScope(scope: Record<string, unknown>) {
     combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
     __PLAYTEST__: false, playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {}, setPlaytestEnding: () => {},
-    appendFact, latestEventChoice, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER, tellExpedition, createRng,
+    appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER, tellExpedition, createRng,
     factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
     storyCursorRef: { current: 0 }, expeditionStartFactRef: { current: 0 },
     hintsSeen: [] as string[], hintsSeenRef: { current: [] as string[] }, dismissHint: () => {},
