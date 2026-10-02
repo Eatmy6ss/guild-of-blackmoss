@@ -1,5 +1,5 @@
 import { HeroPortrait, ArtCanvas } from './ui/art/ArtCanvas'
-import { ItemArt } from './ui/art/ItemArt'
+import { ItemArt, ITEM_QUALITY_NAME } from './ui/art/ItemArt'
 import { DOCK_ART } from './ui/art/catalog'
 import { BattleIntel } from './ui/art/BattleIntel'
 import { CreditsDialog } from './ui/art/Credits'
@@ -1541,9 +1541,12 @@ export default function App() {
               ...inventory.filter((i) => slotsOf(i) === slot),
             ]
             return (
-              <label key={slot} className="gear-control">
-                <ItemArt item={equipped} slot={slot} />
-                <span>{SLOT_NAME[slot]}</span>
+              <div key={slot} className="gear-control">
+                <div className="gear-current">
+                  <ItemArt item={equipped} slot={slot} />
+                  <div><small>{SLOT_NAME[slot]} · {equipped ? ITEM_QUALITY_NAME[equipped.quality ?? 'white'] : '空位'}</small>
+                    <strong>{equipped ? ITEM_BASES[equipped.baseId].name : '尚未装备'}</strong></div>
+                </div>
               <select
                 aria-label={m.name + '的' + SLOT_NAME[slot]}
                 className="slot-select"
@@ -1558,7 +1561,8 @@ export default function App() {
                   </option>
                 ))}
               </select>
-              </label>
+                {equipped && <details className="gear-description"><summary>属性与词条</summary><p>{describeItem(equipped)}</p></details>}
+              </div>
             )
           })}
         </div>

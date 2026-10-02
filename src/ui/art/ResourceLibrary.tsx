@@ -4,7 +4,7 @@ import { JOBS } from '../../data/jobs'
 import { RACES } from '../../data/races'
 import { ITEM_BASES } from '../../data/items'
 import type { JobId, Slot } from '../../sim/types'
-import { credits, heroLayers, MUSIC, SCENE_ART, SPRITE_PATHS } from './catalog'
+import { credits, MUSIC, SCENE_ART, SPRITE_PATHS } from './catalog'
 import { assetUrl, loadArt } from './assetLoader'
 import { HeroPortrait, ArtCanvas } from './ArtCanvas'
 import { ItemArt } from './ItemArt'
@@ -53,11 +53,14 @@ export function ResourceLibrary() {
       <div className="library-controls"><label>种族<select value={race} onChange={e => setRace(e.target.value)}>{Object.values(RACES).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
         {(['weapon', 'armor'] as Slot[]).map(slot => <label key={slot}>{slot === 'weapon' ? '武器' : '护甲'}<select value={gear[slot as 'weapon' | 'armor']} onChange={e => setGear({ ...gear, [slot]: e.target.value })}><option value="">职业默认装束</option>{Object.values(ITEM_BASES).filter(i => i.slot === slot).map(i => <option value={i.id} key={i.id}>{i.name}</option>)}</select></label>)}
       </div>
-      <div className="gear-preview"><label>品质纹饰<select value={quality} onChange={e => setQuality(e.target.value as typeof quality)}><option value="white">普通 ·</option><option value="green">精良 ▰</option><option value="purple">史诗 ◆</option></select></label>{(['weapon', 'armor'] as const).map(slot => <ItemArt key={slot} item={{baseId:gear[slot],quality}} slot={slot} size={64} />)}<span>与花名册、仓库共用；品质同时用形状、文字和颜色区分。</span></div>
+      <div className="gear-preview"><label>品质纹饰<select value={quality} onChange={e => setQuality(e.target.value as typeof quality)}><option value="white">普通 ·</option><option value="green">精良 ▰</option><option value="purple">史诗 ◆</option></select></label>{(['weapon', 'armor'] as const).map(slot => <div className="preview-equipment" key={slot}>
+        <ItemArt item={gear[slot] ? { baseId: gear[slot], quality } : undefined} slot={slot} size={64} />
+        <span>{gear[slot] ? ITEM_BASES[gear[slot]].name : `${slot === 'weapon' ? '武器' : '护甲'} · 职业默认`}</span>
+      </div>)}<span>挑选武器与护甲，查看队员的装束。默认装束按各自职业展示。</span></div>
       <div className="hero-gallery">{Object.values(JOBS).map(job => {
         const equipment = Object.fromEntries(Object.entries(gear).filter(([, baseId]) => baseId).map(([slot, baseId]) => [slot, { id: 'preview-' + slot, baseId, rolls: [] }]))
         const member = { job: job.id as JobId, race, equipment }
-        return <div key={job.id}><HeroPortrait member={member} size={96} /><h2>{job.name}</h2><p>{RACES[race].name} · {job.position === 'front' ? '前排' : '后排'}</p><small>{heroLayers(member).length}层 · 与战场共用外观</small></div>
+        return <div key={job.id}><HeroPortrait member={member} size={96} /><h2>{job.name}</h2><p>{RACES[race].name} · {job.position === 'front' ? '前排' : '后排'}</p><small>{gear.weapon ? ITEM_BASES[gear.weapon].name : '职业装束'}</small></div>
       })}</div>
       <p className="library-note">这里仅预览素材，不创建人物，不写公会存档。混合职业沿基础职业与当前装备显示；专精独有轮廓和角色动画留待后续打磨。</p>
     </section>}

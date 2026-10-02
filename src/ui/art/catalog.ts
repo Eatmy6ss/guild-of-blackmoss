@@ -23,7 +23,7 @@ export const WEAPON_LAYERS: Record<string, string> = {
   'wpn-line-warrior': 'hand_axe', 'wpn-line-mage': 'hand_mage', 'wpn-line-warlock': 'hand_warlock',
   'wpn-dragon-brand': 'hand_greatsword',
   'wpn-sign-warbrand': 'long_sword', 'wpn-sign-bloodletter': 'hand_dagger',
-  'wpn-t3-dawn': 'long_sword', 'wpn-t3-tide': 'quarterstaff', 'wpn-t3-gale': 'bow',
+  'wpn-t3-dawn': 'hand_greatsword', 'wpn-t3-tide': 'quarterstaff', 'wpn-t3-gale': 'bow',
   'wpn-t3-ember': 'hand_mage', 'wpn-t3-vox': 'hand_warlock',
 }
 export const ARMOR_LAYERS: Record<string, string> = {
