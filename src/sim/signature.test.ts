@@ -45,6 +45,19 @@ describe('A3 #1.1 招牌技:真打断', () => {
     expect(useSignature(state, me.memberId!, enemy.id)).toBe(false)
   })
 
+  test('贯甲狙击等非打断招牌技不直接填满打断阈值或伪造打断出处', () => {
+    const { state, me, enemy } = castingBattle()
+    me.specId = 'ranger-hawk'
+    enemy.hp = enemy.maxHp = 100000
+    enemy.bossMechanics![0].params!.breakDamage = 100000
+    expect(useSignature(state, me.memberId!, enemy.id)).toBe(true)
+    executeSignature(state, state.commands.signature!)
+    const rt = enemy.mech!['telegraph-aoe']
+    expect(rt.taken).toBeLessThan(100000)
+    expect(rt.brokenBy).toBeUndefined()
+    expect(state.log.some(entry => entry.text.includes('当场拍碎'))).toBe(false)
+  })
+
   test('批次 1 出口:全部专精(含混合)各有一个招牌技,behavior 完整(spec 规格断言)', () => {
     const specIds: string[] = []
     for (const job of Object.values(JOBS)) for (const sp of Object.values(job.specs)) specIds.push(sp.id)
@@ -64,6 +77,31 @@ describe('A3 #1.1 招牌技:真打断', () => {
     for (const s of Object.values(SIGNATURE_SKILLS)) expect(s.cdTicks).toBeGreaterThan(0)
     for (const id of ['guard-ironwall', 'warrior-vanguard', 'priest-discipline']) expect(SIGNATURE_SKILLS[id].cdTicks).toBe(60)
     expect(SIGNATURE_SKILLS['mage-fire'].effect).toBe('detonate-burn') // A5:火法招牌=引爆
+  })
+
+  test('战士的真实专精键可由人物生成进入受理与执行，冲锋束缚、处决伤害与冷却均生效', () => {
+    for (const spec of ['warrior-vanguard', 'warrior-weapons']) {
+      const member = generateMember('warrior', 5, 531)
+      member.spec = spec
+      const state = createBattle([member], BLACKMOSS, 'enc-frogs', 921)
+      const me = state.combatants.find(c => c.memberId === member.id)!, enemy = state.combatants.find(c => c.team === 'enemy')!
+      enemy.hp = 2500; enemy.maxHp = 5000
+      enemy.bossMechanics = [{ id: 'test-warrior', kind: 'cast-heal', name: '战士复核咏唱', params: { breakDamage: 100000 } }]
+      enemy.mech = { 'cast-heal': { until: 30, taken: 0 } }
+      expect(me.specId).toBe(spec)
+      expect(useSignature(state, member.id, enemy.id)).toBe(true)
+      executeSignature(state, state.commands.signature!)
+      if (spec === 'warrior-vanguard') {
+        expect(enemy.boundUntilTick).toBe(state.tick + 90)
+        expect(enemy.mech['cast-heal'].brokenBy).toBe('锁足冲锋')
+        expect(state.signatureCd![member.id]).toBe(state.tick + 60)
+      } else {
+        expect(enemy.hp).toBeLessThan(2500)
+        expect(enemy.mech['cast-heal'].taken).toBeLessThan(100000)
+        expect(enemy.mech['cast-heal'].brokenBy).toBeUndefined()
+        expect(state.signatureCd![member.id]).toBe(state.tick + 75)
+      }
+    }
   })
 })
 

@@ -1192,7 +1192,7 @@ export function executeSignature(state: BattleState, cmd: { memberId: string; sk
   state.signatureCd = { ...state.signatureCd, [cmd.memberId]: state.tick + skill.cdTicks }
   const target = resolveSignatureEnemy(state, cmd.targetId)
   let broken = false
-  if (target?.bossMechanics && target.mech) {
+  if (skill.effect.startsWith('interrupt') && target?.bossMechanics && target.mech) {
     for (const def of target.bossMechanics) {
       const threshold = interruptThreshold(def)
       if (threshold === undefined) continue
