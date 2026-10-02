@@ -6,7 +6,9 @@ import { createRun, startStep, applyNodeChoice, junctionOptions } from '../sim/r
 import { startTower, towerNext, towerRest, insureNextTowerFloor } from '../sim/tower'
 import { runRng, runMembers, runDungeon } from '../sim/run-core'
 import { initialRunState, checkpointRunState, validateRunState, runReducer } from '../sim/run-state'
-import { stepBattle, useFuryPotion, useHealPotion, setStance, enemyToCombatant, createBattle, applyHit } from '../sim/combat'
+import { stepBattle, useFuryPotion, useHealPotion, useSignature, setStance, enemyToCombatant, createBattle, applyHit } from '../sim/combat'
+import { appendFact, markExpeditionStart, markTold } from '../sim/fact-ledger'
+import { tellExpedition } from '../sim/storyteller'
 import { createStatefulRng, int, createRng } from '../sim/rng'
 import { settleEncounter, type EncounterGuild } from '../sim/settlement'
 import { rollDrop } from '../sim/loot'
@@ -102,6 +104,97 @@ function equalBytes(a: GuildSave, b: GuildSave) {
     throw new Error(paths.slice(0, 6).join('\n'))
   }
 }
+
+test('v22暂停单槽迁移到多人指令，保存刷新后只执行一次且不覆盖新槽', () => {
+  const members = roster()
+  members[2].spec = 'ranger-hawk'
+  const old = save(members)
+  old.version = 22
+  old.runState.activeRun = createRun(members, BLACKMOSS, BLACKMOSS.branches[0].id, 531, 0, false, old.potions)
+  const battle = old.runState.activeRun.battle!
+  battle.commands.autoMode = false
+  const archer = battle.combatants.find(c => c.memberId === members[2].id)!
+  const enemy = battle.combatants.find(c => c.team === 'enemy')!
+  enemy.hp = enemy.maxHp = 100000
+  expect(useSignature(battle, archer.memberId!, enemy.id)).toBe(true)
+  const accepted = battle.commands.signatures![archer.memberId!]
+  ;(battle.commands as any).signature = accepted
+  delete battle.commands.signatures
+  old.pendingConsequences = [{ eventId: 'egg-hatch', dueDay: 9 }]
+  const input = JSON.stringify(old)
+  const migrated = migrate(old as unknown as Record<string, unknown>)
+  expect(JSON.stringify(old)).toBe(input)
+  expect(migrated.version).toBe(23)
+  expect(migrated.pendingConsequences).toEqual(old.pendingConsequences) // 不能猜第一幕
+  expect(migrated.runState.activeRun!.battle!.commands).not.toHaveProperty('signature')
+  expect(migrated.runState.activeRun!.battle!.commands.signatures).toEqual({ [archer.memberId!]: accepted })
+  expect(saveGuild(migrated)).toBe(true)
+  const resumed = loadGuildSave()!.runState.activeRun!.battle!
+  stepBattle(resumed); stepBattle(resumed)
+  expect(resumed.log.filter(e => e.text.includes('使出【贯甲狙击】'))).toHaveLength(1)
+  expect(resumed.commands.signatures?.[archer.memberId!]).toBeUndefined()
+  expect(resumed.signatureCd?.[archer.memberId!]).toBeGreaterThan(0)
+
+  const mixed = JSON.parse(input) as GuildSave
+  const newer = { ...accepted, targetId: 'newer-target' }
+  mixed.runState.activeRun!.battle!.commands.signatures = { [archer.memberId!]: newer }
+  expect(migrate(mixed as any).runState.activeRun!.battle!.commands.signatures?.[archer.memberId!]).toEqual(newer)
+  ;(mixed.runState.activeRun!.battle!.commands as any).signature = { memberId: archer.memberId, skillId: 'unknown' }
+  delete mixed.runState.activeRun!.battle!.commands.signatures
+  const repaired = migrate(mixed as any)
+  expect(repaired.runState.activeRun!.battle!.commands.signatures).toBeUndefined()
+  expect(repaired.gold).toBe(old.gold)
+  expect(repaired.items).toEqual(old.items)
+})
+
+test('当前版坏账本导入局部修复，保留资产/远征/延迟来源且编号不复用', () => {
+  const s = save()
+  s.runState.activeRun = createRun(resolved(s), BLACKMOSS, BLACKMOSS.branches[0].id, 53)
+  const choice = appendFact(s.factLedger, 2, {kind:'event-choice',actors:[],refs:{eventId:'dragon-egg'}})!
+  s.pendingConsequences = [{eventId:'egg-hatch',dueDay:9,originFactId:choice.id}]
+  ;(s.factLedger.facts as any[]).push({id:18,day:3,kind:'death',actors:['old'],refs:{},cause:{}}, {id:19,day:3,kind:'unknown',actors:[],refs:{}})
+  const loaded = importSave(exportSave(s))!
+  expect(loaded).not.toBeNull()
+  expect(loaded.gold).toBe(s.gold); expect(loaded.items).toEqual(s.items)
+  expect(loaded.members).toEqual(s.members); expect(loaded.runState).toEqual(s.runState)
+  expect(loaded.pendingConsequences).toEqual(s.pendingConsequences)
+  expect(loaded.factLedger.facts).toEqual([choice])
+  expect(appendFact(loaded.factLedger, 8, {kind:'wish-done',actors:[],refs:{}})!.id).toBeGreaterThan(19)
+})
+
+test('已弹出后果的非法来源局部降级，队列与弹窗可匹配消费', () => {
+  const s = save()
+  s.pendingConsequences = [{eventId:'egg-hatch',dueDay:9,originFactId:{bad:true} as any}]
+  s.runState.eventId = 'egg-hatch'
+  s.runState.pendingConsequence = {...s.pendingConsequences[0]}
+  const loaded = importSave(exportSave(s))!
+  expect(loaded).not.toBeNull()
+  expect(loaded.pendingConsequences).toEqual([{eventId:'egg-hatch',dueDay:9}])
+  expect(loaded.runState.pendingConsequence).toEqual(loaded.pendingConsequences![0])
+  expect(loaded.gold).toBe(s.gold); expect(loaded.members).toEqual(s.members)
+})
+
+test('出征前兑现的故事经真实战斗结算与保存读取后仅讲一次', () => {
+  let s = save()
+  const origin = appendFact(s.factLedger, 2, {kind:'event-choice',actors:[],refs:{eventId:'dragon-egg'}})!
+  markTold(s.factLedger)
+  appendFact(s.factLedger, 8, {kind:'consequence-due',actors:[],refs:{eventId:'egg-hatch'},links:[origin.id]})
+  markExpeditionStart(s.factLedger)
+  s.runState.activeRun = createRun(resolved(s), BLACKMOSS, BLACKMOSS.branches[0].id, 53)
+  s = finishBattle(s)
+  expect(s.factLedger.expeditionStart).toBe(3)
+  const story = tellExpedition(s.factLedger,()=>0,{fromId:s.factLedger.toldThrough!,startId:s.factLedger.expeditionStart!})
+  expect(story?.type).toBe('consequence-due')
+  expect(story?.text).toContain('第 2 天')
+  markTold(s.factLedger,story!.type,story!.templateIdx)
+  expect(saveGuild(s)).toBe(true)
+  s = loadGuildSave()!
+  expect(s.factLedger.recentTemplates?.['consequence-due']).toEqual([story!.templateIdx])
+  markExpeditionStart(s.factLedger)
+  s.runState.activeRun = createRun(resolved(s), BLACKMOSS, BLACKMOSS.branches[0].id, 54)
+  s = finishBattle(s)
+  expect(tellExpedition(s.factLedger,()=>0,{fromId:s.factLedger.toldThrough!,startId:s.factLedger.expeditionStart!})?.type).not.toBe('consequence-due')
+})
 
 test('现有两种 Run 从出发开始就是 JSON 数据；成员/地图只由 ID 解析，随机序列可续接', () => {
   for (const kind of ['dungeon', 'tower'] as const) {

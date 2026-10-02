@@ -12,7 +12,8 @@ import { newKingdomState } from './kingdom'
 import { applyDeathShock, applyVictory } from './morale'
 import { rollDrop } from './loot'
 import { chronicleRaw, seedChronicle } from './chronicle'
-import { EMPTY_LEDGER } from './fact-ledger'
+import { EMPTY_LEDGER, markTold, normalizeLedger } from './fact-ledger'
+import { tellExpedition } from './storyteller'
 import { settleEncounter, type EncounterGuild, type EncounterInput } from './settlement'
 
 function roster() {
@@ -42,6 +43,26 @@ function fixture(source: 'dungeon' | 'tower', status = 'retreated' as 'guild-win
 }
 
 describe('统一遭遇结算', () => {
+  it('副本/高塔结算保留说书水位和模板记忆，输入不变且旧事实不会再次拼故事', () => {
+    for (const source of ['dungeon', 'tower'] as const) {
+      const f = fixture(source)
+      f.guild.factLedger = { nextId: 10, facts: [
+        { id: 1, day: 1, kind: 'scar', actors: ['old'], names: { old: '上一趟英雄' }, refs: { dungeonId: 'blackmoss', scarNth: 2 } },
+      ], toldThrough: 8, expeditionStart: 10, recentTemplates: { 'scar-survive': [1, 3] } }
+      const before = JSON.stringify(f)
+      const o = settleEncounter(f, () => 0.99)!
+      expect(JSON.stringify(f)).toBe(before)
+      expect(o.guild.factLedger).toMatchObject({ toldThrough: 8, expeditionStart: 10, recentTemplates: { 'scar-survive': [1, 3] } })
+      expect(o.guild.factLedger.facts).not.toBe(f.guild.factLedger.facts)
+      expect(o.guild.factLedger.recentTemplates?.['scar-survive']).not.toBe(f.guild.factLedger.recentTemplates?.['scar-survive'])
+      const restored = normalizeLedger(JSON.parse(JSON.stringify(o.guild.factLedger)))
+      const story = tellExpedition(restored, () => 0, { fromId: restored.toldThrough!, startId: restored.expeditionStart! })
+      expect(story?.factIds).not.toContain(1)
+      markTold(o.guild.factLedger, 'scar-survive', 5)
+      expect(JSON.stringify(f)).toBe(before)
+    }
+  })
+
   it('I9：同样的阵亡在副本和高塔都有真实冲击、创伤、遗物与编年史，不只返回空键', () => {
     const outcomes = (['dungeon', 'tower'] as const).map(source => {
       const f = fixture(source)

@@ -721,6 +721,8 @@ test('actual restart handler resets persistent fields before saving a new guild'
   scope.guildRng = () => scope.guildRngRef.current()
   scope.newRngSeed = () => 54321
   scope.newStatistics = newStatistics
+  scope.factLedgerRef = {current:{nextId:42,facts:[{id:41,day:3,kind:'wish-done',actors:['old'],refs:{}}],toldThrough:42,expeditionStart:41,recentTemplates:{'wish-done':[1,2]}}}
+  scope.setFactLedger = (v:unknown) => {state.factLedger=v}
   scope.setStatistics = (v:unknown) => {state.statistics=v}
   for (const key of ['Running','Run','Battle','Inventory','LastDrops','Memorial','Manual','Candidates','Visitor','Gold','Blessing','RecruitCooldown','Potions','RoyalNotice','HubScreen','UnlockedHybrids','DungeonMastery','Members','StarMarrow','PendingRelics','Buildings','Day','TowerBest','Chronicle','PendingConsequences','GuildBuffs','EventsSeen','RareHuntNext','PendingEvent','EventResult','EventImpacts','OfflineNote','ProtectOn','DungeonId','ExpeditionIds','DetailOpen','SaveTransfer','TowerRun','TowerRunning','TrainingReady','HealingMastery','HealingNotice','ScarNotices']) {
     scope['set'+key] = (v: unknown) => {state[key[0].toLowerCase()+key.slice(1)] = v}
@@ -730,6 +732,8 @@ test('actual restart handler resets persistent fields before saving a new guild'
   scope.setItemOwnership = (v:any) => Object.assign(state, serializeGuildItems(v, scope.membersRef.current ?? []))
   scope.updateItemOwnership = handler('updateItemOwnership', scope)
   handler('restartGuild', scope)()
+  assert.deepEqual(scope.factLedgerRef.current,{nextId:1,facts:[]})
+  assert.deepEqual(state.factLedger,scope.factLedgerRef.current)
   assert.equal(scope.pendingDepartureRef.current,null)
   assert.equal(scope.pendingConsequenceRef.current,null)
   assert.equal(scope.eventResolvingRef.current,false)
@@ -972,6 +976,36 @@ test('delayed decisions survive reload until chosen, settle once and retain dupl
   assert.equal(pendingConsequenceRef.current,null)
 })
 
+test('真实事件选择分别关联同名第二幕，跨刷新兑现不串来源，旧档不猜来源', () => {
+  const ledger = normalizeLedger(undefined), ref = {current:ledger}
+  let queue: any[] = [], published: any
+  const members = squad(), first = GUILD_EVENTS.find(e=>e.id==='dragon-egg')!
+  const common = {runRef:{current:null},membersRef:{current:members},factLedgerRef:ref,
+    setFactLedger:(v:any)=>{published=v},setPendingConsequences:(f:any)=>{queue=f(queue)},
+    setEventsSeen:()=>{},logChronicle:()=>{},setEventResult:()=>{},setEventImpacts:()=>{},setMembers:()=>{}}
+  for (const day of [2,4]) {
+    handler('resolveEvent',{...common,day,pendingEvent:first,eventResult:null,
+      eventResolvingRef:{current:false},pendingConsequenceRef:{current:null},
+      pickOutcome:()=>({text:'保留后果',effects:{delayed:{eventId:'egg-hatch',dueDays:3}}}),
+    })(0)
+  }
+  assert.equal(ledger.facts.length,2)
+  assert.deepEqual(ledger.facts.map(f=>f.refs.eventId),['dragon-egg','dragon-egg'])
+  assert.deepEqual(queue.map(c=>c.originFactId),[1,2])
+  ref.current=normalizeLedger(JSON.parse(JSON.stringify(published)))
+  queue=JSON.parse(JSON.stringify(queue))
+  for (const due of [...queue,{eventId:'egg-hatch',dueDay:8}]) {
+    const before=ref.current.facts.length
+    handler('startExpedition',{...common,day:9,pendingEvent:null,towerRunRef:{current:null},
+      expedition:members,activeDungeon:BLACKMOSS,lastBranchRef:{current:''},refusesToMarch:()=>false,
+      pendingConsequences:[due],GUILD_EVENTS,pendingDepartureRef:{current:null},pendingConsequenceRef:{current:null},
+      setPendingEvent:()=>{},
+    })(BLACKMOSS.branches[0].id)
+    assert.equal(ref.current.facts.length,before+1)
+    assert.deepEqual(ref.current.facts.at(-1)!.links,due.originFactId ? [due.originFactId] : undefined)
+  }
+})
+
 test('pre-departure run buffs persist and apply to exactly the next expedition, with visible feedback', () => {
   const event = GUILD_EVENTS.find(e=>e.id==='egg-hatch')!
   let buffs: any[] = [], impacts: {t:string}[] = []
@@ -999,7 +1033,14 @@ test('pre-departure run buffs persist and apply to exactly the next expedition, 
     setLastDrops:()=>{},setScarNotices:()=>{},rendererRef:{current:null},THEME_BY_DUNGEON:{},
     setRunning:()=>{},syncAll:()=>{},
   }
+  // 模拟事件发布后 state 与 ref 已经是不同对象；出征水位必须再次发布才能入档。
+  const ledger = normalizeLedger(undefined)
+  appendFact(ledger,19,{kind:'event-choice',actors:[],refs:{eventId:'dragon-egg'}})
+  let published = {...ledger}
+  scope.factLedgerRef={current:ledger}
+  scope.setFactLedger=(v:any)=>{published=v}
   handler('startExpedition',{...scope,day:20,guildBuffs:stored})(BLACKMOSS.branches[0].id)
+  assert.equal(JSON.parse(JSON.stringify(published)).expeditionStart,ledger.nextId)
   const baseAttack = baseline.battle!.combatants[0].attack
   assert.equal(runRef.current.battle.combatants[0].attack,Math.round(baseAttack*1.1))
   runRef.current=null

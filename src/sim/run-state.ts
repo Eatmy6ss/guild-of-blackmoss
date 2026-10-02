@@ -23,7 +23,7 @@ export interface RunUIState {
   eventResult: string | null
   eventImpacts: Impact[]
   pendingDeparture: string | null
-  pendingConsequence: { eventId: string; dueDay: number } | null
+  pendingConsequence: { eventId: string; dueDay: number; originFactId?: number } | null
   dropIds: string[]
   notices: string[]
   growthSnapshot: Record<string, GrowthSnapshot>

@@ -90,7 +90,14 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     manual: [...input.guild.manual],
     dungeonMastery: { ...input.guild.dungeonMastery },
     // A2:账本必须显式拷贝——appendFact 原地改写,浅拷贝会穿透到输入方(违反结算契约,run-recovery 抓过)
-    factLedger: { nextId: input.guild.factLedger.nextId, facts: [...input.guild.factLedger.facts] },
+    factLedger: {
+      ...input.guild.factLedger,
+      facts: [...input.guild.factLedger.facts],
+      ...(input.guild.factLedger.recentTemplates ? {
+        recentTemplates: Object.fromEntries(Object.entries(input.guild.factLedger.recentTemplates)
+          .map(([type, recent]) => [type, recent ? [...recent] : recent])),
+      } : {}),
+    },
   }
   const members = runMembers(original, guild.members)
   // 旧模拟助手只改成员/阶段/药水及 scarsSettled；隔离这些可写对象，战斗日志不复制。

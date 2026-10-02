@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { tellExpedition } from './storyteller'
-import { EMPTY_LEDGER, type FactLedger } from './fact-ledger'
+import { EMPTY_LEDGER, markTold, normalizeLedger, type Fact, type FactLedger } from './fact-ledger'
 import { TEMPLATES } from '../data/story-templates'
 
 const ledger = (): FactLedger => ({ nextId: 1, facts: [] })
@@ -78,8 +78,8 @@ describe('第 5 组 Q4-B 模板去重(记在账本)', () => {
   test('同类连讲 3 次下标两两不同;序列化 → normalize 后仍生效', () => {
     const l = ledger()
     l.facts = [
-      { id: 1, day: 9, kind: 'consequence-due', actors: [], refs: { eventId: 'cursed-coffin' }, links: [0] },
-      { id: 0, day: 2, kind: 'event-choice', actors: [], refs: { eventId: 'cursed-coffin' } },
+      { id: 1, day: 2, kind: 'event-choice', actors: [], refs: { eventId: 'dragon-egg' } },
+      { id: 2, day: 9, kind: 'consequence-due', actors: [], refs: { eventId: 'egg-hatch' }, links: [1] },
     ] as typeof l.facts
     const seen: number[] = []
     for (let i = 0; i < 3; i++) {
@@ -91,10 +91,63 @@ describe('第 5 组 Q4-B 模板去重(记在账本)', () => {
       recent[story.type] = [...(recent[story.type] ?? []), story.templateIdx].slice(-2)
       l.recentTemplates = recent
     }
-    const restored = JSON.parse(JSON.stringify(l)) as FactLedger
+    const restored = normalizeLedger(JSON.parse(JSON.stringify(l)))
     const story = tellExpedition(restored, () => 0.5, { fromId: 0, startId: 0 })
     expect(story?.templateIdx).not.toBeUndefined()
     expect(seen).not.toContain(story!.templateIdx)
+  })
+})
+
+describe('说书水位与延迟因果恢复', () => {
+  const choice = (id = 1, day = 2): Fact => ({ id, day, kind: 'event-choice', actors: [], refs: { eventId: 'dragon-egg' } })
+  const due = (id = 3, day = 5, origin = 1): Fact => ({ id, day, kind: 'consequence-due', actors: [], refs: { eventId: 'egg-hatch' }, links: [origin] })
+  const scar = (id: number): Fact => ({ id, day: 5, kind: 'scar', actors: ['m1'], names: { m1: '生还者' }, refs: { dungeonId: 'blackmoss', scarNth: 2 } })
+
+  test('普通碰撞必须同时越过已讲水位和本趟起点，不能拼上趟的死亡与本趟首杀', () => {
+    expect(tellExpedition({ facts: [scar(2)] }, () => 0, { fromId: 0, startId: 3 })).toBeNull()
+    expect(tellExpedition({ facts: [scar(2)] }, () => 0, { fromId: 3, startId: 0 })).toBeNull()
+    expect(tellExpedition({ facts: [scar(3)] }, () => 0, { fromId: 2, startId: 3 })?.type).toBe('scar-survive')
+    const facts = [deathFact(1, 'old', '上一趟亡者', 'blackmoss', 0), killFact(4, 'grush', 'blackmoss', 6)]
+    expect(tellExpedition({ facts }, () => 0, { fromId: 0, startId: 3 })).toBeNull()
+  })
+
+  test('出发前的兑现可讲，已讲水位之前的真实第一幕仍是来源；保存后不会重讲', () => {
+    const l: FactLedger = { nextId: 4, facts: [choice(), due()], toldThrough: 2, expeditionStart: 4 }
+    const story = tellExpedition(l, () => 0, { fromId: 2, startId: 4 })!
+    expect(story.type).toBe('consequence-due')
+    expect(story.factIds).toEqual([3, 1])
+    expect(story.text).toContain('第 2 天')
+    expect(story.text).toContain('第 5 天')
+    markTold(l, story.type, story.templateIdx)
+    const restored = normalizeLedger(JSON.parse(JSON.stringify(l)))
+    expect(tellExpedition(restored, () => 0, { fromId: restored.toldThrough!, startId: restored.expeditionStart! })).toBeNull()
+  })
+
+  test('缺来源、错误种类、未来编号/日期、旧伪第二幕选择均不得补造因果', () => {
+    const invalid: Fact[][] = [
+      [due()],
+      [deathFact(1, 'm1', '亡者', 'blackmoss', 0, 2), due()],
+      [choice(4), due(3, 5, 4)],
+      [choice(1, 6), due()],
+      [choice(1, NaN), due()],
+      [choice(), due(3, NaN)],
+      [{ ...choice(), refs: { eventId: 'egg-hatch' } }, due()],
+      [{ ...choice(), refs: { eventId: 'cursed-coffin' } }, due()],
+      [choice(), { ...due(), refs: { eventId: 'unknown-second-act' } }],
+    ]
+    for (const facts of invalid) expect(tellExpedition({ facts }, () => 0), JSON.stringify(facts)).toBeNull()
+    expect(tellExpedition({ facts: [choice(1, 5), due()] }, () => 0)?.text).toContain('第 5 天')
+  })
+
+  test('跳过无证据的旧兑现后仍能讲后续合法兑现，不能被坏记录堵住', () => {
+    const facts = [choice(), { ...due(2), links: [999] }, due(3)]
+    expect(tellExpedition({ facts }, () => 0)?.factIds).toEqual([3, 1])
+  })
+
+  test('缺少伤疤序数的残缺旧事实保留但不渲染 undefined', () => {
+    const damaged = scar(1)
+    damaged.refs = { nearDeath: true, dungeonId: 'blackmoss' }
+    expect(tellExpedition({ facts: [damaged] }, () => 0)).toBeNull()
   })
 })
 

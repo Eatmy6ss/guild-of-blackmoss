@@ -1,0 +1,238 @@
+{
+  "first": {
+    "version": 23,
+    "day": 9,
+    "gold": 870,
+    "ledger": {
+      "nextId": 8,
+      "facts": [
+        {
+          "id": 1,
+          "day": 2,
+          "kind": "event-choice",
+          "actors": [],
+          "refs": {
+            "eventId": "dragon-egg"
+          }
+        },
+        {
+          "id": 2,
+          "day": 4,
+          "kind": "event-choice",
+          "actors": [],
+          "refs": {
+            "eventId": "dragon-egg"
+          }
+        },
+        {
+          "id": 3,
+          "day": 8,
+          "kind": "consequence-due",
+          "actors": [],
+          "refs": {
+            "eventId": "egg-hatch"
+          },
+          "links": [
+            1
+          ]
+        },
+        {
+          "id": 4,
+          "day": 8,
+          "kind": "event-choice",
+          "actors": [],
+          "refs": {
+            "eventId": "egg-hatch"
+          }
+        },
+        {
+          "id": 5,
+          "day": 9,
+          "kind": "bond-star",
+          "actors": [
+            "test-member-0",
+            "test-member-1"
+          ],
+          "names": {
+            "test-member-0": "苔冠守望者·长枝",
+            "test-member-1": "试员2·圣光祭司"
+          },
+          "refs": {
+            "stars": 1
+          }
+        },
+        {
+          "id": 6,
+          "day": 9,
+          "kind": "bond-star",
+          "actors": [
+            "test-member-0",
+            "test-member-2"
+          ],
+          "names": {
+            "test-member-0": "苔冠守望者·长枝",
+            "test-member-2": "试员3·火焰法师"
+          },
+          "refs": {
+            "stars": 1
+          }
+        },
+        {
+          "id": 7,
+          "day": 9,
+          "kind": "bond-star",
+          "actors": [
+            "test-member-1",
+            "test-member-2"
+          ],
+          "names": {
+            "test-member-1": "试员2·圣光祭司",
+            "test-member-2": "试员3·火焰法师"
+          },
+          "refs": {
+            "stars": 1
+          }
+        }
+      ],
+      "toldThrough": 8,
+      "expeditionStart": 5,
+      "recentTemplates": {
+        "consequence-due": [
+          4
+        ]
+      }
+    },
+    "pending": [
+      {
+        "eventId": "egg-hatch",
+        "dueDay": 12,
+        "originFactId": 2
+      }
+    ],
+    "stories": [
+      {
+        "seq": 5,
+        "day": 9,
+        "text": "📖 那件事到底还是没有完。第 8 天,「壳里的东西」按账本上记的日子准时抵达。"
+      }
+    ]
+  },
+  "second": {
+    "version": 23,
+    "day": 10,
+    "gold": 870,
+    "ledger": {
+      "nextId": 8,
+      "facts": [
+        {
+          "id": 1,
+          "day": 2,
+          "kind": "event-choice",
+          "actors": [],
+          "refs": {
+            "eventId": "dragon-egg"
+          }
+        },
+        {
+          "id": 2,
+          "day": 4,
+          "kind": "event-choice",
+          "actors": [],
+          "refs": {
+            "eventId": "dragon-egg"
+          }
+        },
+        {
+          "id": 3,
+          "day": 8,
+          "kind": "consequence-due",
+          "actors": [],
+          "refs": {
+            "eventId": "egg-hatch"
+          },
+          "links": [
+            1
+          ]
+        },
+        {
+          "id": 4,
+          "day": 8,
+          "kind": "event-choice",
+          "actors": [],
+          "refs": {
+            "eventId": "egg-hatch"
+          }
+        },
+        {
+          "id": 5,
+          "day": 9,
+          "kind": "bond-star",
+          "actors": [
+            "test-member-0",
+            "test-member-1"
+          ],
+          "names": {
+            "test-member-0": "苔冠守望者·长枝",
+            "test-member-1": "试员2·圣光祭司"
+          },
+          "refs": {
+            "stars": 1
+          }
+        },
+        {
+          "id": 6,
+          "day": 9,
+          "kind": "bond-star",
+          "actors": [
+            "test-member-0",
+            "test-member-2"
+          ],
+          "names": {
+            "test-member-0": "苔冠守望者·长枝",
+            "test-member-2": "试员3·火焰法师"
+          },
+          "refs": {
+            "stars": 1
+          }
+        },
+        {
+          "id": 7,
+          "day": 9,
+          "kind": "bond-star",
+          "actors": [
+            "test-member-1",
+            "test-member-2"
+          ],
+          "names": {
+            "test-member-1": "试员2·圣光祭司",
+            "test-member-2": "试员3·火焰法师"
+          },
+          "refs": {
+            "stars": 1
+          }
+        }
+      ],
+      "toldThrough": 8,
+      "expeditionStart": 8,
+      "recentTemplates": {
+        "consequence-due": [
+          4
+        ]
+      }
+    },
+    "pending": [
+      {
+        "eventId": "egg-hatch",
+        "dueDay": 12,
+        "originFactId": 2
+      }
+    ],
+    "stories": [
+      {
+        "seq": 5,
+        "day": 9,
+        "text": "📖 那件事到底还是没有完。第 8 天,「壳里的东西」按账本上记的日子准时抵达。"
+      }
+    ]
+  }
+}

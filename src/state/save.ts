@@ -9,6 +9,8 @@ import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kin
 import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../sim/statistics'
 import { initialRunState, validateRunState, type RunUIState } from '../sim/run-state'
 import type { Visitor } from '../sim/tavern'
+import { normalizeLedger } from '../sim/fact-ledger'
+import { SIGNATURE_SKILLS } from '../data/signature'
 
 // 公会存档(save-systems:版本号 + 迁移链 + 防御式加载)
 // v21：公会资产与现有远征/事件断点同批落盘，恢复后继续原模拟与结算。
@@ -18,7 +20,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 22
+export const SAVE_VERSION = 23
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -33,6 +35,8 @@ export const saveLoadNotice = () => loadNotice
 export interface PendingConsequence {
   eventId: string
   dueDay: number
+  /** v23:真实第一幕选择的编号；旧档无可信来源时保留后果，但不编造故事。 */
+  originFactId?: number
 }
 
 /** 公会层持续状态(事件二期:跨天传奇,出征时全队生效) */
@@ -98,6 +102,8 @@ export interface GuildSave extends StoredItemFields {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  // v22 → v23:保留已受理的旧单槽指令；延迟队列不猜测历史来源。
+  22: migrateStoryRecovery,
   // A2 事实账本(ROADMAP §3.3):v22 起记录,旧档为空账本(编年史不迁移)
   21: (d) => ({ ...d, factLedger: { nextId: 1, facts: [] } }),
   20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),
@@ -141,6 +147,36 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   10: (d) => ({ ...d, eventsSeen: (d.eventsSeen as string[] | undefined) ?? [], guildBuffs: (d.guildBuffs as unknown[] | undefined) ?? [] }),
 }
 
+function migrateStoryRecovery(d: Record<string, unknown>): Record<string, unknown> {
+  const runState = d.runState as RunUIState | undefined
+  const battle = runState?.activeRun?.battle
+  if (!battle?.commands || !Object.hasOwn(battle.commands, 'signature')) return d
+  const commands = { ...battle.commands } as typeof battle.commands & { signature?: unknown }
+  const old = commands.signature as { memberId?: unknown; skillId?: unknown; targetId?: unknown } | null
+  delete commands.signature
+  const member = Array.isArray(battle.combatants) && old && typeof old.memberId === 'string'
+    ? battle.combatants.find(c => c.team === 'guild' && c.memberId === old.memberId) : undefined
+  const skill = member?.specId ? SIGNATURE_SKILLS[member.specId] : undefined
+  if (old && member && skill && skill.id === old.skillId && typeof old.memberId === 'string' &&
+      (old.targetId === undefined || typeof old.targetId === 'string')) {
+    const slots = commands.signatures ?? {}
+    if (!Object.hasOwn(slots, old.memberId)) commands.signatures = {
+      ...slots, [old.memberId]: { memberId: old.memberId, skillId: skill.id, ...(old.targetId === undefined ? {} : { targetId: old.targetId }) },
+    }
+  }
+  return { ...d, runState: { ...runState, activeRun: { ...runState!.activeRun, battle: { ...battle, commands } } } }
+}
+
+/** 来源编号是可选证据。损坏时只降级为无来源，不能让后果留在队列中反复兑现。 */
+function normalizeConsequenceOrigin<T>(value: T): T {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, 'originFactId')) return value
+  const entry = value as Record<string, unknown>
+  if (Number.isSafeInteger(entry.originFactId) && (entry.originFactId as number) > 0) return value
+  const cleaned = { ...entry }
+  delete cleaned.originFactId
+  return cleaned as T
+}
+
 /** 老档没有序列，按已有公会时间/日期建立稳定起点；迁移不访问随机数或改资产。 */
 function legacyRngState(d: Record<string, unknown>): number {
   const time = typeof d.lastSeen === 'number' && Number.isFinite(d.lastSeen) ? d.lastSeen : 7777
@@ -166,6 +202,14 @@ export function migrate(data: Record<string, unknown>): GuildSave {
   d.healingMastery = d.healingMastery && typeof d.healingMastery === 'object' ? d.healingMastery : {}
   d.kingdom = normalizeKingdom(d.kingdom)
   d.statistics = normalizeStatistics(d.statistics, typeof d.day === 'number' ? d.day : 1)
+  // 当前版本的导入同样走事实校验；损坏的叙事记录不能污染说书人，也不影响公会资产。
+  d.factLedger = normalizeLedger(d.factLedger)
+  if (Array.isArray(d.pendingConsequences)) d.pendingConsequences = d.pendingConsequences.map(normalizeConsequenceOrigin)
+  const progress = d.runState as RunUIState | undefined
+  if (progress?.pendingConsequence) {
+    const pendingConsequence = normalizeConsequenceOrigin(progress.pendingConsequence)
+    if (pendingConsequence !== progress.pendingConsequence) d.runState = { ...progress, pendingConsequence }
+  }
   const hunt = d.rareHuntNext as GuildSave['rareHuntNext']
   d.rareHuntNext = hunt && Number.isFinite(hunt.mult) && hunt.mult >= 1 &&
     Number.isFinite(hunt.rewardMult) && hunt.rewardMult >= 1
