@@ -10,6 +10,7 @@
 - **第 3 组注意**：B7 修完后门禁⑨（`smoke.ts:1382`）的胜率黄金值会漂移。重标时在本节写明新旧数字和原因，不要只改阈值。
 - **不在范围（勿动）**：混合职阶招牌技（U26 定为试玩版隐藏，正式版再补）；塔改名「裂隙」；任何美术/UI 换皮；故事类型冷却（U26 明确不加）。遇到规格与代码不符，记录证据后按最小改动处理，并在本节标注。
 - **完成后**：推送前先拉取；五组全部完成后移交 Codex 复审（范围：五个提交的 diff + 本工单 + U26），并更新本节状态。模板「三审中」→「定稿」是 G2 发包前的制作人侧条件。
+- **第 5 组 实际改动/验证/遗留(2026-10-03)**:Q2/Q5/Q4-B/Q4-C/S8 补 全按方案落地;tavern.ts 新增 CandidateOpts.hybrids(默认 true,sim 不读全局;0.1 抽签照常,不允许时落回普通候选,随机流不变);Fact.refs 增 encounter/nearDeath/scarNth/stars;firstkill-fallen 新类型入 PRIORITY;模板=对照稿原样(三审中)。验证:verify EXIT=0(Vitest 104(+7)、玩法回归 0 fail)+单测(Q5 四情形/Q4 默契创伤门槛/Q4-B 三连讲去重+normalize 持久/模板质量 42 条断言)。门禁黄金值:无漂移(✓ 未碰战斗)。遗留:无。
 - **第 2 组 实际改动/验证/遗留(2026-10-02)**:B3/B4/B5/S8/S9 全按方案落地(见 diff)。验证:verify EXIT=0(Vitest 102(+5)、玩法回归 0 fail、smoke 47)+新单测 5 条(B4 序列化水位/B5 塔点名/S8 双天数+无 id/S9 坏账本/正式模式不抛)。遗留:模板 31/33 的 eventTitle 由第 5 组整体替换覆盖。坑:main.tsx 用 import.meta.env 控 strictAssertions(sim 层不碰 import.meta,CJS 垫片会炸)。
 - **第 1 组 实际改动/验证/遗留(2026-10-02)**:B1=package.json `build:playtest`(vite build+inline-assets)+README:44;B2=audio.ts 音量读取先判空(`Number(null)=0` 之坑);S10=BattleHints 只渲染第一条;S1=发现 A11 顶栏按钮曾在重构中丢失,现按方案挂音量旁(全局常驻,大厅可见)。验证:verify EXIT=0(Vitest 97/smoke 47)+e2e B1/B2/S1/S10 全 ✓。遗留:无。
 
