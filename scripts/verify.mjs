@@ -34,4 +34,12 @@ step('王国委托回归', () => execSync('node scripts/test-kingdom.cjs', { enc
 
 step('生产构建', () => execSync('npm run build', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }))
 
+// A13 后续/Claude 审计 #9:e2e 进 verify——试玩包全流程(构建+fresh/ending/region2,浏览器实测)
+// VERIFY_E2E=0 可跳过(紧急热修时),跳过会打显著警告
+if (process.env.VERIFY_E2E === '0') {
+  console.log('⚠ VERIFY_E2E=0:已跳过 e2e-playtest-full(仅限紧急热修,回仓库后必须补跑)')
+} else {
+  step('e2e-playtest-full(试玩包全流程)', () => execSync('node scripts/e2e-playtest-full.mjs --build', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }))
+}
+
 process.exit(failed ? 1 : 0)
