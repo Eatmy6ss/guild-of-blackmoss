@@ -31,12 +31,84 @@
   --parch-ink: #5a462c;
   --parch-edge: #a8803a;
   font-family: var(--font-pixel);
+
+  /* == A12 色值收口:自动提取的派生色(勿手改;调色板改这里统一生效) == */
+  --c-1: #3a3142;
+  --c-2: #261f2e;
+  --c-3: #b6a177;
+  --c-4: #3a2810;
+  --c-5: #6a5228;
+  --c-6: #4a3a26;
+  --c-7: #2a1c08;
+  --c-8: #4a3210;
+  --c-9: #17131b;
+  --c-10: #261b14;
+  --c-11: #1e1510;
+  --c-12: #f0d080;
+  --c-13: #a07828;
+  --c-14: #1a1004;
+  --c-15: #ece0bc;
+  --c-16: #ddd0a4;
+  --c-17: #3a1a14;
+  --c-18: #2a231c;
+  --c-19: #a8c48a;
+  --c-20: #7a4a4a;
+  --c-21: #4a3a1e;
+  --c-22: #33291a;
+  --c-23: #4a3820;
+  --c-24: #a83828;
+  --c-25: #1c1622;
+  --c-26: #352c25;
+  --c-27: #a7823d;
+  --c-28: #aa8744;
+  --c-29: #64794b;
+  --c-30: #253024;
+  --c-31: #e2edc8;
+  --c-32: #49351f;
+  --c-33: #d6c59f;
+  --c-34: #9cad66;
+  --c-35: #c0c38d;
+  --c-36: #715832;
+  --c-37: #375321;
+  --c-38: #76603b;
+  --c-39: #624925;
+  --c-40: #6a4a20;
+  --c-41: #725236;
+  --c-42: #504439;
+  --c-43: #292824;
+  --c-44: #7da7c0;
+  --c-45: #18151c;
+  --c-46: #4a7a34;
+  --c-47: #6a2a1e;
+  --c-48: #d98f8f;
+  --c-49: #5a4a34;
+  --c-50: #14161c;
+  --c-51: #3a4430;
+  --c-52: #26301e;
+  --c-53: #6a8a4a;
+  --c-54: #b8d898;
+  --c-55: #ff9b9b;
+  --c-56: #4a2c1e;
+  --c-57: #ffd98f;
+  --c-58: #3a303e;
+  --c-59: #292230;
+  --c-60: #b8a678;
+  --c-61: #d8c088;
+  --c-62: #6a2020;
+  --c-63: #26202a;
+  --c-64: #4e7a2e;
+  --c-65: #a8432e;
+  --c-66: #8a6415;
+  --c-67: #8a5a2a;
+  --c-68: #4a3418;
+  --c-69: #8a6a44;
+  --c-70: #221c16;
 }
 
 /* 王国官契：沿用石框、羊皮纸与鎏金，目标和报酬留在同一张来函内。 */
 .screen-panel.royal-panel { width: min(960px, 100%); }
 .royal-header { display: flex; align-items: center; gap: 18px; padding: 18px 0; }
-.royal-seal { flex: 0 0 60px; height: 68px; display: grid; place-items: center; font-size: 40px; color: var(--gold); border: 1px solid var(--edge-gold); background: #352c25; }
+.royal-seal { flex: 0 0 60px; height: 68px; display: grid; place-items: center; font-size: 40px; color: var(--gold); border: 1px solid var(--edge-gold); background: var(--c-26); }
 .royal-header h3 { font-size: 22px; color: var(--gold); margin: 6px 0; }
 .royal-header p { line-height: 1.7; }
 .royal-kicker { color: var(--ink-dim); font-size: 12px; letter-spacing: .12em; }
@@ -44,49 +116,49 @@
 .royal-standing strong { display: block; font-size: 32px; color: var(--gold); }
 .royal-standing span { font-size: 12px; }
 .royal-rank-progress { display: flex; align-items: center; gap: 12px; font-size: 12px; }
-.royal-panel progress { height: 7px; border: 0; border-radius: 0; accent-color: #a7823d; background: #17131b; }
-.royal-panel progress::-webkit-progress-bar { background: #17131b; }
-.royal-panel progress::-webkit-progress-value { background: #aa8744; }
+.royal-panel progress { height: 7px; border: 0; border-radius: 0; accent-color: var(--c-27); background: var(--c-9); }
+.royal-panel progress::-webkit-progress-bar { background: var(--c-9); }
+.royal-panel progress::-webkit-progress-value { background: var(--c-28); }
 .royal-rank-progress progress { flex: 1; min-width: 50px; }
 .royal-rules { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 16px 0 8px; color: var(--gold); font-size: 12px; }
 .royal-help { color: var(--ink-dim); line-height: 1.8; font-size: 12px; }
-.royal-notice { margin: 16px 0; padding: 12px; border: 1px solid #64794b; background: #253024; color: #e2edc8; line-height: 1.8; }
+.royal-notice { margin: 16px 0; padding: 12px; border: 1px solid var(--c-29); background: var(--c-30); color: var(--c-31); line-height: 1.8; }
 .royal-panel .royal-section-title { margin: 22px 0 10px; font-size: 15px; color: var(--gold); }
 .royal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.royal-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 18px; color: #49351f; background: linear-gradient(125deg, var(--parch), var(--parch-lo)); border: 1px solid var(--parch-edge); box-shadow: inset 0 0 0 3px #d6c59f; }
-.royal-card.ready { border-color: #9cad66; box-shadow: inset 0 0 0 3px #c0c38d; }
-.royal-card-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #715832; }
-.royal-card.ready .royal-card-top span:last-child { color: #375321; font-weight: bold; }
+.royal-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 18px; color: var(--c-32); background: linear-gradient(125deg, var(--parch), var(--parch-lo)); border: 1px solid var(--parch-edge); box-shadow: inset 0 0 0 3px var(--c-33); }
+.royal-card.ready { border-color: var(--c-34); box-shadow: inset 0 0 0 3px var(--c-35); }
+.royal-card-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--c-36); }
+.royal-card.ready .royal-card-top span:last-child { color: var(--c-37); font-weight: bold; }
 .royal-card h3 { font-size: 19px; line-height: 1.4; }
-.royal-issuer { font-size: 12px; color: #76603b; }
+.royal-issuer { font-size: 12px; color: var(--c-38); }
 .royal-letter { line-height: 1.9; flex: 1; }
-.royal-objective { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid #b6a177; border-bottom: 1px solid #b6a177; line-height: 1.6; }
+.royal-objective { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--c-3); border-bottom: 1px solid var(--c-3); line-height: 1.6; }
 .royal-objective b { flex-shrink: 0; }
 .royal-progress { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .royal-progress progress { flex: 1; min-width: 40px; }
-.royal-common, .royal-card .hint { color: #624925; font-size: 12px; line-height: 1.7; }
-.royal-reward-preview { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #6a4a20; }
+.royal-common, .royal-card .hint { color: var(--c-39); font-size: 12px; line-height: 1.7; }
+.royal-reward-preview { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--c-40); }
 .royal-rewards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .royal-rewards button { white-space: normal; line-height: 1.5; }
 .royal-rewards span { display: block; font-size: 11px; font-weight: normal; margin-top: 5px; }
 .royal-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 4px; }
-.royal-card .royal-abandon { background: transparent; box-shadow: none; color: #725236; border: 1px solid #b6a177; }
-.royal-confirm { padding-top: 10px; border-top: 1px solid #b6a177; line-height: 1.7; font-size: 12px; }
+.royal-card .royal-abandon { background: transparent; box-shadow: none; color: var(--c-41); border: 1px solid var(--c-3); }
+.royal-confirm { padding-top: 10px; border-top: 1px solid var(--c-3); line-height: 1.7; font-size: 12px; }
 .royal-confirm button { margin: 8px 8px 0 0; }
 .royal-empty { padding: 18px; border: 1px dashed var(--edge-gold); line-height: 1.8; color: var(--ink-dim); }
 .royal-archive { margin-top: 22px; border-top: 1px solid var(--edge-gold); }
 .royal-archive summary { cursor: pointer; padding: 14px 0; color: var(--gold); }
-.royal-locked, .royal-receipt { padding: 12px 0; border-top: 1px solid #504439; line-height: 1.8; }
+.royal-locked, .royal-receipt { padding: 12px 0; border-top: 1px solid var(--c-42); line-height: 1.8; }
 .royal-locked p, .royal-receipt small { color: var(--ink-dim); }
 .royal-receipt h4 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; color: var(--gold); }
 .royal-receipt h4 span { font-weight: normal; color: var(--ink-dim); font-size: 12px; }
 .royal-hub-link { display: flex; flex-wrap: wrap; width: 100%; justify-content: space-between; gap: 8px; margin: 12px 0; text-align: left; line-height: 1.6; }
 .royal-hub-link span:last-child { color: var(--gold); font-size: 12px; }
-.royal-field-status { margin: 10px 0; padding: 10px 12px; border-left: 2px solid var(--edge-gold); background: #292824; color: var(--gold); font-size: 12px; line-height: 1.9; }
-.royal-panel button:focus-visible, .royal-panel summary:focus-visible { outline: 2px solid #7da7c0; outline-offset: 3px; }
+.royal-field-status { margin: 10px 0; padding: 10px 12px; border-left: 2px solid var(--edge-gold); background: var(--c-43); color: var(--gold); font-size: 12px; line-height: 1.9; }
+.royal-panel button:focus-visible, .royal-panel summary:focus-visible { outline: 2px solid var(--c-44); outline-offset: 3px; }
 .screen-panel.save-transfer { width: min(620px, 100%); line-height: 1.8; }
 .save-transfer label { display: block; margin-top: 16px; color: var(--gold); }
-.save-transfer textarea { width: 100%; min-height: 140px; margin: 8px 0 14px; padding: 10px; resize: vertical; background: #18151c; border: 1px solid var(--edge-gold); color: var(--ink); font-family: monospace; overflow-wrap: anywhere; }
+.save-transfer textarea { width: 100%; min-height: 140px; margin: 8px 0 14px; padding: 10px; resize: vertical; background: var(--c-45); border: 1px solid var(--edge-gold); color: var(--ink); font-family: monospace; overflow-wrap: anywhere; }
 .save-preview { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--edge-gold); }
 .save-preview button { margin-top: 12px; white-space: normal; }
 @media (max-width: 640px) {
@@ -104,10 +176,10 @@
 
 body {
   background:
-    radial-gradient(ellipse 900px 480px at 50% -6%, #4a3a26 0%, rgba(74, 58, 38, 0) 60%),
-    repeating-linear-gradient(90deg, #221812 0 116px, #261b14 116px 120px, #1e1510 120px 236px),
+    radial-gradient(ellipse 900px 480px at 50% -6%, var(--c-6) 0%, rgba(74, 58, 38, 0) 60%),
+    repeating-linear-gradient(90deg, var(--bg) 0 116px, var(--c-10) 116px 120px, var(--c-11) 120px 236px),
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 2px, transparent 2px 44px),
-    #221812;
+    var(--bg);
   color: var(--ink);
   font-size: 14px;
 }
@@ -125,7 +197,7 @@ body {
   font-size: 18px;
   color: var(--gold);
   letter-spacing: 0.2em;
-  text-shadow: 0 0 12px rgba(230, 180, 80, 0.4), 0 1px 0 #3a2810;
+  text-shadow: 0 0 12px rgba(230, 180, 80, 0.4), 0 1px 0 var(--c-4);
 }
 .app-header .slice-tag { color: var(--ink-dim); font-size: 12px; letter-spacing: 0.1em; }
 
@@ -152,14 +224,14 @@ body {
   color: var(--gold);
   margin-bottom: 10px;
   letter-spacing: 0.3em;
-  text-shadow: 0 0 8px rgba(230, 180, 80, 0.3), 0 1px 0 #3a2810;
+  text-shadow: 0 0 8px rgba(230, 180, 80, 0.3), 0 1px 0 var(--c-4);
 }
 
 .member-card {
   border: 2px solid var(--panel-edge);
   padding: 8px 10px;
   margin-bottom: 8px;
-  background: linear-gradient(#3a3142, #261f2e);
+  background: linear-gradient(var(--c-1), var(--c-2));
   box-shadow: inset 0 0 0 1px var(--edge-gold), inset 0 -8px 14px rgba(0, 0, 0, 0.5);
 }
 .member-card .name { font-weight: 600; color: var(--gold-hi); letter-spacing: 0.04em; }
@@ -180,14 +252,14 @@ body {
 }
 /* 石质控件 */
 select, button {
-  background: linear-gradient(#3a3142, #261f2e);
+  background: linear-gradient(var(--c-1), var(--c-2));
   color: var(--ink);
   border: 2px solid var(--panel-edge);
   padding: 6px 12px;
   font-size: 13px;
   cursor: pointer;
   font-family: var(--font-pixel);
-  box-shadow: inset 0 0 0 1px #6a5228, inset 0 -6px 10px rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 0 1px var(--c-5), inset 0 -6px 10px rgba(0, 0, 0, 0.45);
 }
 button:hover:not(:disabled) {
   border-color: var(--edge-gold-hi);
@@ -199,16 +271,16 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 /* 主行动按钮 = 鎏金实体(样张 .btn-enter):出征/进塔/继续深入 */
 button.primary {
-  color: #2a1c08;
+  color: var(--c-7);
   font-weight: 700;
   letter-spacing: 0.12em;
-  background: linear-gradient(#f0d080, #c8a04a 45%, #a07828);
-  border: 2px solid #4a3210;
+  background: linear-gradient(var(--c-12), var(--edge-gold-hi) 45%, var(--c-13));
+  border: 2px solid var(--c-8);
   box-shadow: 0 0 14px rgba(230, 180, 80, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.6);
   text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6);
 }
 button.primary:hover:not(:disabled) {
-  color: #1a1004;
+  color: var(--c-14);
   box-shadow: 0 0 22px rgba(230, 180, 80, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
@@ -221,12 +293,12 @@ button.primary:hover:not(:disabled) {
   letter-spacing: 0.15em;
 }
 .result-banner.win {
-  background: linear-gradient(#ece0bc, #ddd0a4);
-  color: #4a7a34;
+  background: linear-gradient(var(--c-15), var(--c-16));
+  color: var(--c-46);
   border-color: var(--edge-gold);
   text-shadow: 0 1px 0 rgba(255, 250, 235, 0.6);
 }
-.result-banner.wipe { background: #3a1a14; color: var(--danger); border-color: #6a2a1e; }
+.result-banner.wipe { background: var(--c-17); color: var(--danger); border-color: var(--c-47); }
 
 /* ===== A15 战后小结:败因/死因/关键时刻(与透明面板同调) ===== */
 .battle-summary {
@@ -247,7 +319,7 @@ button.primary:hover:not(:disabled) {
   margin: 6px 12px;
   padding: 8px 12px;
   border: 1px solid var(--danger);
-  background: #3a1a14;
+  background: var(--c-17);
   color: var(--danger);
   font-size: 11.5px;
 }
@@ -256,7 +328,7 @@ button.primary:hover:not(:disabled) {
 .signature-bar { display: flex; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
 .signature-bar .sig-btn {
   display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
-  padding: 6px 10px; border: 1px solid var(--edge-gold); background: #2a231c;
+  padding: 6px 10px; border: 1px solid var(--edge-gold); background: var(--c-18);
   color: var(--ink); cursor: pointer; font-size: 11.5px; min-height: 44px;
 }
 .signature-bar .sig-btn.ready { border-color: var(--edge-gold-hi); box-shadow: 0 0 6px rgba(200, 160, 74, 0.35); }
@@ -283,11 +355,11 @@ button.primary:hover:not(:disabled) {
   font-size: 12px;
   line-height: 1.7;
 }
-.log-guild { color: #a8c48a; }
-.log-enemy { color: #d98f8f; }
+.log-guild { color: var(--c-19); }
+.log-enemy { color: var(--c-48); }
 .log-system { color: var(--ink-faint); }
 .log-result { color: var(--gold); font-weight: 600; }
-.log-tick { color: #5a4a34; margin-right: 6px; }
+.log-tick { color: var(--c-49); margin-right: 6px; }
 
 .tick-info { color: var(--ink-dim); font-size: 12px; margin-left: auto; }
 
@@ -296,7 +368,7 @@ button.primary:hover:not(:disabled) {
   border: 2px solid var(--panel-edge);
   box-shadow: inset 0 0 0 1px var(--edge-gold), inset 0 0 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
-  background: #14161c;
+  background: var(--c-50);
   margin-bottom: 10px;
 }
 .stage canvas { display: block; max-width: 100%; height: auto; }
@@ -328,16 +400,16 @@ button.primary:hover:not(:disabled) {
 }
 .cmd-bar .cmd-label { color: var(--ink-dim); font-size: 12px; }
 .cmd-bar button.active {
-  background: linear-gradient(#3a4430, #26301e);
-  border-color: #6a8a4a;
-  color: #b8d898;
+  background: linear-gradient(var(--c-51), var(--c-52));
+  border-color: var(--c-53);
+  color: var(--c-54);
 }
-.cmd-bar .focus-tag { color: #ff9b9b; border-color: #7a4a4a; }
+.cmd-bar .focus-tag { color: var(--c-55); border-color: var(--c-20); }
 /* 指挥有感:boss 出招窗口期,对应指令按钮急促脉冲——决策窗口主动喊玩家 */
 .cmd-bar button.urgent {
-  background: #4a2c1e;
+  background: var(--c-56);
   border-color: var(--edge-gold-hi);
-  color: #ffd98f;
+  color: var(--c-57);
   animation: cmd-urgent 0.5s ease-in-out infinite;
 }
 @keyframes cmd-urgent {
@@ -347,7 +419,7 @@ button.primary:hover:not(:disabled) {
 .hint { color: var(--ink-faint); font-size: 12px; margin-top: 6px; }
 .dungeon-picker { display: flex; gap: 6px; margin-bottom: 8px; }
 .dungeon-picker button.active {
-  background: linear-gradient(#4a3a1e, #33291a);
+  background: linear-gradient(var(--c-21), var(--c-22));
   border-color: var(--edge-gold-hi);
   color: var(--gold-hi);
 }
@@ -359,17 +431,17 @@ button.primary:hover:not(:disabled) {
   align-items: center;
   padding: 8px 14px;
   margin-bottom: 10px;
-  background: linear-gradient(#3a303e, #292230);
+  background: linear-gradient(var(--c-58), var(--c-59));
   border: 2px solid var(--panel-edge);
   box-shadow: 0 1px 0 var(--edge-gold), inset 0 -10px 20px rgba(0, 0, 0, 0.45);
   font-size: 13px;
-  color: #b8a678;
+  color: var(--c-60);
 }
 .hub-title {
   font-weight: bold;
   color: var(--gold);
   letter-spacing: 0.26em;
-  text-shadow: 0 0 12px rgba(230, 180, 80, 0.45), 0 1px 0 #3a2810;
+  text-shadow: 0 0 12px rgba(230, 180, 80, 0.45), 0 1px 0 var(--c-4);
 }
 .hub-dock { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .dock-btn {
@@ -379,7 +451,7 @@ button.primary:hover:not(:disabled) {
   gap: 3px;
   min-width: 64px;
   padding: 8px 6px 5px;
-  background: linear-gradient(#3a3142, #261f2e);
+  background: linear-gradient(var(--c-1), var(--c-2));
   border: 2px solid var(--panel-edge);
   box-shadow: inset 0 0 0 1px var(--edge-gold), inset 0 -8px 14px rgba(0, 0, 0, 0.5);
   cursor: pointer;
@@ -387,11 +459,11 @@ button.primary:hover:not(:disabled) {
 .dock-btn:hover { border-color: var(--edge-gold-hi); }
 .dock-btn.open {
   border-color: var(--edge-gold-hi);
-  background: linear-gradient(#4a3a1e, #33291a);
+  background: linear-gradient(var(--c-21), var(--c-22));
   box-shadow: inset 0 0 0 1px var(--edge-gold-hi), 0 0 12px rgba(232, 200, 122, 0.35);
 }
 .dock-icon { font-size: 20px; line-height: 1; }
-.dock-label { font-size: 12px; color: #d8c088; letter-spacing: 0.18em; }
+.dock-label { font-size: 12px; color: var(--c-61); letter-spacing: 0.18em; }
 .dock-key {
   font-size: 10px;
   color: var(--gold);
@@ -403,8 +475,8 @@ button.primary:hover:not(:disabled) {
 .hub-goal {
   position: relative;
   font-size: 13px;
-  color: #4a3820;
-  background: linear-gradient(#ece0bc, #ddd0a4);
+  color: var(--c-23);
+  background: linear-gradient(var(--c-15), var(--c-16));
   border: 1px solid var(--edge-gold);
   box-shadow: inset 0 0 24px rgba(140, 100, 40, 0.25), 0 2px 6px rgba(0, 0, 0, 0.5);
   padding: 8px 12px 8px 16px;
@@ -418,7 +490,7 @@ button.primary:hover:not(:disabled) {
   top: 0;
   bottom: 0;
   width: 4px;
-  background: linear-gradient(#a83828, #6a2020);
+  background: linear-gradient(var(--c-24), var(--c-62));
 }
 .hub-keys { margin-top: 8px; }
 
@@ -444,7 +516,7 @@ button.primary:hover:not(:disabled) {
   width: min(860px, 94vw);
   background:
     radial-gradient(ellipse 700px 300px at 50% 0%, rgba(120, 90, 50, 0.18) 0%, rgba(120, 90, 50, 0) 60%),
-    linear-gradient(#332b36, #26202a 55%, #201a24);
+    linear-gradient(var(--panel-hi), var(--c-63) 55%, var(--panel-lo));
   border: 2px solid var(--panel-edge);
   outline: 2px solid var(--edge-gold);
   outline-offset: -7px;
@@ -469,17 +541,17 @@ button.primary:hover:not(:disabled) {
   margin: 0;
   color: var(--gold);
   letter-spacing: 0.3em;
-  text-shadow: 0 0 12px rgba(230, 180, 80, 0.35), 0 1px 0 #3a2810;
+  text-shadow: 0 0 12px rgba(230, 180, 80, 0.35), 0 1px 0 var(--c-4);
 }
 .screen-close {
   font-size: 12px;
   color: var(--ink-dim);
-  background: linear-gradient(#3a3142, #261f2e);
+  background: linear-gradient(var(--c-1), var(--c-2));
   border: 1px solid var(--edge-gold);
   padding: 3px 8px;
   cursor: pointer;
 }
-.screen-close:hover { color: var(--danger); border-color: #a83828; }
+.screen-close:hover { color: var(--danger); border-color: var(--c-24); }
 .screen-sub { color: var(--ink-dim); font-size: 13px; margin: 4px 0 10px; letter-spacing: 0.1em; }
 
 /* 大事事件弹层:羊皮纸卷轴(样张 event-card)——书记官现场誊录 */
@@ -509,13 +581,13 @@ button.primary:hover:not(:disabled) {
   border: 1px solid rgba(140, 100, 40, 0.55); border-radius: 3px;
   background: rgba(255, 250, 235, 0.5); color: var(--parch-ink); letter-spacing: 0.02em;
 }
-.impact-chip.impact-pos { color: #4e7a2e; border-color: rgba(90, 130, 50, 0.75); }
-.impact-chip.impact-neg { color: #a8432e; border-color: rgba(168, 67, 46, 0.65); }
-.impact-chip.impact-hook { color: #8a6415; border-style: dashed; background: rgba(232, 200, 122, 0.3); }
+.impact-chip.impact-pos { color: var(--c-64); border-color: rgba(90, 130, 50, 0.75); }
+.impact-chip.impact-neg { color: var(--c-65); border-color: rgba(168, 67, 46, 0.65); }
+.impact-chip.impact-hook { color: var(--c-66); border-style: dashed; background: rgba(232, 200, 122, 0.3); }
 /* 事件弹层内的控件 = 羊皮纸文书按钮(样张 .choice) */
 .event-modal button {
   background: rgba(255, 250, 235, 0.55);
-  color: #4a3820;
+  color: var(--c-23);
   border: 1.5px solid var(--parch-edge);
   box-shadow: none;
   position: relative;
@@ -531,23 +603,23 @@ button.primary:hover:not(:disabled) {
 }
 .event-modal button:hover:not(:disabled) {
   background: rgba(255, 250, 235, 0.85);
-  color: #2a1c08;
-  border-color: #8a5a2a;
+  color: var(--c-7);
+  border-color: var(--c-67);
 }
-.event-modal .screen-head h2 { color: #4a3418; text-shadow: none; letter-spacing: 0.14em; }
+.event-modal .screen-head h2 { color: var(--c-68); text-shadow: none; letter-spacing: 0.14em; }
 .event-modal .screen-head { border-bottom: 2px solid var(--parch-edge); box-shadow: none; }
-.event-modal .hint { color: #8a6a44; }
+.event-modal .hint { color: var(--c-69); }
 
 .slot-row { align-items: center; }
 .slot-select {
   flex: 1;
   font-size: 12px;
   padding: 3px 6px;
-  background: #1c1622;
+  background: var(--c-25);
   color: var(--ink);
-  border: 1px solid #6a5228;
+  border: 1px solid var(--c-5);
 }
-.inv-panel { margin-top: 12px; border-top: 1px solid #4a3a26; padding-top: 8px; }
+.inv-panel { margin-top: 12px; border-top: 1px solid var(--c-6); padding-top: 8px; }
 .inv-item {
   font-size: 12px;
   color: var(--ink);
@@ -570,7 +642,7 @@ button.primary:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.25);
 }
 .growth-row .g-name { font-weight: 600; color: var(--gold-hi); }
-.growth-row.dead { border-left-color: #7a4a4a; opacity: 0.75; }
+.growth-row.dead { border-left-color: var(--c-20); opacity: 0.75; }
 .growth-row .g-exp { color: var(--ink-faint); }
 
 
@@ -585,17 +657,17 @@ button.primary:hover:not(:disabled) {
   justify-content: center;
   gap: 18px;
   background:
-    radial-gradient(ellipse 820px 480px at 50% 12%, #4a3a26 0%, rgba(74, 58, 38, 0) 60%),
-    repeating-linear-gradient(90deg, #221812 0 116px, #261b14 116px 120px, #1e1510 120px 236px),
+    radial-gradient(ellipse 820px 480px at 50% 12%, var(--c-6) 0%, rgba(74, 58, 38, 0) 60%),
+    repeating-linear-gradient(90deg, var(--bg) 0 116px, var(--c-10) 116px 120px, var(--c-11) 120px 236px),
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 2px, transparent 2px 44px),
-    #221812;
+    var(--bg);
   text-align: center;
 }
 .title-logo {
   font-size: 56px;
   color: var(--gold);
   letter-spacing: 0.18em;
-  text-shadow: 0 0 24px rgba(230, 180, 80, 0.45), 0 3px 0 #4a3210;
+  text-shadow: 0 0 24px rgba(230, 180, 80, 0.45), 0 3px 0 var(--c-8);
   animation: title-float 3.2s ease-in-out infinite;
 }
 .title-sub { color: var(--ink-dim); letter-spacing: 0.5em; font-size: 14px; }
@@ -608,15 +680,15 @@ button.primary:hover:not(:disabled) {
   padding: 10px 18px;
   font-size: 15px;
   letter-spacing: 0.28em;
-  color: #2a1c08;
+  color: var(--c-7);
   font-weight: 700;
-  background: linear-gradient(#f0d080, #c8a04a 45%, #a07828);
-  border: 2px solid #4a3210;
+  background: linear-gradient(var(--c-12), var(--edge-gold-hi) 45%, var(--c-13));
+  border: 2px solid var(--c-8);
   box-shadow: 0 0 16px rgba(230, 180, 80, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.6);
   text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6);
 }
 .title-actions button:hover:not(:disabled) {
-  color: #1a1004;
+  color: var(--c-14);
   box-shadow: 0 0 24px rgba(230, 180, 80, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 .title-foot { position: absolute; bottom: 18px; color: var(--ink-faint); font-size: 11px; letter-spacing: 0.14em; }
@@ -675,8 +747,8 @@ button.primary:hover:not(:disabled) {
 .base-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
 .base-card {
   border: 2px solid var(--panel-edge);
-  background: linear-gradient(#3a3142, #261f2e);
-  box-shadow: inset 0 0 0 1px #6a5228;
+  background: linear-gradient(var(--c-1), var(--c-2));
+  box-shadow: inset 0 0 0 1px var(--c-5);
   padding: 8px;
 }
 .base-card.owned { border-color: var(--edge-gold); }
@@ -692,7 +764,7 @@ button.primary:hover:not(:disabled) {
 .stat-layer { display: flex; justify-content: space-between; gap: 12px; font-size: 11.5px; line-height: 1.9; }
 .stat-layer .sl-label { color: var(--ink-dim); flex-shrink: 0; white-space: nowrap; }
 .stat-layer > :last-child { min-width: 0; text-align: right; }
-.stat-layer .good { color: #a8c48a; }
+.stat-layer .good { color: var(--c-19); }
 .stat-layer .bad { color: var(--danger); }
 
 .region-block { margin-bottom: 8px; }
@@ -700,7 +772,7 @@ button.primary:hover:not(:disabled) {
 .region-dungeons { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ===== 逐段选路(宪法 v3.3 修正案)===== 石质路线卡(样张 .route) */
-.route-choice { margin: 8px 0; padding: 8px 10px; border: 1px solid #6a5228; background: #1c1622; }
+.route-choice { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--c-5); background: var(--c-25); }
 .route-choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
 .route-choices button { flex: 1 1 30%; text-align: left; padding: 8px 12px; }
 .route-choices button small { display: block; color: var(--ink-faint); margin-top: 3px; }
@@ -711,7 +783,7 @@ button.primary:hover:not(:disabled) {
 .signature-bar .sig-group { display: flex; align-items: stretch; gap: 4px; }
 .signature-bar .sig-allies { display: flex; gap: 3px; flex-wrap: wrap; }
 .signature-bar .sig-ally {
-  padding: 2px 6px; border: 1px solid var(--edge-gold); background: #221c16;
+  padding: 2px 6px; border: 1px solid var(--edge-gold); background: var(--c-70);
   color: var(--ink-dim); cursor: pointer; font-size: 10.5px; min-height: 44px;
 }
 .signature-bar .sig-ally:hover:not(:disabled) { color: var(--edge-gold-hi); border-color: var(--edge-gold-hi); }
@@ -736,6 +808,6 @@ button.primary:hover:not(:disabled) {
 /* ===== A16 基础设置 ===== */
 .volume-wrap { position: fixed; right: 14px; top: 14px; z-index: 60; display: flex; align-items: center; gap: 6px; }
 .volume-slider { width: 72px; accent-color: var(--edge-gold-hi); cursor: pointer; }
-.speed-btn { padding: 4px 10px; border: 1px solid var(--edge-gold); background: #2a231c; color: var(--ink);
+.speed-btn { padding: 4px 10px; border: 1px solid var(--edge-gold); background: var(--c-18); color: var(--ink);
   cursor: pointer; font-size: 11.5px; min-height: 44px; }
 .speed-btn:hover:not(:disabled) { border-color: var(--edge-gold-hi); color: var(--edge-gold-hi); }
