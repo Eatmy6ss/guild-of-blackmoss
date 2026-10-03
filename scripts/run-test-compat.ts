@@ -39,6 +39,19 @@ export const createRun = (...args: Parameters<typeof dungeon.createRun>) => {
 }
 export const startTower = (...args: Parameters<typeof tower.startTower>) => view(tower.startTower(...args), args[0])
 export const startStep = (run: dungeon.DungeonRun, seed: number, bonus = 0, members?: Member[]) => withDefinition(definitions.get(run), () => dungeon.startStep(run, seed, bonus, roster(run, members)))
+/** R1.1:createRun 不再自动开战——沿地图前进直到开出第一场战斗(测试/门禁通用前处理)。 */
+export const beginBattle = (run: dungeon.DungeonRun, seed: number, bonus = 0, members?: Member[]) => {
+  for (let depth = 0; depth < 16; depth++) {
+    const opts = dungeon.mapOptions(run)
+    if (opts.length === 0) { startStep(run, seed, bonus, members); return run } // Boss 节点连战
+    const node = opts.find(n => n.kind === 'battle' || n.kind === 'elite') ?? opts.find(n => n.kind === 'boss')
+    if (!node) { dungeon.moveTo(run, opts[0]!.id); continue } // 非战斗层,继续走
+    dungeon.moveTo(run, node.id)
+    startStep(run, seed, bonus, members)
+    return run
+  }
+  throw new Error('beginBattle:16 步内找不到战斗节点')
+}
 export const advanceRun = (run: dungeon.DungeonRun, members?: Member[]) => dungeon.advanceRun(run, roster(run, members))
 export const retreatRun = (run: dungeon.DungeonRun, members?: Member[]) => dungeon.retreatRun(run, roster(run, members))
 export const startTowerFloor = (run: tower.TowerRun, seed: number, members?: Member[]) => tower.startTowerFloor(run, seed, roster(run, members))

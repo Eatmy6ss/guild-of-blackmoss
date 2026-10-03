@@ -8,22 +8,12 @@ export const BLACKMOSS: DungeonDef = {
   rating: 1.0,
   expectedLevel: 5,
   size: 3,
-  branches: [
-    {
-      id: 'shortcut',
-      name: '蛙人小径',
-      risk: 3,
-      reward: 2,
-      desc: '快而险：蛙人拦路，但离 boss 巢穴更近',
-    },
-    {
-      id: 'safepath',
-      name: '枯木栈道',
-      risk: 1,
-      reward: 1,
-      desc: '慢而稳：多绕一段路，几乎无埋伏',
-    },
-  ],
+  terrains: {
+    water: { weight: 3, names: ['水蛭洼地', '沉水洼地', '沼腹深处'], encounters: ['enc-leeches', 'enc-mire'] },
+    wild: { weight: 3, names: ['狼群猎场', '腐化林地'], encounters: ['enc-wolves', 'enc-quirrel'] },
+    road: { weight: 2, names: ['蛙人小径', '枯木栈道'], encounters: ['enc-frogs'] },
+    camp: { weight: 2, names: ['药贩营地', '隐士棚屋'], encounters: [] },
+  },
   enemyGroups: {
     frogs: [
       { id: 'frog-a',
@@ -146,24 +136,6 @@ export const BLACKMOSS: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'bm-frogs', name: '蛙人哨兵', kind: 'battle', encounterId: 'enc-frogs', desc: '蛙人拦路的哨戒线' },
-    { id: 'bm-wolves', name: '狼群猎场', kind: 'elite', encounterId: 'enc-wolves', desc: '腐化狼群,凶险但掉落翻倍' },
-    { id: 'bm-leeches', name: '水蛭洼地', kind: 'battle', encounterId: 'enc-leeches', desc: '水蛭成片,磨人的泥沼' },
-    { id: 'bm-camp', name: '药贩营地', kind: 'event', desc: '一个行脚药贩在营地等候' },
-    { id: 'bm-hut', name: '隐士棚屋', kind: 'rest', desc: '隐士允许你们歇歇脚' },
-    { id: 'bm-quirrel', name: '混编伏击', kind: 'battle', encounterId: 'enc-quirrel', desc: '蛙人与狼联手设伏' },
-    { id: 'bm-mire', name: '沼腹深处', kind: 'battle', encounterId: 'enc-mire', desc: '越往里,泥越深' },
-    { id: 'bm-chest', name: '沉船货箱', kind: 'treasure', desc: '搁浅的货船残骸,货箱还封着蜡' },
-  ],
-  routeRelations: [
-    ['bm-frogs', 'bm-leeches'],
-    ['bm-frogs', 'bm-quirrel'],
-    ['bm-wolves', 'bm-quirrel'],
-    ['bm-hut', 'bm-mire'],
-    ['bm-frogs', 'bm-chest'],
-    ['bm-camp', 'bm-leeches'],
-  ],
   encounters: [
     { id: 'enc-frogs', name: '蛙人哨兵', kind: 'wave', enemyGroupIds: ['frogs'] },
     { id: 'enc-wolves', name: '腐化狼群', kind: 'wave', enemyGroupIds: ['wolves'] },
@@ -183,22 +155,11 @@ export const RUSTMINE: DungeonDef = {
   rating: 1.05,
   expectedLevel: 6,
   size: 3,
-  branches: [
-    {
-      id: 'cartline',
-      name: '矿车轨道',
-      risk: 3,
-      reward: 3,
-      desc: '直下主矿脉：穴蝠盘踞，但矿脉深处遗物更多',
-    },
-    {
-      id: 'airshaft',
-      name: '通风巷道',
-      risk: 1,
-      reward: 1,
-      desc: '绕行风道：路远,但几乎不会遇到埋伏',
-    },
-  ],
+  terrains: {
+    under: { weight: 4, names: ['主矿脉', '深层矿脉', '通风巷道', '蛛网巷道', '穴蝠巢'], encounters: ['enc-miners', 'enc-deepvein', 'enc-spiders', 'enc-batmix', 'enc-bats'] },
+    ruin: { weight: 2, names: ['坍塌货仓'], encounters: ['enc-spiders', 'enc-bats'] },
+    camp: { weight: 2, names: ['矿车休息站'], encounters: [] },
+  },
   enemyGroups: {
     miners: [
       { id: 'miner-a',
@@ -277,24 +238,6 @@ export const RUSTMINE: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'rm-miners', name: '主矿脉', kind: 'battle', encounterId: 'enc-miners', desc: '尸化矿工仍在凿壁' },
-    { id: 'rm-bats', name: '穴蝠巢', kind: 'elite', encounterId: 'enc-bats', desc: '锈穴蝠成群,掉落翻倍' },
-    { id: 'rm-spiders', name: '蛛网巷道', kind: 'battle', encounterId: 'enc-spiders', desc: '岩蛛与毒蛛后的领地' },
-    { id: 'rm-cart', name: '矿车休息站', kind: 'rest', desc: '还能推动的矿车,正好歇脚' },
-    { id: 'rm-batmix', name: '蝠蛛混巢', kind: 'battle', encounterId: 'enc-batmix', desc: '蝠群与蛛网在同一巷道' },
-    { id: 'rm-deepvein', name: '深层矿脉', kind: 'battle', encounterId: 'enc-deepvein', desc: '越深,矿灯越暗' },
-    { id: 'rm-crate', name: '坍塌货仓', kind: 'treasure', desc: '塌方封存的物资仓' },
-    { id: 'rm-echo', name: '巷道回声', kind: 'event', desc: '塌方后有敲击声,像求救' },
-  ],
-  routeRelations: [
-    ['rm-miners', 'rm-spiders'],
-    ['rm-bats', 'rm-deepvein'],
-    ['rm-cart', 'rm-miners'],
-    ['rm-echo', 'rm-deepvein'],
-    ['rm-bats', 'rm-batmix'],
-    ['rm-miners', 'rm-batmix'],
-  ],
   encounters: [
     { id: 'enc-miners', name: '尸化矿工队', kind: 'wave', enemyGroupIds: ['miners'] },
     { id: 'enc-bats', name: '锈穴蝠群', kind: 'wave', enemyGroupIds: ['bats'] },
@@ -314,22 +257,12 @@ export const ASHFIELD: DungeonDef = {
   rating: 1.237,
     expectedLevel: 7,
   size: 3,
-  branches: [
-    {
-      id: 'boneroad',
-      name: '白骨大道',
-      risk: 3,
-      reward: 3,
-      desc: '直取王帐废墟：骸骨列队守路，但军械库的遗物就在深处',
-    },
-    {
-      id: 'riverwash',
-      name: '河滩绕行',
-      risk: 1,
-      reward: 1,
-      desc: '沿灰河绕行：路远泥泞，但亡者不喜水声',
-    },
-  ],
+  terrains: {
+    grave: { weight: 4, names: ['白骨大道', '葬仪行列', '墓骑巡境'], encounters: ['enc-skeletons', 'enc-funeral', 'enc-knights'] },
+    ruin: { weight: 2, names: ['军械库残堆'], encounters: ['enc-bonemix'] },
+    water: { weight: 2, names: ['河滩绕行'], encounters: ['enc-wraiths'] },
+    camp: { weight: 2, names: ['旧军营垒'], encounters: [] },
+  },
   enemyGroups: {
     skeletons: [
       { id: 'skeleton-a',
@@ -406,23 +339,6 @@ export const ASHFIELD: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'af-skeletons', name: '白骨大道', kind: 'battle', encounterId: 'enc-skeletons', desc: '骸骨仍在列队行军' },
-    { id: 'af-wraiths', name: '怨灵游荡', kind: 'elite', encounterId: 'enc-wraiths', desc: '游荡的怨灵,掉落翻倍' },
-    { id: 'af-knights', name: '墓骑巡境', kind: 'battle', encounterId: 'enc-knights', desc: '墓骑的巡逻路线' },
-    { id: 'af-camp', name: '旧军营垒', kind: 'rest', desc: '半塌的营垒,还能挡风' },
-    { id: 'af-bonemix', name: '骨怨混编', kind: 'battle', encounterId: 'enc-bonemix', desc: '骸骨与怨灵同行' },
-    { id: 'af-funeral', name: '葬仪行列', kind: 'battle', encounterId: 'enc-funeral', desc: '墓骑开道,挽歌相随' },
-    { id: 'af-relic', name: '军械库残堆', kind: 'treasure', desc: '王朝军械库的最后一角' },
-    { id: 'af-trumpet', name: '未响的号角', kind: 'event', desc: '号角一响,亡者当立正位' },
-  ],
-  routeRelations: [
-    ['af-skeletons', 'af-funeral'],
-    ['af-wraiths', 'af-bonemix'],
-    ['af-knights', 'af-bonemix'],
-    ['af-camp', 'af-funeral'],
-    ['af-knights', 'af-relic'],
-  ],
   encounters: [
     { id: 'enc-skeletons', name: '骸骨列队', kind: 'wave', enemyGroupIds: ['skeletons'] },
     { id: 'enc-wraiths', name: '怨灵游荡', kind: 'wave', enemyGroupIds: ['wraiths'] },
@@ -442,22 +358,12 @@ export const FROSTGRAVE: DungeonDef = {
   rating: 0.95,
     expectedLevel: 8,
   size: 3,
-  branches: [
-    {
-      id: 'tombroad',
-      name: '拜陵大道',
-      risk: 3,
-      reward: 3,
-      desc: '直抵织法者的冰棺：墓卫列队看守，但陪葬的遗物未被人动过',
-    },
-    {
-      id: 'pinepath',
-      name: '松林绕行',
-      risk: 1,
-      reward: 1,
-      desc: '钻松林绕开陵道：路远雪深，但霜狼不喜欢松脂味',
-    },
-  ],
+  terrains: {
+    grave: { weight: 4, names: ['墓卫列队', '冰棺回廊', '掘墓工棚'], encounters: ['enc-wights', 'enc-icetomb', 'enc-frostmix', 'enc-gravekeepers'] },
+    sanctum: { weight: 2, names: ['冰封祭坛'], encounters: [] },
+    wild: { weight: 2, names: ['松林绕行', '霜狼猎场'], encounters: ['enc-frostwolves'] },
+    camp: { weight: 2, names: ['猎户帐篷'], encounters: [] },
+  },
   enemyGroups: {
     wights: [
       { id: 'wight-a', traits: ['death-zone', 'last-stand'], name: '冻僵的墓卫', maxHp: 1100, attack: 13, defense: 8, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
@@ -524,23 +430,6 @@ export const FROSTGRAVE: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'fg-wights', name: '墓卫列队', kind: 'battle', encounterId: 'enc-wights', desc: '冻僵的墓卫仍在站岗' },
-    { id: 'fg-wolves', name: '霜狼猎场', kind: 'elite', encounterId: 'enc-frostwolves', desc: '霜狼成群,掉落翻倍' },
-    { id: 'fg-gravers', name: '掘墓工棚', kind: 'battle', encounterId: 'enc-gravekeepers', desc: '掘墓人昼夜不休' },
-    { id: 'fg-altar', name: '冰封祭坛', kind: 'event', desc: '祭坛上结着不化的冰' },
-    { id: 'fg-tent', name: '猎户帐篷', kind: 'rest', desc: '猎户留下的帐篷,火塘还温着' },
-    { id: 'fg-frostmix', name: '墓卫鸦士混编', kind: 'battle', encounterId: 'enc-frostmix', desc: '墓卫与寒鸦同巡' },
-    { id: 'fg-icetomb', name: '冰棺回廊', kind: 'battle', encounterId: 'enc-icetomb', desc: '冰棺排满回廊两侧' },
-    { id: 'fg-cache', name: '陪葬冰窖', kind: 'treasure', desc: '冰层里封着陪葬品' },
-  ],
-  routeRelations: [
-    ['fg-wights', 'fg-gravers'],
-    ['fg-wolves', 'fg-frostmix'],
-    ['fg-gravers', 'fg-icetomb'],
-    ['fg-altar', 'fg-tent'],
-    ['fg-frostmix', 'fg-icetomb'],
-  ],
   encounters: [
     // 反馈④ bug 修复:路线按数组顺序生成,boss 曾被排在中间(永远打不到)——压轴移末位
     { id: 'enc-wights', name: '墓卫列队', kind: 'wave', enemyGroupIds: ['wights'] },
@@ -561,22 +450,12 @@ export const ABYSSALTAR: DungeonDef = {
   rating: 1.05,
     expectedLevel: 9,
   size: 3,
-  branches: [
-    {
-      id: 'altarstairs',
-      name: '献祭阶梯',
-      risk: 3,
-      reward: 3,
-      desc: '沿血槽石阶直下圣所：教徒阻路，但祭坛上的供品浸着古金',
-    },
-    {
-      id: 'darkriver',
-      name: '暗河渡道',
-      risk: 1,
-      reward: 1,
-      desc: '从暗河泅渡潜入：路湿难行，但祷声盖不过水声',
-    },
-  ],
+  terrains: {
+    sanctum: { weight: 3, names: ['教徒环阵', '献祭阶梯'], encounters: ['enc-cultists'] },
+    under: { weight: 3, names: ['观渊回廊'], encounters: ['enc-eyes', 'enc-abyssmix'] },
+    water: { weight: 2, names: ['暗河渡道'], encounters: ['enc-ghouls', 'enc-bloodfeast'] },
+    camp: { weight: 2, names: ['暗河石台'], encounters: [] },
+  },
   enemyGroups: {
     cultists: [
       { id: 'cultist-a', traits: ['death-blast', 'last-stand'], name: '血祭教徒', maxHp: 1404, attack: 16, defense: 9, speed: 6, position: 'front', range: 'melee', archetype: 'shield' },
@@ -654,23 +533,6 @@ export const ABYSSALTAR: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'ab-cultists', name: '教徒环阵', kind: 'battle', encounterId: 'enc-cultists', desc: '血祭教徒的祷告环' },
-    { id: 'ab-ghouls', name: '饿殍坑', kind: 'elite', encounterId: 'enc-ghouls', desc: '食尸鬼争食,掉落翻倍' },
-    { id: 'ab-eyes', name: '观渊回廊', kind: 'battle', encounterId: 'enc-eyes', desc: '无数眼睛在黑暗里眨动' },
-    { id: 'ab-stone', name: '暗河石台', kind: 'rest', desc: '暗河边干燥的石台' },
-    { id: 'ab-abyssmix', name: '眼目咏叹混编', kind: 'battle', encounterId: 'enc-abyssmix', desc: '眼睛与祷声同行' },
-    { id: 'ab-bloodfeast', name: '血宴残席', kind: 'battle', encounterId: 'enc-bloodfeast', desc: '宴席未散,饿殍未走' },
-    { id: 'ab-relic', name: '沉供奉龛', kind: 'treasure', desc: '供奉沉在血池底,泛着金光' },
-    { id: 'ab-whisper', name: '渊底低语', kind: 'event', desc: '低语许诺力量,代价未提' },
-  ],
-  routeRelations: [
-    ['ab-cultists', 'ab-bloodfeast'],
-    ['ab-ghouls', 'ab-abyssmix'],
-    ['ab-eyes', 'ab-whisper'],
-    ['ab-stone', 'ab-abyssmix'],
-    ['ab-relic', 'ab-bloodfeast'],
-  ],
   encounters: [
     { id: 'enc-cultists', name: '血祭教徒环', kind: 'wave', enemyGroupIds: ['cultists'] },
     { id: 'enc-ghouls', name: '饿殍争食', kind: 'wave', enemyGroupIds: ['ghouls'] },
@@ -690,22 +552,11 @@ export const THORNHOLD: DungeonDef = {
   rating: 1.32,
   expectedLevel: 11,
   size: 5,
-  branches: [
-    {
-      id: 'gateassault',
-      name: '正门强攻',
-      risk: 3,
-      reward: 3,
-      desc: '撞开正门直取内庭：佣兵团主力列阵以待，但团库就在门后',
-    },
-    {
-      id: 'sewerin',
-      name: '水道潜入',
-      risk: 1,
-      reward: 1,
-      desc: '从排水暗渠摸进内庭：路臭且窄，但守军不设防',
-    },
-  ],
+  terrains: {
+    camp: { weight: 3, names: ['校场', '正门', '前卫驻地'], encounters: ['enc-swords', 'enc-siege', 'enc-heavies', 'enc-vanguard2'] },
+    water: { weight: 2, names: ['排水暗渠', '水道'], encounters: ['enc-vanguard2'] },
+    under: { weight: 2, names: ['团库甬道'], encounters: ['enc-heavies'] },
+  },
   enemyGroups: {
     swords: [
       { id: 'sword-a',
@@ -825,22 +676,6 @@ export const THORNHOLD: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'th-swords', name: '正门刀盾阵', kind: 'battle', encounterId: 'enc-swords', desc: '刀盾与弩手的正面阵' },
-    { id: 'th-heavies', name: '重斧亲卫', kind: 'elite', encounterId: 'enc-heavies', desc: '重斧手成队,掉落翻倍' },
-    { id: 'th-yard', name: '校场', kind: 'rest', desc: '空置的校场,正好整队' },
-    { id: 'th-siege', name: '攻城混编', kind: 'battle', encounterId: 'enc-siege', desc: '围攻的完整编制' },
-    { id: 'th-vanguard2', name: '前卫余部', kind: 'battle', encounterId: 'enc-vanguard2', desc: '败退的前卫重整再战' },
-    { id: 'th-armory', name: '团库武械房', kind: 'treasure', desc: '荆棘团的团库就在门后' },
-    { id: 'th-deserter', name: '逃兵求见', kind: 'event', desc: '一名荆棘逃兵想谈条件' },
-  ],
-  routeRelations: [
-    ['th-swords', 'th-siege'],
-    ['th-heavies', 'th-vanguard2'],
-    ['th-yard', 'th-siege'],
-    ['th-armory', 'th-heavies'],
-    ['th-deserter', 'th-swords'],
-  ],
   encounters: [
     { id: 'enc-swords', name: '正门刀盾阵', kind: 'wave', enemyGroupIds: ['swords'] },
     { id: 'enc-heavies', name: '重斧亲卫', kind: 'wave', enemyGroupIds: ['heavies'] },

@@ -53,10 +53,11 @@ test('首场猎杀与精英叠加传到真实增援，下一场恢复普通强�
   const { dungeon, bossId } = summonCases.find(({ dungeon }) => dungeon.id === 'emberpass')!
   const fixture = comparisonDungeon(dungeon, bossId)
   const baseline = createBattle([], fixture, 'comparison', 29)
-  const run = createRun([], fixture, '', 29, 0, true, undefined, false, [], { mult: 1.4, rewardMult: 2 })
-  run.steps = ['comparison', 'comparison']
-  run.eliteAt = []
-  run.eliteNow = true
+  const run = createRun([], fixture, 29, 0, true, undefined, false, [], { mult: 1.4, rewardMult: 2 })
+  const node = run.map.layers[0].find(n => n.kind === 'battle') ?? run.map.layers[0][0]!
+  node.kind = 'elite'
+  node.encounterId = 'comparison'
+  run.nodeId = node.id; run.path = [node.id]
   startStep(run, 29)
   const initial = run.battle!.combatants.filter(c => !c.boss)
   expect(initial[0].maxHp).toBeGreaterThan(baseline.combatants[0].maxHp)
@@ -64,7 +65,9 @@ test('首场猎杀与精英叠加传到真实增援，下一场恢复普通强�
   expect(initial.every(c => c.elite)).toBe(true)
   const firstAdds = spawnAdds(run.battle!)
   expect(firstAdds.map(attributes)).toEqual(initial.slice(0, firstAdds.length).map(attributes))
-  run.stepIdx = 1
+  node.kind = 'battle'
+  run.battle = null
+  run.phase = 'rest'
   startStep(run, 29)
   expect(run.battle!.combatants.map(attributes)).toEqual(baseline.combatants.map(attributes))
   expect(spawnAdds(run.battle!).map(attributes)).toEqual(spawnAdds(baseline).map(attributes))

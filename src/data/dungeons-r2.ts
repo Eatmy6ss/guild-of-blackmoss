@@ -22,11 +22,13 @@ export const EMBERPASS: DungeonDef = {
   id: 'emberpass',
   name: '烬石隘口',
   size: 3,
-    branches: [
-    { id: 'shortcut', name: '龙脊小径', risk: 3, reward: 2, desc: '快而险:翻越崩石,鳞音教哨卡密集' },
-    { id: 'safepath', name: '盘山官道', risk: 1, reward: 1, desc: '稳而慢:商队踩出来的路,几乎无埋伏' },
-  ],
-  rating: 1.919,
+  terrains: {
+    road: { weight: 3, names: ['龙脊小径', '盘山官道', '崩石哨卡'], encounters: ['enc-dragonkin', 'enc-mix'] },
+    sanctum: { weight: 2, names: ['路边圣龛'], encounters: [] },
+    camp: { weight: 2, names: ['朝圣营地', '背风岩窝'], encounters: ['enc-pilgrims'] },
+    lava: { weight: 2, names: ['烬石'], encounters: ['enc-mix'] },
+  },
+    rating: 1.919,
   expectedLevel: 11,
   enemyGroups: {
     dragonkin: [
@@ -64,18 +66,6 @@ export const EMBERPASS: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'ep-sentinels', name: '崩石哨卡', kind: 'battle', encounterId: 'enc-dragonkin', desc: '龙裔鳞卫把守的隘口正面' },
-    { id: 'ep-shrine', name: '路边圣龛', kind: 'event', desc: '鳞音教的路边圣龛还燃着香' },
-    { id: 'ep-camp', name: '朝圣营地', kind: 'battle', encounterId: 'enc-pilgrims', desc: '借宿的朝圣者未必是好人' },
-    { id: 'ep-rest', name: '背风岩窝', kind: 'rest', desc: '山风被岩壁挡住,火塘还有余温' },
-    { id: 'ep-cache', name: '坠商货担', kind: 'treasure', desc: '掉下悬崖的商队货担挂在枯树上' },
-  ],
-  routeRelations: [
-    ['ep-sentinels', 'ep-camp'],
-    ['ep-shrine', 'ep-rest'],
-    ['ep-sentinels', 'ep-cache'],
-  ],
   encounters: [
     { id: 'enc-dragonkin', name: '龙裔鳞卫', kind: 'wave', enemyGroupIds: ['dragonkin'] },
     { id: 'enc-pilgrims', name: '朝圣狂徒', kind: 'wave', enemyGroupIds: ['pilgrims'] },
@@ -88,11 +78,12 @@ export const SCALEHAVEN: DungeonDef = {
   id: 'scalehaven',
   name: '鳞音圣地带',
   size: 3,
-    branches: [
-    { id: 'shortcut', name: '圣像大道', risk: 3, reward: 2, desc: '快而险:从圣像脚下穿行,教众无处不在' },
-    { id: 'safepath', name: '香客绕道', risk: 1, reward: 1, desc: '稳而慢:绕开圣地带的核心' },
-  ],
-  rating: 2.652,
+  terrains: {
+    sanctum: { weight: 4, names: ['圣像大道', '施舍台', '唱诗庭院'], encounters: ['enc-fanatics', 'enc-drakeguard'] },
+    road: { weight: 2, names: ['香客绕道'], encounters: ['enc-fanatics'] },
+    camp: { weight: 2, names: ['香客房'], encounters: [] },
+  },
+    rating: 2.652,
   expectedLevel: 12,
   enemyGroups: {
     fanatics: [
@@ -128,18 +119,6 @@ export const SCALEHAVEN: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'sh-avenue', name: '圣像大道', kind: 'battle', encounterId: 'enc-fanatics', desc: '百步一圣像,十步一狂信' },
-    { id: 'sh-alms', name: '施舍台', kind: 'event', desc: '教团的施舍台,收不收是个问题' },
-    { id: 'sh-choir', name: '唱诗庭院', kind: 'battle', encounterId: 'enc-drakeguard', desc: '祭卫与圣火祭司的颂唱声' },
-    { id: 'sh-rest', name: '香客房', kind: 'rest', desc: '香客歇脚的客房,被褥干净' },
-    { id: 'sh-relic', name: '供品库房', kind: 'treasure', desc: '历代香客供进的珍品' },
-  ],
-  routeRelations: [
-    ['sh-avenue', 'sh-choir'],
-    ['sh-alms', 'sh-rest'],
-    ['sh-choir', 'sh-relic'],
-  ],
   encounters: [
     { id: 'enc-fanatics', name: '狂信卫士', kind: 'wave', enemyGroupIds: ['fanatics'] },
     { id: 'enc-drakeguard', name: '龙裔祭卫', kind: 'wave', enemyGroupIds: ['drakeguard'] },
@@ -151,11 +130,13 @@ export const FIRERIDGE: DungeonDef = {
   id: 'fireridge',
   name: '火脊巢穴',
   size: 3,
-    branches: [
-    { id: 'shortcut', name: '熔岩栈道', risk: 3, reward: 2, desc: '快而险:贴着熔岩走的独木栈' },
-    { id: 'safepath', name: '风口斜坡', risk: 1, reward: 1, desc: '稳而慢:风大,但至少凉快些' },
-  ],
-  rating: 2.799,
+  terrains: {
+    lava: { weight: 4, names: ['熔岩栈道', '蜥群岩架'], encounters: ['enc-salamanders'] },
+    under: { weight: 3, names: ['龙蛋窟'], encounters: ['enc-whelps'] },
+    road: { weight: 2, names: ['风口斜坡'], encounters: ['enc-whelps'] },
+    camp: { weight: 2, names: ['风口岩棚'], encounters: [] },
+  },
+    rating: 2.799,
   expectedLevel: 13,
   env: 'heat',
   enemyGroups: {
@@ -191,18 +172,6 @@ export const FIRERIDGE: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'fr-ledges', name: '蜥群岩架', kind: 'battle', encounterId: 'enc-salamanders', desc: '岩架上晒着成片的火脊蜥蜴' },
-    { id: 'fr-eggs', name: '龙蛋窟', kind: 'event', desc: '满窟的龙蛋——每个都值一座宅子' },
-    { id: 'fr-nest', name: '幼龙巢区', kind: 'battle', encounterId: 'enc-whelps', desc: '幼龙和驭火者的巡巢圈' },
-    { id: 'fr-rest', name: '风口岩棚', kind: 'rest', desc: '唯一凉快些的地方,火抗的人才能睡得着' },
-    { id: 'fr-cache', name: '先驱者遗装', kind: 'treasure', desc: '先前来探巢的先驱者留下的东西' },
-  ],
-  routeRelations: [
-    ['fr-ledges', 'fr-nest'],
-    ['fr-eggs', 'fr-nest'],
-    ['fr-rest', 'fr-cache'],
-  ],
   encounters: [
     { id: 'enc-salamanders', name: '火脊蜥蜴', kind: 'wave', enemyGroupIds: ['salamanders'] },
     { id: 'enc-whelps', name: '幼龙巡巢', kind: 'wave', enemyGroupIds: ['whelps'] },
@@ -214,11 +183,13 @@ export const PILGRIMPATH: DungeonDef = {
   id: 'pilgrim-path',
   name: '朝圣者古道',
   size: 3,
-    branches: [
-    { id: 'shortcut', name: '雪线垭口', risk: 3, reward: 2, desc: '快而险:雪线之上的风口垭口' },
-    { id: 'safepath', name: '古道石阶', risk: 1, reward: 1, desc: '稳而慢:千年古道,台阶被磨得发亮' },
-  ],
-  rating: 2.27,
+  terrains: {
+    road: { weight: 3, names: ['古道石阶', '雪线垭口'], encounters: ['enc-ghostpilgrims', 'enc-ridgehounds'] },
+    sanctum: { weight: 2, names: ['路碑圣龛'], encounters: [] },
+    grave: { weight: 3, names: ['长明灯阶'], encounters: ['enc-ghostpilgrims'] },
+    camp: { weight: 2, names: ['朝圣者灶屋'], encounters: [] },
+  },
+    rating: 2.27,
   expectedLevel: 11,
   enemyGroups: {
     ghostpilgrims: [
@@ -254,18 +225,6 @@ export const PILGRIMPATH: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'pp-lanterns', name: '长明灯阶', kind: 'battle', encounterId: 'enc-ghostpilgrims', desc: '亡魂提着灯,还在走没走完的路' },
-    { id: 'pp-shrine', name: '路碑圣龛', kind: 'event', desc: '千年路碑,刻满还愿者的名字' },
-    { id: 'pp-hunt', name: '霜狼猎径', kind: 'battle', encounterId: 'enc-ridgehounds', desc: '狼群守着古道的必经处' },
-    { id: 'pp-rest', name: '朝圣者灶屋', kind: 'rest', desc: '灶膛的火几百年没灭过' },
-    { id: 'pp-offering', name: '还愿品堆', kind: 'treasure', desc: '还愿者留下的谢礼堆成了小山' },
-  ],
-  routeRelations: [
-    ['pp-lanterns', 'pp-shrine'],
-    ['pp-hunt', 'pp-lanterns'],
-    ['pp-shrine', 'pp-offering'],
-  ],
   encounters: [
     { id: 'enc-ghostpilgrims', name: '朝圣者亡魂', kind: 'wave', enemyGroupIds: ['ghostpilgrims'] },
     { id: 'enc-ridgehounds', name: '山脊霜狼', kind: 'wave', enemyGroupIds: ['ridgehounds'] },
@@ -277,11 +236,13 @@ export const FORGEWORKS: DungeonDef = {
   id: 'forge-works',
   name: '熔铸工坊',
   size: 3,
-    branches: [
-    { id: 'shortcut', name: '熔炉主廊', risk: 3, reward: 2, desc: '快而险:锻炉之间穿行,热浪扑面' },
-    { id: 'safepath', name: '矿车轨道', risk: 1, reward: 1, desc: '稳而慢:推着矿车绕行' },
-  ],
-  rating: 2.727,
+  terrains: {
+    lava: { weight: 4, names: ['锻炉大厅', '熔炉主廊'], encounters: ['enc-forgewrought'] },
+    under: { weight: 3, names: ['矿车轨道'], encounters: ['enc-emberkin'] },
+    ruin: { weight: 3, names: ['废模坑'], encounters: ['enc-emberkin'] },
+    camp: { weight: 2, names: ['工头歇脚间'], encounters: [] },
+  },
+    rating: 2.727,
   expectedLevel: 12,
   enemyGroups: {
     forgewrought: [
@@ -316,18 +277,6 @@ export const FORGEWORKS: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'fo-hall', name: '锻炉大厅', kind: 'battle', encounterId: 'enc-forgewrought', desc: '锻偶列队守着主炉' },
-    { id: 'fo-mold', name: '废模坑', kind: 'event', desc: '报废的铸模里还卡着半成品的胚料' },
-    { id: 'fo-ember', name: '烬晶料场', kind: 'battle', encounterId: 'enc-emberkin', desc: '烬晶元素在料场游荡' },
-    { id: 'fo-rest', name: '工头歇脚间', kind: 'rest', desc: '工头的皮沙发,火炉边上' },
-    { id: 'fo-vault', name: '成品库', kind: 'treasure', desc: '出窑未久的成品架上还热着' },
-  ],
-  routeRelations: [
-    ['fo-hall', 'fo-ember'],
-    ['fo-mold', 'fo-ember'],
-    ['fo-hall', 'fo-vault'],
-  ],
   encounters: [
     { id: 'enc-forgewrought', name: '锻偶卫队', kind: 'wave', enemyGroupIds: ['forgewrought'] },
     { id: 'enc-emberkin', name: '烬晶与监工', kind: 'wave', enemyGroupIds: ['emberkin'] },
@@ -339,10 +288,11 @@ export const DRAGONMAW: DungeonDef = {
   id: 'dragonmaw',
   name: '龙渊之心',
   size: 5,
-  branches: [
-    { id: 'shortcut', name: '渊口垂降', risk: 3, reward: 2, desc: '快而险:绳索垂进龙渊,没有退路' },
-    { id: 'safepath', name: '教团秘道', risk: 1, reward: 1, desc: '稳而慢:教团运祭品的老路' },
-  ],
+  terrains: {
+    sanctum: { weight: 3, names: ['献祭祭坛', '教团内殿'], encounters: [] },
+    lava: { weight: 4, names: ['渊口鳞墙', '龙渊'], encounters: ['enc-dragonspawn', 'enc-drakeelite'] },
+    under: { weight: 3, names: ['龙眠深渊'], encounters: ['enc-drakeelite'] },
+  },
   rating: 2.887,
   expectedLevel: 13,
   env: 'heat',
@@ -388,19 +338,6 @@ export const DRAGONMAW: DungeonDef = {
       ],
     },
   },
-  routeNodes: [
-    { id: 'dm-vanguard', name: '渊口鳞墙', kind: 'battle', encounterId: 'enc-dragonspawn', desc: '鳞卫在渊口列阵,教旗猎猎' },
-    { id: 'dm-altar', name: '献祭祭坛', kind: 'event', desc: '祭坛上的火还没熄,祭品的痕迹还新' },
-    { id: 'dm-elite', name: '亲卫巡渊', kind: 'battle', encounterId: 'enc-drakeelite', desc: '渊龙亲卫的巡渊路线' },
-    { id: 'dm-rest', name: '教团内殿', kind: 'rest', desc: '教团自己的内殿,居然最凉快' },
-    { id: 'dm-treasure', name: '教团圣库', kind: 'treasure', desc: '历代教团聚敛的圣库' },
-    { id: 'dm-final', name: '龙眠深渊', kind: 'elite', encounterId: 'enc-drakeelite', desc: '最深处——龙眠之地,教主就在那里' },
-  ],
-  routeRelations: [
-    ['dm-vanguard', 'dm-final'],
-    ['dm-altar', 'dm-rest'],
-    ['dm-elite', 'dm-treasure'],
-  ],
   encounters: [
     { id: 'enc-dragonspawn', name: '龙渊鳞卫', kind: 'wave', enemyGroupIds: ['dragonspawn'] },
     { id: 'enc-drakeelite', name: '渊龙亲卫', kind: 'wave', enemyGroupIds: ['drakeelite'] },

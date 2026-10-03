@@ -1,4 +1,4 @@
-import { createRun, startStep, advanceRun, startTower, startTowerFloor } from '../../scripts/run-test-compat'
+import { createRun, startStep, advanceRun, startTower, startTowerFloor, beginBattle } from '../../scripts/run-test-compat'
 import { describe, expect, it, vi } from 'vitest'
 import { BLACKMOSS, THORNHOLD } from '../data/dungeons'
 import { ECONOMY } from '../data/economy'
@@ -30,9 +30,24 @@ function guild(members = roster()): EncounterGuild {
     recruitCooldown: 2, day: 7, buildings: {}, factLedger: { ...EMPTY_LEDGER }, chronicle: [{ seq: 15, day: 6, text: '既有故事' }] }
 }
 
+/** R1.1 夹具:把 run 送到 Boss 节点并推进到末位 boss(双 boss 副本伪造前一场已胜) */
+function beginBossFinal(r: ReturnType<typeof createRun>, dungeon: typeof BLACKMOSS | typeof THORNHOLD, seed: number) {
+  const bossNode = r.map.layers[r.map.layers.length - 1]![0]!
+  r.nodeId = bossNode.id
+  r.path = [bossNode.id]
+  const bosses = dungeon.encounters.filter(e => e.kind === 'boss')
+  const prior = bosses.length > 1 ? bosses[bosses.length - 2]!.id : undefined
+  if (prior) {
+    r.battlesFought = 1
+    r.battle = { encounterId: prior, status: 'guild-win', combatants: [], log: [], events: [], tick: 0, rngState: 1,
+      commands: { stance: 'standard', healStock: 0, furyStock: 0, healCd: 0, furyCd: 0, furyUntil: 0, protectRetreat: true, autoMode: false } } as never
+  }
+  startStep(r, seed)
+}
+
 function fixture(source: 'dungeon' | 'tower', status = 'retreated' as 'guild-win' | 'retreated' | 'guild-wipe'): EncounterInput {
   const g = guild()
-  const run = source === 'dungeon' ? createRun(g.members, BLACKMOSS, BLACKMOSS.branches[0].id, 53)
+  const run = source === 'dungeon' ? beginBattle(createRun(g.members, BLACKMOSS, 53), 53)
     : startTower(g.members, 53, { heal: 5, fury: 4 })
   run.battle!.status = status
   const victim = run.battle!.combatants.find(c => c.memberId === g.members[0].id)!
@@ -70,9 +85,9 @@ describe('统一遭遇结算', () => {
 
   it('纯结算：同输入与随机序列逐字节一致，输入/全局编年史序号和 crypto 不受影响', () => {
     const g = guild()
-    const run = createRun(g.members, THORNHOLD, THORNHOLD.branches[0].id, 221)
-    run.steps = [THORNHOLD.encounters.find(e => e.bossId === 'victor')!.id]
-    run.stepIdx = 0; startStep(run, 221); run.battle!.status = 'guild-win'
+    const run = createRun(g.members, THORNHOLD, 221)
+    beginBossFinal(run, THORNHOLD, 221)
+    run.battle!.status = 'guild-win'
     const input = { source: 'dungeon' as const, run, guild: g }
     const before = JSON.stringify(input)
     seedChronicle([{ seq: 500, day: 1, text: '' }])
@@ -151,11 +166,11 @@ describe('统一遭遇结算', () => {
     for (const dungeon of [BLACKMOSS, THORNHOLD]) {
       for (const status of ['guild-win', 'guild-wipe', 'retreated'] as const) {
         for (const terminal of [false, true]) {
-          const g = guild(), r = createRun(g.members, dungeon, dungeon.branches[0].id, 91, 0, true, { heal: 3, fury: 2 }, false, [], { mult: 1.5, rewardMult: 2 })
-          const wave = dungeon.encounters.find(e => e.kind === 'wave')!.id
-          const boss = dungeon.encounters.find(e => e.kind === 'boss')!.id
-          r.steps = terminal ? [wave] : [wave, boss]; r.stepIdx = 0
+          const g = guild(), r = createRun(g.members, dungeon, 91, 0, true, { heal: 3, fury: 2 }, false, [], { mult: 1.5, rewardMult: 2 })
+          const node = r.map.layers[0].find(n => n.kind === 'battle') ?? r.map.layers[0][0]!
+          r.nodeId = node.id; r.path = [node.id]
           r.trainingExpMultiplier = 1.25; startStep(r, 91); r.battle!.status = status
+          void terminal
           const deadUnit = r.battle!.combatants.find(c => c.memberId === r.members[0].id)!
           deadUnit.alive = false; deadUnit.hp = 0
           const old = { ...r, members: structuredClone(r.members), battle: { ...r.battle! }, potions: { ...r.potions } }
@@ -165,19 +180,33 @@ describe('统一遭遇结算', () => {
           settleGrowth({ ...old, dungeon }, 1)
           const o = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!
           expect(o.run.phase).toBe(old.phase)
-          expect(o.run.stepIdx).toBe(old.stepIdx)
+          expect(o.run.path).toEqual(old.path)
           expect(o.run.potions).toEqual(old.potions)
           expect(o.guild.members.filter(m => o.run.memberIds.includes(m.id))).toEqual(old.members)
           expect(o.loot.gold).toBe(status === 'guild-win' ? ECONOMY.battleGold.wave * 2 : 0)
-          expect(o.loot.clearGold).toBe(status === 'guild-win' && terminal ? ECONOMY.clearBonus : 0)
+          expect(o.loot.clearGold).toBe(0) // 中途(非 Boss 末场)永不清关
           expect(o.guild.recruitCooldown).toBe(1)
         }
       }
     }
+    // 通关奖励:Boss 末场胜利才有 clearGold(黑苔末位 boss 塔尔玛夹具)
+    {
+      const g = guild(), r = createRun(g.members, BLACKMOSS, 91, 0, true, { heal: 3, fury: 2 }, false, [], { mult: 1.5, rewardMult: 2 })
+      beginBossFinal(r, BLACKMOSS, 91)
+      r.trainingExpMultiplier = 1.25
+      r.battle!.status = 'guild-win'
+      const o = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!
+      expect(o.loot.clearGold).toBe(ECONOMY.clearBonus)
+      expect(o.loot.gold).toBe(ECONOMY.battleGold.boss) // 非 first battle → rareHunt rewardMult 不翻倍
+      expect(o.run.phase).toBe('victory')
+    }
   })
 
   it('升级/默契升星各留一次故事，下一个胜場不会重复登记旧升级', () => {
-    const g = guild(), r = createRun(g.members, BLACKMOSS, BLACKMOSS.branches[0].id, 9)
+    const g = guild(), r = createRun(g.members, BLACKMOSS, 9)
+    const node = r.map.layers[0].find(n => n.kind === 'battle') ?? r.map.layers[0][0]!
+    r.nodeId = node.id; r.path = [node.id]
+    startStep(r, 9)
     g.members[0].exp = xpNeeded(5) - 1
     r.battle!.status = 'guild-win'
     const first = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!

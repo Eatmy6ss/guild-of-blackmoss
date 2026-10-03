@@ -368,25 +368,12 @@ export interface BossDef extends EnemyDef {
   dropTable: { baseId: string; chance: number }[]
 }
 
-/** 路线节点(宪法 v3.3 修正案·熟练度迷雾):副本内部图固定,身份随熟练度揭示 */
-export interface RouteNodeDef {
-  id: string
-  /** 风味名(下水道/甬道/天花板)——未探索时只显示这个 */
-  name: string
-  kind: 'battle' | 'elite' | 'event' | 'rest' | 'treasure'
-  /** battle/elite 节点对应的遭遇 id */
-  encounterId?: string
-  /** 高熟练全揭示文本 */
-  desc: string
-}
-
-export interface BranchDef {
-  id: string
-  name: string
-  /** 岔路取舍（Q26）：险而快 / 稳而慢 */
-  risk: number
-  reward: number
-  desc: string
+/** 副本地形配置(U27①/redesign R1.1):声明该副本有哪些地形、每种地形的权重/风味名/可出遭遇 */
+export interface DungeonTerrainDef {
+  weight: number
+  names: string[]
+  /** 该地形上 battle/elite 节点可抽的遭遇 id(必须是 encounters 里存在的 wave);空=纯非战斗地形 */
+  encounters: string[]
 }
 
 export interface EncounterDef {
@@ -401,15 +388,11 @@ export interface DungeonDef {
   id: string
   name: string
   size: 3 | 5 | 10
-  branches: BranchDef[]
   enemyGroups: Record<string, EnemyDef[]>
   bosses: Record<string, BossDef>
   encounters: EncounterDef[]
-  /** 副本内部路线节点图(逐段选路;boss 节点由 encounters 的 boss 承担,不入此表) */
-  routeNodes: RouteNodeDef[]
-  /** K05 关系表(U13,B=C 地基):节点关系边列表——岔口从踏过节点的邻居优先抽取;
-   *  边列表格式刻意与未来固定地图(C 形态)的连边同构,升级时数据零迁移 */
-  routeRelations?: [string, string][]
+  /** 地形表(U27①):地图生成器的原料;旧 branches/routeNodes/routeRelations 已删除(R1.1) */
+  terrains: Partial<Record<import('./dungeon-map').TerrainId, DungeonTerrainDef>>
   /** #0.8 难度模型:全游戏唯一允许手调的难度旋钮(等效强度总量,替换旧 enemyPower) */
   rating: number
   /** V1 二轮收紧:只对登记副本的敌人叠加威胁,不影响高塔/临时战斗 */

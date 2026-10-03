@@ -17,11 +17,11 @@ export interface RunUIState {
   playing: boolean
   dungeonId: string
   expeditionIds: string[]
-  lastBranch: string
   autoLoop: boolean
   eventId: string | null
   eventResult: string | null
   eventImpacts: Impact[]
+  /** 出发被到期后果暂缓的标记(U27④ 后无岔路可记,只存 'go') */
   pendingDeparture: string | null
   pendingConsequence: { eventId: string; dueDay: number } | null
   dropIds: string[]
@@ -33,7 +33,7 @@ export interface RunUIState {
 
 export function initialRunState(): RunUIState {
   return { activeRun: null, playing: false, dungeonId: 'blackmoss', expeditionIds: [],
-    lastBranch: 'shortcut', autoLoop: false, eventId: null, eventResult: null, eventImpacts: [],
+    autoLoop: false, eventId: null, eventResult: null, eventImpacts: [],
     pendingDeparture: null, pendingConsequence: null, dropIds: [], notices: [], growthSnapshot: {} }
 }
 
@@ -74,7 +74,7 @@ export function validateRunState(value: unknown, roster: { id: string; hp: numbe
   const s = value
   if (typeof s.playing !== 'boolean' || typeof s.autoLoop !== 'boolean' ||
       !DUNGEONS.some(d => d.id === s.dungeonId) || !strings(s.expeditionIds) ||
-      !strings(s.dropIds) || !strings(s.notices) || typeof s.lastBranch !== 'string' ||
+      !strings(s.dropIds) || !strings(s.notices) ||
       !nullableString(s.eventId) || !nullableString(s.eventResult) || !nullableString(s.pendingDeparture) ||
       !Array.isArray(s.eventImpacts) || s.eventImpacts.some((i: unknown) => !object(i) || typeof i.t !== 'string') ||
       !object(s.growthSnapshot)) return false
@@ -106,18 +106,38 @@ export function validateRunState(value: unknown, roster: { id: string; hp: numbe
   if (r.kind === 'dungeon') {
     const d = DUNGEONS.find(d => d.id === r.dungeonId)
     if (!d || !['battle','rest','victory','defeat','retreated'].includes(r.phase) ||
-        !strings(r.steps) || r.steps.length === 0 || !count(r.stepIdx) || r.stepIdx >= r.steps.length ||
-        !strings(r.nodeIds) || !strings(r.routeTaken) || !Array.isArray(r.eliteAt) ||
-        r.eliteAt.some((x: unknown) => !count(x)) || !Array.isArray(r.buffs) ||
+        !object(r.map) || !count(r.map.seed) || !Array.isArray(r.map.layers) || r.map.layers.length < 2 ||
+        !Array.isArray(r.map.edges) || r.map.edges.some((e: unknown) => !Array.isArray(e) || e.length !== 2 ||
+          typeof (e as string[])[0] !== 'string' || typeof (e as string[])[1] !== 'string') ||
+        !nullableString(r.nodeId) || !strings(r.path) || !count(r.battlesFought) ||
+        r.path.length > 0 && r.nodeId !== r.path[r.path.length - 1] ||
+        (r.nodeId === '' ) !== (r.path.length === 0) ||
+        !Array.isArray(r.buffs) ||
         r.buffs.some((b: unknown) => !object(b) || typeof b.id !== 'string' || !object(b.mods)) ||
-        !finite(r.auraBonus) || typeof r.protectOn !== 'boolean' ||
-        r.steps.some((id: string) => !d.encounters.some(e => e.id === id)) ||
-        r.nodeIds.some((id: string) => id !== 'boss-direct' && !d.routeNodes.some(n => n.id === id))) return false
+        !finite(r.auraBonus) || typeof r.protectOn !== 'boolean') return false
+    // 地图节点/边必须落在本副本内;battle/elite/boss 的遭遇必须存在
+    const nodes = new Set(r.map.layers.flat().map((n: { id?: unknown }) => n.id))
+    for (const layer of r.map.layers) {
+      if (!Array.isArray(layer)) return false
+      for (const n of layer) {
+        if (!object(n) || typeof n.id !== 'string' || !count(n.layer) || typeof n.terrain !== 'string' ||
+            !['battle','elite','event','rest','treasure','secret','boss'].includes(n.kind) ||
+            typeof n.name !== 'string') return false
+        if (n.encounterId !== undefined && !d.encounters.some(e => e.id === n.encounterId)) return false
+      }
+    }
+    for (const [a, b] of r.map.edges as [string, string][]) if (!nodes.has(a) || !nodes.has(b)) return false
+    if (r.path.some((id: string) => !nodes.has(id))) return false
   } else if (r.kind === 'tower') {
     if (!['battle','rest','ended'].includes(r.phase) || !count(r.floor) || r.floor < 1 || !count(r.goldEarned) ||
         (r.insuredNextFloor !== undefined && r.insuredNextFloor !== r.floor + 1)) return false
   } else return false
   const b = r.battle
+  // 刚出征还未选第一个节点:battle 为 null 是合法断点(U27① 地图首层待选)
+  if (b === null) {
+    if (r.phase !== 'rest' || (r.kind === 'dungeon' && r.path.length > 0)) return false
+    return true
+  }
   if (!object(b) || !count(b.tick) || !finite(b.rngState) || !count(b.unitSeq) ||
       !['running','guild-win','guild-wipe','retreated'].includes(b.status) || !Array.isArray(b.combatants) ||
       !Array.isArray(b.log) || !Array.isArray(b.events) || !object(b.commands)) return false

@@ -48,7 +48,7 @@ export function SaveTransferPanel({ mode, initialCode, onClose }: { mode: 'impor
         {preview && <div className="save-preview">
           <p>第 {preview.day} 日 · {preview.members.filter((m) => m.alive).length} 位存活成员 · {preview.gold} 金 · {preview.blessing} 祝福</p>
           <p>王国信任 {kingdomTrust(preview.kingdom)} · 在办 {preview.kingdom.active.length} 份 · 已结案 {preview.kingdom.completed.length} 份</p>
-          {preview.runState.activeRun && <p>正在{preview.runState.activeRun.kind === 'tower' ? `挑战高塔第 ${preview.runState.activeRun.floor} 层` : `进行副本远征（第 ${preview.runState.activeRun.stepIdx + 1} 场）`} · 战斗与已到账奖励将一起恢复。</p>}
+          {preview.runState.activeRun && <p>正在{preview.runState.activeRun.kind === 'tower' ? `挑战高塔第 ${preview.runState.activeRun.floor} 层` : `进行副本远征（第 ${preview.runState.activeRun.battlesFought} 场）`} · 战斗与已到账奖励将一起恢复。</p>}
           <p>确认后将替换这台设备上当前的公会进度。</p>
           <button className="primary" onClick={() => {
             if (replaceGuildSave(preview)) window.location.reload()

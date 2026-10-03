@@ -8,7 +8,7 @@ import { AFFIXES } from '../src/data/affixes'
 import { BUILDINGS } from '../src/data/base'
 import { ECONOMY } from '../src/data/economy'
 import { generateMember } from '../src/sim/gen'
-import { createRun, advanceRun } from './run-test-compat'
+import { createRun, advanceRun, beginBattle, startStep } from './run-test-compat'
 import { itemStats } from '../src/sim/loot'
 import { acceptCommission, abandonCommission, advanceCommissions, settleKingdomBattle, claimCommission, commissionLock, commissionReward, kingdomRank, kingdomTrust, newKingdomState, normalizeKingdom, royalPotionCost, type KingdomState } from '../src/sim/kingdom'
 import { migrate, exportSave, importSave, saveGuild, loadGuildSave, SAVE_VERSION } from '../src/state/save'
@@ -71,7 +71,7 @@ test('combat progress starts at acceptance, scopes dungeon/boss, caps, and reset
 })
 
 test('settlement integration: running, defeat, retreat, and settled battles never add progress', () => {
-  const run = createRun([generateMember('guard', 1, 11)], BLACKMOSS, BLACKMOSS.branches[0].id, 7)
+  const run = beginBattle(createRun([generateMember('guard', 1, 11)], BLACKMOSS, 7), 7)
   const initial = acceptCommission(newKingdomState(), 'crown-road', context)
   assert.equal(settleKingdomBattle(initial, run), initial)
   run.battle!.status = 'guild-wipe'
@@ -89,11 +89,18 @@ test('settlement integration: running, defeat, retreat, and settled battles neve
 })
 
 test('full-clear commission completes only on last victorious encounter', () => {
-  const run = createRun([generateMember('guard', 1, 12)], BLACKMOSS, BLACKMOSS.branches[0].id, 8)
+  const run = createRun([generateMember('guard', 1, 12)], BLACKMOSS, 8)
   const state = { active: [{ id: 'crown-talma', progress: 0, acceptedDay: 1 }], completed: [] }
-  run.battle!.status = 'guild-win'
+  // 送到 Boss 节点,伪造首 boss 已胜 → 本场=末位 boss(通关判定改由地图推断,R1.1)
+  const bossNode = run.map.layers[run.map.layers.length - 1]![0]!
+  run.nodeId = bossNode.id
+  run.path = [bossNode.id]
+  const bosses = BLACKMOSS.encounters.filter(e => e.kind === 'boss')
+  run.battlesFought = 1
+  run.battle = { encounterId: bosses[0]!.id, status: 'guild-win', combatants: [], log: [], events: [], tick: 0, rngState: 1,
+    commands: { stance: 'standard', healStock: 0, furyStock: 0, healCd: 0, furyCd: 0, furyUntil: 0, protectRetreat: true, autoMode: false } } as never
+  startStep(run, 8)
   assert.equal(settleKingdomBattle(state, run), state)
-  run.stepIdx = run.steps.length - 1
   run.battle!.status = 'guild-wipe'
   assert.equal(settleKingdomBattle(state, run), state)
   run.battle!.status = 'guild-win'

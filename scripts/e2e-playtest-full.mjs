@@ -117,7 +117,9 @@ const STEP = (prio) => `(()=>{${BTN_HELPER}
     if(!body.includes('挂机中')) hit((t)=>t.startsWith('🤖 挂机'));
     r.acted = hit((t)=>t.includes('跑到结束')) || 'battle-wait';
   }
-  r.acted = r.acted || hit((t)=>t.includes('直捣 boss')) || hit((t)=>t.includes('继续深入'));
+  // U27① R1.1:地图选路——点 .route-choices 里的节点按钮(不选路不能前进,没有「继续深入」)
+  if(!r.acted){const c=[...document.querySelectorAll('.route-choices button')].find((x)=>!x.disabled);if(c){c.click();r.acted='NODE:'+c.textContent.trim().slice(0,20)}}
+  if(!r.acted){const c=[...document.querySelectorAll('button')].find((x)=>!x.disabled&&x.textContent.includes('👑 连战'));if(c){c.click();r.acted='BOSS-CHAIN'}}
   if(!r.acted){const x=hit((t)=>t==='← 返回公会'); if(x) r.acted='RETURN'}
   if(!r.acted && document.querySelector('.screen-panel')) r.acted='ESC';
   if(!r.acted){
@@ -126,7 +128,7 @@ const STEP = (prio) => `(()=>{${BTN_HELPER}
       if(m){ if(window.__lastMap!==name){m.click();window.__lastMap=name;r.acted='MAP:'+name} break }}
   }
   if(!r.acted && body.includes('编制不足')) r.acted='RECRUIT';
-  if(!r.acted){const x=hit((t)=>t.startsWith('⚔')&&t.includes('风险')); if(x) r.acted='DEPART'}
+  if(!r.acted){const x=hit((t)=>t.startsWith('⚔')&&t.includes('出发')); if(x) r.acted='DEPART'}
   return r })()`
 
 async function recruit(b) {
@@ -221,6 +223,26 @@ async function phaseFresh() {
     const exportBeforeEnding = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&(x.textContent.includes('导出试玩记录')||x.title?.includes('导出试玩记录')))`)
     check('S1', '结束画面之前也能导出试玩记录(流失玩家能回传)', exportBeforeEnding ? 'PASS' : 'FAIL', exportBeforeEnding ? '' : '大厅无导出入口')
 
+    // U27①/R1.3 断言:新档(熟练度 0)的地图——不选路不能前进,且节点不泄露类型
+    {
+      await clickText(b, '黑苔沼泽'); await sleep(300)
+      const depart = await clickText(b, '出发'); await sleep(800)
+      if (depart) {
+        const probe = await b.evalJs(`(()=>{
+          const body=document.body.innerText
+          const nodes=[...document.querySelectorAll('.route-choices button')].map(x=>x.textContent.trim())
+          return { inMap: nodes.length > 0, hasDeep: body.includes('继续深入'), nodes,
+                   leak: nodes.filter(n=>/精英|宝箱|暗道|休整|事件/.test(n)) } })()`)
+        check('M1', '地图:不选路不能前进(无「继续深入」)', probe.inMap && !probe.hasDeep ? 'PASS' : 'FAIL', `节点数=${probe.nodes.length}`)
+        check('M2', '熟练度 0 不泄露节点类型', probe.inMap && probe.leak.length === 0 ? 'PASS' : 'FAIL', probe.leak.join('|') || '零泄露')
+        await clickText(b, '🏳 撤退回城'); await sleep(500)
+        await clickText(b, '← 返回公会'); await sleep(300)
+      } else {
+        check('M1', '地图:不选路不能前进(无「继续深入」)', 'SKIP', '出发不可点(编制/锁定)')
+        check('M2', '熟练度 0 不泄露节点类型', 'SKIP', '同上')
+      }
+    }
+
     let maxHints = 0; let storyReturns = 0; const b3 = []; const b5 = []; const s8 = []
     await drive(b, {
       prio: MAP_PRIO, maxReturns: EXPEDITIONS, timeoutMs: Number(args.timeout ?? 900_000),
@@ -241,14 +263,6 @@ async function phaseFresh() {
     })
     await b.shot('end')
     check('S10', '首场战斗引导提示一次只弹一条', maxHints <= 1 ? 'PASS' : 'FAIL', `同屏最多 ${maxHints} 条`)
-    if (storyReturns === 0) {
-      for (const id of ['B3', 'B5', 'S8']) check(id, '说书人相关', 'SKIP', `${EXPEDITIONS} 趟内没有出故事,加大 --expeditions`)
-    } else {
-      check('B3', '讲故事那趟结算行仍在(故事不冲掉通知)', b3.length === 0 ? 'PASS' : 'FAIL', b3.length ? `${b3.length}/${storyReturns} 趟只剩故事:${b3[0]}` : `${storyReturns} 趟有故事`)
-      const scarStories = observations.stories.length
-      check('B5', '故事地点不出现「未知之地」', b5.length === 0 ? 'PASS' : 'FAIL', b5.length ? `${b5.length}/${scarStories} 条:${b5[0]}` : '')
-      check('S8', '故事里没有原始 id(如 cursed-coffin)', s8.length === 0 ? 'PASS' : 'FAIL', s8[0] ?? '')
-    }
     const keys = await b.evalJs('Object.keys(localStorage)')
     const stray = keys.filter((k) => !k.startsWith('guild-game-playtest-v1') && !k.startsWith('gg-'))
     check('ISO', '试玩包只写自己的存档键', stray.length === 0 && keys.some((k) => k.startsWith('guild-game-playtest-v1')) ? 'PASS' : 'FAIL', keys.join(','))

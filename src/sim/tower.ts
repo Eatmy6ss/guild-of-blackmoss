@@ -108,8 +108,7 @@ export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = 
     name: `黑苔高塔·第 ${floor} 层`,
     rating: 1,
     size: 3,
-    branches: [],
-    routeNodes: [],
+    terrains: {},
     enemyGroups,
     bosses: isBoss ? { boss: towerFloorScale(entry.boss, floor) } : {},
     encounters: [

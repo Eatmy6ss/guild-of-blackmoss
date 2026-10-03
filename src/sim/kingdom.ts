@@ -3,6 +3,8 @@ import { ECONOMY } from '../data/economy'
 import { dungeonLock } from '../data/regions'
 import type { ItemInstance } from './types'
 import { runDungeon } from './run-core'
+import { nextBossEncounter } from './run'
+import { nodeById } from './dungeon-map'
 import type { DungeonRun } from './run'
 
 export type RoyalRewardChoice = 'coin' | 'supplies'
@@ -97,10 +99,13 @@ export function advanceCommissions(state: KingdomState, event: KingdomEvent): Ki
 /** Inspect the encounter before advanceRun changes its index. Rest/defeat/retreat cannot count twice. */
 export function settleKingdomBattle(state: KingdomState, run: DungeonRun): KingdomState {
   if (run.phase !== 'battle' || run.battle?.status !== 'guild-win') return state
-  const encounter = runDungeon(run).encounters.find((e) => e.id === run.steps[run.stepIdx])
+  const encounter = runDungeon(run).encounters.find((e) => e.id === run.battle?.encounterId)
   if (!encounter) return state
   let next = advanceCommissions(state, { kind: 'battle', dungeonId: runDungeon(run).id, bossId: encounter.bossId })
-  if (run.stepIdx === run.steps.length - 1) next = advanceCommissions(next, { kind: 'clear', dungeonId: runDungeon(run).id })
+  // 通关=Boss 节点且 boss 序列已走完(R1.1:.steps 已删,由地图判定)
+  if (nodeById(run.map, run.nodeId)?.kind === 'boss' && nextBossEncounter(run) === null) {
+    next = advanceCommissions(next, { kind: 'clear', dungeonId: runDungeon(run).id })
+  }
   return next
 }
 

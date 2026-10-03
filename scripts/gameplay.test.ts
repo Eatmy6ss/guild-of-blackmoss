@@ -3,7 +3,7 @@ import { initialRunState, checkpointRunState, runReducer } from '../src/sim/run-
 import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER } from '../src/sim/fact-ledger'
 import { tellExpedition } from '../src/sim/storyteller'
 import { memberGenerationState, restoreMemberGeneration } from '../src/sim/gen'
-import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor } from './run-test-compat'
+import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor, beginBattle } from './run-test-compat'
 import assert from 'node:assert/strict'
 import './mechanics.test'
 import { test } from 'node:test'
@@ -13,7 +13,9 @@ import { generateMember, grantExp, maxHpOf, levelTo } from '../src/sim/gen'
 import { createBattle, stepBattle, toCombatant, applyHit, ENEMY_HP_MULT } from '../src/sim/combat'
 import { processBossMechanics, bossIntents } from '../src/sim/mechanics'
 import { runAutoAI } from '../src/sim/ai'
-import { settleGrowth, applyNodeChoice } from '../src/sim/run'
+import { settleGrowth, moveTo, mapOptions, currentNode, nextBossEncounter } from '../src/sim/run'
+import { consequenceFiresIn, rollGuildEvent } from '../src/sim/guild-events'
+import { runRng, int } from '../src/sim/run-core'
 import { towerEnemyScale, insureNextTowerFloor } from '../src/sim/tower'
 import { redeemCost, sellValue } from '../src/sim/tavern'
 import { rollDrop, rollWaveDrop, rollBossDrops, dungeonItemTier, describeItem } from '../src/sim/loot'
@@ -499,7 +501,7 @@ test('actual item callbacks: atomic equip, sell and dismantle keep one owner and
 test('actual item updates preserve expedition member references and serialize only UID ownership', () => {
   const members = squad(); members[0].equipment.weapon = item('wpn-t1-sword')
   const ui = settlementUi(members), {scope,state} = ui
-  const run = createRun(members,BLACKMOSS,BLACKMOSS.branches[0].id,49)
+  const run = beginBattle(createRun(members,BLACKMOSS,49),49)
   scope.runRef.current=run
   const before = run.members[0]
   handler('receiveItems',scope)([item('wpn-t3-dawn')],true)
@@ -562,7 +564,7 @@ test('actual training purchase/start callbacks: one charge, insufficient funds g
   const expedition = squad()
   const start = handler('startExpedition', {
     pendingEvent:null,pendingConsequences:[],pendingDepartureRef:{current:null},
-    runRef,towerRunRef,trainingReadyRef,expedition,activeDungeon:BLACKMOSS,lastBranchRef:{current:''},refusesToMarch:()=>false,
+    runRef,towerRunRef,trainingReadyRef,expedition,activeDungeon:BLACKMOSS,refusesToMarch:()=>false,
     setDay:()=>{},setPendingConsequences:(f:any)=>f([]),setGuildBuffs:(f:any)=>f([]),growthSnapshotRef:{current:new Map()},
     powerScore:()=>1,bondStars:()=>0,createRun,seedRef:{current:1},SEED_BASE:31,memorialAura:()=>0,memorial:[],protectOn:true,potions:{heal:3,fury:3},
     setTrainingReady:(v:boolean)=>{ready=v},logChronicle:()=>{},chronicleRaw:()=>({}),day:1,autoLoopRef:{current:false},guildBuffs:[],rareHuntNext:null,
@@ -570,9 +572,9 @@ test('actual training purchase/start callbacks: one charge, insufficient funds g
     playtestAllows:()=>true,markExpeditionStart:()=>{},markTold:()=>{},setPlayMeta:()=>{},setPlaytestEnding:()=>{},
     factLedgerRef:{current:{nextId:1,facts:[]}},playMeta:{startedAt:0,expeditions:0,retreats:0,signatureUses:0},lastRetreatRunRef:{current:null},
   })
-  start(BLACKMOSS.branches[0].id)
+  start()
   assert.equal(runRef.current.trainingExpMultiplier,1.25); assert.equal(ready,false)
-  runRef.current = null; start(BLACKMOSS.branches[0].id)
+  runRef.current = null; start()
   assert.equal(runRef.current.trainingExpMultiplier,undefined)
 })
 
@@ -653,11 +655,17 @@ test('elite legacy: normal target unchanged, elite and boss each receive +8%', (
   assert.equal(hit(true, false), normal)
   assert.equal(hit(true, true), Math.round(normal * 1.08))
   assert.equal(hit(true, false, 0, true), Math.round(normal * 1.08))
-  const r = createRun(squad(), BLACKMOSS, BLACKMOSS.branches[0].id, 49)
-  r.eliteAt = []; r.eliteNow = true; startStep(r, 50)
-  assert(r.battle!.combatants.filter(c => c.team === 'enemy').every(c => c.elite))
+  const r = createRun(squad(), BLACKMOSS, 49)
+  const eliteNode = r.map.layers.flat().find(n => n.kind === 'elite')!
+  const plainNode = r.map.layers.flat().find(n => n.kind === 'battle')!
+  eliteNode.kind = 'battle' // 先取普通场基准
+  r.nodeId = plainNode.id; r.path = [plainNode.id]
   startStep(r, 50)
   assert(r.battle!.combatants.filter(c => c.team === 'enemy').every(c => !c.elite))
+  eliteNode.kind = 'elite'
+  r.nodeId = eliteNode.id; r.path.push(eliteNode.id)
+  startStep(r, 50)
+  assert(r.battle!.combatants.filter(c => c.team === 'enemy').every(c => c.elite))
 })
 
 test('gear wishes: every T2/T3 weapon qualifies, T1 does not', () => {
@@ -698,8 +706,8 @@ test('drops: lucky +2%, scavenger +4%, distinct sources stack, dead members excl
 })
 
 test('training: bonus survives multiple battles, other runs remain unboosted', () => {
-  const boosted = createRun(squad(), BLACKMOSS, BLACKMOSS.branches[0].id, 19)
-  const plain = createRun(squad(), BLACKMOSS, BLACKMOSS.branches[0].id, 19)
+  const boosted = beginBattle(createRun(squad(), BLACKMOSS, 19), 19)
+  const plain = beginBattle(createRun(squad(), BLACKMOSS, 19), 19)
   boosted.trainingExpMultiplier = 1.25
   for (let i = 0; i < 2; i++) {
     const a = boosted.members[0].exp; const b = plain.members[0].exp
@@ -707,7 +715,8 @@ test('training: bonus survives multiple battles, other runs remain unboosted', (
     settleGrowth(boosted); settleGrowth(plain)
     const raceMult = boosted.members[0].race === 'human' ? 1.05 : 1
     assert.equal(boosted.members[0].exp - a, Math.round(9 * 1.25 * raceMult))
-    boosted.stepIdx++; plain.stepIdx++; startStep(boosted, 20+i); startStep(plain, 20+i)
+    boosted.battle = null; plain.battle = null; boosted.phase = plain.phase = 'rest'
+    startStep(boosted, 20+i); startStep(plain, 20+i)
   }
 })
 
@@ -769,16 +778,17 @@ test('loot identities remain distinct across isolated module lifetimes', () => {
 })
 
 test('growth uses the completed wave after route index advances to a boss', () => {
-  const r = createRun(squad(),BLACKMOSS,BLACKMOSS.branches[0].id,49)
+  const r = beginBattle(createRun(squad(),BLACKMOSS,49),49)
   r.members[0].race='elf'
-  r.steps = [BLACKMOSS.encounters.find(e=>e.kind==='wave')!.id,BLACKMOSS.encounters.find(e=>e.kind==='boss')!.id]
-  startStep(r,49)
   const before = r.members[0].exp
   r.battle!.status='guild-win'
   advanceRun(r)
-  assert.equal(r.stepIdx,1)
+  assert.equal(r.phase,'rest')
   settleGrowth(r)
   assert.equal(r.members[0].exp-before,9)
+  // 送到 Boss 节点连战
+  const bossNode = r.map.layers[r.map.layers.length-1]![0]!
+  r.nodeId = bossNode.id; r.path.push(bossNode.id)
   startStep(r,50)
   r.battle!.status='guild-win'
   const bossBefore = r.members[0].exp
@@ -788,9 +798,9 @@ test('growth uses the completed wave after route index advances to a boss', () =
 
 test('first encounter receives guild buffs, rare hunt and automatic commands', () => {
   const members = squad()
-  const plain = createRun(structuredClone(members),BLACKMOSS,BLACKMOSS.branches[0].id,49)
-  const boosted = createRun(structuredClone(members),BLACKMOSS,BLACKMOSS.branches[0].id,49,0,true,{heal:2,fury:1},true,
-    [{id:'test',name:'test',desc:'test',mods:{atk:2}}],{mult:2,rewardMult:2})
+  const plain = beginBattle(createRun(structuredClone(members),BLACKMOSS,49),49)
+  const boosted = beginBattle(createRun(structuredClone(members),BLACKMOSS,49,0,true,{heal:2,fury:1},true,
+    [{id:'test',name:'test',desc:'test',mods:{atk:2}}],{mult:2,rewardMult:2}),49)
   const guild = (r:typeof plain) => r.battle!.combatants.find(c=>c.team==='guild')!
   const enemy = (r:typeof plain) => r.battle!.combatants.find(c=>c.team==='enemy')!
   assert.equal(guild(boosted).attack,guild(plain).attack*2)
@@ -853,10 +863,10 @@ test('due consequences defer departure without consuming a day or creating a bat
     setPendingConsequences:(f:any)=>{queue=f(queue)},pendingDepartureRef,pendingConsequenceRef,
     setPendingEvent:(v:unknown)=>{event=v},setEventResult:()=>{},
     setDay:()=>{days++},createRun:()=>{created++},
-  })(BLACKMOSS.branches[0].id)
+  })()
   assert.equal(event,def); assert.deepEqual(queue,[due])
   assert.equal(pendingConsequenceRef.current,due)
-  assert.equal(pendingDepartureRef.current,BLACKMOSS.branches[0].id)
+  assert.equal(pendingDepartureRef.current,'go')
   assert.equal(days,0); assert.equal(created,0)
 })
 
@@ -930,7 +940,7 @@ test('new regional outcomes use the actual expedition handler, with visible buff
     for (const choice of ev.choices) for (const outcome of choice.outcomes) {
       const members = squad()
       members.forEach(m => {m.hp = toCombatant(m).maxHp})
-      const run = createRun(members, EMBERPASS, EMBERPASS.branches[0].id, 41, 0, true, {heal:3,fury:3})
+      const run = createRun(members, EMBERPASS, 41, 0, true, {heal:3,fury:3})
       run.phase = 'rest'
       let gold = 1000, result = '', seen: string[] = [], impacts: {t:string}[] = []
       handler('resolveEvent', {
@@ -997,11 +1007,11 @@ test('pre-departure run buffs persist and apply to exactly the next expedition, 
   const stored = JSON.parse(JSON.stringify(buffs))
   assert.equal(stored[0].endDay,22)
   const expedition = squad()
-  const baseline = createRun(structuredClone(expedition),BLACKMOSS,BLACKMOSS.branches[0].id,99)
+  const baseline = beginBattle(createRun(structuredClone(expedition),BLACKMOSS,99),99)
   const runRef:any = {current:null}
   const scope:any = {
     pendingEvent:null,pendingConsequences:[],runRef,towerRunRef:{current:null},
-    expedition,activeDungeon:BLACKMOSS,lastBranchRef:{current:''},refusesToMarch:()=>false,
+    expedition,activeDungeon:BLACKMOSS,refusesToMarch:()=>false,
     setDay:()=>{},setGuildBuffs:(f:any)=>{buffs=f(buffs)},growthSnapshotRef:{current:new Map()},
     powerScore:()=>1,bondStars:()=>0,createRun,seedRef:{current:0},SEED_BASE:99,
     memorialAura:()=>0,memorial:[],protectOn:true,potions:{heal:3,fury:3},
@@ -1009,17 +1019,21 @@ test('pre-departure run buffs persist and apply to exactly the next expedition, 
     setLastDrops:()=>{},setScarNotices:()=>{},rendererRef:{current:null},THEME_BY_DUNGEON:{},
     setRunning:()=>{},syncAll:()=>{},
   }
-  handler('startExpedition',{...scope,day:20,guildBuffs:stored})(BLACKMOSS.branches[0].id)
+  const firstFight = (dayNum: number) => {
+    runRef.current = null
+    handler('startExpedition',{...scope,day:dayNum,guildBuffs:JSON.parse(JSON.stringify(stored))})()
+    const active = runRef.current
+    beginBattle(active, 7, 0, expedition)
+    return active.battle!.combatants[0].attack
+  }
   const baseAttack = baseline.battle!.combatants[0].attack
-  assert.equal(runRef.current.battle.combatants[0].attack,Math.round(baseAttack*1.1))
-  runRef.current=null
-  handler('startExpedition',{...scope,day:21,guildBuffs:stored})(BLACKMOSS.branches[0].id)
-  assert.equal(runRef.current.battle.combatants[0].attack,baseAttack)
+  assert.equal(firstFight(20),Math.round(baseAttack*1.1))
+  assert.equal(firstFight(21),baseAttack)
   assert.deepEqual(buffs,[])
 })
 
 test('automatic toggle persists beyond the current battle into run and repeat state', () => {
-  const b = createRun(squad(),BLACKMOSS,BLACKMOSS.branches[0].id,49).battle!
+  const b = beginBattle(createRun(squad(),BLACKMOSS,49),49).battle!
   const runRef = {current:{autoMode:false}}, autoLoopRef={current:false}
   const toggle = callback('autoLoopRef.current = b.commands.autoMode',{runRef,autoLoopRef})
   toggle(b)
@@ -1029,7 +1043,7 @@ test('automatic toggle persists beyond the current battle into run and repeat st
 })
 
 test('retreat from rest cancels automatic repeat before returning to the guild', () => {
-  const r = createRun(squad(),BLACKMOSS,BLACKMOSS.branches[0].id,49)
+  const r = beginBattle(createRun(squad(),BLACKMOSS,49),49)
   r.phase='rest'; r.autoMode=true
   const autoLoopRef={current:true}
   let stats = newStatistics()
@@ -1164,7 +1178,7 @@ test('rare hunt is passed from the actual save effect to departure once, not rep
   let ready = loadGuildSave()!.rareHuntNext
   const scope:any = {
     pendingEvent:null,pendingConsequences:[],runRef,towerRunRef:{current:null},
-    expedition:squad(),activeDungeon:BLACKMOSS,lastBranchRef:{current:''},refusesToMarch:()=>false,
+    expedition:squad(),activeDungeon:BLACKMOSS,refusesToMarch:()=>false,
     setDay:()=>{},setGuildBuffs:()=>{},growthSnapshotRef:{current:new Map()},
     powerScore:()=>1,bondStars:()=>0,createRun,seedRef:{current:0},SEED_BASE:99,
     memorialAura:()=>0,memorial:[],protectOn:true,potions:{heal:3,fury:3},day:20,guildBuffs:[],
@@ -1172,11 +1186,11 @@ test('rare hunt is passed from the actual save effect to departure once, not rep
     setLastDrops:()=>{},setScarNotices:()=>{},rendererRef:{current:null},THEME_BY_DUNGEON:{},
     setRunning:()=>{},syncAll:()=>{},
   }
-  handler('startExpedition',{...scope,rareHuntNext:ready})(BLACKMOSS.branches[0].id)
+  handler('startExpedition',{...scope,rareHuntNext:ready})()
   assert.deepEqual(runRef.current.rareHunt,hunt)
   assert.equal(ready,null)
   runRef.current=null
-  handler('startExpedition',{...scope,rareHuntNext:ready})(BLACKMOSS.branches[0].id)
+  handler('startExpedition',{...scope,rareHuntNext:ready})()
   assert.equal(runRef.current.rareHunt,undefined)
 })
 
@@ -1226,7 +1240,7 @@ test('offline grant is counted once even if mount effects are replayed', () => {
 })
 
 test('actual expedition settlement counts once, pays rare gold only on first battle and clear bonus separately', () => {
-  const r=createRun(squad(),BLACKMOSS,BLACKMOSS.branches[0].id,49,0,true,{heal:3,fury:3},false,[],{mult:2,rewardMult:2})
+  const r=beginBattle(createRun(squad(),BLACKMOSS,49,0,true,{heal:3,fury:3},false,[],{mult:2,rewardMult:2}),49)
   const ui = settlementUi(r.members)
   ui.scope.runRef.current = r
   r.battle!.status='guild-win'; ui.dungeon(r); ui.dungeon(r)
@@ -1235,13 +1249,18 @@ test('actual expedition settlement counts once, pays rare gold only on first bat
   assert.equal(ui.state.gold,ECONOMY.battleGold.wave*2)
   // Complete a short fixture route through the same production settlement.
   const next = ui.scope.runRef.current
-  next.steps=next.steps.slice(0,next.stepIdx+1)
+  const bossNode = next.map.layers[next.map.layers.length-1]![0]!
+  next.nodeId = bossNode.id; next.path.push(bossNode.id)
+  const bosses = BLACKMOSS.encounters.filter(e => e.kind === 'boss')
+  next.battlesFought = 2 // 伪造首 boss 已胜 → 本场为末位 boss
+  next.battle = { encounterId: bosses[0]!.id, status: 'guild-win', combatants: [], log: [], events: [], tick: 0, rngState: 1,
+    commands: { stance: 'standard', healStock: 0, furyStock: 0, healCd: 0, furyCd: 0, furyUntil: 0, protectRetreat: true, autoMode: false } } as never
   startStep(next,50,0,ui.state.members)
   next.battle.status='guild-win'; ui.dungeon(next); ui.dungeon(next)
   const stats = ui.state.statistics
   assert.equal(stats.expeditionBattles.wins,2)
   assert.equal(stats.expeditions.wins,1)
-  assert.equal(stats.goldEarned.expedition,ECONOMY.battleGold.wave*3)
+  assert.equal(stats.goldEarned.expedition,ECONOMY.battleGold.wave*2 + ECONOMY.battleGold.boss)
   assert.equal(stats.goldEarned.clear,ECONOMY.clearBonus)
   assert.equal(ui.state.gold,totalGoldEarned(stats))
 })
@@ -1364,19 +1383,23 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
   const dungeons = [BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD,
     EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW]
   for (const dungeon of dungeons) {
-    const node = dungeon.routeNodes.find(n => n.kind === 'treasure')!
-    assert(node, dungeon.id)
+    assert(dungeon.terrains, dungeon.id)
     const pool = Object.values(ITEM_BASES).filter(b => b.tier === dungeonItemTier(dungeon.id))
     // Exercise every candidate through the actual callback, not a mirrored loot helper.
     for (let index = 0; index < pool.length; index++) {
-      const run = createRun(squad(), dungeon, dungeon.branches[0].id, 404)
+      const run = createRun(squad(), dungeon, 404)
       run.phase = 'rest'
+      // 改造 run 自己的地图:找/造一个宝箱节点(R1.1 后选路读本 run 的 map)
+      const node = run.map.layers[0].find(n => n.kind === 'treasure' || n.kind === 'secret')
+        ?? (() => { const n = run.map.layers[0][0]!; n.kind = 'treasure'; n.encounterId = undefined; return n })()
+      assert(node, dungeon.id)
       let inventory: unknown[] = [], visible: unknown[] = []
       let gold = 0, chronicleCount = 0, updates = 0
       const values = [0, (index + 0.5) / pool.length]
       run.rng = () => values.shift() ?? 0.4
-      const open = handler('continueDeep', {
-        runRef: { current: run }, dungeonMastery: {}, applyNodeChoice, dungeonItemTier,
+      const open = handler('chooseNode', {
+        runRef: { current: run }, dungeonMastery: {}, moveTo, mapOptions, currentNode, nextBossEncounter, dungeonItemTier,
+        GUILD_EVENTS, pendingConsequences: [], consequenceFiresIn, rollGuildEvent,
         ITEM_BASES, rollDrop, Math: { random: () => values.shift() ?? 0.4, floor: Math.floor },
         gainGold: (n: number, source: string) => { assert.equal(source, 'event'); gold += n },
         setInventory: (f: (v: unknown[]) => unknown[]) => { inventory = f(inventory) },
@@ -1411,7 +1434,7 @@ test('recovery: authoritative progress publishes changes made by run and pending
 })
 
 test('recovery: title does not simulate, entering the game restores once without replaying old visual events', () => {
-  const r = createRun(squad(),BLACKMOSS,'shortcut',53)
+  const r = beginBattle(createRun(squad(),BLACKMOSS,53),53)
   r.battle!.events.push({tick:0,type:'damage',targetId:r.battle!.combatants[0].id,amount:1})
   const resumeHandledRef={current:false}, eventCursorRef={current:0}, lastBattleRef={current:null}
   let themes=0, frames=0, notices=0, scheduled=0, timers=0

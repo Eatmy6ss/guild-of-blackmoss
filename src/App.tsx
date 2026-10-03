@@ -46,7 +46,6 @@ import {
   startStep,
   retreatRun,
   resetAfterRun,
-  REST_HEAL_PCT,
   type DungeonRun,
 } from './sim/run'
 import { powerScore } from './sim/combat'
@@ -68,7 +67,9 @@ import { initAudio, setMusicMood, toggleMute, isMuted, setVolume, getVolume, sfx
 import { bossIntents } from './sim/mechanics'
 import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, insureNextTowerFloor, towerRest, towerNext, towerFloorIsBoss, type TowerRun } from './sim/tower'
-import { junctionOptions, revealLevel, applyNodeChoice, MASTERY } from './sim/run'
+import { revealLevel, moveTo, mapOptions, currentNode, nextBossEncounter } from './sim/run'
+import { autoPickNode } from './sim/dungeon-map'
+import { MapScreen } from './ui/screens/MapScreen'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
@@ -244,7 +245,6 @@ export default function App() {
     get current(): TowerRun | null { const r = progressRef.current.activeRun; return r?.kind === 'tower' ? r : null },
     set current(value: TowerRun | null) { changeProgress({ activeRun: value }) },
   }
-  const lastBranchRef = { get current() { return progressRef.current.lastBranch }, set current(v: string) { changeProgress({ lastBranch: v }) } }
   const autoLoopRef = { get current() { return progressRef.current.autoLoop }, set current(v: boolean) { changeProgress({ autoLoop: v }) } }
   const pendingDepartureRef = { get current() { return progressRef.current.pendingDeparture }, set current(v: string | null) { changeProgress({ pendingDeparture: v }) } }
   const pendingConsequenceRef = { get current() { return progressRef.current.pendingConsequence }, set current(v: PendingConsequence | null) { changeProgress({ pendingConsequence: v }) } }
@@ -396,10 +396,10 @@ export default function App() {
   }, [])
 
   // 训练资格存档，出征时转入该次run，整次远征有效。
-  const continueDeepRef = useRef<(() => void) | null>(null)
+  const continueDeepRef = useRef<((id?: string) => void) | null>(null)
   const resolveEventRef = useRef<((choiceIdx: number) => void) | null>(null)
   const dismissEventRef = useRef<(() => void) | null>(null)
-  const startExpeditionRef = useRef<((branchId: string) => void) | null>(null)
+  const startExpeditionRef = useRef<(() => void) | null>(null)
   const resumeHandledRef = useRef(false)
   const [resumeNotice, setResumeNotice] = useState(() => saveLoadNotice() || (saved?.runState.activeRun ? '已恢复上次远征进度，点击继续旅程后接着挑战。' : saved?.runState.eventId ? '已恢复上次待处理的事件，点击继续旅程后查看。' : ''))
   const logBoxRef = useRef<HTMLDivElement | null>(null)
@@ -471,7 +471,7 @@ export default function App() {
       if (active.phase === 'rest') window.setTimeout(() => active.kind === 'dungeon' ? continueDeepRef.current?.() : towerNextFloor(), 150)
       else if (active.kind === 'dungeon' && active.phase === 'victory') {
         backToGuild()
-        window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.(lastBranchRef.current) }, 150)
+        window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.() }, 150)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -514,7 +514,7 @@ export default function App() {
     let story: ReturnType<typeof tellExpedition> = null
     if (o.source === 'dungeon' && ['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
       if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
-      story = tellExpedition(factLedgerRef.current, createRng(o.run.seed + o.run.stepIdx * 77 + day), {
+      story = tellExpedition(factLedgerRef.current, createRng(o.run.seed + o.run.path.length * 77 + day), {
         fromId: factLedgerRef.current.toldThrough ?? 0,
         startId: factLedgerRef.current.expeditionStart ?? 0,
       })
@@ -673,7 +673,7 @@ export default function App() {
         window.setTimeout(() => continueDeepRef.current?.(), 150)
       } else if (endPhase === 'victory') {
         backToGuild()
-        window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.(lastBranchRef.current) }, 150)
+        window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.() }, 150)
       } else if (endPhase === 'defeat') {
         autoLoopRef.current = false
         r.autoMode = false
@@ -741,10 +741,9 @@ export default function App() {
     drainAndSync(b)
   }
 
-  const startExpedition = (branchId: string) => {
+  const startExpedition = () => {
     if (runRef.current || towerRunRef.current || pendingEvent || expedition.length < activeDungeon.size) return
     if (!playtestAllows(activeDungeon.id)) return // B6:试玩版版图一守卫
-    lastBranchRef.current = branchId
     const refusers = expedition.filter((m) => refusesToMarch(m))
     if (refusers.length > 0) {
       logChronicle(chronicleRefusal(day, refusers))
@@ -761,7 +760,7 @@ export default function App() {
         appendFact(factLedgerRef.current, day, { kind: 'consequence-due', actors: [], refs: { eventId: due.eventId }, links: link ? [link.id] : undefined })
         setFactLedger({ ...factLedgerRef.current })
         pendingConsequenceRef.current = due
-        pendingDepartureRef.current = branchId
+        pendingDepartureRef.current = 'go'
         setPendingEvent(def)
         setEventResult(null)
         return
@@ -781,7 +780,6 @@ export default function App() {
     runRef.current = createRun(
       expedition,
       activeDungeon,
-      branchId,
       int(guildRng, 1, 100000) * SEED_BASE,
       memorialAura(memorial),
       protectOn,
@@ -811,80 +809,87 @@ export default function App() {
   }
   startExpeditionRef.current = startExpedition
 
-  const continueDeep = (nodeId?: string) => {
+  const chooseNode = (targetId?: string) => {
     const r = runRef.current
-    if (!r || r.phase !== 'rest' || pendingEvent) return
-    const m = dungeonMastery[runDungeon(r).id] ?? 0
-    // 挂机选路:高熟练按知识(健康选精英/残血选事件),低熟练盲选
-    if (!nodeId && r.autoMode && r.stepIdx + 1 < r.steps.length - 1) {
-      const opts = junctionOptions(r, r.seed + r.stepIdx * 97)
+    if (!r || r.kind !== 'dungeon' || r.phase !== 'rest' || pendingEvent) return
+    // Boss 连战:当前就在 Boss 节点且还有下一场 → 直接连战(不走地图选边)
+    if (targetId && targetId === r.nodeId) {
+      const cur = currentNode(r)
+      if (cur?.kind === 'boss' && nextBossEncounter(r)) {
+        const enc = runDungeon(r).encounters.find((e) => e.id === nextBossEncounter(r))
+        const manualBonus = enc?.bossId && manual.includes(enc.bossId) ? MANUAL_BONUS : 0
+        startStep(r, int(runRng(r), 1, 100000) * SEED_BASE, manualBonus, membersRef.current)
+        setRunning(true)
+        syncAll()
+      }
+      return
+    }
+    // 挂机选路(U27①):逻辑住 sim 层——高熟练按已知信息选(血少休整/事件,血多精英),低熟练盲选
+    if (!targetId && r.autoMode) {
+      const m = dungeonMastery[runDungeon(r).id] ?? 0
       const alive = runMembers(r, membersRef.current).filter((x) => x.alive)
       const avgHp = alive.length ? alive.reduce((sum, x) => sum + x.hp / toCombatant(x).maxHp, 0) / alive.length : 1
-      const byKind = (k: string) => opts.find((o) => o.kind === k && !r.nodeIds.includes(o.id))
-      if (revealLevel(m) !== 'hidden') {
-        if (avgHp < 0.5 && byKind('event')) nodeId = byKind('event')!.id
-        else if (avgHp > 0.7 && byKind('elite')) nodeId = byKind('elite')!.id
-      } else {
-        nodeId = opts[Math.floor(runRng(r)() * opts.length)]?.id
-      }
+      const picked = autoPickNode(mapOptions(r), { knows: revealLevel(m) !== 'hidden', avgHp, rng: runRng(r) })
+      if (picked) targetId = picked.id
     }
-    if (nodeId) {
-      const node = runDungeon(r).routeNodes.find((n) => n.id === nodeId)
-      if (node && !r.nodeIds.includes(node.id)) {
-        const kind = applyNodeChoice(r, node.id)
-        if (kind === 'event') {
-          // 副本档延迟后果(events-draft §2.2):到期且指向本副本/不限副本时,第一个 event 节点必出
-          const dueNode = pendingConsequences.find((c) => c.dueDay <= day && consequenceFiresIn(c.eventId, runDungeon(r).id))
-          if (dueNode) {
-            const def = GUILD_EVENTS.find((e) => e.id === dueNode.eventId)
-            if (def) {
-              pendingConsequenceRef.current = dueNode
-              setPendingEvent(def)
-              setEventResult(null)
-              setRun({ ...r })
-              return
-            }
-          }
-          // 路线事件节点必触发,先副本专属池,本地形池待地图地形落地后接入(R1.1)
-          const ev = rollGuildEvent(runRng(r), { where: 'node', dungeonId: runDungeon(r).id })
-          if (ev) { setPendingEvent(ev); setEventResult(null) }
+    if (!targetId) return // 不选路不能前进:没有「继续深入」
+    const node = moveTo(r, targetId)
+    if (!node) return
+    if (node.kind === 'battle' || node.kind === 'elite' || node.kind === 'boss') {
+      applyRestMorale(runMembers(r, membersRef.current).filter((x) => x.alive))
+      const encId = node.kind === 'boss' ? nextBossEncounter(r) : node.encounterId
+      const enc = runDungeon(r).encounters.find((e) => e.id === encId)
+      const manualBonus = enc?.bossId && manual.includes(enc.bossId) ? MANUAL_BONUS : 0
+      startStep(r, int(runRng(r), 1, 100000) * SEED_BASE, manualBonus, membersRef.current)
+      setRunning(true)
+      syncAll()
+      return
+    }
+    if (node.kind === 'event') {
+      // 副本档延迟后果(events-draft §2.2):到期且指向本副本/不限副本时,本副本的 event 节点必出
+      const dueNode = pendingConsequences.find((c) => c.dueDay <= day && consequenceFiresIn(c.eventId, runDungeon(r).id))
+      if (dueNode) {
+        const def = GUILD_EVENTS.find((e) => e.id === dueNode.eventId)
+        if (def) {
+          pendingConsequenceRef.current = dueNode
+          setPendingEvent(def)
+          setEventResult(null)
           setRun({ ...r })
-          return
-        }
-        if (kind === 'rest') {
-          for (const mem of runMembers(r, membersRef.current)) {
-            if (!mem.alive) continue
-            const max = maxHpOf(mem)
-            mem.hp = Math.min(max, mem.hp + Math.round(max * 0.3))
-          }
-          setRun({ ...r })
-          if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
-          return
-        }
-        if (kind === 'treasure') {
-          // 宝箱节点(试玩反馈二轮):不战斗,纯收获——金币+一件带品级的装备
-          const gold2 = 60 + Math.floor(runRng(r)() * 90)
-          gainGold(gold2, 'event')
-          const tier = dungeonItemTier(runDungeon(r).id)
-          const bases = Object.keys(ITEM_BASES).filter((id) => ITEM_BASES[id].tier === tier)
-          const baseId = bases[Math.floor(runRng(r)() * bases.length)]
-          const item = rollDrop(baseId, runRng(r), { qualityBias: 0.3 })
-          receiveItems([item], true)
-          logChronicle(chronicleRaw(day, runDungeon(r).name + '的' + node.name + '开出了好东西。'))
-          setRun({ ...r })
-          if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
           return
         }
       }
+      // 事件节点必触发:先本副本专属池,再本地形事件池(U27④,地形随节点携带)
+      const ev = rollGuildEvent(runRng(r), { where: 'node', dungeonId: runDungeon(r).id, terrain: node.terrain })
+      if (ev) { setPendingEvent(ev); setEventResult(null) }
+      setRun({ ...r })
+      return
     }
-    applyRestMorale(runMembers(r, membersRef.current).filter((x) => x.alive))
-    const enc = runDungeon(r).encounters.find((e) => e.id === r.steps[r.stepIdx])
-    const manualBonus = enc?.bossId && manual.includes(enc.bossId) ? MANUAL_BONUS : 0
-    startStep(r, int(runRng(r), 1, 100000) * SEED_BASE, manualBonus, membersRef.current)
-    setRunning(true)
-    syncAll()
+    if (node.kind === 'rest') {
+      for (const mem of runMembers(r, membersRef.current)) {
+        if (!mem.alive) continue
+        const max = maxHpOf(mem)
+        mem.hp = Math.min(max, mem.hp + Math.round(max * 0.3))
+      }
+      setRun({ ...r })
+      if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
+      return
+    }
+    if (node.kind === 'treasure' || node.kind === 'secret') {
+      // 宝箱/暗道节点:不战斗,纯收获——金币+一件带品级的装备;暗道另已是跳层捷径
+      const gold2 = 60 + Math.floor(runRng(r)() * 90)
+      gainGold(gold2, 'event')
+      const tier = dungeonItemTier(runDungeon(r).id)
+      const bases = Object.keys(ITEM_BASES).filter((id) => ITEM_BASES[id].tier === tier)
+      const baseId = bases[Math.floor(runRng(r)() * bases.length)]
+      const item = rollDrop(baseId, runRng(r), { qualityBias: 0.3 })
+      receiveItems([item], true)
+      logChronicle(chronicleRaw(day, runDungeon(r).name + '的' + node.name + '开出了好东西。'))
+      setRun({ ...r })
+      if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
+      return
+    }
   }
-  continueDeepRef.current = continueDeep
+  continueDeepRef.current = chooseNode
 
   const backToGuild = () => {
     setResumeNotice('')
@@ -1168,11 +1173,11 @@ export default function App() {
     setEventImpacts([])
     const departure = pendingDepartureRef.current
     pendingDepartureRef.current = null
-    if (departure) window.setTimeout(() => startExpeditionRef.current?.(departure), 0)
+    if (departure) window.setTimeout(() => startExpeditionRef.current?.(), 0)
     else if (runRef.current?.autoMode && runRef.current.phase === 'rest') {
       window.setTimeout(() => continueDeepRef.current?.(), 0)
     } else if (!runRef.current && autoLoopRef.current) {
-      window.setTimeout(() => startExpeditionRef.current?.(lastBranchRef.current), 0)
+      window.setTimeout(() => startExpeditionRef.current?.(), 0)
     }
   }
   dismissEventRef.current = dismissEvent
@@ -2374,16 +2379,13 @@ export default function App() {
                   <p className="hint">🔒 下一版图:{nextRegionLocked(manual)}</p>
                 )}
               </div>
-              {activeDungeon.branches.map((br) => (
-                <button
-                  key={br.id}
-                  className="branch-btn primary"
-                  disabled={!canExpedition}
-                  onClick={() => startExpedition(br.id)}
-                >
-                  ⚔ {br.name}（风险 {br.risk} / 收获 {br.reward}）—— {br.desc}
-                </button>
-              ))}
+              <button
+                className="branch-btn primary"
+                disabled={!canExpedition}
+                onClick={() => startExpedition()}
+              >
+                ⚔ 出发：{activeDungeon.name}——每趟地图随机生成(U27①),在地图上逐层选路
+              </button>
               {!canExpedition && (
                 <p style={{ color: '#d48f8f' }}>
                   {expedition.length < activeDungeon.size
@@ -2397,7 +2399,7 @@ export default function App() {
           {run && inBattle && (
             <>
               <h2>
-                {encName(run, run.steps[run.stepIdx])}（第 {run.stepIdx + 1}/{run.steps.length} 场）
+                {encName(run, run.battle?.encounterId ?? '')}（第 {run.battlesFought} 场）
               </h2>
               {/* ===== 团长指挥台（Q27）===== */}
               {battle && battle.status === 'running' && (
@@ -2766,82 +2768,14 @@ export default function App() {
               return <div key={record.id}>{q.title} · {record.progress}/{q.objective.target}{record.progress >= q.objective.target ? ' · 已达成，返回公会交付' : ''}</div>
             })}
           </div>}
-          {run && run.phase === 'rest' && (
-            <>
-              <h2>战斗胜利 · 原地休整</h2>
-              <div className="result-banner win">
-                幸存者回复 {Math.round(REST_HEAL_PCT * 100)}% 生命。下一场：{encName(run, run.steps[run.stepIdx])}
-              </div>
-              {lastDrops.length > 0 && (
-                <div className="inv-panel">
-                  {lastDrops.map((i) => (
-                    <div key={i.id} className="inv-item">
-                      🎁 {describeItem(i)}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {(() => {
-                const dId = runDungeon(run).id
-                const m = dungeonMastery[dId] ?? 0
-                const lvl = revealLevel(m)
-                // rest 相 stepIdx 已指向「下一场待打」——下一场是压轴 boss 时收起选路(F02 同步修正 off-by-one)
-                const isBossNext = run.stepIdx >= run.steps.length - 1
-                const opts = junctionOptions(run, run.seed + run.stepIdx * 97)
-                const bossDirect = m >= MASTERY.BOSS_DIRECT && !isBossNext
-                const kindLabel: Record<string, string> = { battle: '⚔ 战斗', elite: '☠ 精英·掉落翻倍', event: '❓ 事件', rest: '⛺ 休整·额外回复', treasure: '🎁 宝箱·无战斗' }
-                return (
-                  <>
-                    <div className="route-choice">
-                      <p className="hint">
-                        熟练度 {m} —— {lvl === 'hidden' ? '前路未知,只闻其名。' : lvl === 'kind' ? '你已记得这些路的类别。' : '这张图你闭着眼都能走。'}
-                        {bossDirect ? ' 你已熟到可以直接挑战深处!' : ''}
-                      </p>
-                      {lvl === 'full' && (() => {
-                        // K05 关系揭示(U13):full 档输出踏过节点的边关系——「记地图」的记忆落点
-                        const rel = runDungeon(run).routeRelations ?? []
-                        const nameOf = (id: string) => runDungeon(run).routeNodes.find((n) => n.id === id)?.name ?? id
-                        const memories = rel
-                          .filter(([a, b]) => run.nodeIds.includes(a) || run.nodeIds.includes(b))
-                          .slice(0, 2)
-                          .map(([a, b]) => `${nameOf(a)} 常伴 ${nameOf(b)}`)
-                        return memories.length > 0 ? <p className="hint" style={{ opacity: 0.75 }}>你记得:{memories.join(';')}。</p> : null
-                      })()}
-                      {isBossNext ? (
-                        <p className="hint">深处的气息近了——前方就是<b style={{ color: '#d48f8f' }}>{encName(run, run.steps[run.stepIdx])}</b>。</p>
-                      ) : (
-                        <div className="route-choices">
-                          {opts.map((n) => (
-                            <button key={n.id} disabled={!!run && run.phase === 'battle'} onClick={() => continueDeep(n.id)}>
-                              {n.name}
-                              <small>{lvl === 'hidden' ? '❓ 未知' : kindLabel[n.kind] ?? n.kind}{lvl === 'full' ? ` —— ${n.desc}` : ''}</small>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {bossDirect && (
-                        <button onClick={() => {
-                          const r2 = runRef.current
-                          if (!r2) return
-                          // F03 修复(2026-09-25):直取 boss——路线只留 boss 一场,不再重打原首场
-                          const bossEnc = r2.steps[r2.steps.length - 1]
-                          r2.steps = [bossEnc]
-                          r2.stepIdx = 0
-                          r2.nodeIds.push('boss-direct')
-                          setRun({ ...r2 })
-                          logChronicle(chronicleRaw(day, '熟练的队伍跳过了外围,直取' + runDungeon(r2).name + '深处。'))
-                          continueDeepRef.current?.()
-                        }}>⚡ 直捣 boss(熟练度 {m} ≥ {MASTERY.BOSS_DIRECT})</button>
-                      )}
-                    </div>
-                  </>
-                )
-              })()}
-              <div className="end-actions">
-                <button className="primary" onClick={() => continueDeep()}>⬇ 继续深入</button>
-                <button onClick={retreat}>🏳 撤退回城</button>
-              </div>
-            </>
+          {run && run.kind === 'dungeon' && run.phase === 'rest' && (
+            <MapScreen
+              run={run}
+              mastery={dungeonMastery[runDungeon(run).id] ?? 0}
+              drops={lastDrops}
+              onChoose={(id) => continueDeepRef.current?.(id)}
+              onRetreat={retreat}
+            />
           )}
 
           {finished && (

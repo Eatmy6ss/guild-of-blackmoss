@@ -1,4 +1,4 @@
-import { createRun, startTower } from '../../scripts/run-test-compat'
+import { createRun, startTower , beginBattle } from '../../scripts/run-test-compat'
 import { describe, expect, it, vi } from 'vitest'
 import { generateMember, maxHpOf } from '../sim/gen'
 import { rollDrop, equipmentStats } from '../sim/loot'
@@ -113,7 +113,7 @@ describe('物品注册表与唯一归属 I6', () => {
     for (const source of ['dungeon', 'tower'] as const) for (const insured of [false, true]) {
       const members = roster(); members[0].equipment.weapon = gear('wpn-t1-sword', 'weapon')
       const state = createGuildItems(members), resolved = resolveMembers(members, state), uid = state.equipment[members[0].id].weapon!
-      const run = source === 'dungeon' ? createRun(resolved, BLACKMOSS, BLACKMOSS.branches[0].id, 53) : startTower(resolved, 53)
+      const run = source === 'dungeon' ? beginBattle(createRun(resolved, BLACKMOSS, 53), 53) : startTower(resolved, 53)
       if (source === 'tower') (run as ReturnType<typeof startTower>).insuredFloor = insured
       run.battle!.status = 'guild-win'
       const victim = run.battle!.combatants.find(c => c.memberId === resolved[0].id)!

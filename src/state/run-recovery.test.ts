@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import { BLACKMOSS, DUNGEONS } from '../data/dungeons'
 import { GUILD_EVENTS } from '../data/guild-events'
 import { generateMember, maxHpOf, memberGenerationState, restoreMemberGeneration } from '../sim/gen'
-import { createRun, startStep, applyNodeChoice, junctionOptions } from '../sim/run'
+import { mapOptions, moveTo, createRun, startStep } from '../sim/run'
 import { startTower, towerNext, towerRest, insureNextTowerFloor } from '../sim/tower'
 import { runRng, runMembers, runDungeon } from '../sim/run-core'
 import { initialRunState, checkpointRunState, validateRunState, runReducer } from '../sim/run-state'
@@ -107,7 +107,7 @@ test('现有两种 Run 从出发开始就是 JSON 数据；成员/地图只由 I
   for (const kind of ['dungeon', 'tower'] as const) {
     const s = save(), members = resolved(s)
     const r = kind === 'tower' ? startTower(members, 53, s.potions)
-      : createRun(members, BLACKMOSS, BLACKMOSS.branches[0].id, 53, 0, false, s.potions)
+      : createRun(members, BLACKMOSS, 53, 0, false, s.potions)
     expect(JSON.parse(JSON.stringify(r))).toEqual(r)
     expect(r).not.toHaveProperty('members'); expect(r).not.toHaveProperty('dungeon'); expect(r).not.toHaveProperty('rng')
     expect(r.pendingLoot).toEqual({ items: [], gold: 0, starMarrow: 0, exp: 0 })
@@ -123,27 +123,46 @@ test('现有两种 Run 从出发开始就是 JSON 数据；成员/地图只由 I
 test('副本实战：暂停指令、选路与各场奖励跨刷新保持逐字节一致，终局不再结算', () => {
   for (const seed of [3, 53, 111]) {
     let plain = save()
-    plain.runState.activeRun = createRun(resolved(plain), BLACKMOSS, BLACKMOSS.branches[0].id, seed, 0, false, plain.potions)
+    plain.runState.activeRun = createRun(resolved(plain), BLACKMOSS, seed, 0, false, plain.potions)
+    {
+      // R1.1:createRun 不再自动开战——先在地图第 0 层选路开战
+      const r0 = plain.runState.activeRun!
+      const node0 = mapOptions(r0).find(n => n.kind === 'battle' || n.kind === 'elite') ?? mapOptions(r0)[0]!
+      moveTo(r0, node0.id)
+      startStep(r0, int(runRng(r0), 1, 100000) * 7777, 0, resolved(plain))
+    }
     let resumed = refresh(structuredClone(plain))
     let battles = 0
-    while (plain.runState.activeRun!.phase === 'battle') {
-      for (const s of [plain, resumed]) {
-        const b = s.runState.activeRun!.battle!
-        for (let tick = 0; tick < 18 && b.status === 'running'; tick++) stepBattle(b)
-        useFuryPotion(b); useHealPotion(b); setStance(b, 'spread')
+    let guard = 0
+    while (['battle', 'rest'].includes(plain.runState.activeRun!.phase) && guard++ < 30) {
+      if (plain.runState.activeRun!.phase === 'battle') {
+        for (const s of [plain, resumed]) {
+          const b = s.runState.activeRun!.battle!
+          for (let tick = 0; tick < 18 && b.status === 'running'; tick++) stepBattle(b)
+          useFuryPotion(b); useHealPotion(b); setStance(b, 'spread')
+        }
+        resumed = refresh(resumed)
+        plain = finishBattle(plain); resumed = finishBattle(resumed); battles++
+        equalBytes(resumed, plain)
+        const r = plain.runState.activeRun!
+        if (r.kind !== 'dungeon' || r.phase !== 'rest') break
+        resumed = refresh(resumed)
       }
-      resumed = refresh(resumed)
-      plain = finishBattle(plain); resumed = finishBattle(resumed); battles++
-      equalBytes(resumed, plain)
-      const r = plain.runState.activeRun!
-      if (r.kind !== 'dungeon' || r.phase !== 'rest') break
-      resumed = refresh(resumed)
       for (const s of [plain, resumed]) {
         const current = s.runState.activeRun!
         if (current.kind !== 'dungeon') throw new Error('dungeon')
-        const node = junctionOptions(current, current.seed + current.stepIdx * 97).find(n => n.kind === 'battle' && !current.nodeIds.includes(n.id))
-        if (node) applyNodeChoice(current, node.id)
-        startStep(current, int(runRng(current), 1, 100000) * 7777, 0, resolved(s))
+        const opts = mapOptions(current)
+        if (opts.length === 0) {
+          // Boss 节点中场休息:连战下一场(无出边可选)
+          startStep(current, int(runRng(current), 1, 100000) * 7777, 0, resolved(s))
+        } else {
+          const node = opts.find(n => n.kind === 'battle' || n.kind === 'elite') ?? opts.find(n => n.kind === 'boss') ?? opts[0]!
+          moveTo(current, node.id)
+          if (node.kind === 'battle' || node.kind === 'elite' || node.kind === 'boss') {
+            startStep(current, int(runRng(current), 1, 100000) * 7777, 0, resolved(s))
+          }
+          // 非战斗节点(rest/event/treasure):直接走过,其效果不在本测范围
+        }
         s.runState = checkpointRunState(s.runState, resolved(s))
       }
     }
@@ -230,7 +249,7 @@ test('召唤宠物、Boss 增援与临终呼援的单位编号不依赖模块生
 
 test('待选/已选事件、待出发与延迟后果是存档数据；访客身份和重名避让一并续接', () => {
   const s = save(), event = GUILD_EVENTS[0]
-  s.runState = { ...s.runState, eventId: event.id, pendingDeparture: BLACKMOSS.branches[0].id,
+  s.runState = { ...s.runState, eventId: event.id, pendingDeparture: 'go',
     pendingConsequence: { eventId: event.id, dueDay: 9 }, autoLoop: true }
   const waiting = refresh(s)
   expect(waiting.runState.eventResult).toBeNull()

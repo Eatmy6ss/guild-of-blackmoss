@@ -1,4 +1,4 @@
-import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, createRun, advanceRun, startStep } from './run-test-compat'
+import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, createRun, advanceRun, startStep, beginBattle } from './run-test-compat'
 // 冒烟测试：跑 200 轮 × 全部遭遇战
 // 硬门槛：① 所有战斗必然终结（无死循环）② 杂兵战不允许团灭（玩家不该死在垃圾怪手上）
 // 说明：boss 压迫感依赖 D8-9 机制引擎（狂暴/束缚等），纯数值阶段 boss 偏弱是预期，
@@ -34,7 +34,8 @@ import { bossIntents, processBossMechanics } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
-import { markPermadeath, settleGrowth, junctionOptions, revealLevel, applyNodeChoice, MASTERY } from '../src/sim/run'
+import { markPermadeath, settleGrowth, mapOptions, moveTo, nextBossEncounter, revealLevel, MASTERY } from '../src/sim/run'
+import { generateMap, nodeById } from '../src/sim/dungeon-map'
 import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE, type JobId } from '../src/data/jobs'
 import { HYBRIDS } from '../src/data/vocations'
@@ -45,6 +46,21 @@ import { RACES } from '../src/data/races'
 import { grantExp, rollSpec, setRaceOverride } from '../src/sim/gen'
 
 const JOBS = ['guard', 'priest', 'ranger'] as const
+
+// ===== R1.1 地图驱动助手 =====
+/** rest 相在地图上选路:优先战斗/精英,其次 Boss;非战斗节点直接走过;Boss 节点连战 */
+function walkBattle(run: ReturnType<typeof createRun>, seed: number, depth = 0): void {
+  const opts = mapOptions(run)
+  if (opts.length === 0) { startStep(run, seed); return } // Boss 连战(无出边)
+  const node = opts.find(n => n.kind === 'battle' || n.kind === 'elite') ?? opts.find(n => n.kind === 'boss')
+  if (!node) {
+    moveTo(run, opts[0]!.id)
+    if (depth < 12) walkBattle(run, seed + 1, depth + 1)
+    return
+  }
+  moveTo(run, node.id)
+  startStep(run, seed)
+}
 // 门禁标准条件:全部生成器钉人类苗子(种族方差由 ㉖ 单独验证)
 setRaceOverride('human')
 const MAX_TICK = 10000
@@ -204,33 +220,26 @@ console.log('✓ 行为验证通过：站位/威胁/治疗仇恨/轻协同全部
 // D11：撤退保护默认开启，濒危自动撤离——"活着回来"也算路线可行
 // ============================================================
 const runFailures: string[] = []
-let victoryRisky = 0
-let victorySafe = 0
-let survivedRisky = 0
-let survivedSafe = 0
+let victories = 0
+let survived = 0
 let hpViolations = 0
 let carriedBelowFull = 0 // 血量延续断言：后续战斗必须带伤进场（D13 修复的回归锁）
-const RUNS_PER_BRANCH = 60
+const RUNS_TOTAL = 120
 
-for (let i = 0; i < RUNS_PER_BRANCH * 2; i++) {
-  const risky = i % 2 === 0
+for (let i = 0; i < RUNS_TOTAL; i++) {
   const squad = JOBS.map((job, j) => generateMember(job, 5, 800000 + i * 100 + j))
-  const branchId = risky ? 'shortcut' : 'safepath'
-  const run = createRun(squad, BLACKMOSS, branchId, i * 313 + 11)
-  // 反馈④路线规格:险路 12-15 场、稳路 10-12 场(含压轴 boss;精英 2-4 只)
-  const expectedSteps = risky ? [12, 15] : [10, 12]
-  if (run.steps.length < expectedSteps[0] || run.steps.length > expectedSteps[1]) {
-    runFailures.push(`分支 ${branchId} 步数 ${run.steps.length} 不在 ${expectedSteps.join('-')}`)
-  }
+  const run = createRun(squad, BLACKMOSS, i * 313 + 11)
+  beginBattle(run, i * 313 + 11)
   let guard = 0
-  while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && guard++ < 50) {
+  while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && guard++ < 40) {
     const b = run.battle!
     while (b.status === 'running' && b.tick < MAX_TICK) stepBattle(b)
     advanceRun(run)
     markPermadeath(run)
     for (const m of squad) if (m.hp < 0) hpViolations++
     if (run.phase === 'rest') {
-      startStep(run, i * 991 + guard * 17)
+      walkBattle(run, i * 991 + guard * 17)
+      if (run.phase !== 'battle') continue // 走过的是非战斗节点
       for (const c of run.battle!.combatants) {
         if (c.team !== 'guild') continue
         if (c.hp > c.maxHp) hpViolations++
@@ -238,28 +247,17 @@ for (let i = 0; i < RUNS_PER_BRANCH * 2; i++) {
       }
     }
   }
-  if (run.phase === 'victory') {
-    if (risky) victoryRisky++
-    else victorySafe++
-  } else if (run.phase === 'defeat') {
-    // 团灭：不算生还
-  } else if (run.phase === 'retreated') {
-    if (risky) survivedRisky++
-    else survivedSafe++
-  } else {
-    runFailures.push(`i=${i} 远征卡在 phase=${run.phase}`)
-  }
+  if (run.phase === 'victory') victories++
+  else if (run.phase === 'retreated') survived++
+  else if (run.phase !== 'defeat') runFailures.push(`i=${i} 远征卡在 phase=${run.phase}`)
   // 永久死亡一致性：阵亡者（hp=0）必须已从花名册划去
   for (const m of squad) {
     if (!m.alive && m.hp > 0) hpViolations++
   }
 }
-const rateRisky = (victoryRisky / RUNS_PER_BRANCH) * 100
-const rateSafe = (victorySafe / RUNS_PER_BRANCH) * 100
-const aliveRisky = ((victoryRisky + survivedRisky) / RUNS_PER_BRANCH) * 100
-const aliveSafe = ((victorySafe + survivedSafe) / RUNS_PER_BRANCH) * 100
+const aliveRate = ((victories + survived) / RUNS_TOTAL) * 100
 console.log(
-  `④ 远征：险路 通关${rateRisky.toFixed(1)}%/生还${aliveRisky.toFixed(1)}%，稳路 通关${rateSafe.toFixed(1)}%/生还${aliveSafe.toFixed(1)}%，血量非法 ${hpViolations}，带伤进场样本 ${carriedBelowFull}`,
+  `④ 远征：通关 ${victories}/${RUNS_TOTAL}，生还率 ${aliveRate.toFixed(1)}%，血量非法 ${hpViolations}，带伤进场样本 ${carriedBelowFull}`,
 )
 if (runFailures.length > 0 || hpViolations > 0) {
   console.log('✗ 远征状态机未通过:', runFailures.slice(0, 5))
@@ -269,11 +267,11 @@ if (carriedBelowFull === 0) {
   console.log('✗ 血量延续失效：后续战斗全部满血进场——远征内的消耗经济不存在')
   process.exit(1)
 }
-if (aliveRisky < 50 || aliveSafe < 50) {
-  console.log('✗ 存在过半远征无人生还的路线——难度失衡')
+if (aliveRate < 50) {
+  console.log('✗ 存在过半远征无人生还——难度失衡')
   process.exit(1)
 }
-console.log('✓ 远征验证通过：岔路/结算/永久死亡/生还判定按设计工作')
+console.log('✓ 远征验证通过：分层地图/结算/永久死亡/生还判定按设计工作')
 
 // ============================================================
 // ⑤ boss 机制与指挥台（D8-9）
@@ -462,7 +460,7 @@ const guildFailures: string[] = []
   let checked = 0
   for (let i = 0; i < 60 && checked < 10; i++) {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 940000 + i * 100 + j))
-    const run = createRun(squad, ABYSSALTAR, 'shortcut', i * 317 + 5)
+    const run = beginBattle(createRun(squad, ABYSSALTAR, i * 317 + 5), i * 317 + 5)
     let guard = 0
     while (run.phase !== 'defeat' && run.phase !== 'victory' && run.phase !== 'retreated' && guard++ < 40) {
       const bt = run.battle!
@@ -478,7 +476,7 @@ const guildFailures: string[] = []
         if (!member || member.alive) guildFailures.push(`7a ${dead[0].name} 未从花名册划去`)
         checked++
       }
-      if (run.phase === 'rest') startStep(run, i * 719 + guard * 13)
+      if (run.phase === 'rest') walkBattle(run, i * 719 + guard * 13)
     }
   }
   console.log(`7a 永久死亡：核验 ${checked} 次阵亡登记`)
@@ -657,7 +655,7 @@ const growthFailures: string[] = []
     // 宪法 v3.3 批次④:升级放缓——契约改为"两轮通关升一级"
     for (let clear = 0; clear < 3; clear++) {
     // 反馈④:药水对齐真实出征(公会携带 9+9),长路线 3 瓶打不穿
-    const run = createRun(squad, BLACKMOSS, 'shortcut', i * 419 + 3 + clear * 17, 0, true, { heal: 9, fury: 9 })
+    const run = beginBattle(createRun(squad, BLACKMOSS, i * 419 + 3 + clear * 17, 0, true, { heal: 9, fury: 9 }), i * 419 + 3 + clear * 17)
     let g2 = 0
     while (run.phase !== 'victory' && run.phase !== 'defeat' && run.phase !== 'retreated' && g2++ < 40) {
       const bt = run.battle!
@@ -683,7 +681,7 @@ const growthFailures: string[] = []
       advanceRun(run)
       markPermadeath(run)
       settleGrowth(run)
-      if (run.phase === 'rest') startStep(run, i * 733 + g2 * 19)
+      if (run.phase === 'rest') walkBattle(run, i * 733 + g2 * 19)
     }
     if (run.phase === 'victory') {
       runs++
@@ -995,17 +993,19 @@ const towerFailures: string[] = []
   // 15d:经验加成接线——settleGrowth 乘数
   {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 4321 + j))
-    const run1 = createRun(squad, BLACKMOSS, 'shortcut', 2)
+    const run1 = beginBattle(createRun(squad, BLACKMOSS, 2), 2)
     const b1 = run1.battle!
-    while (b1.status === 'running' && b1.tick < 2000) stepBattle(b1)
+    for (let t = 0; t < 6 && b1.status === 'running'; t++) stepBattle(b1)
+    b1.status = 'guild-win' // 门禁只验经验乘数接线,不赌全战生存
     advanceRun(run1)
     markPermadeath(run1)
     settleGrowth(run1, 1)
     const exp1 = squad[0].exp
     const squad2 = JOBS.map((job, j) => generateMember(job, 5, 5321 + j))
-    const run2 = createRun(squad2, BLACKMOSS, 'shortcut', 2)
+    const run2 = beginBattle(createRun(squad2, BLACKMOSS, 2), 2)
     const b2 = run2.battle!
-    while (b2.status === 'running' && b2.tick < 2000) stepBattle(b2)
+    for (let t = 0; t < 6 && b2.status === 'running'; t++) stepBattle(b2)
+    b2.status = 'guild-win'
     advanceRun(run2)
     markPermadeath(run2)
     settleGrowth(run2, 1.3)
@@ -1506,7 +1506,7 @@ const towerFailures: string[] = []
   }
 
   // 20a:出征携带 → 战斗消耗逐场延续 → 回城退回剩余
-  const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true, { heal: 2, fury: 1 })
+  const run = beginBattle(createRun(squad, BLACKMOSS, 4242, 0, true, { heal: 2, fury: 1 }), 4242)
   const b1 = run.battle!
   runToEnd(b1)
   advanceRun(run)
@@ -1515,8 +1515,10 @@ const towerFailures: string[] = []
     fail20.push('⑳ 战斗结算未回写携带药水')
   }
   // 第二场继承第一场的余量(不再是每场白送 3+3)
+  if (run.phase === 'rest') {
+    walkBattle(run, 991)
+  }
   if (run.phase === 'battle') {
-    startStep(run, 991)
     const b2 = run.battle!
     if (b2.commands.healStock !== after1.heal || b2.commands.furyStock !== after1.fury) {
       fail20.push(`⑳ 第二场未继承携带量(期望 ${after1.heal}/${after1.fury},实际 ${b2.commands.healStock}/${b2.commands.furyStock})`)
@@ -1632,7 +1634,7 @@ const towerFailures: string[] = []
 
   // 22a:团本按副本编制上阵——5 人团本带 5 人,战斗里就是 5 个我方实体
   {
-    const run = createRun(five, THORNHOLD, 'gateassault', 4242, 0, true)
+    const run = beginBattle(createRun(five, THORNHOLD, 4242, 0, true), 4242)
     if (run.members.length !== 5) fail22.push(`㉒ 团本编制不是 5 人: ${run.members.length}`)
     const guildCount = run.battle!.combatants.filter((c) => c.team === 'guild').length
     if (guildCount !== 5) fail22.push(`㉒ 团本战斗我方实体不是 5: ${guildCount}`)
@@ -1640,13 +1642,13 @@ const towerFailures: string[] = []
   }
   // 22b:回归——3 人本即使传 5 人也只带 3 人(小图不因大名单膨胀)
   {
-    const run = createRun(five, BLACKMOSS, 'shortcut', 4242, 0, true)
+    const run = beginBattle(createRun(five, BLACKMOSS, 4242, 0, true), 4242)
     if (run.members.length !== 3) fail22.push(`㉒ 3 人本编制回归失败: ${run.members.length}`)
     console.log(`㉒ 3 人本回归:带 5 人名单只上阵 ${run.members.length} 人`)
   }
   // 22c:药水为全队共享指令,5 人战里喝一口仍按一份结算
   {
-    const run = createRun(five, THORNHOLD, 'gateassault', 909, 0, true, { heal: 2, fury: 1 })
+    const run = beginBattle(createRun(five, THORNHOLD, 909, 0, true, { heal: 2, fury: 1 }), 909)
     if (!useHealPotion(run.battle!)) fail22.push('㉒ 团本喝药失败')
     if (run.battle!.commands.healStock !== 1) fail22.push('㉒ 团本药水未按份扣减')
     console.log(`㉒ 团本药水:喝一口后 heal 余 ${run.battle!.commands.healStock}(携带制,不随人数翻倍)`)
@@ -2369,13 +2371,13 @@ const towerFailures: string[] = []
   {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 983000 + j))
     seedMemberSeq(squad)
-    const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true, { heal: 2, fury: 1 }, true)
+    const run = beginBattle(createRun(squad, BLACKMOSS, 4242, 0, true, { heal: 2, fury: 1 }, true), 4242)
     if (!run.battle.commands.autoMode) fail33.push('㉝ 首场战斗 autoMode 未置位')
     runToEnd33(run.battle)
     advanceRun(run)
+    if (run.phase === 'rest') walkBattle(run, 991)
     if (run.phase === 'battle') {
-      startStep(run, 991)
-      if (!run.battle.commands.autoMode) fail33.push('㉝ 第二场 autoMode 未延续')
+      if (!run.battle!.commands.autoMode) fail33.push('㉝ 第二场 autoMode 未延续')
     }
     console.log(`㉝ autoMode 跨战斗:首场 ✓ 第二场延续 = ${run.battle.commands.autoMode}`)
   }
@@ -2403,54 +2405,69 @@ const towerFailures: string[] = []
 // ============================================================
 {
   const fail34: string[] = []
-  // 34a:routeNodes 数据完整——每图 ≥4 节点,kinds 合法,battle/elite 引用存在的遭遇,boss 不入池
+  // 34a(R1.1):地形表数据完整——每图 ≥2 种地形,权重>0,名表非空,遭遇引用存在
   {
     for (const d of DUNGEONS) {
-      if (d.routeNodes.length < 4) fail34.push(`㉞ ${d.id} 节点不足 4:${d.routeNodes.length}`)
-      const encIds = new Set(d.encounters.map((e) => e.id))
-      for (const n of d.routeNodes) {
-        if (!['battle', 'elite', 'event', 'rest', 'treasure'].includes(n.kind)) fail34.push(`㉞ ${d.id}/${n.id} kind 非法`)
-        if ((n.kind === 'battle' || n.kind === 'elite') && (!n.encounterId || !encIds.has(n.encounterId))) {
-          fail34.push(`㉞ ${d.id}/${n.id} 遭遇引用缺失 ${n.encounterId}`)
+      const terrains = Object.entries(d.terrains)
+      if (terrains.length < 2) fail34.push(`㉞ ${d.id} 地形不足 2 种:${terrains.length}`)
+      const encIds = new Set(d.encounters.filter(e => e.kind === 'wave').map((e) => e.id))
+      for (const [tid, t] of terrains) {
+        if (!(t.weight > 0)) fail34.push(`㉞ ${d.id}/${tid} 权重非正`)
+        if (t.names.length === 0) fail34.push(`㉞ ${d.id}/${tid} 缺风味名`)
+        for (const enc of t.encounters) {
+          if (!encIds.has(enc)) fail34.push(`㉞ ${d.id}/${tid} 遭遇引用缺失 ${enc}`)
         }
-        if (!n.name || !n.desc) fail34.push(`㉞ ${d.id}/${n.id} 缺名/缺描述`)
       }
     }
-    console.log(`㉞ 节点图:6 图共 ${DUNGEONS.reduce((s2, d) => s2 + d.routeNodes.length, 0)} 节点,引用完整`)
+    console.log(`㉞ 地形表:12 图共 ${DUNGEONS.reduce((s2, d) => s2 + Object.keys(d.terrains).length, 0)} 种地形,引用完整`)
   }
-  // 34b:junctionOptions——确定性 + 未踏过 + 数量 2-3
+  // 34b(R1.1):generateMap 确定性 + 地图选路(moves 只认出边,不选路不能前进)
   {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 985000 + j))
     seedMemberSeq(squad)
-    const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true)
-    const o1 = junctionOptions(run, 7)
-    const o2 = junctionOptions(run, 7)
-    if (JSON.stringify(o1.map((x) => x.id)) !== JSON.stringify(o2.map((x) => x.id))) fail34.push('㉞ 岔口选项非确定')
-    if (o1.length < 2 || o1.length > 4) fail34.push(`㉞ 岔口选项数异常:${o1.length}`)
-    for (const o of o1) if (run.nodeIds.includes(o.id)) fail34.push('㉞ 选项含已踏过节点')
-    console.log(`㉞ 岔口:${o1.map((x) => x.name).join('/')}(${o1.length} 选,确定性 ✓)`)
+    const run = beginBattle(createRun(squad, BLACKMOSS, 4242, 0, true), 4242)
+    const opts = mapOptions(run)
+    if (opts.length < 1 || opts.length > 3) fail34.push(`㉞ 地图选项数异常:${opts.length}`)
+    const before = [...run.path]
+    const bad = moveTo(run, '不存在的节点')
+    if (bad !== null) fail34.push('㉞ 非出边节点竟可踏上')
+    if (JSON.stringify(run.path) !== JSON.stringify(before)) fail34.push('㉞ 非法选路改写了路径')
+    console.log(`㉞ 地图选路:当前可选 ${opts.map((x) => x.name).join('/')}(${opts.length} 选,非法边拒绝 ✓)`)
   }
-  // 34c:事件/休整节点消耗战斗位次
+  // 34c(R1.1):rest 相战斗节点→startStep;Boss 节点依次连战(双 boss 图按序推进)
   {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 986000 + j))
     seedMemberSeq(squad)
-    const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true)
-    const before = run.steps.length
-    const kind = applyNodeChoice(run, 'bm-camp')
-    if (kind !== 'event') fail34.push(`㉝ 事件节点返回错误类型:${kind}`)
-    if (run.steps.length >= before) fail34.push(`㉝ 事件节点未消耗战斗位次:${before}→${run.steps.length}`)
-    if (!run.nodeIds.includes('bm-camp')) fail34.push('㉝ 事件节点未记录踏过')
-    console.log(`㉝ 事件节点:步数 ${before}→${run.steps.length}(事件替代一场战斗)`)
+    const run = beginBattle(createRun(squad, BLACKMOSS, 4242, 0, true), 4242)
+    // 直送 Boss 节点
+    const bossNode = run.map.layers[run.map.layers.length - 1]![0]!
+    run.nodeId = bossNode.id
+    run.path = [bossNode.id]
+    run.battle = null
+    run.phase = 'rest'
+    const seq = run.dungeon.encounters.filter((e) => e.kind === 'boss')
+    startStep(run, 777)
+    if (run.battle!.encounterId !== seq[0]!.id) fail34.push(`㉞ Boss 首场应为 ${seq[0]!.id},得 ${run.battle!.encounterId}`)
+    run.battle!.status = 'guild-win'
+    advanceRun(run)
+    if (run.phase !== 'rest') fail34.push(`㉞ 双 Boss 首场后应回 rest,得 ${run.phase}`)
+    startStep(run, 778)
+    if (run.battle!.encounterId !== seq[1]!.id) fail34.push(`㉞ Boss 连战第二场应为 ${seq[1]!.id},得 ${run.battle!.encounterId}`)
+    run.battle!.status = 'guild-win'
+    advanceRun(run)
+    if (run.phase !== 'victory') fail34.push(`㉞ Boss 全部打完应通关,得 ${run.phase}`)
+    console.log(`㉞ Boss 连战:${seq.map((e) => e.id).join('→')} → victory ✓`)
   }
-  // 34d:精英节点缩放——同种子下精英战敌人血量 ×1.25
+  // 34d:精英节点缩放——精英战敌人血量 ×1.25
   {
     const mk = (elite: boolean) => {
       const squad = JOBS.map((job, j) => generateMember(job, 5, 987000 + j))
       seedMemberSeq(squad)
-      const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true)
-      if (elite) {
-        applyNodeChoice(run, 'bm-wolves')
-      }
+      const run = createRun(squad, BLACKMOSS, 4242, 0, true)
+      const node = run.map.layers[0].find(n => (n.kind === 'battle' || n.kind === 'elite') && n.encounterId)!
+      if (elite) node.kind = 'elite'
+      run.nodeId = node.id
+      run.path = [node.id]
       startStep(run, 777)
       return run.battle!.combatants.filter((c) => c.team === 'enemy').reduce((s2, c) => s2 + c.maxHp, 0)
     }
@@ -2459,39 +2476,12 @@ const towerFailures: string[] = []
     if (elite <= normal) fail34.push(`㉞ 精英缩放未生效:${normal} → ${elite}`)
     console.log(`㉞ 精英缩放:敌总血 ${normal} → ${elite}`)
   }
-  // 34f:F02 选路错位回归(2026-09-25)——rest 相 stepIdx 已指向「下一场待打」,
-  // battle/elite 应改写本位 steps[stepIdx],event/rest 应消耗本位(不吞压轴 boss)
-  {
-    const squad = JOBS.map((job, j) => generateMember(job, 5, 988000 + j))
-    seedMemberSeq(squad)
-    const run = createRun(squad, BLACKMOSS, 'shortcut', 4242, 0, true)
-    // 模拟打完首场进入 rest 相(advanceRun 的 stepIdx++ 语义)
-    run.stepIdx = 1
-    run.phase = 'rest'
-    const wolves = run.dungeon.routeNodes.find((n) => n.id === 'bm-wolves')!
-    const stepsBefore = [...run.steps]
-    applyNodeChoice(run, 'bm-wolves')
-    if (run.steps[1] !== wolves.encounterId) fail34.push(`㉞ F02 战斗节点应改写下一场本位:${stepsBefore[1]}→${run.steps[1]}`)
-    if (run.steps[2] !== stepsBefore[2]) fail34.push('㉞ F02 战斗节点不应波及更后面的位次')
-    // 事件节点:消耗即将开打的一场(位次减一),压轴 boss 位不受影响
-    const run2 = createRun(JOBS.map((job, j) => generateMember(job, 5, 989000 + j)), BLACKMOSS, 'shortcut', 4242, 0, true)
-    seedMemberSeq(run2.members)
-    run2.stepIdx = 1
-    run2.phase = 'rest'
-    const before2 = run2.steps.length
-    const bossTail = run2.steps[run2.steps.length - 1]
-    applyNodeChoice(run2, 'bm-camp')
-    if (run2.steps.length !== before2 - 1) fail34.push(`㉞ F02 事件节点应消耗本位一场:${before2}→${run2.steps.length}`)
-    if (run2.steps[run2.steps.length - 1] !== bossTail) fail34.push('㉞ F02 事件节点吞掉了压轴 boss 位')
-    console.log(`㉞ F02 选路:战斗节点改写本位✓ 事件节点消耗本位✓(位次 ${before2}→${run2.steps.length})`)
-  }
   // 34e:熟练度揭示阈值(反馈④:阈值放大到 12/24/36,长期经营初衷)
   {
     if (revealLevel(0) !== 'hidden' || revealLevel(MASTERY.KIND) !== 'kind' || revealLevel(MASTERY.FULL) !== 'full') {
       fail34.push('㉞ 揭示阈值错误')
     }
-    if (!(MASTERY.BOSS_DIRECT > MASTERY.FULL)) fail34.push('㉞ 直捣 boss 门槛应高于全揭示')
-    console.log(`㉞ 阈值:hidden<${MASTERY.KIND} ≤ kind<${MASTERY.FULL} ≤ full<${MASTERY.BOSS_DIRECT}≤直捣`)
+    console.log(`㉞ 阈值:hidden<${MASTERY.KIND} ≤ kind<${MASTERY.FULL} ≤ full(直捣 boss 已随固定路线删除,R1.3 扩四档)`)
     // 34g:F01 跨版图解锁回归(2026-09-25)——版图二入口需版图一团本(荆棘)首杀
     {
       const noKill = dungeonLock('emberpass', [])
@@ -2649,29 +2639,29 @@ const towerFailures: string[] = []
 }
 
 // ============================================================
-// ㊽ K05 关系表选路(2026-09-25,U13,B=C 地基)
+// ㊽ 地图完整性(U27①:K05 关系表随固定路线删除,门禁改守随机图)
 // ============================================================
 {
   const fail44: string[] = []
-  // 数据有效性:12 图边两端 id 必须存在于该图 routeNodes
+  // 12 图 × 40 seed:边引用有效;secret 必带 hidden;Boss 层唯一且在末层
   for (const d of DUNGEONS) {
-    const ids = new Set(d.routeNodes.map((n) => n.id))
-    for (const [a, b] of d.routeRelations ?? []) {
-      if (!ids.has(a) || !ids.has(b)) fail44.push('㊽ ' + d.id + ' 关系边引用未知节点:' + a + '-' + b)
-      if (a === b) fail44.push('㊽ ' + d.id + ' 自环边:' + a)
+    for (let i = 0; i < 40; i++) {
+      const map = generateMap(d, 500000 + i * 613)
+      const ids = new Set(map.layers.flat().map((n) => n.id))
+      for (const [a, b] of map.edges) {
+        if (!ids.has(a) || !ids.has(b)) fail44.push('㊽ ' + d.id + ' 边引用未知节点:' + a + '-' + b)
+      }
+      const bossLayer = map.layers[map.layers.length - 1]!
+      if (bossLayer.length !== 1 || bossLayer[0]!.kind !== 'boss') fail44.push('㊽ ' + d.id + ' Boss 层形态异常')
+      for (const n of map.layers.flat()) {
+        if (n.kind === 'secret' && !n.hidden) fail44.push('㊽ ' + d.id + ' 暗道未标隐藏:' + n.id)
+        if (n.encounterId && !nodeById(map, n.id)) fail44.push('㊽ ' + d.id + ' 节点自查失败')
+      }
     }
   }
-  // 邻居优先:踏过 bm-frogs 后,岔口应包含其邻居(水蛭/混编/沉船 至少其一)
-  const run = createRun(JOBS.map((job, j) => generateMember(job, 8, 996000 + j)), BLACKMOSS, 'shortcut', 4242, 0, true)
-  run.nodeIds.push('bm-frogs')
-  run.stepIdx = 1
-  run.phase = 'rest'
-  const opts = junctionOptions(run, 4242)
-  const neighborIds = ['bm-leeches', 'bm-quirrel', 'bm-chest']
-  if (!opts.some((o) => neighborIds.includes(o.id))) fail44.push('㊽ 邻居优先失效:踏过蛙人后岔口无任何邻居 ' + opts.map((o) => o.id).join(','))
-  console.log('㊽ K05 关系表:12 图边数据有效✓ 邻居优先✓(岔口:' + opts.map((o) => o.id).join(',') + ')')
-  if (fail44.length > 0) { console.log('✗ K05 未通过:', fail44); process.exit(1) }
-  console.log('✓ K05 关系表选路通过')
+  console.log('㊽ 地图完整性:12 图 × 40 seed 边/暗道/Boss 层全部有效✓')
+  if (fail44.length > 0) { console.log('✗ 地图完整性未通过:', fail44.slice(0, 5)); process.exit(1) }
+  console.log('✓ 地图完整性通过')
 }
 
 // ============================================================

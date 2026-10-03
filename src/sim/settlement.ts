@@ -6,6 +6,7 @@ import { JOBS } from '../data/jobs'
 import { COMMISSIONS } from '../data/kingdom'
 import { baseEffects } from '../data/base'
 import type { DeadHero, ItemInstance, Member } from './types'
+import { nodeById } from './dungeon-map'
 import { advanceRun, markPermadeath, settleGrowth, type DungeonRun, type GrowthResult } from './run'
 import { buildBattleSummary, type BattleSummary } from './battle-summary'
 import { rankPromotion } from './rank'
@@ -115,14 +116,15 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   const moments: string[] = []
   let seq = guild.chronicle.reduce((max, e) => Math.max(max, e.seq), 0)
   let itemSeq = 0
-  const encounterId = input.source === 'dungeon' ? input.run.stepIdx : input.run.floor
-  const itemId = () => `i-${original.id}-${encounterId}-${++itemSeq}`
+  // R1.1:遭遇序列改由地图路径推出;流水号用「第几场战斗」,refs.encounter 记节点层号(R1.6 口径)
+  const encounterSeq = input.source === 'dungeon' ? input.run.battlesFought : input.run.floor
+  const itemId = () => `i-${original.id}-${encounterSeq}-${++itemSeq}`
   const effects = baseEffects(guild.buildings)
   const place = input.source === 'dungeon' ? runDungeon(input.run).name : `黑苔高塔第 ${input.run.floor} 层`
 
   if (outcome.source === 'dungeon') {
     const r = outcome.run
-    const enc = runDungeon(r).encounters.find(e => e.id === r.steps[r.stepIdx])
+    const enc = runDungeon(r).encounters.find(e => e.id === r.battle?.encounterId)
     if (outcome.win && enc?.kind === 'boss' && enc.bossId) {
       const boss = runDungeon(r).bosses[enc.bossId]
       const pity = !guild.manual.includes(enc.bossId)
@@ -134,7 +136,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         c.chronicle.push(chronicleFirstKill(day, boss.name, members.find(m => m.alive) ?? members[0], ++seq))
         moments.push('公会首杀:' + boss.name)
         const killer = members.find(m => m.alive) ?? members[0]
-        appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: encounterId } })
+        appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: nodeById(r.map, r.nodeId)?.layer ?? encounterSeq } })
       }
     } else if (outcome.win) {
       const drop = rollWaveDrop(runDungeon(r).id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
@@ -144,7 +146,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     guild.kingdom = settleKingdomBattle(guild.kingdom, r)
     c.kingdom = guild.kingdom
     outcome.loot.gold = outcome.win
-      ? Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) * (r.rareHunt && r.stepIdx === 0 ? r.rareHunt.rewardMult : 1)) : 0
+      ? Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) * (r.rareHunt && r.battlesFought === 1 ? r.rareHunt.rewardMult : 1)) : 0
     // 必须在推进索引前捕获遭遇奖励/委托；先推进再登记死亡保持副本旧顺序。
     advanceRun(r, guild.members)
     outcome.deaths = markPermadeath({ ...r, members }, place)
@@ -165,7 +167,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
 
   const dead = outcome.deaths
   for (const d of dead) {
-    if (d.death) appendFact(guild.factLedger, day, { kind: 'death', actors: [d.id], names: { [d.id]: d.name }, cause: d.death, refs: { dungeonId: d.death.where.id, floor: d.death.where.floor, encounter: encounterId } })
+    if (d.death) appendFact(guild.factLedger, day, { kind: 'death', actors: [d.id], names: { [d.id]: d.name }, cause: d.death, refs: { dungeonId: d.death.where.id, floor: d.death.where.floor, encounter: encounterSeq } })
   }
   const scars = settleScars({ ...outcome.run, members }, dead.length > 0, input.source === 'tower' ? input.run.floor : 0, rng)
   c.scars = scars.map(({ member, scar }) => ({ memberId: member.id, scar }))
