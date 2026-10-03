@@ -1,5 +1,6 @@
 import type { DungeonRun } from '../../sim/run'
-import { REST_HEAL_PCT, revealLevel, MASTERY, currentNode, mapOptions, bossSequence, nextBossEncounter } from '../../sim/run'
+import { REST_HEAL_PCT, revealTier, MASTERY, currentNode, mapOptions, bossSequence, nextBossEncounter } from '../../sim/run'
+import { revealPenaltyLayers } from '../../sim/conditions'
 import { nodeById, TERRAIN_NAMES, type MapNode } from '../../sim/dungeon-map'
 import { runDungeon } from '../../sim/run-core'
 import { describeItem } from '../../sim/loot'
@@ -14,6 +15,8 @@ import type { ItemInstance } from '../../sim/types'
 interface MapScreenProps {
   run: DungeonRun
   mastery: number
+  /** R4 酒馆情报的临时提档预留(每点 +1 档);R1 只接线不入口 */
+  revealBonus?: number
   drops: ItemInstance[]
   onChoose: (nodeId: string) => void
   onRetreat: () => void
@@ -29,27 +32,33 @@ const KIND_LABEL: Record<MapNode['kind'], string> = {
   boss: '👑 Boss·依次连战',
 }
 
-export function MapScreen({ run, mastery, drops, onChoose, onRetreat }: MapScreenProps) {
+export function MapScreen({ run, mastery, revealBonus = 0, drops, onChoose, onRetreat }: MapScreenProps) {
   const dungeon = runDungeon(run)
-  const lvl = revealLevel(mastery)
   const cur = currentNode(run)
+  // R1.3 四档:0 只知名与地形 / 1 相邻层类型 / 2 前两层类型+内容+路况 / 3 全图类型+暗道
+  const tier = revealTier(mastery, revealBonus, revealPenaltyLayers(run))
+  const lvl = tier === 0 ? 'hidden' : tier === 1 ? 'kind' : 'full'
+  const curLayer = cur?.layer ?? -1
+  const kindVisible = (n: MapNode): boolean =>
+    tier >= 3 || (tier === 2 ? n.layer <= curLayer + 2 : tier === 1 && n.layer === curLayer + 1)
+  const contentVisible = (n: MapNode): boolean => tier >= 2 && (tier >= 3 || n.layer <= curLayer + 2)
   const bossCount = bossSequence(dungeon).length
   const bossLeft = cur?.kind === 'boss' ? nextBossEncounter(run) : null
   const opts = mapOptions(run)
   const totalLayers = run.map.layers.length
   const layerLabel = cur ? `第 ${cur.layer + 1}/${totalLayers} 层` : '入口'
-  // 揭示口径(R1.3 前过渡):hidden 只见风味名;kind 及以上见类型;full 再见遭遇名;熟练度≥80 见暗道
+  // 揭示口径(R1.3):类型按档位范围;内容(遭遇名/事件)60+ 前两层、80+ 全图;暗道 80+ 才可见
   const describe = (n: MapNode): { title: string; sub: string } => {
-    const kindVisible = lvl === 'kind' || lvl === 'full'
-    const secretVisible = mastery >= 80
-    if (n.kind === 'secret' && !secretVisible) return { title: '???', sub: '未曾注意的岔口' }
+    if (n.kind === 'secret' && tier < 3) return { title: '???', sub: '未曾注意的岔口' }
     const encounterName = n.encounterId
       ? dungeon.encounters.find((e) => e.id === n.encounterId)?.name
       : undefined
+    const kv = kindVisible(n)
+    const cv = contentVisible(n)
     return {
       title: n.name,
-      sub: kindVisible
-        ? `${KIND_LABEL[n.kind]}${n.terrain ? ` · ${TERRAIN_NAMES[n.terrain]}` : ''}${lvl === 'full' && encounterName ? ` —— ${encounterName}` : ''}`
+      sub: kv
+        ? `${KIND_LABEL[n.kind]}${n.terrain ? ` · ${TERRAIN_NAMES[n.terrain]}` : ''}${cv && encounterName ? ` —— ${encounterName}` : ''}`
         : `❓ 未知${n.terrain ? ` · ${TERRAIN_NAMES[n.terrain]}` : ''}`,
     }
   }
@@ -110,7 +119,7 @@ export function MapScreen({ run, mastery, drops, onChoose, onRetreat }: MapScree
               {opts.map((n) => {
                 const d = describe(n)
                 // 走这里可能:路况提示(U27②)——熟练度 full(60+)才看得见
-                const risks = lvl === 'full'
+                const risks = tier >= 2
                   ? ROUTE_CONDITIONS.filter((c) => c.trigger === 'terrain' && c.from?.includes(n.terrain) && !activeConditions(run).some((a) => a.id === c.id)).map((c) => c.name)
                   : []
                 return (
@@ -132,6 +141,31 @@ export function MapScreen({ run, mastery, drops, onChoose, onRetreat }: MapScree
           已走:{run.path.map((id) => nodeById(run.map, id)?.name ?? id).join(' → ')}
         </p>
       )}
+      {tier >= 1 && (() => {
+        // 情报区(R1.3):选项之外还能看到的层——1 档看后层地形,2 档看前两层类型,3 档全图类型
+        const lines: string[] = []
+        for (const layer of run.map.layers) {
+          const ahead = layer.filter((n) => n.layer > curLayer && n.id !== run.nodeId)
+          if (ahead.length === 0) continue
+          const maxAhead = Math.max(...ahead.map((n) => n.layer))
+          const showKinds = tier === 1 ? maxAhead <= curLayer + 1 : true
+          if (tier === 1 && maxAhead > curLayer + 1 && maxAhead > curLayer + 2) continue
+          const parts = ahead.map((n) => {
+            const secret = n.kind === 'secret' && tier < 3
+            const t = showKinds ? (secret ? '未知岔口' : KIND_LABEL[n.kind].replace(/^[^ ]+ /, '')) : TERRAIN_NAMES[n.terrain]
+            const name = secret || !showKinds ? t : n.name
+            return showKinds ? `${name}(${t})` : name
+          })
+          lines.push(`第 ${layer[0]!.layer + 1} 层:${parts.join('、')}`)
+        }
+        if (lines.length === 0) return null
+        return (
+          <details className="enc-notices">
+            <summary>情报({tier >= 3 ? '全图' : tier === 2 ? '前两层' : '下一层'})</summary>
+            {lines.map((l, i) => <p key={i} className="hint">{l}</p>)}
+          </details>
+        )
+      })()}
     </>
   )
 }

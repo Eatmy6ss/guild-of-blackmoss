@@ -34,7 +34,7 @@ import { bossIntents, processBossMechanics } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
-import { markPermadeath, settleGrowth, mapOptions, moveTo, nextBossEncounter, revealLevel, MASTERY } from '../src/sim/run'
+import { markPermadeath, settleGrowth, mapOptions, moveTo, nextBossEncounter, revealTier, MASTERY } from '../src/sim/run'
 import { generateMap, nodeById } from '../src/sim/dungeon-map'
 import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE, type JobId } from '../src/data/jobs'
@@ -2478,10 +2478,11 @@ const towerFailures: string[] = []
   }
   // 34e:熟练度揭示阈值(反馈④:阈值放大到 12/24/36,长期经营初衷)
   {
-    if (revealLevel(0) !== 'hidden' || revealLevel(MASTERY.KIND) !== 'kind' || revealLevel(MASTERY.FULL) !== 'full') {
-      fail34.push('㉞ 揭示阈值错误')
+    if (revealTier(0) !== 0 || revealTier(MASTERY.KIND) !== 1 || revealTier(MASTERY.FULL) !== 2 || revealTier(MASTERY.MASTER) !== 3) {
+      fail34.push('㉞ 揭示阈值错误(R1.3 四档)')
     }
-    console.log(`㉞ 阈值:hidden<${MASTERY.KIND} ≤ kind<${MASTERY.FULL} ≤ full(直捣 boss 已随固定路线删除,R1.3 扩四档)`)
+    if (revealTier(MASTERY.KIND, 1) !== 2 || revealTier(MASTERY.MASTER, 1) !== 3) fail34.push('㉞ revealBonus 提档失效')
+    console.log(`㉞ 阈值(R1.3 四档):0-34 档0 / ${MASTERY.KIND}-59 档1 / ${MASTERY.FULL}-79 档2 / ${MASTERY.MASTER}+ 档3;情报提档 +1 ✓`)
     // 34g:F01 跨版图解锁回归(2026-09-25)——版图二入口需版图一团本(荆棘)首杀
     {
       const noKill = dungeonLock('emberpass', [])

@@ -68,7 +68,7 @@ import { initAudio, setMusicMood, toggleMute, isMuted, setVolume, getVolume, sfx
 import { bossIntents } from './sim/mechanics'
 import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, insureNextTowerFloor, towerRest, towerNext, towerFloorIsBoss, type TowerRun } from './sim/tower'
-import { revealLevel, moveTo, mapOptions, currentNode, nextBossEncounter } from './sim/run'
+import { revealTier, moveTo, mapOptions, currentNode, nextBossEncounter } from './sim/run'
 import { autoPickNode } from './sim/dungeon-map'
 import { restHealMult } from './sim/conditions'
 import { CONDITION_BY_ID } from './data/conditions'
@@ -832,7 +832,7 @@ export default function App() {
       const m = dungeonMastery[runDungeon(r).id] ?? 0
       const alive = runMembers(r, membersRef.current).filter((x) => x.alive)
       const avgHp = alive.length ? alive.reduce((sum, x) => sum + x.hp / toCombatant(x).maxHp, 0) / alive.length : 1
-      const picked = autoPickNode(mapOptions(r), { knows: revealLevel(m) !== 'hidden', avgHp, rng: runRng(r) })
+      const picked = autoPickNode(mapOptions(r), { knows: revealTier(m) > 0, avgHp, rng: runRng(r) })
       if (picked) targetId = picked.id
     }
     if (!targetId) return // 不选路不能前进:没有「继续深入」
