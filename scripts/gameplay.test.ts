@@ -831,7 +831,7 @@ test('tower-only timer starts, pauses and restarts without an expedition', () =>
   const effect = (towerRunning:boolean) => callback('const timer = setInterval', {
     running:false,towerRunning,towerRunRef:{current:t},runRef:{current:null},
     rendererRef:{current:{lastTickAt:100}},performance:{now:()=>100},
-    stepBattle,drainAndSync:()=>{},setTowerRunning:()=>{},TICK_MS:100,
+    stepBattle,drainAndSync:()=>{},setTowerRunning:()=>{},TICK_MS:100,speedIntervalMs:(sp:number,ms:number)=>ms/sp,
     setInterval:(fn:()=>void)=>{tick=fn;return 1},
     clearInterval:()=>{tick=undefined},
   })()

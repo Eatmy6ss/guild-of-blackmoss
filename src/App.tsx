@@ -73,6 +73,7 @@ import { autoPickNode } from './sim/dungeon-map'
 import { restHealMult } from './sim/conditions'
 import { CONDITION_BY_ID } from './data/conditions'
 import { MapScreen } from './ui/screens/MapScreen'
+import { nextBattleSpeed, speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
@@ -338,7 +339,7 @@ export default function App() {
   const [screen, setScreen] = useState<'title' | 'game'>('title')
   // F13(2026-09-25):内置确认弹窗——微信等内置浏览器不支持 window.confirm/prompt,破坏性操作改游戏内弹窗
   const [confirmAsk, setConfirmAsk] = useState<{ text: string; okLabel?: string; onOk: () => void } | null>(null)
-  const [battleSpeed, setBattleSpeed] = useState<1 | 2>(() => { try { return localStorage.getItem('gg-speed') === '2' ? 2 : 1 } catch { return 1 } })
+  const [battleSpeed, setBattleSpeed] = useState<1 | 2 | 3>(() => { try { return parseBattleSpeed(localStorage.getItem('gg-speed')) } catch { return 1 } })
   const [volume, setVolumeState] = useState(getVolume())
   const [muted, setMuted] = useState(isMuted())
   const [showCredits, setShowCredits] = useState(false)
@@ -611,7 +612,7 @@ export default function App() {
         return
       }
       drainAndSync(b)
-    }, battleSpeed === 2 ? TICK_MS / 2 : TICK_MS)
+    }, speedIntervalMs(battleSpeed, TICK_MS))
     return () => clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, towerRunning, screen, battleSpeed])
@@ -2539,7 +2540,7 @@ export default function App() {
                   className="speed-btn"
                   disabled={battleOver}
                   title="实时推进速度"
-                  onClick={() => { const next = battleSpeed === 1 ? 2 : 1; setBattleSpeed(next); try { localStorage.setItem('gg-speed', String(next)) } catch { /* 会话级回落 */ } }}
+                  onClick={() => { const next = nextBattleSpeed(battleSpeed); setBattleSpeed(next); try { localStorage.setItem('gg-speed', String(next)) } catch { /* 会话级回落 */ } }}
                 >
                   ⏩ {battleSpeed}×
                 </button>
