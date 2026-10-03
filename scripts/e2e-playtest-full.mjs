@@ -214,11 +214,11 @@ async function phaseFresh() {
   const b = await openBrowser('fresh')
   try {
     await b.send('Page.navigate', { url: pathToFileURL(HTML).href }); await sleep(2500)
-    const volume = await b.evalJs(`document.querySelector('.volume-slider')?.value ?? null`)
+    const volume = await b.evalJs(`document.querySelector('.tb-volume-slider, .mini-volume')?.value ?? null`)
     check('B2', '新玩家默认音量 > 0', volume !== null && Number(volume) > 0 ? 'PASS' : 'FAIL', `滑块值=${volume}`)
     if (!(await clickText(b, '开始新公会'))) throw new Error('标题画面没有「开始新公会」')
     await sleep(1200)
-    const exportBeforeEnding = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&x.textContent.includes('导出试玩记录'))`)
+    const exportBeforeEnding = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&(x.textContent.includes('导出试玩记录')||x.title?.includes('导出试玩记录')))`)
     check('S1', '结束画面之前也能导出试玩记录(流失玩家能回传)', exportBeforeEnding ? 'PASS' : 'FAIL', exportBeforeEnding ? '' : '大厅无导出入口')
 
     let maxHints = 0; let storyReturns = 0; const b3 = []; const b5 = []; const s8 = []

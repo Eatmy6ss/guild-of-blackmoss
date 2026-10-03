@@ -37,6 +37,8 @@ import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE, FIRST_RETURN_TIP 
 import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
 import { SIGNATURE_SKILLS } from './data/signature'
+import { skillLine, SPEC_PASSIVE_DESC } from './data/effect-text'
+import { MemberPanel } from './ui/MemberPanel'
 import { renderWarReportCard, downloadWarReportCard } from './ui/war-report-card'
 import { createRng } from './sim/rng'
 import {
@@ -170,6 +172,7 @@ export default function App() {
   const [hintsSeen, setHintsSeen] = useState<string[]>(saved?.hintsSeen ?? [])
   type PlayMeta = NonNullable<GuildSave['playMeta']>
   const [playtestEnding, setPlaytestEnding] = useState(false)
+  const [trainSelId, setTrainSelId] = useState<string | null>(null)
   const makeWarReportCard = () => {
     const rank = guildRankOf(manual)
     const url = renderWarReportCard({
@@ -337,6 +340,8 @@ export default function App() {
   const [volume, setVolumeState] = useState(getVolume())
   const [muted, setMuted] = useState(isMuted())
   const [showCredits, setShowCredits] = useState(false)
+  const [memberSheetId, setMemberSheetId] = useState<string | null>(null)
+  const memberSheet = members.find((m) => m.id === memberSheetId) ?? null
   const [gold, setGold] = useState(() => saved?.gold ?? 150)
   const [statistics, setStatistics] = useState(() => saved?.statistics ?? newStatistics())
   const noteStatistics = (action: StatisticsAction | null) => {
@@ -1521,6 +1526,7 @@ export default function App() {
                 <span>{m.wish.text}{wishDone(m, m.wish, { dungeonCleared: (id) => manual.includes(DUNGEON_FINAL_BOSS[id] ?? ''), towerBest }) ? '（已达成!）' : ''}</span>
               </div>
             )}
+            <button className="ms-open" onClick={() => setMemberSheetId(m.id)}>📋 人物档案(全部属性与装备明细)</button>
           </div>
         )}
         <div className="row">
@@ -1616,6 +1622,9 @@ export default function App() {
           <div className="title-foot">
             M1 · 内部构建 · 暂定名《黑苔公会》
             <span className="title-saveops">
+              <button className="mini-btn" onClick={() => { initAudio(); setMuted(toggleMute()) }}>{muted ? '🔇' : '🔊'}</button>
+              <input className="mini-volume" type="range" min={0} max={100} value={Math.round(volume * 100)} aria-label="主音量" title="主音量"
+                onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }} />
               <button className="mini-btn" onClick={() => setShowCredits(true)}>素材致谢</button>
               <button className="mini-btn" onClick={() => {
                 const current = loadGuildSave()
@@ -1627,6 +1636,7 @@ export default function App() {
         </div>
       )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
+      {memberSheet && <MemberPanel member={memberSheet} members={members} onClose={() => setMemberSheetId(null)} />}
       {playtestEnding && (
         <div className="screen-overlay" style={{ zIndex: 110 }}>
           <div className="screen-panel" style={{ width: 'min(460px, 92vw)' }}>
@@ -1640,27 +1650,6 @@ export default function App() {
           </div>
         </div>
       )}
-      <div className="volume-wrap">
-        <button
-          className="mute-btn"
-          aria-label={muted ? "开启声音" : "静音"}
-          title={muted ? "开启场景音乐与音效" : "静音"}
-          onClick={() => { initAudio(); setMuted(toggleMute()) }}
-        >
-          {muted ? '🔇' : '🔊'}
-        </button>
-        <input
-          className="volume-slider" type="range" min={0} max={100} value={Math.round(volume * 100)}
-          aria-label="主音量" title="主音量"
-          onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }}
-        />
-        {__PLAYTEST__ && (
-          <>
-            <button className="mini-btn" title="导出试玩记录 JSON" onClick={() => { initAudio(); exportPlaytestReport() }}>📤 导出试玩记录</button>
-            <button className="mini-btn" title="生成战报卡 PNG" onClick={() => { initAudio(); makeWarReportCard() }}>📷 战报卡</button>
-          </>
-        )}
-      </div>
       <div className="app-header">
         <button className="credits-link" onClick={() => setShowCredits(true)}>素材图鉴 / 致谢</button>
         <h1>黑 苔 公 会</h1>
@@ -1685,6 +1674,13 @@ export default function App() {
             <span>👥 {members.filter((m) => m.alive).length}/{ROSTER_CAP}</span>
             <span>🧪 {potions.heal}</span>
             <span>⚡ {potions.fury}</span>
+            <span className="tb-volume">
+              <button className="tb-mute" aria-label={muted ? "开启声音" : "静音"} title={muted ? "开启声音" : "静音"} onClick={() => { initAudio(); setMuted(toggleMute()) }}>{muted ? '🔇' : '🔊'}</button>
+              <input className="tb-volume-slider" type="range" min={0} max={100} value={Math.round(volume * 100)} aria-label="主音量" title="主音量"
+                onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }} />
+              {__PLAYTEST__ && <button className="tb-mini" title="导出试玩记录 JSON" onClick={() => { initAudio(); exportPlaytestReport() }}>📤</button>}
+              {__PLAYTEST__ && <button className="tb-mini" title="生成战报卡 PNG" onClick={() => { initAudio(); makeWarReportCard() }}>📷</button>}
+            </span>
           </div>
           <h2>公会大厅</h2>
           <div className="hub-dock">
@@ -2056,12 +2052,20 @@ export default function App() {
             </div>
             <div className="voc-panel">
               <h2>⚔ 训练场 —— 行当更换</h2>
+              <div className="voc-tabs">
+                {members.filter((m) => m.alive).map((m) => (
+                  <button key={m.id} className={`voc-tab${trainSelId === m.id ? ' sel' : ''}`}
+                    onClick={() => setTrainSelId(m.id)}>
+                    {m.name}<span className="hint"> {isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}</span>
+                  </button>
+                ))}
+              </div>
               <p className="hint">
                 换行当:{ECONOMY.vocation.switchGold} 金 + {ECONOMY.vocation.switchBlessing} 祝福。
                 混合职阶首次解锁 {ECONOMY.vocation.hybridUnlockGold} 金 + {ECONOMY.vocation.hybridUnlockBlessing} 祝福,
                 且要求本人默契 ≥ {ECONOMY.hybridBondRequirement} 星(共同远征积累)。🔒 = 公会尚未解锁该混合行当。
               </p>
-              {members.filter((m) => m.alive).map((m) => {
+              {members.filter((m) => m.alive && m.id === trainSelId).map((m) => {
                 const cur = isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name
                 const sameLine = Object.values(JOBS[m.job].specs).filter((sp) => sp.id !== m.spec)
                 const bond = bondTotalOf(m)
@@ -2074,9 +2078,24 @@ export default function App() {
                     </div>
                     <div className="voc-btns">
                       {sameLine.map((sp) => (
-                        <button key={sp.id} disabled={!canSwitch} title={sp.identity} onClick={() => changeVocation(m.id, sp.id)}>
-                          {sp.name}
-                        </button>
+                        <details key={sp.id} className="voc-card">
+                          <summary className={canSwitch ? '' : 'locked'} title={sp.identity}>
+                            {sp.name}{m.spec === sp.id ? '(当前)' : ''}
+                          </summary>
+                          <div className="voc-card-body">
+                            <p className="hint">{sp.identity}</p>
+                            <p className="hint">{SPEC_PASSIVE_DESC[sp.passive ?? ''] ?? ''}{sp.statMods?.critChance ? ` 暴击 +${Math.round(sp.statMods.critChance * 100)}%。` : ''}</p>
+                            <ul className="ms-list">
+                              {sp.skills.map((sk) => <li key={sk.id}>{skillLine(sk)}</li>)}
+                            </ul>
+                            {SIGNATURE_SKILLS[sp.id] && (
+                              <p className="hint">【招牌技】{SIGNATURE_SKILLS[sp.id].name}:{SIGNATURE_SKILLS[sp.id].desc}(冷却 {SIGNATURE_SKILLS[sp.id].cdTicks / 10} 秒)</p>
+                            )}
+                            {!canSwitch ? <p className="hint">⚠ 等级或资源不足,暂不能转职。</p> : (
+                              <button disabled={!canSwitch} onClick={() => changeVocation(m.id, sp.id)}>转职为{sp.name}</button>
+                            )}
+                          </div>
+                        </details>
                       ))}
                       {Object.values(HYBRIDS).map((hy) => {
                         const unlocked = unlockedHybrids.includes(hy.id)
@@ -2086,14 +2105,23 @@ export default function App() {
                         const raceAllows = HYBRIDS[hy.id].lines.every((l) => RACES[m.race ?? 'human'].allowedLines.includes(l))
                         if (!raceAllows) return null
                         return (
-                          <button
-                            key={hy.id}
-                            disabled={!canSwitch || m.spec === hy.id || !canBond || (!unlocked && !canPay)}
-                            title={hy.identity + (unlocked ? '' : '(首次解锁需额外花费)')}
-                            onClick={() => changeVocation(m.id, hy.id)}
-                          >
-                            {hy.name}{unlocked ? '' : ' 🔒'}
-                          </button>
+                          <details key={hy.id} className="voc-card">
+                            <summary className={canSwitch && canBond && (unlocked || canPay) ? '' : 'locked'}
+                              title={hy.identity + (unlocked ? '' : '(首次解锁需额外花费)')}>
+                              {hy.name}{unlocked ? '' : ' 🔒'}
+                            </summary>
+                            <div className="voc-card-body">
+                              <p className="hint">{hy.identity}</p>
+                              <ul className="ms-list">
+                                {hy.skills.map((sk) => <li key={sk.id}>{skillLine(sk)}</li>)}
+                              </ul>
+                              {!canSwitch || m.spec === hy.id || !canBond || (!unlocked && !canPay) ? (
+                                <p className="hint">{!canBond ? `需默契 ≥ ${ECONOMY.hybridBondRequirement} 星` : !unlocked && !canPay ? `首次解锁 ${ECONOMY.vocation.hybridUnlockGold} 金 + ${ECONOMY.vocation.hybridUnlockBlessing} 祝福` : ''}</p>
+                              ) : (
+                                <button disabled={!canSwitch} onClick={() => changeVocation(m.id, hy.id)}>转职为{hy.name}</button>
+                              )}
+                            </div>
+                          </details>
                         )
                       })}
                     </div>
