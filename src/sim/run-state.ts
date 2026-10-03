@@ -110,6 +110,7 @@ export function validateRunState(value: unknown, roster: { id: string; hp: numbe
         !Array.isArray(r.map.edges) || r.map.edges.some((e: unknown) => !Array.isArray(e) || e.length !== 2 ||
           typeof (e as string[])[0] !== 'string' || typeof (e as string[])[1] !== 'string') ||
         !nullableString(r.nodeId) || !strings(r.path) || !count(r.battlesFought) ||
+        (r.conditions !== undefined && !strings(r.conditions)) ||
         r.path.length > 0 && r.nodeId !== r.path[r.path.length - 1] ||
         (r.nodeId === '' ) !== (r.path.length === 0) ||
         !Array.isArray(r.buffs) ||

@@ -46,6 +46,7 @@ import {
   startStep,
   retreatRun,
   resetAfterRun,
+  REST_HEAL_PCT,
   type DungeonRun,
 } from './sim/run'
 import { powerScore } from './sim/combat'
@@ -69,6 +70,8 @@ import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, insureNextTowerFloor, towerRest, towerNext, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { revealLevel, moveTo, mapOptions, currentNode, nextBossEncounter } from './sim/run'
 import { autoPickNode } from './sim/dungeon-map'
+import { restHealMult } from './sim/conditions'
+import { CONDITION_BY_ID } from './data/conditions'
 import { MapScreen } from './ui/screens/MapScreen'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
@@ -833,8 +836,13 @@ export default function App() {
       if (picked) targetId = picked.id
     }
     if (!targetId) return // 不选路不能前进:没有「继续深入」
-    const node = moveTo(r, targetId)
+    const condsBefore = [...(r.conditions ?? [])]
+    const node = moveTo(r, targetId, dungeonMastery[runDungeon(r).id] ?? 0)
     if (!node) return
+    // 结算可见性(红线):新挂的路况当场提示一条,状态条在地图常驻
+    for (const id of (r.conditions ?? []).filter((c) => !condsBefore.includes(c))) {
+      logChronicle(chronicleRaw(day, '路况:' + (CONDITION_BY_ID[id]?.name ?? id) + '——' + (CONDITION_BY_ID[id]?.desc ?? '')))
+    }
     if (node.kind === 'battle' || node.kind === 'elite' || node.kind === 'boss') {
       applyRestMorale(runMembers(r, membersRef.current).filter((x) => x.alive))
       const encId = node.kind === 'boss' ? nextBossEncounter(r) : node.encounterId
@@ -865,10 +873,11 @@ export default function App() {
       return
     }
     if (node.kind === 'rest') {
+      const healMult = restHealMult(r) // 疲惫:休整回复减半(U27②)
       for (const mem of runMembers(r, membersRef.current)) {
         if (!mem.alive) continue
         const max = maxHpOf(mem)
-        mem.hp = Math.min(max, mem.hp + Math.round(max * 0.3))
+        mem.hp = Math.min(max, mem.hp + Math.round(max * REST_HEAL_PCT * healMult))
       }
       setRun({ ...r })
       if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)

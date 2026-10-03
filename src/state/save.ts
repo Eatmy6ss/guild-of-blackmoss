@@ -18,7 +18,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 23
+export const SAVE_VERSION = 24
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -108,6 +108,14 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
         activeRun: null,
         notices: [...(runState.notices ?? []), '旧路线已失效,队伍已撤回'],
       }
+    }
+    return d
+  },
+  // R1.2(U27②):路况状态入档——v23 的进行中远征补空状态
+  23: (d) => {
+    const runState = d.runState as { activeRun?: { kind?: string; conditions?: string[] } | null } | undefined
+    if (runState?.activeRun?.kind === 'dungeon' && !Array.isArray(runState.activeRun.conditions)) {
+      runState.activeRun.conditions = []
     }
     return d
   },

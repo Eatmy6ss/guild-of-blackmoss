@@ -3,6 +3,8 @@ import { REST_HEAL_PCT, revealLevel, MASTERY, currentNode, mapOptions, bossSeque
 import { nodeById, TERRAIN_NAMES, type MapNode } from '../../sim/dungeon-map'
 import { runDungeon } from '../../sim/run-core'
 import { describeItem } from '../../sim/loot'
+import { activeConditions, restHealMult } from '../../sim/conditions'
+import { ROUTE_CONDITIONS } from '../../data/conditions'
 import type { ItemInstance } from '../../sim/types'
 
 // 副本地图界面(U27①/R1.1):每战之后在地图上选一条出边,不选路不能前进。
@@ -75,6 +77,21 @@ export function MapScreen({ run, mastery, drops, onChoose, onRetreat }: MapScree
           队伍已进入{dungeon.name}。第一层有 {opts.length} 条路——选一条,不选路不能前进。
         </div>
       )}
+      {(() => {
+        const conds = activeConditions(run)
+        if (conds.length === 0) return null
+        return (
+          <div className="inv-panel" role="status">
+            <h2>🌫 路况状态(持续到本趟结束)</h2>
+            {conds.map((c) => (
+              <div key={c.id} className="inv-item">
+                <b>{c.name}</b> —— {c.desc}
+              </div>
+            ))}
+            {restHealMult(run) < 1 && <p className="hint" style={{ opacity: 0.7 }}>当前休整回复:{Math.round(REST_HEAL_PCT * restHealMult(run) * 100)}%</p>}
+          </div>
+        )
+      })()}
       <div className="route-choice">
         <p className="hint">
           熟练度 {mastery} —— {lvl === 'hidden' ? `前路未知,只闻其名(相邻层的类型需熟练度 ${MASTERY.KIND})。` : lvl === 'kind' ? '你已记得这些路的类别。' : '这张图你闭着眼都能走。'}
@@ -92,10 +109,14 @@ export function MapScreen({ run, mastery, drops, onChoose, onRetreat }: MapScree
             <div className="route-choices">
               {opts.map((n) => {
                 const d = describe(n)
+                // 走这里可能:路况提示(U27②)——熟练度 full(60+)才看得见
+                const risks = lvl === 'full'
+                  ? ROUTE_CONDITIONS.filter((c) => c.trigger === 'terrain' && c.from?.includes(n.terrain) && !activeConditions(run).some((a) => a.id === c.id)).map((c) => c.name)
+                  : []
                 return (
-                  <button key={n.id} onClick={() => onChoose(n.id)}>
+                  <button key={n.id} title={risks.length ? `走这里可能:${risks.join('、')}` : undefined} onClick={() => onChoose(n.id)}>
                     {d.title}
-                    <small>{d.sub}</small>
+                    <small>{d.sub}{risks.length ? ` · 走这里可能:${risks.join('、')}` : ''}</small>
                   </button>
                 )
               })}

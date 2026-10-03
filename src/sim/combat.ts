@@ -253,6 +253,8 @@ export function createBattle(
   modifiers: DifficultyModifiers = {},
   /** 远征内事件状态(反馈④事件大项):乘数,只作用于我方 */
   mods?: { atk?: number; def?: number; hp?: number; heal?: number },
+  /** 路况敌方修正(U27② 暴露):走 difficultyAttack 通道,召唤增援经 scaleFactors 继承 */
+  enemyMods?: { atk?: number },
 ): BattleState {
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
@@ -270,6 +272,7 @@ export function createBattle(
     difficultyHp: 1,
     elite: !!modifiers.elite,
   }
+  if (enemyMods?.atk !== undefined) factors.difficultyAttack *= enemyMods.atk
   const combatants: Combatant[] = members.map(toCombatant)
   if (mods) {
     for (const c of combatants) {

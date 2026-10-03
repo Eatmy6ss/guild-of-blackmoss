@@ -5,6 +5,7 @@ import { createBattle, POTION_STOCK, toCombatant } from './combat'
 import { grantExp, xpNeeded } from './gen'
 import { createRunCore, runDungeon, runMembers, syncRunParty, type RunCore } from './run-core'
 import { generateMap, nodeById, nextOptions, type DungeonMap, type MapNode } from './dungeon-map'
+import { enterNodeConditions, triggerAfterElite, conditionBattleMods } from './conditions'
 
 // 远征状态机(U27① 改版):分层地图 → 逐节点选择 → 血量延续 → 战间歇整 → 通关/团灭/撤退。
 // 每战之后在地图上选一条出边才能前进;没有「继续深入」。D11:战斗死亡 = 永久死亡。
@@ -29,6 +30,8 @@ export interface DungeonRun extends RunCore {
   path: string[]
   /** 已开始的战斗场数(稀有猎杀「首场」判定用) */
   battlesFought: number
+  /** 路况状态 id 集(U27②:不叠层,持续到本趟结束;R1.2) */
+  conditions: string[]
   /** 纪念堂光环加成（创建远征时由公会状态带入） */
   auraBonus: number
   /** 公会层面的撤退保护开关（D13 修复接线：每场战斗以此初始化） */
@@ -89,6 +92,7 @@ export function createRun(
     nodeId: '',
     path: [],
     battlesFought: 0,
+    conditions: [],
     auraBonus,
     protectOn,
     potions,
@@ -99,13 +103,15 @@ export function createRun(
   return run
 }
 
-/** 踏上一个节点(必须是与当前节点的出边,或空路径时的第 0 层)。只记录移动,开战/事件由调用方接。 */
-export function moveTo(run: DungeonRun, nodeId: string): MapNode | null {
+/** 踏上一个节点(必须是与当前节点的出边,或空路径时的第 0 层)。
+ *  落地即掷路况(U27②):按地形解除/触发,连战计数;开战/事件由调用方接。 */
+export function moveTo(run: DungeonRun, nodeId: string, mastery = 0): MapNode | null {
   const opts = mapOptions(run)
   const node = opts.find((n) => n.id === nodeId)
   if (!node) return null
   run.nodeId = node.id
   run.path.push(node.id)
+  enterNodeConditions(run, node, mastery)
   return node
 }
 
@@ -128,6 +134,12 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0, roster
       mods[key] = (mods[key] ?? 1) * (v as number)
     }
   }
+  // 路况状态战斗乘区(U27②):我方走同一乘区,敌方走 difficultyAttack 通道
+  const cond = conditionBattleMods(run)
+  for (const [k, v] of Object.entries(cond.mods)) {
+    const key = k as 'atk' | 'def' | 'hp' | 'heal'
+    mods[key] = (mods[key] ?? 1) * (v as number)
+  }
   run.battlesFought++
   run.battle = createBattle(
     runMembers(run, roster).filter((m) => m.alive),
@@ -140,6 +152,7 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0, roster
     run.potions,
     { elite: isElite, rareHunt: rareMult },
     Object.keys(mods).length > 0 ? mods : undefined,
+    Object.keys(cond.enemyMods).length > 0 ? cond.enemyMods : undefined,
   )
   run.battle.commands.autoMode = !!run.autoMode
   run.battle.encounterId = encounterId
@@ -166,6 +179,8 @@ export function advanceRun(run: DungeonRun, roster: Member[] = []): void {
     return
   }
   const node = currentNode(run)
+  // 惊动(U27②):任何精英节点打完触发,后续层精英权重 ×2
+  if (b.status === 'guild-win' && node?.kind === 'elite') triggerAfterElite(run)
   // 通关判定:Boss 节点且 boss 序列已打完(U27①:全部 boss 在同一节点依次连战)
   if (node?.kind === 'boss' && nextBossEncounter(run) === null) {
     run.phase = 'victory'
