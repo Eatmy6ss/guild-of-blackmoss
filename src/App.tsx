@@ -464,10 +464,10 @@ export default function App() {
       rendererRef.current?.setBattle(active.battle, [])
     }
     if (active.autoMode && !pendingEvent) {
-      if (active.phase === 'rest') window.setTimeout(() => active.kind === 'dungeon' ? continueDeepRef.current?.() : towerNextFloor(), 500)
+      if (active.phase === 'rest') window.setTimeout(() => active.kind === 'dungeon' ? continueDeepRef.current?.() : towerNextFloor(), 150)
       else if (active.kind === 'dungeon' && active.phase === 'victory') {
         backToGuild()
-        window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.(lastBranchRef.current) }, 600)
+        window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.(lastBranchRef.current) }, 150)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -666,10 +666,10 @@ export default function App() {
     // 自动循环的按钮/状态机留给 #0.6，沿用原来的回城和推进边界。
     if (r.autoMode) {
       if (endPhase === 'rest') {
-        window.setTimeout(() => continueDeepRef.current?.(), 500)
+        window.setTimeout(() => continueDeepRef.current?.(), 150)
       } else if (endPhase === 'victory') {
         backToGuild()
-        window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.(lastBranchRef.current) }, 600)
+        window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.(lastBranchRef.current) }, 150)
       } else if (endPhase === 'defeat') {
         autoLoopRef.current = false
         r.autoMode = false
