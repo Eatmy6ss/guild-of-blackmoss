@@ -518,6 +518,8 @@ export interface BattleState {
   unitSeq?: number
   /** A3 招牌技冷却:memberId → 就绪 tick */
   signatureCd?: Record<string, number>
+  /** A13 后续:敌方对我方累计伤害台账(败因统计用;事件裁剪后 summary 仍准确) */
+  guildDmgTaken?: Record<string, number>
   /** 战斗创建时固定，结算不使用已经推进的路线索引。 */
   encounterId?: string
   /** 创伤结算幂等标记；新战斗重新初始化 */

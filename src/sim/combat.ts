@@ -523,6 +523,10 @@ export function applyHit(
     crit: opts?.crit,
     ranged: opts?.ranged,
   })
+  // A13 后续:败因台账——敌方对己方伤害累计(事件会被 checkpoint 裁剪,台账不受影响)
+  if (attacker.team === 'enemy' && target.team === 'guild' && target.memberId) {
+    state.guildDmgTaken = { ...state.guildDmgTaken, [attacker.id]: (state.guildDmgTaken?.[attacker.id] ?? 0) + amount }
+  }
   // A3 荆棘咆哮:反甲——击中带荆棘的守卫,部分伤害当场奉还
   if (
     target.thornsUntilTick && state.tick < target.thornsUntilTick &&

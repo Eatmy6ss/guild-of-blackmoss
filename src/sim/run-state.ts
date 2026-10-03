@@ -46,7 +46,14 @@ export function runReducer(state: RunUIState, action: RunAction): RunUIState {
 export function checkpointRunState(state: RunUIState, roster: Member[]): RunUIState {
   // 引擎的可选字段可被清为 undefined；在持久边界统一为 JSON 的缺省形态。
   const next = JSON.parse(JSON.stringify(state)) as RunUIState
-  if (next.activeRun) syncRunParty(next.activeRun, roster)
+  if (next.activeRun) {
+    // A13 后续:战斗事件只保留最近 120 条入档(渲染走游标增量,恢复时光标从末尾续;
+    // 败因统计走 guildDmgTaken 增量台账,不依赖事件历史)
+    if (next.activeRun.battle && Array.isArray(next.activeRun.battle.events) && next.activeRun.battle.events.length > 120) {
+      next.activeRun.battle.events = next.activeRun.battle.events.slice(-120)
+    }
+    syncRunParty(next.activeRun, roster)
+  }
   return next
 }
 

@@ -302,6 +302,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     status: common.battle.status,
     combatants: common.battle.combatants,
     events: common.battle.events ?? [],
+    dmgTaken: common.battle.guildDmgTaken,
     deaths: outcome.deaths,
     moments,
   })

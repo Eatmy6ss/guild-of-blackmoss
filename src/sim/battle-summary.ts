@@ -29,15 +29,21 @@ export function buildBattleSummary(input: {
   events: BattleEvent[]
   deaths: DeadHero[]
   moments?: string[]
+  /** A13 后续:增量伤害台账(优先于事件扫描——事件会被 checkpoint 裁剪) */
+  dmgTaken?: Record<string, number>
 }): BattleSummary {
   const byId = new Map(input.combatants.map((c) => [c.id, c]))
-  const guildIds = new Set(input.combatants.filter((c) => c.team === 'guild').map((c) => c.id))
-  const damage = new Map<string, number>()
-  for (const e of input.events) {
-    if (e.type !== 'damage' || e.attackerId === undefined || !guildIds.has(e.targetId)) continue
-    const atk = byId.get(e.attackerId)
-    if (!atk || atk.team !== 'enemy') continue
-    damage.set(e.attackerId, (damage.get(e.attackerId) ?? 0) + (e.amount ?? 0))
+  let damage = new Map<string, number>()
+  if (input.dmgTaken) {
+    damage = new Map(Object.entries(input.dmgTaken))
+  } else {
+    const guildIds = new Set(input.combatants.filter((c) => c.team === 'guild').map((c) => c.id))
+    for (const e of input.events) {
+      if (e.type !== 'damage' || e.attackerId === undefined || !guildIds.has(e.targetId)) continue
+      const atk = byId.get(e.attackerId)
+      if (!atk || atk.team !== 'enemy') continue
+      damage.set(e.attackerId, (damage.get(e.attackerId) ?? 0) + (e.amount ?? 0))
+    }
   }
   const topDamage = [...damage.entries()]
     .map(([id, amount]) => ({ name: byId.get(id)?.name ?? id, amount }))
