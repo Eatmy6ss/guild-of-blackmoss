@@ -1,3 +1,4 @@
+import { SIGNATURE_SKILLS } from '../../data/signature'
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import { pixelTexture, spriteKeyFor, tryGetTex, cache_get, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
@@ -69,6 +70,8 @@ class UnitView {
   /** 单位被点击（指挥台：点击敌人 = 集火） */
   onClick?: (c: Combatant) => void
   private hpFill: Graphics
+  sigTrack: Container | null = null
+  private sigFill: Graphics | null = null
   private hpColor: number
 
   private appearanceKey = ''
@@ -121,6 +124,18 @@ class UnitView {
     this.hpTrack.addChild(hpBg, this.hpFill)
     this.hpTrack.y = -32 * bodyScale - 9
     this.container.addChild(bodyGroup, this.hpTrack, nameText)
+    // 蓝条(方案 C):有招牌技的 guild 单位,血条下方一根技能就绪进度条
+    if (combatant.team === 'guild' && combatant.specId && SIGNATURE_SKILLS[combatant.specId]) {
+      const sigBg = new Graphics()
+      sigBg.rect(-20, 6, 40, 2).fill(0x10141c)
+      this.sigFill = new Graphics()
+      this.sigFill.rect(-20, 6, 1, 2).fill(0x4a90d9)
+      const sigTrack = new Container()
+      sigTrack.addChild(sigBg, this.sigFill)
+      sigTrack.y = this.hpTrack.y + 7
+      this.sigTrack = sigTrack
+      this.container.addChild(sigTrack)
+    }
     this.container.position.set(x, y)
     this.container.scale.set(this.baseScale)
     this.updateHp(1)
@@ -182,6 +197,17 @@ class UnitView {
     this.hpFill.clear()
     if (pct > 0) {
       this.hpFill.rect(-20, 1, Math.max(1, 40 * pct), 3).fill(this.hpColor)
+    }
+  }
+
+  /** 蓝条方案 C:招牌技就绪进度 0-1 */
+  updateSig(progress: number): void {
+    if (!this.sigFill) return
+    this.sigFill.clear()
+    if (progress >= 1) {
+      this.sigFill.rect(-20, 6, 40, 2).fill(0x4a90d9)
+    } else if (progress > 0) {
+      this.sigFill.rect(-20, 6, Math.max(1, 40 * progress), 2).fill(0x2f6cb4)
     }
   }
 }
@@ -450,6 +476,14 @@ export class BattleRenderer {
       if (layers) u.updateAppearance(layers)
       u.resize(layout.bodyScale, layout.labelChars)
       u.updateHp(c.hp / c.maxHp)
+      // 蓝条(方案 C):招牌技就绪进度
+      if (u.sigTrack) {
+        const sk = c.specId ? SIGNATURE_SKILLS[c.specId] : undefined
+        const readyAt = c.memberId ? (b.signatureCd?.[c.memberId] ?? 0) : 0
+        const total = (sk?.cdTicks || 1)
+        const remain = Math.max(0, readyAt - b.tick)
+        u.updateSig(remain <= 0 ? 1 : 1 - remain / total)
+      }
     }
     const focusUnit = b.commands?.focusId ? this.units.get(b.commands.focusId) : undefined
     if (this.focusMarker?.destroyed) this.focusMarker = null
