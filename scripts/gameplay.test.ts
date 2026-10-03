@@ -37,7 +37,7 @@ import { createGuildItems, itemStateFromSave, resolveMembers, serializeGuildItem
   assertItemOwnership } from '../src/state/item-registry'
 import { newStatistics, recordStatistics, expeditionStatistics, normalizeStatistics, exportStatistics, totalGoldEarned, winRate } from '../src/sim/statistics'
 import { GUILD_EVENTS, EVENT_CHANCE } from '../src/data/guild-events'
-import { rollGuildEvent, SECOND_ACT_IDS, eventCount, pickOutcome } from '../src/sim/guild-events'
+import { rollGuildEvent, eventPool, consequenceFiresIn, consequenceOf, SECOND_ACT_IDS, eventCount, pickOutcome } from '../src/sim/guild-events'
 import type { Member, Slot } from '../src/sim/types'
 
 const squad = () => ['guard', 'priest', 'ranger'].map((j, i) => generateMember(j as Member['job'], 5, 901 + i))
@@ -849,7 +849,7 @@ test('due consequences defer departure without consuming a day or creating a bat
   handler('startExpedition',{
     runRef:{current:null},towerRunRef:{current:null},pendingEvent:null,
     expedition:squad(),activeDungeon:BLACKMOSS,lastBranchRef:{current:''},
-    refusesToMarch:()=>false,pendingConsequences:queue,day:1,GUILD_EVENTS:[def],
+    refusesToMarch:()=>false,pendingConsequences:queue,day:1,GUILD_EVENTS:[def],consequenceOf,
     setPendingConsequences:(f:any)=>{queue=f(queue)},pendingDepartureRef,pendingConsequenceRef,
     setPendingEvent:(v:unknown)=>{event=v},setEventResult:()=>{},
     setDay:()=>{days++},createRun:()=>{created++},
@@ -860,50 +860,52 @@ test('due consequences defer departure without consuming a day or creating a bat
   assert.equal(days,0); assert.equal(created,0)
 })
 
-test('event pools exhaustively cover local and common first acts without cross-region leakage', () => {
-  const common = GUILD_EVENTS.filter(e => !e.region && !SECOND_ACT_IDS.has(e.id))
-  assert(common.length > 0)
-  assert(GUILD_EVENTS.filter(e => e.region?.includes('blackmoss-wild') && !SECOND_ACT_IDS.has(e.id)).length >= 30)
-  for (const region of ['blackmoss-wild', 'dragonridge', undefined] as const) {
-    const expected = GUILD_EVENTS.filter(e => !SECOND_ACT_IDS.has(e.id) && (!e.region || (region && e.region.includes(region))))
-    const actual = expected.map((_, i) => rollGuildEvent(() => (i + 0.5) / expected.length, { force: true, context: { region } })!.id)
-    assert.deepEqual(actual, expected.map(e => e.id))
-    for (const e of common) assert(actual.includes(e.id))
-    assert.equal(rollGuildEvent(() => EVENT_CHANCE, { context: { region } }), null)
-    assert.equal(eventCount(), GUILD_EVENTS.length, 'regional draws must not truncate the encyclopedia')
+test('event pools split town/dungeon/terrain without leakage (U27④)', () => {
+  const townPool = GUILD_EVENTS.filter(e => e.scope.kind === 'town' && !SECOND_ACT_IDS.has(e.id))
+  assert(townPool.length >= 45, 'town first-encounter pool = 52 town − 7 chain targets')
+  const drawn = new Set<string>()
+  const seqRng = createStatefulRng(424242)
+  for (let i = 0; i < 2000; i++) {
+    const ev = rollGuildEvent(seqRng, { where: 'town' })
+    if (ev) drawn.add(ev.id)
   }
-  for (const id of ['swamp-scent', 'frost-envoy', 'mining-strike', 'abyss-preacher', 'rare-hunt']) {
-    assert.deepEqual(GUILD_EVENTS.find(e => e.id === id)!.region, ['blackmoss-wild'])
+  for (const e of townPool) assert(drawn.has(e.id), 'town roll missed ' + e.id)
+  assert.equal(rollGuildEvent(() => EVENT_CHANCE, { where: 'town' }), null)
+  assert.equal(eventCount(), GUILD_EVENTS.length, 'scoped draws must not truncate the encyclopedia')
+  for (const d of [BLACKMOSS, EMBERPASS, DRAGONMAW]) {
+    const pool = eventPool({ where: 'node', dungeonId: d.id })
+    assert(pool.every(e => e.scope.kind !== 'town'), d.id + ' node pool must exclude town events')
+    const drawn = rollGuildEvent(() => 0, { where: 'node', dungeonId: d.id })
+    assert(drawn === null || drawn.scope.kind !== 'town')
   }
-  for (const id of ['dragon-cult', 'cult-purge', 'cult-recruiter', 'forge-sluice', 'ash-waymarkers']) {
-    assert.deepEqual(GUILD_EVENTS.find(e => e.id === id)!.region, ['dragonridge'])
-  }
-  for (const id of ['deserter', 'night-knock', 'old-debt', 'bard-chronicle', 'orphan-apprentice']) {
-    assert(common.some(e => e.id === id), id)
-  }
+  // 地形池:regions 二层过滤 + 7 条通用地形事件两版图共用(草案 §5,events-draft 定稿)
+  assert(eventPool({ where: 'node', dungeonId: 'emberpass', terrain: 'lava' }).some(e => e.id === 'fire-rain'))
+  assert(!eventPool({ where: 'node', dungeonId: 'emberpass', terrain: 'wild' }).some(e => e.id === 'wolf-cub'), 'wolf-cub is R1 terrain')
+  assert(eventPool({ where: 'node', dungeonId: 'blackmoss', terrain: 'wild' }).some(e => e.id === 'wolf-cub'))
+  assert(eventPool({ where: 'node', dungeonId: 'emberpass', terrain: 'camp' }).some(e => e.id === 'ghost-banquet'))
+  assert(eventPool({ where: 'node', dungeonId: 'blackmoss', terrain: 'camp' }).some(e => e.id === 'ghost-banquet'))
+  assert(!eventPool({ where: 'node', dungeonId: 'emberpass' }).some(e => e.id === 'cursed-coffin'), 'no terrain → no terrain pool')
 })
 
-test('regional delayed chains stay resolvable after travelling to the other region', () => {
+test('delayed chains: targets exist, never self, second acts isolated, at semantics honored (events-draft §2.2)', () => {
   for (const source of GUILD_EVENTS) {
     for (const choice of source.choices) for (const outcome of choice.outcomes) {
       const delayed = outcome.effects?.delayed
       if (!delayed) continue
       const target = GUILD_EVENTS.find(e => e.id === delayed.eventId)!
       assert(target, delayed.eventId)
-      assert.deepEqual(target.region, source.region, source.id)
+      assert.notEqual(target.id, source.id, 'self-loop at ' + source.id)
       assert(SECOND_ACT_IDS.has(target.id))
-      const dungeon = source.region?.includes('dragonridge') ? BLACKMOSS : EMBERPASS
-      const due = { eventId: target.id, dueDay: 2 }
-      let shown: unknown
-      handler('startExpedition', {
-        runRef: {current:null}, towerRunRef: {current:null}, pendingEvent:null,
-        expedition:squad(), activeDungeon:dungeon, lastBranchRef:{current:''},
-        refusesToMarch:()=>false, pendingConsequences:[due], day:1, GUILD_EVENTS,
-        setPendingConsequences:()=>{}, pendingDepartureRef:{current:null},pendingConsequenceRef:{current:null},
-        setPendingEvent:(e:unknown)=>{shown=e}, setEventResult:()=>{},
-        setDay:()=>assert.fail('followup must precede departure'),
-      })(dungeon.branches[0].id)
-      assert.equal(shown, target)
+      if (delayed.at === 'town') {
+        assert.equal(consequenceFiresIn(target.id, 'blackmoss'), false, 'town chains never fire in dungeons')
+      } else if (delayed.dungeonId) {
+        assert.equal(consequenceFiresIn(target.id, delayed.dungeonId), true, target.id)
+        const other = delayed.dungeonId === 'blackmoss' ? 'emberpass' : 'blackmoss'
+        assert.equal(consequenceFiresIn(target.id, other), false, target.id)
+      } else {
+        assert.equal(consequenceFiresIn(target.id, 'blackmoss'), true, target.id)
+        assert.equal(consequenceFiresIn(target.id, 'emberpass'), true, target.id)
+      }
     }
   }
 })

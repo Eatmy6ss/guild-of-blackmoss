@@ -77,7 +77,7 @@ import { rollWish, settleWishes, wishDone } from './sim/wish'
 import { assignTrait, TRAIT_LABELS } from './sim/member-traits'
 import { attemptHeal, healingTerms, scarStatName, type HealingMastery } from './sim/scars'
 import { DUNGEON_FINAL_BOSS } from './data/regions'
-import { rollGuildEvent, pickOutcome } from './sim/guild-events'
+import { rollGuildEvent, pickOutcome, consequenceFiresIn, consequenceOf } from './sim/guild-events'
 import { applyMoraleDelta } from './sim/morale'
 import { rollDrop } from './sim/loot'
 import { chronicleRaw } from './sim/chronicle'
@@ -85,7 +85,6 @@ import { grantExp } from './sim/gen'
 import { JOBS, specOf } from './data/jobs'
 import { HYBRIDS, isHybrid } from './data/vocations'
 import { REGIONS, dungeonLock, nextRegionLocked, playtestAllows } from './data/regions'
-import type { EventRegion } from './sim/guild-events'
 import { TRAIT_INFO } from './data/traits'
 import { MECHANIC_REGISTRY, mechanicBrief } from './sim/mechanic-registry'
 
@@ -753,7 +752,8 @@ export default function App() {
       return
     }
     // 先处理到期后果，再出征；不能让弹窗遮住正在推进的永久死亡战斗。
-    const due = pendingConsequences.find((c) => c.dueDay <= day + 1)
+    // U27④:回城只触发 town 档;副本档后果在对应副本的 event 节点必出,不在这里弹。
+    const due = pendingConsequences.find((c) => c.dueDay <= day + 1 && consequenceOf(c.eventId)?.at !== 'dungeon')
     if (due) {
       const def = GUILD_EVENTS.find((e) => e.id === due.eventId)
       if (def) {
@@ -833,8 +833,20 @@ export default function App() {
       if (node && !r.nodeIds.includes(node.id)) {
         const kind = applyNodeChoice(r, node.id)
         if (kind === 'event') {
-          // 路线事件节点必触发(挂机时由队长性格代打选项)
-          const ev = rollGuildEvent(runRng(r), { force: true, context: { region: REGIONS.find((rg) => [...rg.main, ...rg.side, rg.finale].includes(runDungeon(r).id))?.id as EventRegion | undefined } })
+          // 副本档延迟后果(events-draft §2.2):到期且指向本副本/不限副本时,第一个 event 节点必出
+          const dueNode = pendingConsequences.find((c) => c.dueDay <= day && consequenceFiresIn(c.eventId, runDungeon(r).id))
+          if (dueNode) {
+            const def = GUILD_EVENTS.find((e) => e.id === dueNode.eventId)
+            if (def) {
+              pendingConsequenceRef.current = dueNode
+              setPendingEvent(def)
+              setEventResult(null)
+              setRun({ ...r })
+              return
+            }
+          }
+          // 路线事件节点必触发,先副本专属池,本地形池待地图地形落地后接入(R1.1)
+          const ev = rollGuildEvent(runRng(r), { where: 'node', dungeonId: runDungeon(r).id })
           if (ev) { setPendingEvent(ev); setEventResult(null) }
           setRun({ ...r })
           return
@@ -892,7 +904,8 @@ export default function App() {
     if (roll < fx.visitorChance && membersRef.current.filter((m) => m.alive).length < ROSTER_CAP) {
       setVisitor(rollVisitor(guildRng, membersRef.current, buildings.tavern ?? 0, { hybrids: !__PLAYTEST__ }))
     } else if (roll < fx.visitorChance + 0.35 && !pendingEvent) {
-      const ev = rollGuildEvent(guildRng)
+      // U27④:回城只抽 town 池(修 bug:此前 town 文本带 region 的事件永远抽不到)
+      const ev = rollGuildEvent(guildRng, { where: 'town' })
       if (ev) {
         setPendingEvent(ev); setEventResult(null); sfxVisitor()
       }

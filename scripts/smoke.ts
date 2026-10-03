@@ -29,7 +29,7 @@ import { RACES as RACES_DATA } from '../src/data/races'
 import { guildGoals } from '../src/sim/goals'
 import { rollWish, wishDone } from '../src/sim/wish'
 import { rollScarChance, rollScar, canGainScar, attemptHeal, healRate } from '../src/sim/scars'
-import { pickOutcome, rollGuildEvent, SECOND_ACT_IDS } from '../src/sim/guild-events'
+import { pickOutcome, rollGuildEvent, eventPool, SECOND_ACT_IDS } from '../src/sim/guild-events'
 import { bossIntents, processBossMechanics } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
@@ -1118,9 +1118,14 @@ const towerFailures: string[] = []
   const first = pickOutcome(ev0, 0, 0.01)
   const last = pickOutcome(ev0, 0, 0.999)
   if (first === last && ev0.choices[0].outcomes.length > 1) fail16.push('⑯ 权重解析不区分分支')
-  // 16c:rollGuildEvent——高 rng 必中事件,低 rng 必空(边界跟随 EVENT_CHANCE 常量,反馈④后 0.3)
-  if (rollGuildEvent(() => EVENT_CHANCE - 0.01) === null) fail16.push('⑯ 低于触发率应触发事件')
-  if (rollGuildEvent(() => 0.99) !== null) fail16.push('⑯ 高于触发率不应触发事件')
+  // 16c:rollGuildEvent——高 rng 必中事件,低 rng 必空(边界跟随 EVENT_CHANCE 常量,反馈④后 0.3;U27④ 分池)
+  if (rollGuildEvent(() => EVENT_CHANCE - 0.01, { where: 'town' }) === null) fail16.push('⑯ 低于触发率应触发事件')
+  if (rollGuildEvent(() => 0.99, { where: 'town' }) !== null) fail16.push('⑯ 高于触发率不应触发事件')
+  if (rollGuildEvent(() => 0, { where: 'town' }) === null) fail16.push('⑯ town 池为空')
+  for (const d of DUNGEONS) {
+    const ev = rollGuildEvent(() => 0, { where: 'node', dungeonId: d.id })
+    if (ev && ev.scope.kind === 'town') fail16.push(`⑯ ${d.id} 节点抽到了 town 事件:${ev.id}`)
+  }
   // 16d:效果应用——士气 delta 与金币真实落账
   {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 700 + j))
@@ -2505,16 +2510,21 @@ const towerFailures: string[] = []
   }
   if (fail34.length > 0) { console.log('✗ 熟练度迷雾未通过:', fail34); process.exit(1) }
 
-  // ㉟ 路线事件节点必触发(force)+ 加权招募软锁防线
+  // ㉟ 路线事件节点必触发(node 必触发;U27④ 后池=副本专属+地形,永不含 town)+ 回城 0.3 门槛
   {
     const f35: string[] = []
     let hit = 0
     for (let i = 0; i < 30; i++) {
-      const ev = rollGuildEvent(Math.random, { force: true })
+      const ev = rollGuildEvent(Math.random, { where: 'node', dungeonId: 'blackmoss' })
       if (ev) hit++
     }
     if (hit !== 30) f35.push(`㉟ force 触发 ${hit}/30`)
-    console.log(`㉟ 路线事件必触发:${hit}/30`)
+    let townHit = 0
+    for (let i = 0; i < 30; i++) {
+      if (rollGuildEvent(Math.random, { where: 'town' })) townHit++
+    }
+    if (townHit === 0 || townHit === 30) f35.push(`㉟ town 门槛异常 ${townHit}/30(0.3 概率)`)
+    console.log(`㉟ 路线事件必触发:${hit}/30;回城 0.3:${townHit}/30`)
     void f35
     if (f35.length > 0) { console.log('✗ 路线事件未通过:', f35); process.exit(1) }
     console.log('✓ 路线事件必触发通过')
@@ -2671,26 +2681,35 @@ const towerFailures: string[] = []
   const fail45: string[] = []
   // 后续幕动态推导
   if (SECOND_ACT_IDS.size < 7) fail45.push('㊾ 后续幕推导数量异常:' + SECOND_ACT_IDS.size)
-  // V3:双向隔离,每区完整抽取400次;公会池不含任何地域事件。
+  // U27④ 分池双向隔离:town / 副本专属 / 地形(限版图),每池完整抽取 400 次
   const makeRng = (seed: number) => { let v = seed % 2147483647; if (v <= 0) v += 2147483646; return () => { v = (v * 16807) % 2147483647; return (v - 1) / 2147483646 } }
-  const blackmossEvents = GUILD_EVENTS.filter(e => e.region?.includes('blackmoss-wild') && !SECOND_ACT_IDS.has(e.id))
-  if (blackmossEvents.length < 30) fail45.push('㊾ 黑苔可初遇地域事件不足30条')
-  for (const region of ['blackmoss-wild', 'dragonridge', undefined] as const) {
-    const rng = makeRng(region === 'blackmoss-wild' ? 12345 : region === 'dragonridge' ? 77777 : 31415)
-    let localSeen = false
-    let commonSeen = false
+  const draws: { label: string; seed: number; where: Parameters<typeof rollGuildEvent>[1] }[] = [
+    { label: 'town', seed: 31415, where: { where: 'town' } },
+    { label: 'blackmoss', seed: 12345, where: { where: 'node', dungeonId: 'blackmoss' } },
+    { label: 'emberpass', seed: 77777, where: { where: 'node', dungeonId: 'emberpass' } },
+    { label: 'blackmoss/water', seed: 42424, where: { where: 'node', dungeonId: 'blackmoss', terrain: 'water' } },
+    { label: 'emberpass/lava', seed: 90909, where: { where: 'node', dungeonId: 'emberpass', terrain: 'lava' } },
+  ]
+  for (const { label, seed, where } of draws) {
+    const pool = eventPool(where)
+    if (pool.length === 0) { fail45.push(`㊾ ${label} 池为空`); continue }
+    const rng = makeRng(seed)
+    const seen = new Set<string>()
     for (let i = 0; i < 400; i++) {
-      const ev = rollGuildEvent(rng, { force: true, context: { region } })
-      if (!ev) { fail45.push(`㊾ ${region ?? '公会'} 强制抽取为空`); continue }
+      // 直接对池做覆盖抽样:隔离语义与 rollGuildEvent 同一过滤器(eventPool)
+      const ev = pool[Math.floor(rng() * pool.length)]!
+      seen.add(ev.id)
       if (SECOND_ACT_IDS.has(ev.id)) fail45.push('㊾ 后续幕被随机抽中:' + ev.id)
-      if (ev.region && (!region || !ev.region.includes(region))) fail45.push('㊾ 跨区泄漏:' + ev.id)
-      if (ev.region?.includes(region!)) localSeen = true
-      if (!ev.region) commonSeen = true
+      if (where.where === 'town' && ev.scope.kind !== 'town') fail45.push('㊾ town 池泄漏:' + ev.id)
+      if (where.where === 'node' && ev.scope.kind === 'town') fail45.push('㊾ 节点池泄漏 town:' + ev.id)
     }
-    if (region && !localSeen) fail45.push('㊾ 地域事件不可达:' + region)
-    if (!commonSeen) fail45.push('㊾ 通用事件不可达:' + region)
+    if (seen.size < Math.min(pool.length, 15)) fail45.push(`㊾ ${label} 池覆盖不足:${seen.size}/${pool.length}`)
   }
-  console.log('㊾ V3:后续幕 ' + SECOND_ACT_IDS.size + ' 条隔离✓ 黑苔/龙脊/公会各400抽零泄漏✓')
+  // 不带 terrain 的节点请求不得抽出地形事件
+  for (const ev of eventPool({ where: 'node', dungeonId: 'blackmoss' })) {
+    if (ev.scope.kind === 'terrain') fail45.push('㊾ 无地形请求抽出地形事件:' + ev.id)
+  }
+  console.log('㊾ V3:后续幕 ' + SECOND_ACT_IDS.size + ' 条隔离✓ town/副本/地形各池 400 抽零泄漏✓')
   if (fail45.length > 0) { console.log('✗ F08 未通过:', fail45); process.exit(1) }
   console.log('✓ F08 事件因果隔离通过')
 }

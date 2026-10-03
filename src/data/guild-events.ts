@@ -1,3 +1,5 @@
+import type { TerrainId } from '../sim/dungeon-map'
+
 // 公会大事事件池(M1 P2,巫师 3 式:选择即取舍,结果有权重分支——没有标准答案)
 // 灵感池(制作人指示:广泛搜集,不限于这几个):巫师3(两害取其轻/延迟后果)、杀戮尖塔(结构化取舍)、
 // 暗黑地牢(压力与代价)、黑暗之魂(悲凉托付/力量的诱惑)、博德之门3(遇险者与寄生之诱)、环世界(涌现)、
@@ -9,7 +11,18 @@
 //        attrPoint 属性点(六维改革):全队每人 +N 点随机维
 // 反馈④事件大项新增:
 //        runBuff 远征内持续状态(出征前获得则用于下次远征;hp=生命上限,heal=受疗,atk/def 直改)
-//        delayed 延迟第二幕:{ eventId, dueDays }——dueDay 后弹出的后续事件(巫师3式后果延迟)
+//        delayed 延迟第二幕:{ eventId, dueDays, at, dungeonId? }——dueDay 后弹出的后续事件(巫师3式后果延迟);
+//                at='town' 回城出征时弹;at='dungeon' 到期后下一趟远征的第一个 event 节点必出,
+//                带 dungeonId 则限定该副本,不写不限副本;没走到 event 节点就顺延(events-draft §2.2,U27④)
+
+/** 事件版图(地形事件的二层过滤;沿用旧 region 词表) */
+export type EventRegion = 'blackmoss-wild' | 'dragonridge'
+
+/** 事件作用域(U27④):回城只抽 town;地图 event 节点先抽副本专属,再抽本地形事件 */
+export type EventScope =
+  | { kind: 'town' }
+  | { kind: 'dungeon'; ids: string[] }
+  | { kind: 'terrain'; terrains: TerrainId[]; regions?: EventRegion[] }
 
 /** 远征内持续状态(整次远征,乘数制:<1 为减益) */
 export interface RunBuffDef {
@@ -36,7 +49,7 @@ export interface EventOutcome {
     /** 属性点(六维改革):全队每人 +N 点随机维 */
     attrPoint?: number
     runBuff?: RunBuffDef
-    delayed?: { eventId: string; dueDays: number }
+    delayed?: { eventId: string; dueDays: number; at: 'town' | 'dungeon'; dungeonId?: string }
     /** 稀有猎杀(WoW 式):下次出征首场遭遇敌方 ×mult、奖励 ×rewardMult(公会层记忆,用后即逝) */
     rareHuntNext?: { mult: number; rewardMult: number }
     /** 公会层持续状态(跨天传奇):days 天内的出征全队生效,到期自动消退 */
@@ -54,17 +67,377 @@ export interface GuildEventDef {
   title: string
   text: string
   choices: EventChoice[]
-  /** 随机初遇的地域限定;缺省为公会/酒馆通用事件。已触发的后续幕不受换图影响。 */
-  region?: ('blackmoss-wild' | 'dragonridge')[]
+  /** 作用域(U27④):town=回城抽;dungeon=该副本的 event 节点抽;terrain=有该地形的节点抽(regions 二层过滤) */
+  scope: EventScope
 }
 
 // 试玩反馈④:回城事件率 0.45→0.3——「打完回城事件概率有点高」;访客 roll 互斥不变
 export const EVENT_CHANCE = 0.3
 
+export const NEW_EVENTS_2026_10_03: GuildEventDef[] = [
+  // ===== 白霜墓园 =====
+  {
+    id: 'fg-ice-hand',
+    scope: { kind: 'dungeon', ids: ['frostgrave'] },
+    title: '不化的冰',
+    text: '祭坛上结着一层冰,冰下封着一只手,掌心向上,像在讨要什么。手指上套着一枚戒指。旁边钉着守墓人的木牌,只有两个字:「勿予。」字迹比冰还旧。',
+    choices: [
+      {
+        text: '放一枚金币进那只手。',
+        outcomes: [
+          { weight: 6, text: '冰面裂开一道细缝,金币沉了下去,手指慢慢合拢。当夜全队睡得出奇地安稳——在墓园里,这算是回礼。', effects: { gold: -10, blessing: 4, moraleAll: 3 } },
+          { weight: 4, text: '金币沉下去了,手没有合拢。它还在等。等的显然不是金币。', effects: { gold: -10, moraleRandom: -2 } },
+        ],
+      },
+      {
+        text: '凿冰,取戒指。',
+        outcomes: [
+          { weight: 5, text: '戒指到手,冰下那只手空了。回程路上,每个人的影子都比平时慢半步。', effects: { item: 'trk-t1-band', runBuff: { id: 'frost-shadow', name: '慢半步的影子', desc: '有东西跟着你们——攻击降低,直到本次远征结束', mods: { atk: 0.92 } } } },
+          { weight: 5, text: '凿到一半,冰里的手先动了——它把戒指递了出来。据说被拒绝太多次的东西,会学着主动一点。', effects: { item: 'trk-t1-band', moraleAll: -3 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'fg-gravedigger',
+    scope: { kind: 'dungeon', ids: ['frostgrave'] },
+    title: '掘墓人的铲子',
+    text: '一个掘墓人在雪里挖坑,挖得很认真。坑的长短刚好装下一个人。他抬头,用目光量了量你们的队长,点点头,继续挖。',
+    choices: [
+      {
+        text: '问他,这坑给谁挖的。',
+        outcomes: [
+          { weight: 6, text: '「给下一个。」他没停手。「墓园从不缺下一个。」临走时他塞过来一瓶药:「省着点用。我不想加班。」', effects: { potionHeal: 1, moraleAll: -2 } },
+          { weight: 4, text: '「给你们中的某一位。不急,我挖得慢。」全队绕开那个坑走,步子比来时快。', effects: { moraleAll: -4, expAll: 15 } },
+        ],
+      },
+      {
+        text: '一言不发,把坑填上。',
+        outcomes: [
+          { weight: 7, text: '填完了。掘墓人看了看,在旁边重新挖了一个。敬业这种东西,在墓园里也是有的。', effects: { moraleAll: 2 } },
+          { weight: 3, text: '坑填平的那一刻,地底传来一声叹息——不是掘墓人发出的。', effects: { blessing: 3, moraleRandom: -3 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'fg-frozen-scout',
+    scope: { kind: 'dungeon', ids: ['frostgrave'] },
+    title: '冰中的斥候',
+    text: '冰棺回廊尽头冻着一个人。看装束,是别家公会的斥候,怀里紧抱着一张地图。冰面上用指甲刻着两个字:「别信」。后面的字没刻完。',
+    choices: [
+      {
+        text: '破冰救人。',
+        outcomes: [
+          { weight: 5, text: '还有一口气。斥候醒来后盯着你们看了半晌,问:「这次是第几年?」没等回答,又昏了过去。地图留给了你们,上面标着一条小路。', effects: { expAll: 20, runBuff: { id: 'scout-map', name: '斥候的地图', desc: '有人替你们探过路——防御提升,直到本次远征结束', mods: { def: 1.1 } } } },
+          { weight: 5, text: '冰破了,人没救回来。冰面上那句话的后半截,刻在地图背面:「别信地图」。', effects: { moraleAll: -3 } },
+        ],
+      },
+      {
+        text: '取走地图,让冰继续保管它的主人。',
+        outcomes: [
+          { weight: 6, text: '地图很准,准得让人不安。墓园里没有别的佣兵,只有被冻住的那一个。', effects: { gold: 30, moraleRandom: -2 } },
+          { weight: 4, text: '拿走地图时,身后的冰面轻轻响了一声,像一句没说出口的「别」。', effects: { moraleAll: -2 } },
+        ],
+      },
+    ],
+  },
+  // ===== 荆棘要塞 =====
+  {
+    id: 'th-deserter-deal',
+    scope: { kind: 'dungeon', ids: ['thornhold'] },
+    title: '逃兵的条件',
+    text: '一个荆棘团的兵蹲在暗渠口,铠甲上的团徽被刮掉了一半。「团库的钥匙挂在哪,哪段墙的弩手是新兵,我都知道。」他伸出三根手指。「三十金。你们走的时候,带上我。」',
+    choices: [
+      {
+        text: '成交。',
+        outcomes: [
+          { weight: 6, text: '他说的每一句都是真的。后来荆棘团的人四处打听,到底是谁出卖了他们——没人想到去问一个只要三十金的人。', effects: { gold: -30, recruit: true, runBuff: { id: 'inside-man', name: '内应', desc: '知道弩手在哪——防御提升,直到本次远征结束', mods: { def: 1.12 } } } },
+          { weight: 4, text: '情报是真的,人跑了。佣兵之间的信任,大概就值三十金。', effects: { gold: -30, runBuff: { id: 'inside-man', name: '内应', desc: '知道弩手在哪——防御提升,直到本次远征结束', mods: { def: 1.12 } } } },
+        ],
+      },
+      {
+        text: '打发走。叛徒在哪儿都是叛徒。',
+        outcomes: [
+          { weight: 6, text: '他耸耸肩,钻回暗渠。半个时辰后,要塞里响起了警钟——他把你们卖了个更好的价钱。', effects: { runBuff: { id: 'fort-alarm', name: '警钟', desc: '全团都在等你们——防御降低,直到本次远征结束', mods: { def: 0.9 } } } },
+          { weight: 4, text: '他走了,没回头。据说荆棘团的逃兵最后都会回来,只是不以活人的身份。', effects: { moraleAll: 1 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'th-old-banner',
+    scope: { kind: 'dungeon', ids: ['thornhold'] },
+    title: '旧团旗',
+    text: '校场的旗杆上挂着荆棘团的第一面团旗,破得只剩一半。旗下钉着木牌:「此旗在,团在。」旗杆脚下堆着历任想摘旗的人留下的东西——头盔、靴子、半截矛。',
+    choices: [
+      {
+        text: '摘旗。',
+        outcomes: [
+          { weight: 5, text: '旗摘下来了,很轻。守军看见空旗杆,阵脚明显乱了一截——原来真有人信木牌上的话。', effects: { moraleAll: 5, runBuff: { id: 'banner-down', name: '空旗杆', desc: '守军乱了阵脚——攻击提升,直到本次远征结束', mods: { atk: 1.1 } } } },
+          { weight: 5, text: '绳子断了,旗杆砸下来,砸中了一个人。旗杆脚下的那堆东西,差一点就多了一件。', effects: { injure: true, moraleAll: 2 } },
+        ],
+      },
+      {
+        text: '不碰。',
+        outcomes: [
+          { weight: 7, text: '有些东西不碰是出于尊重,有些东西不碰是为了活得长。这一次,大概两者都是。', effects: { moraleAll: 1 } },
+          { weight: 3, text: '路过时,有人顺手捡走了那堆里的一顶头盔。头盔内侧刻着一串名字,最下面还留着空位。', effects: { item: 'arm-t1-mail', moraleRandom: -2 } },
+        ],
+      },
+    ],
+  },
+  // ===== 龙渊之心 =====
+  {
+    id: 'dm-offering',
+    scope: { kind: 'dungeon', ids: ['dragonmaw'] },
+    title: '未熄的祭火',
+    text: '献祭祭坛的火还在烧。祭品刚放上去不久:一只盛满金币的铜盆,盆底压着一张鳞纸——「献给沉睡者。取者,当醒。」',
+    choices: [
+      {
+        text: '拿走金币。',
+        outcomes: [
+          { weight: 5, text: '金币很烫,但花得出去。至于沉睡者——至少今天没醒。', effects: { gold: 120, runBuff: { id: 'stolen-offering', name: '窃祭之热', desc: '口袋一直在发烫——受疗降低,直到本次远征结束', mods: { heal: 0.85 } } } },
+          { weight: 5, text: '端起铜盆的那一刻,深渊里传来一声很长的呼吸。没人再说话,也没人放下铜盆。', effects: { gold: 120, moraleAll: -5 } },
+        ],
+      },
+      {
+        text: '往盆里再添一枚。',
+        outcomes: [
+          { weight: 6, text: '火苗跳了一下,像是点头。暗处的信徒看着你们,一时拿不准该拜还是该杀。', effects: { gold: -10, blessing: 4 } },
+          { weight: 4, text: '添了一枚,祭火熄了。据说这是龙渊三百年来,第一次有外人倒贴。', effects: { gold: -10, moraleAll: 4 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'dm-shed-scale',
+    scope: { kind: 'dungeon', ids: ['dragonmaw'] },
+    title: '蜕下的鳞',
+    text: '渊壁上嵌着一片鳞,比门板还大,边缘还是软的——刚蜕下不久。教团的人在鳞前跪了一圈,睡着了,或者死了,分不太清。',
+    choices: [
+      {
+        text: '撬下鳞片。',
+        outcomes: [
+          { weight: 6, text: '鳞片做成了甲面,挡火。跪着的那圈人一个都没动,这让收获显得格外安静。', effects: { item: 'arm-dragon-scalemail', moraleAll: -2 } },
+          { weight: 4, text: '撬到一半,跪着的人齐齐抬头——原来是睡着了。这一架打得很尴尬,双方都没来得及穿鞋。', effects: { injure: true, gold: 40 } },
+        ],
+      },
+      {
+        text: '绕过去。',
+        outcomes: [
+          { weight: 7, text: '经过时,有一个睁开眼看了看你们,又闭上了。在龙渊,互不打扰也是一种礼节。', effects: { moraleAll: 2 } },
+        ],
+      },
+    ],
+  },
+  // ===== 鳞音圣地带 =====
+  {
+    id: 'sh-alms-table',
+    scope: { kind: 'dungeon', ids: ['scalehaven'] },
+    title: '施舍台',
+    text: '圣像大道旁摆着施舍台:热粥、干净的绷带、一小瓶药,随取。台边的白袍信士只问一句:「诸位,信龙吗?」',
+    choices: [
+      {
+        text: '说信。取粥。',
+        outcomes: [
+          { weight: 6, text: '粥是热的,绷带是新的。信士在鳞册上记下你们的名字,笑得很诚恳。名字被记在那种地方,通常不是什么好事。', effects: { potionHeal: 1, moraleAll: 3 } },
+          { weight: 4, text: '粥喝到一半,有人从碗底捞出一片鳞。信士说这是福分。没人敢问,是谁的福分。', effects: { potionHeal: 1, moraleRandom: -3 } },
+        ],
+      },
+      {
+        text: '说不信。也不取。',
+        outcomes: [
+          { weight: 6, text: '信士点点头,把粥倒回锅里,对下一个人露出同样的笑。在圣地带,不信的人也能活,只是活得冷一点。', effects: { moraleAll: -1 } },
+          { weight: 4, text: '信士合掌:「不信也无妨。龙会信你们。」这句话,比拒绝更让人不安。', effects: { moraleAll: -3, blessing: 2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'sh-hymn',
+    scope: { kind: 'dungeon', ids: ['scalehaven'] },
+    title: '空着的声部',
+    text: '唱诗庭院里,颂歌唱到一半,有一个声部空着。祭卫们转过头看着你们,很有礼貌地等。',
+    choices: [
+      {
+        text: '跟着唱。',
+        outcomes: [
+          { weight: 6, text: '唱得不好,但唱完了。祭卫们点头放行,其中一个低声说:「上一个唱错词的,现在是庭院里的那根柱子。」', effects: { moraleAll: 3, blessing: 3 } },
+          { weight: 4, text: '唱到第三段,没人记得词了。庭院安静了很久,然后祭卫们拔出了武器——看来这首歌没有即兴的部分。', effects: { moraleAll: -2, expAll: 20 } },
+        ],
+      },
+      {
+        text: '不唱。',
+        outcomes: [
+          { weight: 6, text: '祭卫们让开了路,目送你们走过。被一整个唱诗班目送,感觉像在出席自己的葬礼。', effects: { moraleAll: -2 } },
+          { weight: 4, text: '有人小声哼了一句,跑调了。祭卫们集体皱眉,但没有动手。圣地带的宽容,到此为止。', effects: { moraleRandom: -1 } },
+        ],
+      },
+    ],
+  },
+  // ===== 朝圣者古道 =====
+  {
+    id: 'pp-roadstone',
+    scope: { kind: 'dungeon', ids: ['pilgrim-path'] },
+    title: '刻满名字的路碑',
+    text: '千年路碑上刻满了还愿者的名字,密到连裂缝里都有。碑脚放着一把刻刀,刀柄磨得发亮。碑顶最后一行,还空着一半。',
+    choices: [
+      {
+        text: '刻上公会的名字。',
+        outcomes: [
+          { weight: 6, text: '刻完退后几步,碑上的名字好像都转过来,看了一眼新来的。从此在这条路上,黑苔不再是外人。', effects: { blessing: 5, moraleAll: 3 } },
+          { weight: 4, text: '刻到一半,刻刀断了。剩下的半个名字,看上去像别的什么字。据说路碑会自己决定收谁。', effects: { blessing: 2, moraleRandom: -2 } },
+        ],
+      },
+      {
+        text: '读那些名字。',
+        outcomes: [
+          { weight: 6, text: '读到第三百个时,有人读到了自己父亲的名字。那人什么也没说,只是那一夜的岗站得最久。', effects: { expAll: 20, moraleAll: 2 } },
+          { weight: 4, text: '名字太多,读不完。有些名字刻了两遍——同一个人,来过两次。第二次,大概是来还愿的。', effects: { expAll: 15 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'pp-borrowed-lamp',
+    scope: { kind: 'dungeon', ids: ['pilgrim-path'] },
+    title: '借灯',
+    text: '长明灯阶上,一个提灯的亡魂停下来,把灯递给你们。灯火很暗,刚好照亮下一级台阶。它不说话,只是等着。',
+    choices: [
+      {
+        text: '接过灯。',
+        outcomes: [
+          { weight: 6, text: '有灯的路好走得多。走到灶屋时灯自己灭了,亡魂早已不知去向——借出去的东西,它没打算要回。', effects: { runBuff: { id: 'pilgrim-lamp', name: '借来的灯', desc: '下一级台阶总看得见——防御提升,直到本次远征结束', mods: { def: 1.1 } } } },
+          { weight: 4, text: '接灯的那位从此走路总要看脚下,走了很远也改不掉。亡魂的灯,大概是要一个个传下去的。', effects: { moraleRandom: -2, expAll: 15 } },
+        ],
+      },
+      {
+        text: '谢绝。',
+        outcomes: [
+          { weight: 7, text: '亡魂收回灯,继续往上走,走得很慢。几百年了,它大概也不急。', effects: { moraleAll: 1 } },
+          { weight: 3, text: '谢绝之后,台阶上所有的灯同时暗了一下。在这条路上,礼貌有时也是一种冒犯。', effects: { moraleAll: -3 } },
+        ],
+      },
+    ],
+  },
+  // ===== 版图一其余副本:兑现原节点描述 =====
+  {
+    id: 'rm-knocking',
+    scope: { kind: 'dungeon', ids: ['rustmine'] },
+    title: '三长两短',
+    text: '塌方的巷道里传来敲击声,三长两短,很有规律。矿工的老规矩:三长两短,是「还活着」。',
+    choices: [
+      {
+        text: '挖。',
+        outcomes: [
+          { weight: 5, text: '挖开石堆,里面是个老矿工,饿得只剩一把骨头,手里还攥着锤子。他说自己敲了十一天。没人问他是怎么数的。', effects: { expAll: 20, moraleAll: 6 } },
+          { weight: 5, text: '挖开石堆,里面没有人,只有一把锤子,还在敲。三长两短,很有规律。', effects: { moraleAll: -5, blessing: 3 } },
+        ],
+      },
+      {
+        text: '不挖,继续走。',
+        outcomes: [
+          { weight: 6, text: '敲击声跟了你们很远。三长两短,三长两短。走出矿道时,它终于停了。', effects: { moraleAll: -4 } },
+          { weight: 4, text: '走出十步,敲击声变了——两长三短。队里的老矿工脸色发白:那是「我看见你们了」。', effects: { moraleAll: -6 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'af-silent-horn',
+    scope: { kind: 'dungeon', ids: ['ashfield'] },
+    title: '未响的号角',
+    text: '白骨大道中央插着一支号角,铜锈斑斑。旁边坐着一具骸骨,姿势像在等谁。据说号角一响,旧战场上的亡者都会站回自己的位置。',
+    choices: [
+      {
+        text: '吹响。',
+        outcomes: [
+          { weight: 5, text: '号声传遍了旧战场。骸骨们站起身,排成整齐的方阵,朝你们敬了个礼,然后散了。他们等的,大概只是一声收兵。', effects: { blessing: 6, moraleAll: 4 } },
+          { weight: 5, text: '号声传遍了旧战场。骸骨们站起身,排成整齐的方阵——面朝你们。', effects: { moraleAll: -3, expAll: 25, runBuff: { id: 'roused-dead', name: '被唤醒的方阵', desc: '整片战场都醒了——防御降低,直到本次远征结束', mods: { def: 0.9 } } } },
+        ],
+      },
+      {
+        text: '把号角留给它的主人。',
+        outcomes: [
+          { weight: 7, text: '骸骨没有动。旧战场上的东西,大多不需要人帮忙。', effects: { moraleAll: 1 } },
+          { weight: 3, text: '走远后,身后传来一声很轻的号响。有人替它吹了,吹得很难听。', effects: { moraleRandom: -2 } },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'bm-mud-peddler',
+    scope: { kind: 'dungeon', ids: ['blackmoss'] },
+    title: '泥里的药摊',
+    text: '栈道尽头支着一个药摊。摊主泡在齐腰深的泥水里,只露出上半身,身后的货架却干干净净。「治疗药,一瓶十五金。」他补了一句,「出了沼泽,就买不到了。」',
+    choices: [
+      {
+        text: '买两瓶。',
+        outcomes: [
+          { weight: 6, text: '药是真的。摊主是不是真的,不好说——付完钱一回头,摊子和人都沉回了泥里,只剩几个气泡。', effects: { gold: -30, potionHeal: 2 } },
+          { weight: 4, text: '药是真的。摊主收钱时露出了手,手上有蹼。沼泽里做生意的,不一定是人。', effects: { gold: -30, potionHeal: 2, moraleRandom: -2 } },
+        ],
+      },
+      {
+        text: '不买。',
+        outcomes: [
+          { weight: 7, text: '摊主点点头,慢慢沉回泥里:「下次见。」沼泽里的人都这么说,通常也真会再见。' },
+          { weight: 3, text: '刚走出几步,泥里伸出一只手,把一瓶药放在了栈道上。免费的。没人敢要。', effects: { moraleAll: -1 } },
+        ],
+      },
+    ],
+  },
+  // ===== 版图二:熔铸工坊 =====
+  {
+    id: 'fo-stubborn-blank',
+    scope: { kind: 'dungeon', ids: ['forge-works'] },
+    title: '不肯冷的胚料',
+    text: '废模坑里卡着半截没铸完的剑胚,刃口已经成形,剑柄还是一团铁水凝成的疙瘩。旁边的工头记录只有一行:「废品。原因:它不肯冷。」',
+    choices: [
+      {
+        text: '撬出来带走。',
+        outcomes: [
+          { weight: 5, text: '剑胚到手,确实不肯冷。回到公会它还在发烫,铁匠看了一眼,说这是他见过最倔的废品。', effects: { item: 'wpn-dragon-brand', runBuff: { id: 'hot-blank', name: '不肯冷的铁', desc: '行囊里有块烫手的铁——受疗降低,直到本次远征结束', mods: { heal: 0.9 } } } },
+          { weight: 5, text: '撬的时候铁水还没凝透,溅了一身。剑胚留在坑里,看上去有点得意。', effects: { injure: true } },
+        ],
+      },
+      {
+        text: '不碰。',
+        outcomes: [
+          { weight: 7, text: '有些东西被扔掉是有原因的。工头的记录很简洁,也很有说服力。', effects: { moraleAll: 1 } },
+        ],
+      },
+    ],
+  },
+  // ===== 第三幕(只由 cult-vengeance 触发,不进随机池) =====
+  {
+    id: 'cult-reckoning',
+    scope: { kind: 'dungeon', ids: ['dragonmaw'] },
+    title: '第三幕·圣火的尽头',
+    text: '龙渊之心的入口,执事团已经在等了。为首的那位捧着一颗烧焦的圣像头——正是你们烧的那一尊。「教主想见见你们。不为清算。教主只是好奇,是什么人敢烧圣像。」',
+    choices: [
+      {
+        text: '去见。',
+        outcomes: [
+          { weight: 5, text: '教主没有出现。出现的是一把空椅子,椅子上放着一枚鳞印。执事说:「教主说,你们可以走了。」这是龙渊里最客气的威胁。', effects: { item: 'trk-dragon-talisman', blessing: 6, moraleAll: -2 } },
+          { weight: 5, text: '走到半路,执事团悄悄散了。门后没有教主,只有一条很长的下坡路——通往你们本来就要去的地方。', effects: { moraleAll: 3, expAll: 30 } },
+        ],
+      },
+      {
+        text: '把圣像头还给他。',
+        outcomes: [
+          { weight: 7, text: '执事接过圣像头,看了很久,说了声谢谢。烧圣像的和还圣像的是同一伙人,这件事让整个教团困惑了好几天。', effects: { moraleAll: 5, gold: 50 } },
+        ],
+      },
+    ],
+  },
+]
+
 export const GUILD_EVENTS: GuildEventDef[] = [
   {
     id: 'cursed-coffin',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '受诅咒的报酬',
     text: '一个面色蜡黄商人开双倍工钱,请你护送一口棺材去邻镇。棺材缝里渗出奇怪的甜香。',
     choices: [
@@ -86,7 +459,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'orphan-wolves',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '孤儿与狼群',
     text: '一个光脚的孩子冲进酒馆,说父亲被狼群叼进了林子。猎户们都摇头——那是腐化狼的地界。',
     choices: [
@@ -114,7 +487,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
     ],
   },  {
     id: 'deserter',
-    title: '逃兵入伍',
+    scope: { kind: 'town' },
+title: '逃兵入伍',
     text: '一个逃兵想加入公会。他的剑法很扎实,但眼神一直在往门口飘。',
     choices: [
       {
@@ -141,7 +515,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'relic-escort',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '祭司的圣物',
     text: '修道院请你护送一件圣物回祠堂供奉,工钱之外,他们承诺「英灵会记得善行」。',
     choices: [
@@ -162,7 +536,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
     ],
   },  {
     id: 'night-knock',
-    title: '夜半敲窗',
+    scope: { kind: 'town' },
+title: '夜半敲窗',
     text: '三更天,酒馆后窗被轻轻敲响。窗外的人压着嗓子说:「他们在追我,开开窗。」',
     choices: [
       {
@@ -189,7 +564,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'old-debt',
-    title: '旧识讨债',
+    scope: { kind: 'town' },
+title: '旧识讨债',
     text: '一位旧识拍着账本上门:公会初创时他垫过的账,连本带利六十金,今天要个说法。',
     choices: [
       {
@@ -217,7 +593,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'old-armory',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['ashfield'] },
     title: '废弃的军械库',
     text: '斥候发现一处塌了半边的旧军械库,里面可能有前朝的武备——也可能有塌陷和别的东西。',
     choices: [
@@ -245,7 +621,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'noble-duel',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '贵族的决斗',
     text: '一位贵族出八十金,请公会派一人作为他决斗的「护卫替补」。明眼人都知道,替补就是挨刀的。',
     choices: [
@@ -266,7 +642,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'swamp-scent',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['blackmoss'] },
     title: '沼泽异香',
     text: '营地夜半飘来一阵甜香,众人的眼皮越来越沉。远处的树影里,似乎有什么在动。',
     choices: [
@@ -294,7 +670,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'cursed-statue',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['ruin'] },
     title: '遗迹的雕像',
     text: '遗迹深处立着一尊石像,无论站在哪个角度,它都在「注视」你。石像底座刻着:「携我者,偿我愿。」',
     choices: [
@@ -322,7 +698,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'fisherman-tribute',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '河湾的水鬼',
     text: '渔村凑了六十金请公会除掉河湾里的「水鬼」——半年来它拖走了三张渔网,和一个醉汉。',
     choices: [
@@ -350,7 +726,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'twin-bounties',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '一颗头的两份悬赏',
     text: '军镇贴出一百金悬赏捉拿逃犯「独眼科尔」。当晚,死者的遗孀也找上门,出八十金,只求「再也见不到他」。要的是同一个人。',
     choices: [
@@ -378,7 +754,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'veteran-beggar',
-    title: '门槛边的断刀',
+    scope: { kind: 'town' },
+title: '门槛边的断刀',
     text: '老乞丐在公会门口坐了三天,身边一柄断成两截的军刀。他只要一碗酒钱,话都说不利索了。',
     choices: [
       {
@@ -404,7 +781,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
     ],
   },  {
     id: 'moonshine-still',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '山那边的私酿',
     text: '酒馆掌柜私下抱怨:山里的私酿坊抢了他三成生意,愿出四十金请公会「顺路举报」。而弟兄们上周刚喝过那私酿——确实好酒。',
     choices: [
@@ -431,7 +808,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'unclaimed-sword',
-    title: '没人认领的剑',
+    scope: { kind: 'town' },
+title: '没人认领的剑',
     text: '战利品清点时多出一柄没人认领的长剑,剑柄缠布下刻着一个陌生的名字。夜里,兵器架会朝着它的方向嗡嗡作响。',
     choices: [
       {
@@ -458,7 +836,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'lost-caravan',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '山道上的尾款',
     text: '上个月护送商队的雇主一直没付尾款,人也失了联。斥候回报:他的货还堆在山道上,货堆旁有狼粪,还很新。',
     choices: [
@@ -487,7 +865,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'rival-defector',
-    title: '灰隼的副团长',
+    scope: { kind: 'town' },
+title: '灰隼的副团长',
     text: '死对头「灰隼佣团」的副团长深夜到访,想带着账册和两名老兵投奔你们——「灰隼克扣抚恤,弟兄们寒了心。」',
     choices: [
       {
@@ -514,7 +893,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'midwife-night',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '雪夜三十金',
     text: '后半夜砸门:村里产婆难产,丈夫跪在雪里,掏出全部家当三十金,只求有人翻山去邻镇取药——单程两个时辰,风雪没停。',
     choices: [
@@ -542,7 +921,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'tower-shard',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '会发光的碎片',
     text: '一个山人兜售从黑苔高塔外围捡的「碎片」,说贴身戴着,夜夜梦见战死的袍泽对自己笑。碎片确实在微光里一明一暗。',
     choices: [
@@ -570,7 +949,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'harvest-hands',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '收割的三天',
     text: '秋收正忙,村长来问:公会能否派几个人帮工三天?工钱微薄,但「管饭,管饱,新米酿的酒管够」。',
     choices: [
@@ -596,7 +975,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'plague-village',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '疫病村的门',
     text: '邻村发热病蔓延。修道院征人手去隔离区协助,承诺「英灵会记得」;药商同时开出高价:去收购病人家贱卖的田产地契。',
     choices: [
@@ -624,7 +1003,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'peddler-potions',
-    title: '行脚药贩',
+    scope: { kind: 'town' },
+title: '行脚药贩',
     text: '一个背着半人高木箱的行脚药贩在酒馆门口支起摊子,嗓音沙哑:「行军药膏,亲测有效——便宜一半,别问来路。」木箱上爬着细小的白霜,在秋日里不化。',
     choices: [
       {
@@ -645,7 +1025,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'warehouse-thief',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '仓库里的手',
     text: '守夜的队员抓了个翻墙的小贼,怀里揣着两瓶治疗药。是个瘦得脱形的女人,说孩子在矿道镇病着,药铺的价钱她付不起。',
     choices: [
@@ -667,7 +1047,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'frost-envoy',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '白霜的信使',
     text: '一个嘴唇冻成青色的信使带来了白霜墓园的信:织法者们愿意付钱,只求公会不要再接去墓园的委托。「死者需要安静。」信纸落款处的名字,全是你葬送在那里的旧敌。',
     choices: [
@@ -689,7 +1069,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'abyss-preacher',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '渊底的传教士',
     text: '一个穿深袍的传教士在酒馆后巷布道,听众多是输光了的佣兵。他说渊底能让人「忘掉输掉的一切」。有人劝你们管管——也有人已经在问他入教的事。',
     choices: [
@@ -711,7 +1091,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'veteran-legacy',
-    title: '老兵的遗产',
+    scope: { kind: 'town' },
+title: '老兵的遗产',
     text: '一个拄拐的退役佣兵被邻居发现死在屋里。邻居说,老人临终前一直念叨「黑苔」——三十年前他在这里当过队长。他没有任何亲人。',
     choices: [
       {
@@ -732,7 +1113,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'tax-convoy',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '税官的车队',
     text: '河湾村的村长找上门:税官的车队后天经过,课的是「灾年免不了」的重税。村里凑不出钱,凑得出二十个壮丁——和一份体面的报酬。',
     choices: [
@@ -754,7 +1135,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'mining-strike',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '矿工的请愿',
     text: '锈坑矿道的矿工们联名请愿:公会一直在给「换掉他们」的裸井队做护卫。他们不求公会倒戈,只求别再接那种活。',
     choices: [
@@ -775,7 +1156,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
     ],
   },  {
     id: 'snow-caravan',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '雪困的商队',
     text: '急报:一支商队困在白霜墓园外的雪坡上,看守的人手被「会走路的冰雕」冲散。货主开出的救援价很高——高到说明他清楚那些冰雕是什么。',
     choices: [
@@ -797,7 +1178,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'cursed-grimoire',
-    title: '拾来的经书',
+    scope: { kind: 'town' },
+title: '拾来的经书',
     text: '一个采药孩子挖到一本用皮封面的书,拿到公会想换两个面包。识字的队员翻了两页就合上了:那不是经书,是「说明书」——教你如何给伤口做「不会好的包扎」。',
     choices: [
       {
@@ -818,7 +1200,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'arena-invite',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '斗技场的请柬',
     text: '邻镇斗技场送来烫金请柬:邀请「黑苔的勇士们」参加表演赛,胜方奖金丰厚,观众就爱看真佣兵。请柬背面用小字写着:死伤自负。',
     choices: [
@@ -840,7 +1222,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'great-contract',
-    title: '压垮桌子的大单',
+    scope: { kind: 'town' },
+title: '压垮桌子的大单',
     text: '一位侯爵的管家带来一份长约:全公会整编听调三个月,扫清领地内所有「不安定因素」。报酬是一年的进项。管家补了一句:「包括那些不方便走法庭的。」',
     choices: [
       {
@@ -862,7 +1245,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   // ===== 事件大项第一批(反馈④:两难取舍+延迟后果;灵感池见文件头) =====
   {
     id: 'toll-bridge',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['water'] },
     title: '断桥收费',
     text: '去对岸的吊桥断了一半,一个抱着酒坛的渡翁躺在缆绳边:「五个金币,我背你过去。一个一个来,别晃。」',
     choices: [
@@ -884,7 +1267,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'wounded-scout',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['blackmoss'] },
     title: '沼泽里的斥候',
     text: '灌木丛里有呻吟声。一个斥候打扮的年轻人被兽夹咬住小腿,已经两天了,伤口发黑。他看见你们,眼睛亮得吓人。',
     choices: [
@@ -906,7 +1289,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'fever-hamlet',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '烧还是不烧',
     text: '一个村子在求救:热病倒了半村人。村长老泪纵横:「再没人帮,我们只能烧了村子断病根。」药铺就剩半间,药材没来得及糟蹋。',
     choices: [
@@ -928,7 +1311,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'old-shrine',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['sanctum', 'ruin'] },
     title: '无名老祭坛',
     text: '半塌的石祭坛,香灰是新的——荒地里不该有新的香灰。石头上刻着看不懂的旧字,只有一行通用语:「留者得,取者偿。」',
     choices: [
@@ -950,7 +1333,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'bonfire-ember',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['camp'], regions: ['blackmoss-wild'] },
     title: '路人的篝火',
     text: '沼泽高地有一堆没人看守的篝火,火苗白得反常,暖意却实实在在。火边插着一柄断剑,剑身刻着谁也不认识的名字。',
     choices: [
@@ -972,15 +1355,15 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'dying-knight',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['blackmoss'] },
     title: '将死骑士的托付',
     text: '一位锈甲骑士靠在界碑上,胸口插着不属于这片沼泽的细剑。他把手中的圣徽递过来:「把它送到北边的旧教堂……有人会等。别打开它。」他的眼睛已经在看别处了。',
     choices: [
       {
         text: '接下,不打开。死人的托付比活人的合同重。',
         outcomes: [
-          { weight: 6, text: '圣徽在行囊里沉甸甸的,像多带了一位同伴。全队走得不快,却走得齐。', effects: { moraleAll: 4, expAll: 20, delayed: { eventId: 'knight-pursuit', dueDays: 2 } } },
-          { weight: 4, text: '当夜,圣徽在行囊里发了烫。有人提议打开看看——被老兵一巴掌打回去。托付是托付,烫也是真烫。', effects: { moraleAll: 2, expAll: 20, runBuff: { id: 'knight-oath', name: '沉甸甸的托付', desc: '队伍走得更齐了——防御提升,直到本次远征结束', mods: { def: 1.12 } }, delayed: { eventId: 'knight-pursuit', dueDays: 2 } } },
+          { weight: 6, text: '圣徽在行囊里沉甸甸的,像多带了一位同伴。全队走得不快,却走得齐。', effects: { moraleAll: 4, expAll: 20, delayed: { eventId: 'knight-pursuit', dueDays: 2, at: 'town' } } },
+          { weight: 4, text: '当夜,圣徽在行囊里发了烫。有人提议打开看看——被老兵一巴掌打回去。托付是托付,烫也是真烫。', effects: { moraleAll: 2, expAll: 20, runBuff: { id: 'knight-oath', name: '沉甸甸的托付', desc: '队伍走得更齐了——防御提升,直到本次远征结束', mods: { def: 1.12 } }, delayed: { eventId: 'knight-pursuit', dueDays: 2, at: 'town' } } },
         ],
       },
       {
@@ -994,7 +1377,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'wine-cellar',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['ruin', 'under'] },
     title: '战利品酒窖',
     text: '塌了半边的庄园地窖里,几十桶酒码得整整齐齐——酒庄主人显然不是死于战乱,而是舍不得喝。桶上写着:「非贺功者勿开。」',
     choices: [
@@ -1016,7 +1399,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'dragon-cult',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['emberpass', 'scalehaven'] },
     title: '鳞音教的募捐',
     text: '白袍信士拦在路口,衣角绣着鳞纹:「龙苏醒之日,捐资者可记名于鳞册,灾时得眷属之庇。多少是个心意。」',
     choices: [
@@ -1031,14 +1414,14 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '拒绝,顺便告诉他们龙是不存在的。听劝的信士会更信龙,不听劝的会更信刀——都试过了。',
         outcomes: [
           { weight: 5, text: '信士们让开了路,诵经声在背后跟了半里地。', effects: { moraleAll: 2 } },
-          { weight: 5, text: '夜里,营地周围多了几百个白袍人围成的圈,不攻,只是围着,齐声诵经到天亮。没人睡好。', effects: { moraleAll: -6, runBuff: { id: 'chant-night', name: '诵经之夜', desc: '一整夜的诵经声——精神疲惫,受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
+          { weight: 5, text: '夜里,营地周围多了几百个白袍人围成的圈,不攻,只是围着,齐声诵经到天亮。没人睡好。', effects: { moraleAll: -6, runBuff: { id: 'chant-night', name: '诵经之夜', desc: '一整夜的诵经声——精神疲惫,受疗略降,直到本次远征结束', mods: { heal: 0.9 } }, delayed: { eventId: 'cult-wrath', dueDays: 3, at: 'town' } } },
         ],
       },
     ],
   },
   {
     id: 'lost-girl',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['road'], regions: ['blackmoss-wild'] },
     title: '迷路的小女孩',
     text: '泥路上坐着个六七岁的女孩,裙角干净得不像走失的。她说要去外婆家,却连村名都说不清。她盯着你们的干粮袋,又飞快移开视线。',
     choices: [
@@ -1053,14 +1436,14 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '给块干粮,让她自己回家。行程不等人,善意也要看里程。',
         outcomes: [
           { weight: 5, text: '她抱着干粮往岔路跑了,轻车熟路。至少这顿是饱的。', effects: { moraleRandom: -2 } },
-          { weight: 5, text: '她的视线一直挂在你们腰间的钱袋上——那手法不像孩子。走出二里地,队长摸了摸钱袋,庆幸自己多看了一眼。', effects: { moraleRandom: -3 } },
+          { weight: 5, text: '她的视线一直挂在你们腰间的钱袋上——那手法不像孩子。走出二里地,队长摸了摸钱袋,庆幸自己多看了一眼。', effects: { moraleRandom: -3, delayed: { eventId: 'girl-debt', dueDays: 3, at: 'town' } } },
         ],
       },
     ],
   },
   {
     id: 'blackmarket-healer',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '黑市医师',
     text: '地下室里的医师干净得可疑:「正规治疗五十金。我这只要十金,不问来路,不留病历——就是缝线的针脚丑了点。」',
     choices: [
@@ -1081,7 +1464,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
     ],
   },  {
     id: 'mirror-lake',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['water'] },
     title: '不照人的湖',
     text: '湖水平得像镜子,但村里人从不照:「它照的不是脸,是你欠的账。」湖边只有一块洗衣石,和一句被磨了一半的旧话:「照见者……」后半句风化了。',
     choices: [
@@ -1104,7 +1487,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   // ===== 第二幕(延迟后果):由主事件的 delayed 触发,dueDay 后弹出 =====
   {
     id: 'knight-pursuit',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '第二幕·锈甲的来客',
     text: '三名披同款锈甲的骑士堵在公会门口,为首的盯着柜台上那枚圣徽:「他临死前把东西给谁了?」他没有出示任何凭证。圣徽此刻不在柜台上——在你们挑中的远征队行囊里。',
     choices: [
@@ -1119,13 +1502,13 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '不交。托付是托付,徽在人在。',
         outcomes: [
           { weight: 5, text: '对峙到黄昏,骑士们退了。临走留话:「它会认主。它已经认了。」行囊里的圣徽,似乎更沉了。', effects: { moraleAll: 4, runBuff: { id: 'relic-kept', name: '守诺之重', desc: '全队背负着托付——防御提升,直到本次远征结束', mods: { def: 1.15 } } } },
-          { weight: 5, text: '谈崩了,动起手。三位骑士带走了话,也留下了伤——「下回在旧教堂见」。那地方你们早晚要去。', effects: { moraleAll: -3, delayed: { eventId: 'knight-pursuit', dueDays: 4 } } },
+          { weight: 5, text: '谈崩了,动起手。三位骑士带走了话,也留下了伤——「下回在旧教堂见」。那地方你们早晚要去。', effects: { moraleAll: -3, delayed: { eventId: 'knight-chapel', dueDays: 4, at: 'dungeon', dungeonId: 'ashfield' } } },
         ],
       },
     ],
   },  {
     id: 'girl-debt',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '第二幕·小女孩的债主',
     text: '一个精瘦的男人闯进公会,拍下一张画像——就是当初那个「迷路」的女孩:「她偷了我东家的东西,见过她的人都要作证。作证费,二十金。不作证……那就是同伙。」',
     choices: [
@@ -1147,15 +1530,15 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'cult-wrath',
-    region: ['dragonridge'],
+    scope: { kind: 'town' },
     title: '第二幕·鳞册的批注',
     text: '一封鳞纹封口的信送到公会:您的鳞册记名已作批注——「曾拒圣听,心意不诚」。附言:已为您在「眷属之庇」名单中除名,并移入「灾时顺延」名单。',
     choices: [
       {
         text: '烧了信。龙要真醒,先烧的应该是这种名单。',
         outcomes: [
-          { weight: 6, text: '烧信的火苗是白的,烧完连灰都不剩。全队看着那团火,默默决定今晚早睡。', effects: { moraleAll: -2 } },
-          { weight: 4, text: '信烧了,诵经声却在自己营地外响了一夜——不进,不散,天亮即去。荒野的心理战,他们玩得比龙熟练。', effects: { moraleAll: -5 } },
+          { weight: 6, text: '烧信的火苗是白的,烧完连灰都不剩。全队看着那团火,默默决定今晚早睡。', effects: { moraleAll: -2, delayed: { eventId: 'cult-purge', dueDays: 2, at: 'dungeon' } } },
+          { weight: 4, text: '信烧了,诵经声却在自己营地外响了一夜——不进,不散,天亮即去。荒野的心理战,他们玩得比龙熟练。', effects: { moraleAll: -5, delayed: { eventId: 'cult-purge', dueDays: 2, at: 'dungeon' } } },
         ],
       },
       {
@@ -1170,9 +1553,9 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   // ===== 事件大项第二批(事件二期:链扩充+第三幕+WoW 稀有猎杀+矮人要塞涌现) =====
   {
     id: 'knight-chapel',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['ashfield'] },
     title: '第三幕·旧教堂的答案',
-    text: '北边的旧教堂找到了。门推开,长椅上坐着一排锈甲骑士的亡魂——那位托付圣徽的同僚。他们齐齐转头,等一个答案。',
+    text: '旧战场边上的那座教堂,找到了。门推开,长椅上坐着一排锈甲骑士的亡魂——那位托付圣徽的同僚。他们齐齐转头,等一个答案。',
     choices: [
       {
         text: '把圣徽放上祭坛,讲完他最后一程。',
@@ -1192,7 +1575,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'siren-marsh',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['blackmoss'] },
     title: '沼泽歌姬',
     text: '黄昏,水面漂来歌声。听得懂的人说那是在唱自己的名字——沼泽歌姬在点名,被点到的人会不由自主往水里走。全队的眼睛都开始发直。',
     choices: [
@@ -1206,7 +1589,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '循声找她。会唱歌的东西,杀了都能换钱。',
         outcomes: [
-          { weight: 5, text: '歌姬的巢穴里堆满了溺亡者的财物。她本人……你们赢得很险,但战利品是真的。', effects: { gold: 110, item: 'trk-t2-medic', runBuff: { id: 'siren-ear', name: '耳中余音', desc: '歌声还在脑子里绕——受疗略降,直到本次远征结束', mods: { heal: 0.9 } } } },
+          { weight: 5, text: '歌姬的巢穴里堆满了溺亡者的财物。她本人……你们赢得很险,但战利品是真的。', effects: { gold: 110, item: 'trk-t2-medic', runBuff: { id: 'siren-ear', name: '耳中余音', desc: '歌声还在脑子里绕——受疗略降,直到本次远征结束', mods: { heal: 0.9 } }, delayed: { eventId: 'siren-bones', dueDays: 3, at: 'town' } } },
           { weight: 5, text: '找上门的代价是被反伏击。你们狼狈击退了她,什么都没捞到,还搭上了干粮。', effects: { moraleAll: -5, potionHeal: -1 } },
         ],
       },
@@ -1214,7 +1597,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'siren-bones',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '第二幕·歌姬的骨头',
     text: '一个骨头贩子找上门:「歌姬的肋骨是乐器匠的圣物,一根五十金。你们见过她,对吧?告诉我她的巢穴,五五分账。」他笑起来牙床外露。',
     choices: [
@@ -1235,7 +1618,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'gilded-skull',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '镀金头骨',
     text: '游商摊位正中摆着一颗镀金头骨:「了解过去,预言未来,一次十金。不满意,退钱。」眼窝里镶的黑曜石随人转动,像在打量谁。',
     choices: [
@@ -1257,7 +1640,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'rival-guild',
-    title: '挑战书',
+    scope: { kind: 'town' },
+title: '挑战书',
     text: '「铁棘会」的挑战书钉在公会大门上:比试猎杀,下周同期,同一片猎场,猎物价值高者得——输的一方,挂牌让出名字三个月。',
     choices: [
       {
@@ -1278,7 +1662,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'moon-well',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['wild'] },
     title: '月井',
     text: '林间圆井,月光落进去不散,反而像凝成了实物。井边石碑:「投其所珍,取其所需。」——典型的古老契约措辞,也典型的没说清楚违约条款。',
     choices: [
@@ -1300,7 +1684,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'fleeing-serf',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['road'], regions: ['blackmoss-wild'] },
     title: '逃亡的佃农',
     text: '田埂上追出一个抱婴儿的佃农家庭,身后烟尘滚滚——领主的骑奴。佃农喊:「行行好,让我们躲躲!地租利滚利,三代都还不完了!」',
     choices: [
@@ -1308,7 +1692,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '藏。干草垛后面塞下一家三口,对骑奴摇头:「没见过。」',
         outcomes: [
           { weight: 6, text: '骑奴走后,佃农从干草里出来,膝盖砸进泥里给你们磕头。你们扶都扶不及——这礼太重,收不起。', effects: { moraleAll: 5, blessing: 3 } },
-          { weight: 4, text: '藏是藏住了,骑奴却记下了公会的脸。领主的「佣兵黑名单」上,大概多了一行字。', effects: { moraleAll: 3, delayed: { eventId: 'lord-mercy', dueDays: 3 } } },
+          { weight: 4, text: '藏是藏住了,骑奴却记下了公会的脸。领主的「佣兵黑名单」上,大概多了一行字。', effects: { moraleAll: 3, delayed: { eventId: 'lord-mercy', dueDays: 3, at: 'town' } } },
         ],
       },
       {
@@ -1322,7 +1706,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'lord-mercy',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '第二幕·领主的谢礼',
     text: '领主的管家到访,礼数周全:「大人查阅卷宗,发现贵会曾「恰巧」存在于某片干草垛附近。大人重温旧事,感念当日不必为难彼此。」留下一个锦盒。',
     choices: [
@@ -1344,7 +1728,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'rare-hunt',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '稀有的传闻',
     text: '酒馆角落,独眼老猎人不紧不慢地开了口:「沼泽深处最近出了个稀罕物——「三沼之灾」,头上有旧战盔,杀过一整支勘探队。它的巢,就是它的宝藏。」几个酒客听得眼睛发亮,又互相看了看,都没敢动。',
     choices: [
@@ -1366,7 +1750,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'bard-chronicle',
-    title: '吟游诗人',
+    scope: { kind: 'town' },
+title: '吟游诗人',
     text: '酒馆里来了个吟游诗人,拨着琴弦唱起本地佣兵的旧事——唱到一半,你听出来了:他唱的是你们。细节对得上,连败仗都唱,而且唱得比胜仗还动人。',
     choices: [
       {
@@ -1387,7 +1772,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'memorial-visitor',
-    title: '纪念碑前的陌生人',
+    scope: { kind: 'town' },
+title: '纪念碑前的陌生人',
     text: '公会石碑前站着一个陌生人,放下一束沼泽菊,敬了个不太标准的军礼。他回头看见你,眼神复杂:「我哥哥……也在这行。想问问,他们走得,疼吗?」',
     choices: [
       {
@@ -1408,7 +1794,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'living-blade',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '活体之刃',
     text: '黑市深处,一柄剑插在铁砧上,剑身如流水游动。商人压低声音:「它自己挑主人。至今挑了七个,前六个……都出名了。以各种方式。」剑身轻轻震颤,像在打呵欠。',
     choices: [
@@ -1429,7 +1815,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'hunger-altar',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['abyssaltar'] },
     title: '饥渴之坛',
     text: '地窖深处的石坛,凹槽里干涸的血迹发黑。石壁刻文:「喂养我,我喂养你。」坛边的陶碗里,放着一把银质的割血刀——擦得很亮,有人常用。',
     choices: [
@@ -1451,7 +1837,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'mimic-chest',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['ruin'] },
     title: '可疑的宝箱',
     text: '废墟正中,一只宝箱摆得端端正正——太端正了。箱身上的锁是新的,灰尘却厚得反常;最要命的是,它离墙有一段距离,像什么生物趴在开阔处晒太阳。',
     choices: [
@@ -1473,7 +1859,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'soul-trade',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['abyssaltar'] },
     title: '灵魂商人',
     text: '商人没有影子,货摊却应有尽有。「以记忆易物,」他微笑,「一段童年,换这把匕首;一段初恋,换那件护甲。质量上乘的回忆,我给好价钱。」',
     choices: [
@@ -1495,7 +1881,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'wolf-cub',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['wild'], regions: ['blackmoss-wild'] },
     title: '狼崽',
     text: '捕兽夹旁边,一只狼崽在装死——装得很差,耳朵一直抖。母狼不在,血迹却是母狼的。它盯着你们,喉咙里滚着不成样子的小小咆哮。',
     choices: [
@@ -1517,14 +1903,14 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'prisoner-ransom',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '俘虏与赎金',
     text: '你们端了匪窝,俘虏里有个绸衫商人:「我家里有钱!送信回去,三百金赎金!」另一个俘虏啐他:「他的「家里」是骗来的,我认识他,他叫三手刘!」',
     choices: [
       {
         text: '信绸衫的,送信等赎金。锦衣玉食的人,绑错了会赔得很惨。',
         outcomes: [
-          { weight: 5, text: '第七天,赎金到了,分文不少。三手刘被释放时发誓改行——第八天他就因销赃又被抓了。', effects: { gold: 150, delayed: { eventId: 'ransom-aftermath', dueDays: 3 } } },
+          { weight: 5, text: '第七天,赎金到了,分文不少。三手刘被释放时发誓改行。没人信,包括他自己。', effects: { gold: 150, delayed: { eventId: 'ransom-aftermath', dueDays: 3, at: 'town' } } },
           { weight: 5, text: '等到第十天,赎金没来,来的却是剿匪的官兵——把你们和三手刘一起围了。解释了很久,官兵最后没收了「赃物」充公。', effects: { moraleAll: -5, gold: -20 } },
         ],
       },
@@ -1539,7 +1925,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'ransom-aftermath',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '第二幕·三手刘的信',
     text: '一封信送到公会,字迹歪歪扭扭:「我是三手刘。改行了,真的。现在给商队当镖师,合法的。听说你们那边招人——别收我,我就是想说声谢。」信封里塞着一小袋钱,不多,压得平整。',
     choices: [
@@ -1561,7 +1947,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   // ===== 事件大项第二批·独立事件 =====
   {
     id: 'wedding-ring',
-    title: '泥里的婚戒',
+    scope: { kind: 'town' },
+title: '泥里的婚戒',
     text: '练兵场泥地里,游侠的脚踢到一枚戒指——内圈刻着两个名字和一个日期,做工远超这片沼泽的水平。失主肯定翻遍了整个训练场。',
     choices: [
       {
@@ -1582,7 +1969,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'flooded-mine',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'dungeon', ids: ['rustmine'] },
     title: '淹水的矿洞',
     text: '锈坑矿道的旧巷道重新积水了,水下的矿脉在灯下闪——矿主开价:抽干水,采出的矿五五分。抽水要请水法师,预付四十金。',
     choices: [
@@ -1604,7 +1991,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'smuggler-hideout',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['under'] },
     title: '走私洞',
     text: '山洞里的走私据点人去楼空,留下的货码得整整齐齐:上好的酒、南方的香料、几桶没贴标的火药。洞口刻着规矩:「同行不动同行的货。」',
     choices: [
@@ -1626,7 +2013,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'fallen-star',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '坠星与铁匠',
     text: '一颗流星落在铁匠村后山。老铁匠眼睛发直:「星铁!三十年没见过的料!但老朽的锤子降不住它——需要一支佣兵去把流星头搬回来。路上,肯定不只有你们想要它。」',
     choices: [
@@ -1648,7 +2035,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'orphan-apprentice',
-    title: '门口的孤儿',
+    scope: { kind: 'town' },
+title: '门口的孤儿',
     text: '公会门口蹲着个半大孩子,包袱里是一套缝补过的佣兵皮甲——他爹的。「我会磨箭,认草药,记账。」他背了一遍,像背了很多遍。「收我。什么都干。」',
     choices: [
       {
@@ -1669,7 +2057,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'ghost-banquet',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['camp'] },
     title: '深夜的宴席',
     text: '扎营半夜,营地中央多出一桌宴席:热气腾腾,杯盏齐全,坐垫朝着四个方向——不多不少,刚好是你们的人数。没人看见它是什么时候摆好的。',
     choices: [
@@ -1677,7 +2065,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
         text: '入席。深更半夜的款待,推辞才是失礼。',
         outcomes: [
           { weight: 5, text: '菜是真香,酒是真暖。天亮时桌椅消失了,但每个人的疲惫都消了大半——有人的嘴角还挂着油光。', effects: { moraleAll: 6, runBuff: { id: 'ghost-feast', name: '宴席之恩', desc: '吃人的嘴软?不,是吃饱了有力气——攻击提升,直到本次远征结束', mods: { atk: 1.08 } } } },
-          { weight: 5, text: '酒过三巡,对面空着的坐垫上,有人开了口:「替我看看今年的收成。」大家礼貌地应了。答应亡者的事,记得还。', effects: { moraleAll: 3, delayed: { eventId: 'ghost-harvest', dueDays: 4 } } },
+          { weight: 5, text: '酒过三巡,对面空着的坐垫上,有人开了口:「替我看看今年的收成。」大家礼貌地应了。答应亡者的事,记得还。', effects: { moraleAll: 3, delayed: { eventId: 'ghost-harvest', dueDays: 4, at: 'dungeon' } } },
         ],
       },
       {
@@ -1691,12 +2079,12 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'ghost-harvest',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['road'], regions: ['blackmoss-wild'] },
     title: '第二幕·收成',
-    text: '路过一片陌生的农田,田里的麦子黑了半边——某种看不见的东西正在糟蹋收成。农夫抱头蹲在田埂:「去年答应过一个过路人,给他看今年的收成……人没来,田就成这样了。」',
+    text: '路边一片麦田黑了半边。田埂上坐着个农夫,对着空处说话:『爹,今年的收成不好。』他说他爹去年冬天走的,走前一直念叨着要看今年的麦子。',
     choices: [
       {
-        text: '替那位「过路人」看收成,大声报个平安——再把答应的事做了。',
+        text: '替那位看收成:把麦穗举到空处,大声报一句『今年还行』。',
         outcomes: [
           { weight: 7, text: '话音落下,黑麦的边缘以肉眼可见的速度转黄。农夫跪在田里哭,你们悄悄绕开了他的谢礼——有些托付,做了就该轻描淡写。', effects: { moraleAll: 5, blessing: 6 } },
           { weight: 3, text: '报了平安,黑麦却只好转了一半——「过路人」欠的债太重,你们这点诚意只够打个折。农夫照样千恩万谢,你们照样心里有数。', effects: { moraleAll: 2, blessing: 2 } },
@@ -1713,7 +2101,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'caravan-storm',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['road'] },
     title: '狼群下的商队',
     text: '暴雨里,一支商队被狼群围在坡下,押货人举着火把结成圈,圈里的绸缎和铁器在闪电下发亮。商队领队嘶喊:「救命!货分你们三成!」',
     choices: [
@@ -1735,7 +2123,8 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'mad-alchemist',
-    title: '疯药剂师',
+    scope: { kind: 'town' },
+title: '疯药剂师',
     text: '药剂师从窗口探出头,白发炸成一朵蒲公英:「新药!喝了就知道明天的事!可惜昨天喝的那批,试药的人说知道的全是上礼拜的!」他晃着两瓶颜色可疑的药水:「半价!限时!」',
     choices: [
       {
@@ -1756,7 +2145,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'confession-booth',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'terrain', terrains: ['sanctum'] },
     title: '路旁忏悔室',
     text: '荒野小教堂的忏悔室居然亮着灯。隔板后一个声音在哭:「我拿了不该拿的东西,卖了不该卖的人……神父睡着了,你听我说完行吗?就一次。」',
     choices: [
@@ -1778,7 +2167,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'old-map',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '酒鬼的旧地图',
     text: '酒鬼拽住你的袖子,掏出一张油乎乎的羊皮:「祖上传的!藏宝图!三十金卖你——不买拉倒,反正我孙子也不信。」图上的确画着错综的标记,还有一半被油渍泡烂了。',
     choices: [
@@ -1800,7 +2189,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'parasite-tongue',
-    region: ['blackmoss-wild'],
+    scope: { kind: 'town' },
     title: '蛆舌预言者',
     text: '沼泽集市角落,兜帽人竖起一根手指:「免费预言。」手指顶端趴着一条一寸长的白虫,蠕动着指向每个驻足的人。「它尝过世界深处的味道。听,还是挖掉它?挖掉,预言就归你了。」',
     choices: [
@@ -1823,7 +2212,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   // ===== 龙脊地域补充:救援与采矿的取舍、朝圣路标的代价 =====
   {
     id: 'forge-sluice',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['forge-works'] },
     title: '熔铸工坊的泄洪闸',
     text: '工坊废水沟里传来敲击声。两个锻工困在栅栏后,热水已涨到腰间。打开泄洪闸能救人,但闸外摊着他们整月炼出的矿砂。领班抱住扳杆:「矿没了,下个月吃什么?」',
     choices: [
@@ -1845,7 +2234,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'ash-waymarkers',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['fireridge'] },
     title: '灰中的路标',
     text: '火脊巢穴外的岔路被落灰埋平。向导找到了朝圣者留下的铜路牌:拆下来卖,够补一次行粮;重新立起它们,后面的队伍才不会走进喷气口。你们的水已经不多了。',
     choices: [
@@ -1868,14 +2257,14 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   // ===== 事件三期(版图二·龙脊山脉主题):龙蛋/教团清算/龙裔叛逃者/火雨夜等 =====
   {
     id: 'dragon-egg',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['fireridge'] },
     title: '龙蛋的困境',
     text: '温泉眼边窝着三枚龙蛋,壳面温热,偶尔颤动——里面有活物。鳞音教的通缉令就贴在百里外的镇口:「私藏龙蛋者,株连雇主。」每个蛋,黑市开价两百金。',
     choices: [
       {
         text: '全部抱走。两百一个,三个六百,这是行军财务上的正确决策。',
         outcomes: [
-          { weight: 5, text: '蛋在行囊里一路发烫,夜里轮流抱睡。卖是卖了,可从那以后,队伍里总有人在半夜听见壳裂的声音。', effects: { gold: 200, moraleAll: -5, delayed: { eventId: 'egg-hatch', dueDays: 3 } } },
+          { weight: 5, text: '黑市只收了一枚,另外两枚贩子说『成色不对』,只好扔在半路。从那以后,队伍里总有人在半夜听见壳裂的声音。', effects: { gold: 200, moraleAll: -5, delayed: { eventId: 'egg-hatch', dueDays: 3, at: 'dungeon', dungeonId: 'fireridge' } } },
           { weight: 5, text: '搬蛋的队员被突然破壳的一只咬了——那不是龙,是只认人的小蜥蜴。它赖上了背它的人,赶都赶不走。', effects: { gold: 120, injure: true, moraleAll: 2 } },
         ],
       },
@@ -1890,9 +2279,9 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'egg-hatch',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['fireridge'] },
     title: '第二幕·壳里的东西',
-    text: '卖掉龙蛋的第九天,营地水桶里发现一只巴掌大的小龙崽——湿漉漉的,是从你们行囊缝里掉进水桶的蛋里孵出来的。它谁也不认,只咬当初提议「抱走」的那位。',
+    text: '营地水桶里多了一只巴掌大的小龙崽,湿漉漉的——是扔在半路的那两枚之一,循着气味跟了上来。它谁也不认,只咬当初提议「抱走」的那位。',
     choices: [
       {
         text: '养着。能咬雇佣兵的东西,将来能咬别的。',
@@ -1911,7 +2300,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'cult-purge',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['pilgrim-path', 'dragonmaw'] },
     title: '教团的清算',
     text: '鳞音教的执事团堵在营地外,展开一卷名单:「据鳞册批注,贵会曾于圣地带不敬。念贵会屡建战功,罚金三百金,或——交出当日带队的名字,由圣火净化其不敬。」',
     choices: [
@@ -1925,15 +2314,15 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '抗到底。净化两个字冲着谁来的,谁就站出来——全队都会站出来。',
         outcomes: [
-          { weight: 5, text: '对峙到深夜,执事团烧了自己的营帐走了——那是教团最烈的抗议。全队握刀握到天亮,手上是汗,心里是火。', effects: { moraleAll: 8, delayed: { eventId: 'cult-vengeance', dueDays: 2 } } },
-          { weight: 5, text: '冲突见血了。双方各伤了人,教团扛着伤员撤离时,老队长说了句谁都懂的话:「这下梁子结到龙了。」', effects: { moraleAll: 5, moraleRandom: -3, delayed: { eventId: 'cult-vengeance', dueDays: 2 } } },
+          { weight: 5, text: '对峙到深夜,执事团烧了自己的营帐走了——那是教团最烈的抗议。全队握刀握到天亮,手上是汗,心里是火。', effects: { moraleAll: 8, delayed: { eventId: 'cult-vengeance', dueDays: 2, at: 'dungeon' } } },
+          { weight: 5, text: '冲突见血了。双方各伤了人,教团扛着伤员撤离时,老队长说了句谁都懂的话:「这下梁子结到龙了。」', effects: { moraleAll: 5, moraleRandom: -3, delayed: { eventId: 'cult-vengeance', dueDays: 2, at: 'dungeon' } } },
         ],
       },
     ],
   },
   {
     id: 'cult-vengeance',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['pilgrim-path', 'dragonmaw'] },
     title: '第二幕·圣火的回信',
     text: '夜里,营地四周的火把无故自燃,火苗全是幽蓝色。火堆边留着一封烧了一半的信:「圣火已至,勿谓言之不预。」字迹是烧出来的,不是写出来的。',
     choices: [
@@ -1947,7 +2336,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       {
         text: '回敬。把他们的圣像也点一把火,火对火,公平。',
         outcomes: [
-          { weight: 5, text: '圣像烧塌的那刻,远处山脊上所有教团的火把同时熄灭——然后同时亮起。他们记住了。你们也记住了:这里没人敢惹黑苔。', effects: { moraleAll: 6, gold: -20, delayed: { eventId: 'cult-vengeance', dueDays: 4 } } },
+          { weight: 5, text: '圣像烧塌的那刻,远处山脊上所有教团的火把同时熄灭——然后同时亮起。他们记住了。你们也记住了:这里没人敢惹黑苔。', effects: { moraleAll: 6, gold: -20, delayed: { eventId: 'cult-reckoning', dueDays: 4, at: 'dungeon', dungeonId: 'dragonmaw' } } },
           { weight: 5, text: '火太大了,烧过了山脊的枯草——教团的营地没了,半片林子也没了。你们赢了这一局,输了一片林子,也输掉了说「我们只是自卫」的底气。', effects: { moraleAll: -3, gold: 40 } },
         ],
       },
@@ -1955,7 +2344,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'dragon-defector',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['forge-works'] },
     title: '龙裔的叛逃者',
     text: '一个龙裔鳞甲半褪、躲在溪水边发抖。他说自己是教团的锻奴,偷了火种图谱逃出来:「收留我,图谱归你们。被找到——你们和我是同罪。」',
     choices: [
@@ -1977,7 +2366,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'pilgrim-alms',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['pilgrim-path', 'emberpass'] },
     title: '朝圣者的众筹',
     text: '一队衣衫褴褛的朝圣者在山道上支起木牌:众筹登龙脊,敬龙以止天罚。捐资者名入功德簿。他们的领袖是个瘸腿老妇,眼神却像鹰。',
     choices: [
@@ -1999,7 +2388,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'whelp-poachers',
-    region: ['dragonridge'],
+    scope: { kind: 'dungeon', ids: ['fireridge'] },
     title: '盗猎幼龙者',
     text: '岩架下三个盗猎者正往麻袋里塞幼龙崽,龙妈妈被网罩住奄奄一息。盗猎头子冲你们晃了晃钱袋:一人五十,当没看见。龙崽贩子出手比你们公会大方。',
     choices: [
@@ -2021,7 +2410,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'fire-rain',
-    region: ['dragonridge'],
+    scope: { kind: 'terrain', terrains: ['lava'], regions: ['dragonridge'] },
     title: '火雨之夜',
     text: '龙脊的夜空烧起来了——火山的碎屑随雨落下,火星打在帐篷上滋滋作响。老向导蹲在岩下:往南走能躲,往北走是猎场。但火雨后的猎场,会露出平时看不见的东西。',
     choices: [
@@ -2043,14 +2432,14 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'cult-recruiter',
-    region: ['dragonridge'],
+    scope: { kind: 'town' },
     title: '教团的征募官',
     text: '征募官的文书摊开在桌上:加入鳞音教,享受眷属庇护、圣火抚恤、龙裔锻武优先权。条件:宣誓、纳贡、以及——必要的时候,替圣火做点小事。',
     choices: [
       {
         text: '加入。教团的小事再多,也比没有庇护强。',
         outcomes: [
-          { weight: 5, text: '宣誓那天发了圣徽和抚恤册。第一件小事三天后就来了——帮教团运一口绝对不能打开的箱子。你们没打开,但箱子在夜里发出过声音。', effects: { gold: 80, runBuff: { id: 'cult-member', name: '教团编内', desc: '眷属庇护是真的——受疗提升,直到本次远征结束', mods: { heal: 1.15 } }, delayed: { eventId: 'cult-errand', dueDays: 3 } } },
+          { weight: 5, text: '宣誓那天发了圣徽和抚恤册。第一件小事三天后就来了——帮教团运一口绝对不能打开的箱子。你们没打开,但箱子在夜里发出过声音。', effects: { gold: 80, runBuff: { id: 'cult-member', name: '教团编内', desc: '眷属庇护是真的——受疗提升,直到本次远征结束', mods: { heal: 1.15 } }, delayed: { eventId: 'cult-errand', dueDays: 3, at: 'town' } } },
           { weight: 5, text: '加入容易,宣誓的措辞却很讲究——效忠圣火,永不背弃。签字画押后,队里识字的那位脸色发白:这条款,退不出去了。', effects: { gold: 80, moraleAll: -3, runBuff: { id: 'cult-member', name: '教团编内', desc: '受疗提升,直到本次远征结束', mods: { heal: 1.15 } } } },
         ],
       },
@@ -2065,7 +2454,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'cult-errand',
-    region: ['dragonridge'],
+    scope: { kind: 'town' },
     title: '第二幕·那口箱子',
     text: '教团的传令官追上来:上次那口箱子,收件人说里面少了东西——少了一只会唱歌的石头。他盯着你们:开箱验货是规矩,赔也是规矩。你们自己选。',
     choices: [
@@ -2087,7 +2476,7 @@ export const GUILD_EVENTS: GuildEventDef[] = [
   },
   {
     id: 'dragon-blood-spring',
-    region: ['dragonridge'],
+    scope: { kind: 'terrain', terrains: ['lava'], regions: ['dragonridge'] },
     title: '龙血泉',
     text: '山岩缝里渗出一泓暗红的泉水,附近草木疯长,泉水边伏着一具巨兽骸骨——骸骨的心口位置,泉水正对着一枚心脏形状的凹坑。喝,还是不喝?',
     choices: [
@@ -2107,4 +2496,5 @@ export const GUILD_EVENTS: GuildEventDef[] = [
       },
     ],
   },
+  ...NEW_EVENTS_2026_10_03,
 ]
