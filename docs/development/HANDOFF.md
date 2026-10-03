@@ -1,6 +1,11 @@
 # 当前交接
 
-## 新工单：G2 前修复——7 阻断 + 配套建议 + U26 第 5 组（移交 zcode/本机，制作人指示，2026-10-02）
+## ✅ 工单完成：G2 前修复五组全部交付（zcode/本机，2026-10-03，移交 Codex 复审）
+
+- **五组全部完成并推送**(01864ff→`072662c` 区间,每提交 verify EXIT=0;e2e-playtest `--build --expeditions=12` 13 项全 ✓)。**移交 Codex 复审**:范围为五组提交的 diff + 本工单 + verify-2026-10-02-claude.md + DECISIONS U26;复审产出写回「复审报告(Codex)」节。
+- **遗留与待办**:①S7 未删(证据:咏叹光环有真实消费点,非死数据——见第 4 组登记,待审);②说书人模板「三审中」,制作人通过后施工方另起纯文本提交改「定稿」;③A12/A17 尾款在美术同伴;④G2 招募等 §3.8 全条件。
+
+## 原工单：G2 前修复——7 阻断 + 配套建议 + U26 第 5 组（移交 zcode/本机，制作人指示，2026-10-02）
 
 - **施工依据**：[verify-2026-10-02-claude.md](verify-2026-10-02-claude.md)「修改方案」五组，每条已写改法和验收。范围以该文为准，**不扩大**。第 5 组来自制作人 10-02 晚的 grill（[DECISIONS.md](DECISIONS.md) U26）。
 - **开工前**：先 `git pull`。工作区里有 Claude 留下的 6 个未提交文件（`.gitignore`、本文件、`DECISIONS.md`、verify 报告、模板对照稿 `story-templates-draft-2026-10-02.md`、`scripts/e2e-playtest-full.mjs`），先作为一个提交入库（含脚本，跑 verify）。
