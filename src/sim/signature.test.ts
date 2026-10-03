@@ -45,7 +45,7 @@ describe('A3 #1.1 招牌技:真打断', () => {
     expect(useSignature(state, me.memberId!, enemy.id)).toBe(false)
   })
 
-  test('批次 1 出口:全部专精(含混合)各有一个招牌技,behavior 完整(spec 规格断言)', () => {
+  test('批次 1 出口:全部基础专精各有一个招牌技,字段完整(spec 规格断言)', () => {
     const specIds: string[] = []
     for (const job of Object.values(JOBS)) for (const sp of Object.values(job.specs)) specIds.push(sp.id)
     for (const id of specIds) {

@@ -30,6 +30,7 @@ import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD } from '../src/data/dungeons'
 import { EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW } from '../src/data/dungeons-r2'
 import { ECONOMY } from '../src/data/economy'
+import { playtestAllows } from '../src/data/regions'
 import { migrate, saveGuild, loadGuildSave, exportSave, importSave, sanitizeMembers, SAVE_VERSION, combatSaveDue } from '../src/state/save'
 import { createGuildItems, itemStateFromSave, resolveMembers, serializeGuildItems, inventoryItems, relicItems,
   addInventoryItems, applyEncounterItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic, registerMemberItems,
@@ -409,7 +410,7 @@ function rngScope(scope: Record<string, unknown>) {
   const defaultProgress = initialRunState()
   return { initialRunState, checkpointRunState, memberGenerationState, restoreMemberGeneration,
     progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
-    combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
+    combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, playtestAllows, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
     lastRetreatRunRef: { current: null },
     __PLAYTEST__: false, playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {}, setPlaytestEnding: () => {},
@@ -438,6 +439,10 @@ function settlementUi(members: Member[]) {
     chronicleRef: { current: [] }, recordStatistics, seedChronicle, settleEncounter,
     setRun: () => {}, setTowerRun: () => {}, setTowerRunning: () => {}, drainAndSync: () => {},
     sfxVictory: () => {}, sfxDefeat: () => {}, int, baseEffects: () => ({ towerRestHealPct: 0.2 }),
+    playtestAllows, hintsSeen: [] as string[], factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } },
+    markExpeditionStart: () => {}, markTold: () => {}, story: null, setPlaytestEnding: () => {},
+    playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {},
+    lastRetreatRunRef: { current: null }, dismissHint: () => {},
   }
   for (const key of ['Members', 'Manual', 'DungeonMastery', 'TowerBest', 'RecruitCooldown', 'Inventory', 'LastDrops', 'PendingRelics', 'Memorial', 'Gold', 'StarMarrow', 'Blessing', 'Statistics', 'Chronicle', 'ScarNotices']) {
     scope['set' + key] = (v: any) => {
@@ -446,6 +451,7 @@ function settlementUi(members: Member[]) {
     }
   }
   scope.updateKingdom = (v: unknown) => { state.kingdom = v }
+  scope.playtestAllows = playtestAllows
   scope.setItemOwnership = (v: any) => { state.itemOwnership = v; state.inventory = inventoryItems(v); state.pendingRelics = relicItems(v) }
   scope.updateItemOwnership = handler('updateItemOwnership', scope)
   scope.updateItemOwnership(scope.itemOwnershipRef.current)
@@ -561,6 +567,8 @@ test('actual training purchase/start callbacks: one charge, insufficient funds g
     powerScore:()=>1,bondStars:()=>0,createRun,seedRef:{current:1},SEED_BASE:31,memorialAura:()=>0,memorial:[],protectOn:true,potions:{heal:3,fury:3},
     setTrainingReady:(v:boolean)=>{ready=v},logChronicle:()=>{},chronicleRaw:()=>({}),day:1,autoLoopRef:{current:false},guildBuffs:[],rareHuntNext:null,
     setScarNotices:()=>{},setLastDrops:()=>{},rendererRef:{current:null},THEME_BY_DUNGEON:{},setRunning:()=>{},syncAll:()=>{},
+    playtestAllows:()=>true,markExpeditionStart:()=>{},markTold:()=>{},setPlayMeta:()=>{},setPlaytestEnding:()=>{},
+    factLedgerRef:{current:{nextId:1,facts:[]}},playMeta:{startedAt:0,expeditions:0,retreats:0,signatureUses:0},lastRetreatRunRef:{current:null},
   })
   start(BLACKMOSS.branches[0].id)
   assert.equal(runRef.current.trainingExpMultiplier,1.25); assert.equal(ready,false)

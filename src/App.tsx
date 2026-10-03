@@ -82,7 +82,7 @@ import { chronicleRaw } from './sim/chronicle'
 import { grantExp } from './sim/gen'
 import { JOBS, specOf } from './data/jobs'
 import { HYBRIDS, isHybrid } from './data/vocations'
-import { REGIONS, dungeonLock, nextRegionLocked } from './data/regions'
+import { REGIONS, dungeonLock, nextRegionLocked, playtestAllows } from './data/regions'
 import type { EventRegion } from './sim/guild-events'
 import { TRAIT_INFO } from './data/traits'
 import { MECHANIC_REGISTRY, mechanicBrief } from './sim/mechanic-registry'
@@ -214,6 +214,9 @@ export default function App() {
     const milestone = DOCK_UNLOCK_MILESTONE[key]
     return milestone ? milestone({ inventoryCount: inventory.length, chronicleCount: chronicle.length, memorialCount: memorial.length }) : false
   }
+
+  const dockUnlockedRef = useRef(dockUnlocked)
+  dockUnlockedRef.current = dockUnlocked
   const [saveFailed, setSaveFailed] = useState(false)
   const changeProgress = (patch: Partial<RunUIState>) => {
     const next = runReducer(progressRef.current, { type: 'patch', patch })
@@ -736,6 +739,7 @@ export default function App() {
 
   const startExpedition = (branchId: string) => {
     if (runRef.current || towerRunRef.current || pendingEvent || expedition.length < activeDungeon.size) return
+    if (!playtestAllows(activeDungeon.id)) return // B6:试玩版版图一守卫
     lastBranchRef.current = branchId
     const refusers = expedition.filter((m) => refusesToMarch(m))
     if (refusers.length > 0) {
@@ -1726,12 +1730,12 @@ export default function App() {
               </>
             )
           })()}
-          <button className="royal-hub-link" disabled={!!run || !!towerRun} onClick={() => setHubScreen('kingdom')}>
+          <button className="royal-hub-link" disabled={!!run || !!towerRun || !dockUnlocked('kingdom')} onClick={() => setHubScreen('kingdom')}>
             <span>♜ {kingdomRank(kingdom).name} · 信任 {kingdomTrust(kingdom)}</span>
-            <span>{kingdom.active.some((r) => r.progress >= COMMISSIONS.find((q) => q.id === r.id)!.objective.target)
+            <span>{!dockUnlocked('kingdom') ? '第 4 天开放' : kingdom.active.some((r) => r.progress >= COMMISSIONS.find((q) => q.id === r.id)!.objective.target)
               ? '有委托可交付 →' : kingdom.active.length ? `在办委托 ${kingdom.active.length}/2 · 查看进度 →` : kingdom.completed.length === COMMISSIONS.length ? '本批委托已结案 · 回信档案 →' : '王国来函 · 查看委托 →'}</span>
           </button>
-          {hubScreen === 'kingdom' && !run && !towerRun && <KingdomPanel state={kingdom} context={royalContext} notice={royalNotice}
+          {hubScreen === 'kingdom' && !run && !towerRun && <KingdomPanel state={kingdom} context={royalContext} notice={royalNotice} playtestLock={(d) => !playtestAllows(d)}
             onClose={() => setHubScreen(null)} onAccept={acceptRoyal} onClaim={claimRoyal} onTravel={travelRoyal}
             onAbandon={(id) => { if (runRef.current || towerRunRef.current) return; updateKingdom(abandonCommission(kingdomRef.current, id)); setRoyalNotice('委托已撤销，可重新接取。王国信任不变。') }} />}
           <div className="inv-panel tower-entry">
@@ -2313,11 +2317,11 @@ export default function App() {
                             <button
                               key={d.id}
                               className={d.id === dungeonId ? 'active' : ''}
-                              disabled={!!run || !!lock}
+                              disabled={!!run || !!lock || !playtestAllows(d.id)}
                               title={lock ?? undefined}
                               onClick={() => setDungeonId(d.id)}
                             >
-                              🗺 {d.name}{d.size > 3 ? `（${d.size} 人团本）` : ''}{lock ? ' 🔒' : ''}
+                              🗺 {d.name}{d.size > 3 ? `（${d.size} 人团本）` : ''}{lock || !playtestAllows(d.id) ? ' 🔒' : ''}
                             </button>
                           )
                         })}

@@ -88,3 +88,12 @@ function regionNameOf(dungeonId: string): string {
   return ''
 }
 void (undefined as unknown as Member)
+
+// B6(A11/G2):试玩版只开放版图一——唯一入口,三处共用(选图按钮/startExpedition 守卫/KingdomPanel 委托过滤)。
+// 正式构建恒为 true(死代码被构建器消除)。
+declare const __PLAYTEST__: boolean
+export function playtestAllows(dungeonId: string): boolean {
+  if (typeof __PLAYTEST__ === 'undefined' || !__PLAYTEST__) return true
+  const region = REGIONS.find((rg) => [...rg.main, ...rg.side, rg.finale].includes(dungeonId))
+  return region?.order === 1
+}

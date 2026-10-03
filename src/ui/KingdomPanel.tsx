@@ -6,6 +6,8 @@ import { describeItem } from '../sim/loot'
 interface Props {
   state: KingdomState
   context: KingdomContext
+  /** B6:试玩版锁越界委托(显示「完整版开放」);正式恒 false */
+  playtestLock?: (dungeonId: string) => boolean
   notice: string
   onClose: () => void
   onAccept: (id: string) => void
@@ -14,7 +16,7 @@ interface Props {
   onTravel: (q: CommissionDef) => void
 }
 
-export function KingdomPanel({ state, context, notice, onClose, onAccept, onAbandon, onClaim, onTravel }: Props) {
+export function KingdomPanel({ state, context, notice, onClose, onAccept, onAbandon, onClaim, onTravel, playtestLock }: Props) {
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
@@ -56,7 +58,10 @@ export function KingdomPanel({ state, context, notice, onClose, onAccept, onAban
         <div className="royal-reward-preview"><span>酬金：{rewardText(q, 'coin')}</span><span>或补给：{rewardText(q, 'supplies')}</span></div>
         <div className="royal-actions">
           {progress === undefined
-            ? <button className="primary" disabled={state.active.length >= COMMISSION_LIMIT} onClick={() => onAccept(q.id)}>{state.active.length >= COMMISSION_LIMIT ? '在办委托已满' : '接下委托'}</button>
+            ? playtestLock?.(
+                q.objective.kind === 'battles' || q.objective.kind === 'boss' || q.objective.kind === 'clear'
+                  ? q.objective.dungeonId : '') ? <span className="hint">🏁 完整版开放</span>
+              : <button className="primary" disabled={state.active.length >= COMMISSION_LIMIT} onClick={() => onAccept(q.id)}>{state.active.length >= COMMISSION_LIMIT ? '在办委托已满' : '接下委托'}</button>
             : <button className="primary" onClick={() => onTravel(q)}>{q.objective.kind === 'building' ? '前往基地' : '前往作战板'}</button>}
           {progress !== undefined && <button className="royal-abandon" onClick={() => setAbandonId(q.id)}>撤销委托</button>}
         </div>
