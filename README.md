@@ -2,7 +2,9 @@
 
 > 英雄会死,故事不会。—— 一款像素风佣兵公会管理游戏
 
-**▶ 试玩**:仓库已转私有(GitHub Pages 随之下线)。本地运行:`npm install && npm run dev`,浏览器打开 http://localhost:5173
+**▶ 在线试玩(G2 试玩版:版图一 + 反馈导出)**:https://eatmy6ss.github.io/guild-of-blackmoss/
+
+本地开发版:`npm install && npm run dev`,浏览器打开 http://localhost:5173
 
 无需安装,浏览器打开即玩。存档保存在浏览器本地,游戏内可随时导出存档码备份。
 
