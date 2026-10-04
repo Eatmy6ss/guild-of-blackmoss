@@ -25,6 +25,9 @@ export const WEAPON_LAYERS: Record<string, string> = {
   'wpn-sign-warbrand': 'long_sword', 'wpn-sign-bloodletter': 'hand_dagger',
   'wpn-t3-dawn': 'long_sword', 'wpn-t3-tide': 'quarterstaff', 'wpn-t3-gale': 'bow',
   'wpn-t3-ember': 'hand_mage', 'wpn-t3-vox': 'hand_warlock',
+  // R3/W4 长柄六件:美术暂用现有帧占位(长柄独占帧在美术批处理清单),icon 用剑/杖就近映射
+  'wpn-t1-halberd': 'long_sword', 'wpn-t1-spear': 'long_sword', 'wpn-t2-banner': 'long_sword',
+  'wpn-t2-tidebreak': 'long_sword', 'wpn-t3-bulwarkpike': 'long_sword', 'wpn-t3-dragonpole': 'long_sword',
 }
 export const ARMOR_LAYERS: Record<string, string> = {
   'arm-t1-mail': 'chainmail', 'arm-t1-leather': 'leather', 'arm-t2-plate': 'plate',

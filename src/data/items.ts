@@ -47,6 +47,31 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     id: 'wpn-t2-crossbow', name: '戍弩', slot: 'weapon', family: 'bow', tier: 2,
     stat: 'attack', value: 11, affixCount: [2, 2],
   },
+  // ===== R3/W4 长柄六件(U31):数值走现有 tier 曲线;美术暂用剑帧占位(明确不做清单) =====
+  'wpn-t1-halberd': {
+    id: 'wpn-t1-halberd', name: '戍卒长戟', slot: 'weapon', family: 'polearm', tier: 1,
+    stat: 'attack', value: 7, affixCount: [0, 1],
+  },
+  'wpn-t1-spear': {
+    id: 'wpn-t1-spear', name: '巡林刺矛', slot: 'weapon', family: 'polearm', tier: 1,
+    stat: 'attack', value: 6, affixCount: [1, 2],
+  },
+  'wpn-t2-banner': {
+    id: 'wpn-t2-banner', name: '荆棘旗枪', slot: 'weapon', family: 'polearm', tier: 2,
+    stat: 'defense', value: 4, affixCount: [1, 2], legacy: 'bulwark',
+  },
+  'wpn-t2-tidebreak': {
+    id: 'wpn-t2-tidebreak', name: '断潮矛', slot: 'weapon', family: 'polearm', tier: 2,
+    stat: 'attack', value: 14, affixCount: [1, 2],
+  },
+  'wpn-t3-bulwarkpike': {
+    id: 'wpn-t3-bulwarkpike', name: '铁壁拒马枪', slot: 'weapon', family: 'polearm', tier: 3,
+    stat: 'defense', value: 12, affixCount: [2, 3], legacy: 'bulwark',
+  },
+  'wpn-t3-dragonpole': {
+    id: 'wpn-t3-dragonpole', name: '龙脊长柄', slot: 'weapon', family: 'polearm', tier: 3,
+    stat: 'attack', value: 24, affixCount: [2, 3], legacy: 'focus',
+  },
   'arm-t1-leather': {
     id: 'arm-t1-leather', name: '斥候皮甲', slot: 'armor', tier: 1,
     stat: 'speed', value: 1, affixCount: [1, 2],

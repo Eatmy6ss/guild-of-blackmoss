@@ -18,7 +18,7 @@ import { applyEnemyScaling as applyScaling, ELITE_ENEMY_MULT, towerEnemyScale, t
 import { scarPenalty, recordScarMechanic } from './scars'
 import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
-import { isFamilyProficient, getGuildLearnedFamilies, WEAPON_FAMILIES } from '../data/weapon-families'
+import { isFamilyProficient, getGuildLearnedFamilies, WEAPON_FAMILIES, canCastJob } from '../data/weapon-families'
 import { RACES } from '../data/races'
 import type { SpecDef } from './types'
 import { processBossMechanics } from './mechanics'
@@ -162,6 +162,24 @@ export function toCombatant(member: Member): Combatant {
   const weaponFamily = weaponBase?.family
   const weaponProficient = isFamilyProficient(member.job, weaponFamily, getGuildLearnedFamilies())
   const weaponProfMult = weaponFamily && !weaponProficient ? 0.85 : 1 // 结构占位,C4 统调
+  // R3/W4 攻击方式与站位:武器决定站位与攻击方式(redesign §5「武器>头部>职业」);
+  // 数值倍率全部 C4 结构占位(锤斧 伤×1.15/间隔×1.25,长柄 伤×0.92)
+  const famDef = weaponFamily ? WEAPON_FAMILIES[weaponFamily] : undefined
+  let stancePosition = hy ? hy.position : job.position
+  let stanceRange = hy ? hy.range : job.range
+  let weaponDmgMult: number | undefined
+  let weaponIntervalMult = 1
+  if (famDef) {
+    if (famDef.mode === 'melee') { stancePosition = 'front'; stanceRange = 'melee' }
+    else if (famDef.mode === 'ranged') { stancePosition = 'back'; stanceRange = 'ranged' }
+    else if (famDef.mode === 'cast') {
+      // 施法铁律:施法职业后排发法弹;不谙法术者退化为前排近战钝击(训练不授法术)
+      if (canCastJob(member.job)) { stancePosition = 'back'; stanceRange = 'ranged' }
+      else { stancePosition = 'front'; stanceRange = 'melee' }
+    } else { stancePosition = 'front'; stanceRange = 'ranged' } // reach:立前排,长杆越线打后排
+    weaponDmgMult = famDef.dmgMult
+    weaponIntervalMult = famDef.intervalMult ?? 1
+  }
   const maxHp = Math.round(
     (Math.max(1, base.maxHp + (mods.maxHp ?? 0)) +
       (member.level - 1) * job.growth.maxHp +
@@ -191,7 +209,7 @@ export function toCombatant(member: Member): Combatant {
     critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0) + equipmentSetBonus('wind-hunt', setHunt),
     attackInterval: Math.max(
       6,
-      Math.round(60 / (base.speed + (mods.speed ?? 0) + eff.agi * 0.04 + (eq.speed ?? 0))),
+      Math.round((60 / (base.speed + (mods.speed ?? 0) + eff.agi * 0.04 + (eq.speed ?? 0))) * weaponIntervalMult),
     ),
     cooldownLeft: 0,
     alive: true,
@@ -211,14 +229,15 @@ export function toCombatant(member: Member): Combatant {
     healReceived: loyaltyHeal + (race.passive.healReceived ?? 0) + eff.spr * 0.004 + (eq.healReceived ?? 0) + legacyMend,
     fireResist: Math.min(0.75, eq.fireResist ?? 0),
     tauntedTicks: 0,
-    position: hy ? hy.position : job.position,
-    range: hy ? hy.range : job.range,
+    position: stancePosition,
+    range: stanceRange,
     role: hy ? hy.role : job.role,
     synergyIds: job.synergy ?? [],
     threat: {},
     lifesteal: eq.lifesteal,
     weaponFamily,
     weaponProficient,
+    weaponDmgMult,
     personality: member.personality,
   }
 }
@@ -751,7 +770,8 @@ function actWith(c: Combatant, state: BattleState): void {
       target = pool.reduce((a, b) => (a.hp <= b.hp ? a : b))
     }
   }
-  if (target) dealDamage(state, c, target, 1.0, '攻击')
+  // R3/W4:普攻吃武器族伤害乘区(锤斧 ×1.15/长柄 ×0.92);技能不吃,族内技能另有门槛
+  if (target) dealDamage(state, c, target, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
 }
 
 function useSkill(

@@ -2762,9 +2762,9 @@ const towerFailures: string[] = []
 // ============================================================
 {
   const fail51: string[] = []
-  // T3 池:12 件,主属性线(攻 20-26/防 12-16/火抗 0.25),全带威能
+  // T3 池:14 件(R3/W4 增长柄 2:铁壁拒马枪/龙脊长柄),主属性线(攻 20-26/防 12-16/火抗 0.25),全带威能
   const t3s = Object.values(ITEM_BASES).filter((b) => b.tier === 3)
-  if (t3s.length !== 12) fail51.push('51 T3 基底数量异常:' + t3s.length)
+  if (t3s.length !== 14) fail51.push('51 T3 基底数量异常:' + t3s.length)
   if (t3s.some((b) => !b.legacy)) fail51.push('51 T3 存在无威能件')
   if (t3s.some((b) => b.slot === 'weapon' && b.stat === 'attack' && (b.value < 20 || b.value > 26))) fail51.push('51 T3 武器攻击线越界')
   // 威能聚合:持威能装备的成员 combatant 带标记
