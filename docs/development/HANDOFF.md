@@ -28,6 +28,15 @@
 
 **制作人自测入口**：新档出发→地图逐层选路（不选路不能走）→打完精英留意「惊动」、连打两场留意「疲惫」→水域/墓地/营地踩一踩路况→熟练度 35/60/80 各档回看地图情报区变化→回城抽事件应全是城内文本→荆棘要塞体验双 Boss 连战→战斗里 ⏩ 按钮切 1/2/3×。过段条件见 redesign §2。
 
+## 移交 Codex 全量测试（R1 副本层改版，2026-10-04，制作人指示）
+
+- **提交范围**：`0686cd5..6a2e62e`（9 个提交）。代码在五个施工提交：f204ab0（R1.4 事件分池）/ 01bd901（R1.1 分层地图+存档 v23）/ 680cf73（R1.2 路况+存档 v24）/ bb80f8e（R1.3 熟练度四档）/ 47cdc72（R1.5 三倍速）；其余为方案文档与 HANDOFF 入库。复审纪律照旧：独立 worktree 实测，结论写回本文件「复审报告」节。
+- **全量验证一条命令**：干净检出 + `npm install` + `npm run verify`——内含资源验收、Vitest、admin 类型检查、smoke 全门禁、玩法回归、王国回归、生产构建、e2e-playtest-full（自动先构建试玩包）。必须全部退出 0；**不要用 `VERIFY_E2E=0` 跳过 e2e**。测试不需要代理。
+- **预期基线**（数字对不上=有问题，不是阈值漂移）：Vitest **132**（23 文件）；smoke **✓×47** 且 EXIT=0；玩法回归 **76 pass**；王国回归 **10 pass**；e2e 四段 **13 检查全 PASS**（含新断言 M1「地图不选路不能前进」、M2「熟练度 0 不泄露节点类型」，二者必须是真断言而非 SKIP）。
+- **分步跑**（想拆开定位时）：`npx vitest run`；smoke 先 `npx esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=scripts/smoke.mjs` 再 `node scripts/smoke.mjs`；`node scripts/test-gameplay.cjs`；`node scripts/test-kingdom.cjs`；`node scripts/e2e-playtest-full.mjs --build`。
+- **重点复核**（按风险排序）：①`src/sim/conditions.ts` 对 run 的一切写入是否守住「输入不变」契约——settlement 对 run 是浅拷贝（common.map 与输入共享），惊动 `triggerAfterElite` 已改写时克隆翻层，任何其他原地改 `map/conditions/path/potions` 都会穿透存档（run-recovery 的逐字节测试是这张网，别放松它）；②`run-state.validateRunState` 对新 `map/nodeId/path/conditions` 字段的校验能否被构造的坏档绕过；③迁移链 v22→v23（旧格式进行中远征按撤退处理）与 v23→v24（补 `conditions: []`）不丢档、可从真实旧档走通；④事件分池边界：town 事件绝不进节点池、后续幕（SECOND_ACT_IDS）不进随机池、带 `dungeonId` 的延迟链只在指定副本的 event 节点触发、未走到顺延不消失；⑤挂机选路 `autoPickNode` 与手选同走 `moveTo` 校验出边，不存在绕过地图的直连路径；⑥e2e STEP 状态机点的是 `.route-choices` 节点按钮，「继续深入/直捣 boss」字样已不应出现在任何 UI。
+- **已知占位（记建议，不算 fail）**：路况数值为 C4 冻结期占位；smoke ④ 口径已改全图（分支删除），零指挥通关 0/生还 100% 与旧口径形态一致；事件 `requires` 前置与节点级 `eventId` 绑定未做（见上方遗留清单）。
+
 ## 新工单：信息透明化三件套（制作人试玩反馈，2026-10-03，立即执行，zcode/本机）
 
 - **制作人试玩后拍板三件事**(原话要点):①**修 bug**:右上角音量 UI 有问题;②**人物具体属性页**(魔兽世界式):从花名册打开每个人物的独立页面,展现所有东西——装备词条要有具体效果(「锐眼」「受疗」到底是什么?穿上装备后数值变化是什么?);③**重做训练场转职页**:独立选择每个人物转职,展示转职后职业特点、专精,以及**每个技能的作用**(精进技能、通用战技也全都要说清效果)。
