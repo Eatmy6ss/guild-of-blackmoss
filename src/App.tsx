@@ -80,6 +80,7 @@ import { RosterScreen } from './ui/screens/RosterScreen'
 import { TavernScreen } from './ui/screens/TavernScreen'
 import { BaseScreen } from './ui/screens/BaseScreen'
 import { ExpeditionBoard } from './ui/screens/ExpeditionBoard'
+import { TitleScreen } from './ui/screens/TitleScreen'
 import { attrsLine, personalityLine } from './ui/screens/member-lines'
 import { WarehouseScreen } from './ui/screens/WarehouseScreen'
 import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
@@ -1695,6 +1696,20 @@ export default function App() {
         <div role="status">{scarNotices.map((notice, i) => <p className="hint" key={i}>{notice}</p>)}</div>
       </details>}
       {screen === 'game' && resumeNotice && <p className="hint" role="status">{resumeNotice}</p>}
+      {screen === 'title' && <TitleScreen hasSave={!!saved} offlineNote={offlineNote} resumeNotice={resumeNotice}
+        muted={muted} volume={volume} buildDate={__BUILD_DATE__}
+        onEnter={() => { initAudio(); setScreen('game') }}
+        onRestart={() => setConfirmAsk({
+          text: '重新开始将清空当前进度，确定？',
+          okLabel: '✦ 清空并重新开始',
+          onOk: () => { initAudio(); clearGuildSave(); restartGuild(); setScreen('game') },
+        })}
+        onToggleMute={() => { initAudio(); setMuted(toggleMute()) }}
+        onVolume={(v: number) => { initAudio(); setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }}
+        onShowCredits={() => setShowCredits(true)}
+        onExportSave={() => { const current = loadGuildSave(); if (current) setSaveTransfer({ mode: 'export', code: exportSave(current) }) }}
+        onImportSave={() => setSaveTransfer({ mode: 'import', code: '' })}
+      />}
       <div className={`layout${inBattle || inTowerBattle ? ' battle-mode' : ''}`}>
         <div className="panel hub-panel">
           <div className="hub-topbar">
