@@ -1,6 +1,11 @@
 # 当前交接
 
-## 新工单：R1 副本层改版（移交 zcode/本机，制作人指示，2026-10-03）
+## 新工单：R3 武器系统 W1–W5（认领人：zcode/本机，制作人 2026-10-04 批准开工）
+
+- **认领登记**：制作人拍板「直接把 R3 部分推完」= [r3-weapon-plan.md](r3-weapon-plan.md) 清单批准，W1→W5 顺序施工，每大步一提交、钩子 verify 全绿。Codex/shldo 勿在同批动 `types.ts`/`items.ts`/`jobs.ts`/`combat.ts`/`signature.ts`/`save.ts`/`weapon-families.ts` 与战斗相关门禁，防撞车。
+- **已知的草案级裁量**（施工中按技能语义逐条标注，偏差在 W5 收尾时登记）：绑定草案按 effect 分组是速记，实际逐技能 id 标注——「瞄准射击→弓」以 redesign §5 为准；施法职业自有的攻击法术（火球/冰锥/暗影箭等 heavy-strike 实例）标杖圣器而非「刃或锤斧」，否则法师拿杖放不出火球，与施法铁律自相矛盾；荆棘波浪/野性鼓舞按语义标通用。数值全是 C4 结构占位，⑲ 等节奏带若漂移按 C4 后统调口径记录。
+
+## 工单：R1 副本层改版（移交 zcode/本机，制作人指示，2026-10-03；已交付，本节存档）
 
 - **施工依据**：[redesign-2026-10-03.md](redesign-2026-10-03.md) §3（R1.1–R1.6，每条带接口和验收）；事件分类按 [event-scope-draft-2026-10-03.md](event-scope-draft-2026-10-03.md) 原样落地(**制作人 10-03 已同意**);新增 16 个副本专属事件、5 处文本改写、15 条延迟链的 `at` 标注与接线见 [events-draft-2026-10-03.md](events-draft-2026-10-03.md)(**制作人 10-03 已审定**,原样放入,随 R1.4 一起做)。决策见 [DECISIONS.md](DECISIONS.md) **U27**。范围只到 R1，R2–R4 等制作人自测后再开。
 - **开工前**：先 `git pull`。工作区里有 Claude 留下的未提交文件：`src/data/story-templates.ts`（说书人模板第二轮改写：黑魂式神秘感 + 冷幽默，`storyteller.test.ts` 已通过）、`DECISIONS.md`（U27）、本文件、两份方案文档。跑 `npm run verify` 后作为一个提交入库。
