@@ -942,3 +942,63 @@ button.primary:hover:not(:disabled) {
 /* ===== U29 独立结算屏(R2-4) ===== */
 .result-screen { max-width: 860px; margin: 0 auto; }
 .result-banner.xl { font-size: 1.25em; padding: 18px 20px; letter-spacing: 0.12em; text-align: center; }
+
+/* ===== U29 结算屏 v2(参考 gameres 878379/MHW/明日方舟式) ===== */
+.result-screen { max-width: 880px; margin: 0 auto; }
+.rs-stamp {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border: 3px double var(--edge-gold); border-radius: 10px;
+  padding: 26px 24px 18px; margin: 6px 0 18px; text-align: center;
+  animation: rs-stamp-in 0.42s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  background: radial-gradient(ellipse 520px 180px at 50% 0%, rgba(216, 162, 74, 0.16) 0%, rgba(216, 162, 74, 0) 70%);
+}
+@keyframes rs-stamp-in {
+  from { transform: scale(1.5) rotate(-5deg); opacity: 0; }
+  60% { transform: scale(0.97) rotate(-1.5deg); opacity: 1; }
+  to { transform: scale(1) rotate(-1.5deg); opacity: 1; }
+}
+.rs-stamp-mark { font-size: 40px; line-height: 1; text-shadow: 0 0 18px rgba(216, 162, 74, 0.55); }
+.rs-stamp-text { font-size: 1.7em; font-weight: bold; letter-spacing: 0.3em; color: var(--gold); }
+.rs-stamp.win .rs-stamp-text { text-shadow: 0 0 22px rgba(216, 162, 74, 0.65); }
+.rs-stamp.wipe { border-color: #7a4a4a; }
+.rs-stamp.wipe .rs-stamp-text { color: #c98a8a; text-shadow: none; }
+.rs-stamp.wipe .rs-stamp-mark { text-shadow: none; }
+.rs-stamp-sub { color: #a99b7d; font-size: 0.92em; letter-spacing: 0.14em; }
+.rs-section { margin: 14px 0; }
+.rs-title { color: var(--gold); letter-spacing: 0.2em; margin: 8px 0; border-bottom: 1px solid var(--panel-edge); padding-bottom: 4px; }
+.rs-row {
+  display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap;
+  padding: 7px 10px; border-left: 3px solid var(--edge-gold); margin: 6px 0;
+  background: rgba(255, 255, 255, 0.02);
+  animation: rs-rise 0.5s ease-out both;
+}
+.rs-row.dead { border-left-color: #7a4a4a; opacity: 0.75; }
+.rs-row .rs-num b { color: #e8d9b0; font-size: 1.06em; }
+.rs-delta { color: #9cc26f; font-style: normal; font-weight: bold; margin-left: 4px; }
+@keyframes rs-rise { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+.rs-bonds { padding: 8px 12px; margin: 10px 0; border: 1px dashed var(--edge-gold); border-radius: 6px; animation: rs-rise 0.5s ease-out both; }
+.rs-drops { display: flex; flex-wrap: wrap; gap: 10px; }
+.rs-drop {
+  display: flex; flex-direction: column; gap: 3px;
+  border: 2px solid; border-radius: 6px; padding: 10px 12px; min-width: 200px; max-width: 280px;
+  background: rgba(0, 0, 0, 0.28);
+  animation: rs-drop-in 0.45s ease-out both;
+}
+@keyframes rs-drop-in { from { transform: translateY(14px) scale(0.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.rs-drop-tag { font-size: 0.78em; letter-spacing: 0.25em; font-weight: bold; }
+.rs-drop-name { font-size: 0.9em; color: #d8ccb0; }
+.rs-story {
+  display: flex; gap: 10px; align-items: flex-start;
+  border-left: 3px solid var(--edge-gold); padding: 10px 14px; margin: 14px 0;
+  background: rgba(255, 255, 255, 0.03); animation: rs-rise 0.5s ease-out both;
+}
+.rs-story p { margin: 0; line-height: 1.9; color: #cfc2a4; font-style: italic; }
+.rs-story-mark { font-size: 20px; }
+.rs-actions { display: flex; gap: 14px; justify-content: center; margin: 22px 0 8px; }
+.rs-again, .rs-back {
+  font-size: 1.05em; padding: 12px 26px; letter-spacing: 0.12em; border-radius: 6px;
+}
+.rs-again { border-color: var(--gold); color: var(--gold); }
+.rs-again:hover { box-shadow: 0 0 14px rgba(216, 162, 74, 0.4); }
+.rs-back { min-width: 140px; }
+.rs-defeat .rs-stamp { background: radial-gradient(ellipse 520px 180px at 50% 0%, rgba(122, 74, 74, 0.14) 0%, rgba(122, 74, 74, 0) 70%); }

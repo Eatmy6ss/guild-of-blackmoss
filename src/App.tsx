@@ -2249,6 +2249,7 @@ export default function App() {
               drops={lastDrops}
               story={progress.notices.find((n) => n.startsWith('📖')) ?? null}
               onBack={backToGuild}
+              onAgain={() => { backToGuild(); window.setTimeout(() => startExpeditionRef.current?.(), 120) }}
             />
           )}
         </div>

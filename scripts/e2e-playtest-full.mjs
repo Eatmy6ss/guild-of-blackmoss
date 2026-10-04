@@ -120,7 +120,7 @@ const STEP = (prio) => `(()=>{${BTN_HELPER}
   // U27① R1.1+U29 节点图:点可走的地图节点(不选路不能前进,没有「继续深入」)
   if(!r.acted){const c=[...document.querySelectorAll('.dungeon-graph .dg-node.available')][0];if(c){c.click();r.acted='NODE:'+c.textContent.trim().slice(0,20)}}
   if(!r.acted){const c=[...document.querySelectorAll('button')].find((x)=>!x.disabled&&x.textContent.includes('👑 连战'));if(c){c.click();r.acted='BOSS-CHAIN'}}
-  if(!r.acted){const x=hit((t)=>t==='← 返回公会'); if(x) r.acted='RETURN'}
+  if(!r.acted){const x=hit((t)=>t.endsWith('返回公会')); if(x) r.acted='RETURN'}
   if(!r.acted && document.querySelector('.screen-panel')) r.acted='ESC';
   if(!r.acted){
     const maps=btns().filter((x)=>x.textContent.trim().startsWith('🗺')&&!x.textContent.includes('🔒'));
@@ -240,7 +240,7 @@ async function phaseFresh() {
         check('M2', '熟练度 0 全盲(类型/路名/地形零泄露)', probe.inMap && probe.leak.length === 0 && allMasked ? 'PASS' : 'FAIL',
           probe.leak.join('|') || (allMasked ? '零泄露' : '有节点未遮名'))
         await clickText(b, '🏳 撤退回城'); await sleep(500)
-        await clickText(b, '← 返回公会'); await sleep(300)
+        await clickText(b, '返回公会'); await sleep(300)
       } else {
         check('M1', '地图:不选路不能前进(无「继续深入」)', 'SKIP', '出发不可点(编制/锁定)')
         check('M2', '熟练度 0 不泄露节点类型', 'SKIP', '同上')
