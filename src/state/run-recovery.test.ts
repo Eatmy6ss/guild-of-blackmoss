@@ -43,7 +43,7 @@ function save(members = roster()): GuildSave {
     kingdom: { active: [], completed: [] }, rareHuntNext: null, gold: 900, blessing: 4, starMarrow: 3,
     healingMastery: {}, memorial: [], manual: ['talma'], protectOn: false, recruitCooldown: 0,
     towerBest: 0, lastSeen: 1727656000000, chronicle: [], day: 8, buildings: {}, potions: { heal: 4, fury: 4 },
-    unlockedHybrids: [], dungeonMastery: {}, pendingConsequences: [], eventsSeen: [], guildBuffs: [] }
+    unlockedHybrids: [], weaponTraining: [], dungeonMastery: {}, pendingConsequences: [], eventsSeen: [], guildBuffs: [] }
 }
 
 function resolved(s: GuildSave) { return resolveMembers(s.members, itemStateFromSave(s)) }

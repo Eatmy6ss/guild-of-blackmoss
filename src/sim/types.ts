@@ -275,6 +275,12 @@ export interface Combatant {
   auraMult?: number
   /** 召唤物归属(兽王狼/恶魔小鬼/契灵):无 memberId,阵亡不进纪念堂 */
   petOf?: string
+  /** R3 武器族:当前装备武器的族(空手=undefined);战斗引擎与招牌技栏共用 */
+  weaponFamily?: WeaponFamily
+  /** R3:当前武器是否熟练(职业表∪公会已学);非熟练=攻击已降档+族内技能失效 */
+  weaponProficient?: boolean
+  /** R3:普攻伤害乘区(锤斧 ×1.15/长柄 ×0.92,族定义单源;技能不走此乘区) */
+  weaponDmgMult?: number
   /** 受疗加成(忠诚性格/血精灵/受疗词条):治疗量 ×(1+healReceived) */
   healReceived?: number
   /** 火抗(0-0.75,装备聚合):灼热地形与环境火伤减免(版图二) */

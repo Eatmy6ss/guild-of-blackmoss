@@ -35,6 +35,7 @@ import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE, FIRST_RETURN_TIP 
 import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
 import { SIGNATURE_SKILLS } from './data/signature'
+import { WEAPON_FAMILIES, setGuildLearnedFamilies } from './data/weapon-families'
 import { MemberPanel } from './ui/MemberPanel'
 import { renderWarReportCard, downloadWarReportCard } from './ui/war-report-card'
 import { createRng } from './sim/rng'
@@ -263,6 +264,11 @@ export default function App() {
   const [trainingReady, setTrainingReady] = useState(() => saved?.trainingReady ?? false)
   const trainingReadyRef = useRef(trainingReady)
   trainingReadyRef.current = trainingReady
+  // R3/W2(U31):训练场武器专修(公会级永久)。战斗侧经 setGuildLearnedFamilies 单源注入。
+  const [weaponTraining, setWeaponTraining] = useState<string[]>(() => saved?.weaponTraining ?? [])
+  const weaponTrainingRef = useRef(weaponTraining)
+  weaponTrainingRef.current = weaponTraining
+  useEffect(() => { setGuildLearnedFamilies(weaponTraining) }, [weaponTraining])
   // K06 个人心愿层(U14):入职 50% 立愿;达成给士气+编年史,再 50% 立新愿
   const wishDungeonPool = () => Object.keys(dungeonMastery).map((id) => ({ id, name: DUNGEONS.find((d) => d.id === id)?.name ?? id }))
   const rollWishFor = (m: Member) => {
@@ -555,9 +561,9 @@ export default function App() {
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
       lastCombatSaveRef.current = now
     } else lastCombatSaveRef.current = 0
-    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
+    const ok = saveGuild({ trainingReady, weaponTraining, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
     setSaveFailed(!ok)
-  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, playMeta])
+  }, [trainingReady, weaponTraining, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, playMeta])
 
   // 战报钉底：新战报到达时跟随滚动；用户上滚阅读时暂不抢滚动条，滚回底部自动恢复
   useEffect(() => {
@@ -1629,7 +1635,7 @@ export default function App() {
       )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
       {memberSheet && <MemberPanel member={memberSheet} members={members} onClose={() => setMemberSheetId(null)}
-              inventory={inventory} onEquip={(slot, itemId) => equip(memberSheet, slot, itemId)} />}
+              inventory={inventory} weaponTraining={weaponTraining} onEquip={(slot, itemId) => equip(memberSheet, slot, itemId)} />}
       {playtestEnding && (
         <div className="screen-overlay" style={{ zIndex: 110 }}>
           <div className="screen-panel" style={{ width: 'min(460px, 92vw)' }}>
@@ -1810,6 +1816,7 @@ export default function App() {
             {hubScreen === 'base' && <BaseScreen day={day} gold={gold} blessing={blessing} members={members}
               busy={!!run || !!towerRun} trainingReady={trainingReady} healingNotice={healingNotice}
               healingMastery={healingMastery} buildings={buildings} unlockedHybrids={unlockedHybrids}
+              weaponTraining={weaponTraining}
               trainSelId={trainSelId} bondTotal={bondTotalOf}
               onBuyTraining={() => {
                 if (trainingReadyRef.current || gold < 150 || runRef.current || towerRunRef.current) return
@@ -1817,6 +1824,17 @@ export default function App() {
                 setTrainingReady(true)
                 setGold(g => g - 150)
                 logChronicle(chronicleRaw(day, '花费 150 金完成特权训练，下次远征经验 +25%。'))
+                sfxCoin()
+              }}
+              onLearnFamily={(f) => {
+                if (runRef.current || towerRunRef.current) return
+                if (weaponTrainingRef.current.includes(f) || gold < 150) return
+                const next = [...new Set([...weaponTrainingRef.current, f])]
+                weaponTrainingRef.current = next
+                setWeaponTraining(next)
+                setGuildLearnedFamilies(next)
+                setGold(g => g - 150)
+                logChronicle(chronicleRaw(day, `训练场完成${WEAPON_FAMILIES[f as keyof typeof WEAPON_FAMILIES]?.name ?? f}专修——全公会使用该族武器不再降档。`))
                 sfxCoin()
               }}
               onHeal={(memberId, si, scar) => {

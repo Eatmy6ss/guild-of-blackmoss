@@ -15,6 +15,7 @@ import { SIGNATURE_SKILLS } from '../data/signature'
 import { skillLine, LEGACY_INFO } from '../data/effect-text'
 import { ECONOMY } from '../data/economy'
 import { describeEquipmentSet } from '../sim/equipment-sets'
+import { WEAPON_FAMILIES, isFamilyProficient } from '../data/weapon-families'
 
 interface Props {
   member: Member
@@ -22,6 +23,8 @@ interface Props {
   onClose: () => void
   /** U29 反馈⑤:档案页直接换装(可选;缺省=只读档案) */
   inventory?: ItemInstance[]
+  /** R3/W2:公会已学武器族(可选;缺省=按职业表判定) */
+  weaponTraining?: string[]
   onEquip?: (slot: 'weapon' | 'armor' | 'trinket', itemId: string) => void
 }
 
@@ -31,7 +34,7 @@ const ATTR_NAMES: Record<string, string> = { str: '力量', agi: '敏捷', int: 
 
 const QUALITY_TAG: Record<string, string> = { purple: '【史诗】', green: '【精良】', white: '' }
 
-export function MemberPanel({ member, members, onClose, inventory, onEquip }: Props) {
+export function MemberPanel({ member, members, onClose, inventory, weaponTraining, onEquip }: Props) {
   const [equipSort, setEquipSort] = useState<'rarity-desc' | 'name'>('rarity-desc')
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -54,6 +57,9 @@ export function MemberPanel({ member, members, onClose, inventory, onEquip }: Pr
   const advanced = advId ? spec.advancedSkills?.find((sk) => sk.id === advId) : undefined
   const setCrown = Object.values(member.equipment).filter((e) => e && ITEM_BASES[e.baseId]?.setName === 'gray-crown').length
   const setHunt = Object.values(member.equipment).filter((e) => e && ITEM_BASES[e.baseId]?.setName === 'wind-hunt').length
+  // R3/W2 武器熟练提示:装备面板顶部一行,给"非熟练"一个看得见的原因
+  const equippedFamily = member.equipment.weapon ? ITEM_BASES[member.equipment.weapon.baseId]?.family : undefined
+  const familyProficient = isFamilyProficient(member.job, equippedFamily, weaponTraining)
 
   const bonds = Object.entries(member.bonds ?? {})
     .map(([id, v]) => ({ other: members.find((m) => m.id === id), v }))
@@ -121,6 +127,13 @@ export function MemberPanel({ member, members, onClose, inventory, onEquip }: Pr
           {/* 中:装备 */}
           <div className="ms-col">
             <h3>装备{(setCrown || setHunt) ? <span className="hint">({describeEquipmentSet('gray-crown', setCrown)}{setCrown && setHunt ? ' · ' : ''}{describeEquipmentSet('wind-hunt', setHunt)})</span> : ''}</h3>
+            {equippedFamily && (
+              <p className="hint" data-testid="weapon-proficiency" role="status">
+                {familyProficient
+                  ? `✔ ${WEAPON_FAMILIES[equippedFamily].name}熟练${WEAPON_FAMILIES[equippedFamily].desc}`
+                  : `⚠ 非熟练：攻击降档，${WEAPON_FAMILIES[equippedFamily].name}族内技能失效（训练场·武器专修可学）`}
+              </p>
+            )}
             {SLOTS.map((slot) => {
               const item = member.equipment[slot]
               const base = item ? ITEM_BASES[item.baseId] : undefined

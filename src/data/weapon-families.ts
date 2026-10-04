@@ -68,6 +68,18 @@ export function proficientFamilies(job: string, learned: readonly string[] | und
   return [...out]
 }
 
+// ---- 公会级已学族(存档 weaponTraining)的战斗侧读取 ----
+// 战斗投影(toCombatant)只看得到 Member,看不到公会存档;存档 v25 的 weaponTraining 是
+// 公会级字段,经 App 在加载/学习时注入本模块(与 battleSpeed/setConfirmAsk 同一套环境注入模式),
+// 战斗侧永远只走 getGuildLearnedFamilies 单一来源。测试默认空=只有职业表。
+let guildLearnedFamilies: readonly string[] = []
+export function setGuildLearnedFamilies(list: readonly string[] | undefined): void {
+  guildLearnedFamilies = Array.isArray(list) ? list.filter((f) => f in WEAPON_FAMILIES) : []
+}
+export function getGuildLearnedFamilies(): readonly string[] {
+  return guildLearnedFamilies
+}
+
 /** 装备某族武器是否熟练(查表+已学;未持武器不构成非熟练) */
 export function isFamilyProficient(job: string, family: WeaponFamily | undefined, learned: readonly string[] | undefined): boolean {
   if (!family) return true

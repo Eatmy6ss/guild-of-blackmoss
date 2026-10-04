@@ -439,6 +439,7 @@ function rngScope(scope: Record<string, unknown>) {
     appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER, tellExpedition, createRng,
     factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
     storyCursorRef: { current: 0 }, expeditionStartFactRef: { current: 0 },
+    weaponTraining: [] as string[], weaponTrainingRef: { current: [] as string[] }, setWeaponTraining: () => {},
     hintsSeen: [] as string[], hintsSeenRef: { current: [] as string[] }, dismissHint: () => {},
     membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
     runMembers: (r: any, ms: Member[]) => r.memberIds ? resolveRunMembers(r, ms?.length ? ms : r.members ?? []) : r.members,
@@ -1083,7 +1084,7 @@ test('active and terminal saves preserve carried potions; stale uncommitted rend
   const rng = createStatefulRng(17)
   for(let i=0;i<23;i++) rng()
   const scope:Record<string,unknown> = {saveGuild:(v:unknown)=>{saved=v},statistics:newStatistics(),guildRngRef:{current:rng}}
-  for (const key of ['trainingReady','rareHuntNext','starMarrow','pendingRelics','healingMastery','kingdom','members','inventory','memorial','manual','protectOn','gold','blessing','recruitCooldown','towerBest','chronicle','day','buildings','unlockedHybrids','dungeonMastery','pendingConsequences','eventsSeen','guildBuffs']) scope[key]=undefined
+  for (const key of ['trainingReady','rareHuntNext','starMarrow','pendingRelics','healingMastery','kingdom','members','inventory','memorial','manual','protectOn','gold','blessing','recruitCooldown','towerBest','chronicle','day','buildings','unlockedHybrids','weaponTraining','dungeonMastery','pendingConsequences','eventsSeen','guildBuffs']) scope[key]=undefined
   scope.members = []; scope.itemOwnershipRef = {current:createGuildItems([])}
   const save = (run:unknown,towerRun:unknown) => callback('saveGuild({ trainingReady',{
     ...scope,run,towerRun,potions:{heal:9,fury:9},
