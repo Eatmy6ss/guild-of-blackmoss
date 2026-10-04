@@ -7,7 +7,7 @@ import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFlo
 import assert from 'node:assert/strict'
 import './mechanics.test'
 import { test } from 'node:test'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import ts from 'typescript'
 import { generateMember, grantExp, maxHpOf, levelTo } from '../src/sim/gen'
 import { createBattle, stepBattle, toCombatant, applyHit, ENEMY_HP_MULT } from '../src/sim/combat'
@@ -381,29 +381,48 @@ test('third tower boss pulls a backliner, who returns after the duration expires
   assert.equal(victim.position, 'back')
 })
 
-const ast = ts.createSourceFile('App.tsx', readFileSync('src/App.tsx', 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+// R2 界面拆分(U29):处理器/回调随界面搬进 src/ui/screens/*——抽取机制跨全部 UI 源文件搜索。
+const UI_SOURCES = ['src/App.tsx', ...readdirSync('src/ui/screens').filter((f) => f.endsWith('.tsx') || f.endsWith('.ts')).map((f) => `src/ui/screens/${f}`)]
+const UI_ASTS = UI_SOURCES.map((path) => ({
+  path,
+  ast: ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),
+}))
+function findDeclaration(name: string): { text: string } | undefined {
+  for (const { ast } of UI_ASTS) {
+    let found: ts.Expression | undefined
+    function visit(n: ts.Node) {
+      if (ts.isVariableDeclaration(n) && n.name.getText(ast) === name) found = n.initializer
+      ts.forEachChild(n, visit)
+    }
+    visit(ast)
+    if (found) return { text: found.getText(ast) }
+  }
+  return undefined
+}
+function findArrow(snippet: string): { text: string } | undefined {
+  let best: { ast: ts.SourceFile; node: ts.ArrowFunction } | undefined
+  for (const { ast } of UI_ASTS) {
+    function visit(n: ts.Node) {
+      if (ts.isArrowFunction(n) && n.getText(ast).includes(snippet) && (!best || n.getWidth(ast) < best.node.getWidth(best.ast))) best = { ast, node: n }
+      ts.forEachChild(n, visit)
+    }
+    visit(ast)
+  }
+  return best ? { text: best.node.getText(best.ast) } : undefined
+}
 function handler(name: string, scope: Record<string, unknown>) {
   scope = rngScope(scope)
-  let expression: ts.Expression | undefined
-  function visit(n: ts.Node) {
-    if (ts.isVariableDeclaration(n) && n.name.getText(ast) === name) expression = n.initializer
-    ts.forEachChild(n, visit)
-  }
-  visit(ast)
-  assert(expression, name)
-  const js = ts.transpileModule(`const fn = ${expression.getText(ast)}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
+  const decl = findDeclaration(name)
+  assert(decl, name)
+  const js = ts.transpileModule(`const fn = ${decl.text}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
   return new Function(...Object.keys(scope), js + ';return fn;')(...Object.values(scope))
 }
 
 function callback(snippet: string, scope: Record<string, unknown>) {
   scope = rngScope(scope)
-  let expression: ts.ArrowFunction | undefined
-  function visit(n: ts.Node) {
-    if (ts.isArrowFunction(n) && n.getText(ast).includes(snippet) && (!expression || n.getWidth(ast) < expression.getWidth(ast))) expression = n
-    ts.forEachChild(n, visit)
-  }
-  visit(ast); assert(expression, snippet)
-  const js = ts.transpileModule(`const fn = ${expression.getText(ast)}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
+  const arrow = findArrow(snippet)
+  assert(arrow, snippet)
+  const js = ts.transpileModule(`const fn = ${arrow.text}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
   return new Function(...Object.keys(scope), js + ';return fn;')(...Object.values(scope))
 }
 
@@ -841,14 +860,18 @@ test('tower-only timer starts, pauses and restarts without an expedition', () =>
   assert.equal(effect(false),undefined); assert.equal(tick,undefined)
   effect(true); tick!(); assert.equal(t.battle!.tick,2)
   let dependencyFound = false
-  function visit(n:ts.Node) {
-    if (ts.isCallExpression(n) && n.expression.getText(ast)==='useEffect' && n.arguments[0]?.getText(ast).includes('const timer = setInterval')) {
-      assert.match(n.arguments[1].getText(ast),/towerRunning/)
-      dependencyFound=true
+  // R2:useEffect 随界面迁移,跨全部 UI 源文件找该 effect 的依赖数组
+  for (const { ast: src } of UI_ASTS) {
+    function visit(n:ts.Node) {
+      if (ts.isCallExpression(n) && n.expression.getText(src)==='useEffect' && n.arguments[0]?.getText(src).includes('const timer = setInterval')) {
+        assert.match(n.arguments[1].getText(src),/towerRunning/)
+        dependencyFound=true
+      }
+      ts.forEachChild(n,visit)
     }
-    ts.forEachChild(n,visit)
+    visit(src)
   }
-  visit(ast); assert(dependencyFound)
+  assert(dependencyFound)
 })
 
 test('due consequences defer departure without consuming a day or creating a battle', () => {
