@@ -8,7 +8,7 @@ import { StatisticsPanel } from './ui/StatisticsPanel'
 import { newStatistics, recordStatistics, expeditionStatistics, type StatisticsAction, type GoldSource } from './sim/statistics'
 import { COMMISSIONS, type CommissionDef } from './data/kingdom'
 import { acceptCommission, abandonCommission, advanceCommissions, claimCommission, newKingdomState, kingdomRank, kingdomTrust, royalPotionCost, type RoyalRewardChoice } from './sim/kingdom'
-import { useEffect, useRef, useState, useReducer, useMemo } from 'react'
+import { useEffect, useRef, useState, useReducer } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, seedMemberSeq, reserveNames, rollSpec, memberGenerationState, restoreMemberGeneration } from './sim/gen'
 import { statLayers } from './sim/combat'
@@ -78,8 +78,9 @@ import { ChronicleScreen } from './ui/screens/ChronicleScreen'
 import { MemorialScreen } from './ui/screens/MemorialScreen'
 import { ManualScreen } from './ui/screens/ManualScreen'
 import { RosterScreen } from './ui/screens/RosterScreen'
+import { WarehouseScreen } from './ui/screens/WarehouseScreen'
 import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
-import { sortInventoryItems, INV_SORT_LABEL, type InvSort } from './ui/inventory-sort'
+import { type InvSort } from './ui/inventory-sort'
 import { nextBattleSpeed, speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
@@ -305,7 +306,6 @@ export default function App() {
   const inventory = inventoryItems(itemOwnership)
   // 仓库排序(制作人反馈 2026-10-04):默认稀有度从高到低
   const [invSort, setInvSort] = useState<InvSort>('rarity-desc')
-  const inventorySorted = useMemo(() => sortInventoryItems(inventory, invSort), [inventory, invSort])
   const lastDrops = progress.dropIds.map(id => itemOwnership.items[id]).filter((item): item is ItemInstance => !!item)
   const setLastDrops = (v: ItemInstance[] | ((items: ItemInstance[]) => ItemInstance[])) => {
     const old = progressRef.current.dropIds.map(id => itemOwnershipRef.current.items[id]).filter(Boolean)
@@ -1942,90 +1942,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            {hubScreen === 'warehouse' && (
-              <div className="screen-overlay fullpage">
-                <div className="screen-panel">
-                  <div className="screen-head">
-                    <h2>🎒 公会仓库</h2>
-                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
-                  </div>
-          <div className="inv-panel">
-            <h2>公会仓库（{inventory.length}）</h2>
-            <div className="potion-supply">
-              <span className="hint">
-                🧪 治疗药 ×{potions.heal} · ⚡ 爆发药 ×{potions.fury} —— 出征携带,战斗消耗,回城退回
-                {kingdomRank(kingdom).discount > 0 && ` · 王国补给优惠${Math.round(kingdomRank(kingdom).discount * 100)}%已计入售价`}
-              </span>
-              <div className="tavern-row">
-                <button disabled={!!run || !!towerRun || gold < royalPotionCost('heal', kingdom)} onClick={() => buyPotion('heal')}>
-                  🧪 补充治疗药（{royalPotionCost('heal', kingdom)} 金）
-                </button>
-                <button disabled={!!run || !!towerRun || gold < royalPotionCost('fury', kingdom)} onClick={() => buyPotion('fury')}>
-                  ⚡ 补充爆发药（{royalPotionCost('fury', kingdom)} 金）
-                </button>
-              </div>
-            </div>
-            {pendingRelics.length > 0 && (
-              <div className="potion-supply">
-                <span className="hint">⚰ 遗物安葬（{pendingRelics.length}）——阵亡者的装备在此待赎,赎回费随品级与词条上涨;T3 可改拆星髓</span>
-                {pendingRelics.map((r) => (
-                  <div key={r.uid} className="tavern-row">
-                    <span className="hint">⚰ {r.hero} 的 {describeItem(r.item)}</span>
-                    <button disabled={!!run || !!towerRun || gold < r.redeem} onClick={() => redeemRelic(r.uid)}>
-                      ⚰ 赎回（{r.redeem} 金）
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {kingdomTrust(kingdom) >= 100 && (
-              <div className="potion-supply">
-                <span className="hint">⚔ 灰冠兑换（信任 100 解锁 · 星髓 {starMarrow} · 拆解 T3 取得）——每件 2 星髓 + 800 金 + 10 祝福</span>
-                <div className="tavern-row">
-                  {EXCHANGE_LIST.map((bid) => (
-                    <button key={bid} disabled={!!run || !!towerRun || starMarrow < 2 || gold < 800 || blessing < 10} onClick={() => exchangeT3(bid)}>
-                      ⚔ 兑换 {ITEM_BASES[bid].name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {inventory.length > 0 && (
-              <div className="tavern-row" role="group" aria-label="排序方式">
-                <span className="hint">排序:</span>
-                {(Object.keys(INV_SORT_LABEL) as InvSort[]).map((mode) => (
-                  <button key={mode} className={invSort === mode ? 'active' : ''} onClick={() => setInvSort(mode)}>
-                    {INV_SORT_LABEL[mode]}
-                  </button>
-                ))}
-              </div>
-            )}
-            {inventory.length === 0 ? (
-              <p className="hint">击败 boss 掉落装备（首次击杀保底一件）。从成员卡的下拉框穿戴。</p>
-            ) : (
-              inventorySorted.map((i) => (
-                <div key={i.id} className="inv-item">
-                  {describeItem(i)}
-                  {ITEM_BASES[i.baseId].tier === 3 && (
-                    <button className="sell-btn" onClick={() => dismantleT3(i.id)}>
-                      ♻ 拆解 +2 星髓
-                    </button>
-                  )}
-                  <button className="sell-btn" onClick={() => sellItem(i.id)}>
-                    变卖 +{sellValue(i, fx.sellMult)} 金
-                  </button>
-                </div>
-              ))
-            )}
-            {lastDrops.length > 0 && (
-              <p className="hint" style={{ marginTop: 6 }}>
-                本次远征共获得 {lastDrops.length} 件装备
-              </p>
-            )}
-                </div>
-              </div>
-              </div>
-            )}
             {hubScreen === 'base' && (
               <div className="screen-overlay fullpage">
                 <div className="screen-panel">
@@ -2214,6 +2130,11 @@ export default function App() {
               </div>
               </div>
             )}
+            {hubScreen === 'warehouse' && <WarehouseScreen inventory={inventory} potions={potions} gold={gold} kingdom={kingdom}
+              pendingRelics={pendingRelics} starMarrow={starMarrow} blessing={blessing} busy={!!run || !!towerRun}
+              invSort={invSort} onSortChange={setInvSort} onBuyPotion={buyPotion} onRedeemRelic={redeemRelic}
+              onDismantle={dismantleT3} onSell={sellItem} onExchange={exchangeT3}
+              lastDropCount={lastDrops.length} sellMult={baseEffects(buildings).sellMult} onBack={goBack} />}
             {hubScreen === 'chronicle' && <ChronicleScreen chronicle={chronicle} day={day} onOpenStatistics={() => setHubScreen('statistics')} onBack={goBack} />}
             {hubScreen === 'memorial' && <MemorialScreen memorial={memorial} onBack={goBack} />}
             {hubScreen === 'manual' && <ManualScreen manual={manual} eventsSeen={eventsSeen} protectOn={protectOn} onToggleProtect={() => setProtectOn((p) => !p)} onBack={goBack} />}
