@@ -22,7 +22,7 @@ export function StatisticsPanel({ statistics, day, onClose, onBack }: {
   }, [])
   useEffect(() => { if (exporting) field.current?.focus() }, [exporting])
   const columns = [statistics.expeditionBattles, statistics.towerFloors, statistics.expeditions]
-  return <div className="screen-overlay" onKeyDown={(event) => {
+  return <div className="screen-overlay fullpage" onKeyDown={(event) => {
     event.stopPropagation()
     if (event.key === 'Escape') onClose()
     if (event.key === 'Tab') {

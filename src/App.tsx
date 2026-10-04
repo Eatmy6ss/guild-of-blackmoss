@@ -73,6 +73,7 @@ import { autoPickNode } from './sim/dungeon-map'
 import { restHealMult } from './sim/conditions'
 import { CONDITION_BY_ID } from './data/conditions'
 import { MapScreen } from './ui/screens/MapScreen'
+import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
 import { sortInventoryItems, INV_SORT_LABEL, type InvSort } from './ui/inventory-sort'
 import { nextBattleSpeed, speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
 import { ECONOMY } from './data/economy'
@@ -108,19 +109,6 @@ const ROSTER_CAP = 6
 const MANUAL_BONUS = 0.05 // 已研习 boss 全队对其伤害 +5%
 
 // UI 2.0 屏幕栈:公会大厅(hub) + 功能界面覆盖层。快捷键呼出,Esc/再按关闭。
-type UIScreen = 'kingdom' | 'roster' | 'tavern' | 'warehouse' | 'base' | 'chronicle' | 'memorial' | 'manual' | 'expedition' | 'statistics'
-// 大厅功能坞:图标 + 名称 + 快捷键(顺序即展示顺序)
-const HUB_DOCK: { key: UIScreen; icon: string; label: string; hotkey: string }[] = [
-  { key: 'kingdom', icon: '♜', label: '王国委托', hotkey: 'Q' },
-  { key: 'roster', icon: '🛡', label: '花名册', hotkey: 'C' },
-  { key: 'tavern', icon: '🍺', label: '酒馆', hotkey: 'T' },
-  { key: 'warehouse', icon: '🎒', label: '仓库', hotkey: 'B' },
-  { key: 'base', icon: '🏰', label: '基地', hotkey: 'N' },
-  { key: 'chronicle', icon: '📜', label: '大事记', hotkey: 'J' },
-  { key: 'memorial', icon: '🕯', label: '名人堂', hotkey: 'H' },
-  { key: 'manual', icon: '📖', label: '手册', hotkey: 'K' },
-]
-
 function newRoster(rng: Rng): Member[] {
   // 新档反馈①修复:开局送三件传家 T1(实测裸装开局全操作档通关率 0%,装备是前期唯一杠杆)
   return START_JOBS.map((job) => {
@@ -966,7 +954,7 @@ export default function App() {
     setPotions({ ...ECONOMY.startingPotions })
     updateKingdom(newKingdomState())
     setRoyalNotice('')
-    setHubScreen(null)
+    goBack()
     setUnlockedHybrids([])
     setDungeonMastery({})
     guildRngRef.current = createStatefulRng(newRngSeed())
@@ -1446,6 +1434,12 @@ export default function App() {
   const intents = (inBattle || inTowerBattle) && battle!.status === 'running' ? bossIntents(battle!) : null
   // 屏幕栈状态:null = 大厅;远征/爬塔中快捷键不劫持(战斗界面是全屏态)。与 title/game 阶段状态相互独立
   const [hubScreen, setHubScreen] = useState<UIScreen | null>(null)
+  // U29 状态机:关闭功能屏=返回上一级(backTargetOf)——功能坞屏回大厅,统计回大事记
+  const goBack = () => setHubScreen((cur) => {
+    if (!cur) return null
+    const parent = backTargetOf(cur)
+    return parent === 'hall' ? null : (parent as UIScreen)
+  })
   // 透明面板(宪法 v3.2 缺陷二):展开显示乘区逐层明细的成员
   const [detailOpen, setDetailOpen] = useState<Set<string>>(new Set())
   const battleMapId = towerRun ? 'tower' : run ? runDungeon(run).id : activeDungeon.id
@@ -1462,7 +1456,7 @@ export default function App() {
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
       if (runRef.current || towerRunRef.current) return
       if (e.key === 'Escape') {
-        setHubScreen(null)
+        goBack()
         return
       }
       const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase() && dockUnlocked(it.key))
@@ -1507,7 +1501,7 @@ export default function App() {
   const travelRoyal = (q: CommissionDef) => {
     if (runRef.current || towerRunRef.current) return
     if (q.objective.kind === 'building') setHubScreen('base')
-    else { setDungeonId(q.objective.dungeonId); setHubScreen(null) }
+    else { setDungeonId(q.objective.dungeonId); goBack() }
   }
 
   const memberCard = (m: Member) => {
@@ -1780,7 +1774,7 @@ export default function App() {
               ? '有委托可交付 →' : kingdom.active.length ? `在办委托 ${kingdom.active.length}/2 · 查看进度 →` : kingdom.completed.length === COMMISSIONS.length ? '本批委托已结案 · 回信档案 →' : '王国来函 · 查看委托 →'}</span>
           </button>
           {hubScreen === 'kingdom' && !run && !towerRun && <KingdomPanel state={kingdom} context={royalContext} notice={royalNotice} playtestLock={(d) => !playtestAllows(d)}
-            onClose={() => setHubScreen(null)} onAccept={acceptRoyal} onClaim={claimRoyal} onTravel={travelRoyal}
+            onClose={() => goBack()} onAccept={acceptRoyal} onClaim={claimRoyal} onTravel={travelRoyal}
             onAbandon={(id) => { if (runRef.current || towerRunRef.current) return; updateKingdom(abandonCommission(kingdomRef.current, id)); setRoyalNotice('委托已撤销，可重新接取。王国信任不变。') }} />}
           <div className="inv-panel tower-entry">
             <h2>🗼 黑苔高塔 —— 最高纪录 第 {towerBest} 层</h2>
@@ -1839,11 +1833,11 @@ export default function App() {
               </div>
             )}
             {hubScreen === 'tavern' && (
-              <div className="screen-overlay">
+              <div className="screen-overlay fullpage">
                 <div className="screen-panel">
                   <div className="screen-head">
                     <h2>🍺 酒馆</h2>
-                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
                   </div>
                   <p className="screen-sub">
                     💰 {gold} · 🕯 祝福 {blessing} · 招募位 {members.filter((m) => m.alive).length}/{ROSTER_CAP}
@@ -1946,11 +1940,11 @@ export default function App() {
               </div>
             )}
             {hubScreen === 'warehouse' && (
-              <div className="screen-overlay">
+              <div className="screen-overlay fullpage">
                 <div className="screen-panel">
                   <div className="screen-head">
                     <h2>🎒 公会仓库</h2>
-                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
                   </div>
           <div className="inv-panel">
             <h2>公会仓库（{inventory.length}）</h2>
@@ -2030,11 +2024,11 @@ export default function App() {
               </div>
             )}
             {hubScreen === 'base' && (
-              <div className="screen-overlay">
+              <div className="screen-overlay fullpage">
                 <div className="screen-panel">
                   <div className="screen-head">
                     <h2>🏰 公会基地</h2>
-                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
                   </div>
           <div className="inv-panel">
             <h2>🏰 公会基地（第 {day} 日）</h2>
@@ -2217,14 +2211,14 @@ export default function App() {
               </div>
               </div>
             )}
-            {hubScreen === 'statistics' && <StatisticsPanel statistics={statistics} day={day} onClose={() => setHubScreen(null)} onBack={() => setHubScreen('chronicle')} />}
+            {hubScreen === 'statistics' && <StatisticsPanel statistics={statistics} day={day} onClose={() => goBack()} onBack={() => setHubScreen('chronicle')} />}
             {hubScreen === 'chronicle' && (
-              <div className="screen-overlay">
+              <div className="screen-overlay fullpage">
                 <div className="screen-panel">
                   <div className="screen-head">
                     <h2>📜 大事记</h2>
                     <button onClick={() => setHubScreen('statistics')}>战绩统计</button>
-                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
                   </div>
           <div className="inv-panel">
             <h2>📜 编年史（第 {day} 日 · {chronicle.length} 则）</h2>
@@ -2245,11 +2239,11 @@ export default function App() {
               </div>
             )}
             {hubScreen === 'memorial' && (
-              <div className="screen-overlay">
+              <div className="screen-overlay fullpage">
                 <div className="screen-panel">
                   <div className="screen-head">
                     <h2>🕯 名人堂</h2>
-                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
                   </div>
           <div className="inv-panel">
             <h2>
@@ -2281,11 +2275,11 @@ export default function App() {
               </div>
             )}
             {hubScreen === 'manual' && (
-              <div className="screen-overlay">
+              <div className="screen-overlay fullpage">
                 <div className="screen-panel">
                   <div className="screen-head">
                     <h2>📖 战术手册</h2>
-                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
                   </div>
           <div className="inv-panel">
             <h2>📖 战术手册（已研习 boss 伤害 +5%）</h2>
@@ -2363,11 +2357,11 @@ export default function App() {
               </div>
             )}
             {hubScreen === 'roster' && (
-              <div className="screen-overlay">
+              <div className="screen-overlay fullpage">
                 <div className="screen-panel">
                   <div className="screen-head">
                     <h2>🛡 花名册</h2>
-                    <button className="screen-close" onClick={() => setHubScreen(null)}>✕ Esc</button>
+                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
                   </div>
                   <div className="inv-panel">
                     {members.filter((m) => m.alive).map(memberCard)}

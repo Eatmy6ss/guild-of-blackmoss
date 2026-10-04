@@ -72,7 +72,7 @@ export function KingdomPanel({ state, context, notice, onClose, onAccept, onAban
       </div>}
     </article>
   }
-  return <div className="screen-overlay">
+  return <div className="screen-overlay fullpage">
     <section ref={panel} tabIndex={-1} className="screen-panel royal-panel" role="dialog" aria-modal="true" aria-labelledby="royal-title" onKeyDown={(event) => {
       if (event.key !== 'Tab') return
       const buttons = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), summary') ?? []).filter((el) => el.getClientRects().length > 0)

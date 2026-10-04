@@ -61,7 +61,7 @@ export function MemberPanel({ member, members, onClose }: Props) {
   ]
 
   return (
-    <div className="screen-overlay" style={{ zIndex: 100 }}>
+    <div className="screen-overlay fullpage" style={{ zIndex: 100 }}>
       <section className="member-sheet" ref={panel as never} tabIndex={-1}>
         <div className="ms-head">
           <div>

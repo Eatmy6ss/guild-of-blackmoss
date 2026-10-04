@@ -495,6 +495,13 @@ button.primary:hover:not(:disabled) {
 }
 .hub-keys { margin-top: 8px; }
 
+/* U29 功能坞全屏页:不透光底,功能内容占满主视区——「独立界面」,不再透出大厅 */
+.screen-overlay.fullpage {
+  background: radial-gradient(ellipse 1500px 950px at 50% 24%, #1b150d 0%, #0f0b06 75%);
+  padding: 28px 16px 40px;
+}
+.screen-overlay.fullpage .screen-panel { width: min(1080px, 97vw); }
+
 /* 覆盖浮层:暗幕 + 居中面板(游戏式屏幕,非网页区块) */
 .screen-overlay {
   position: fixed;

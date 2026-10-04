@@ -434,7 +434,7 @@ function rngScope(scope: Record<string, unknown>) {
     progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
     combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, playtestAllows, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
-    lastRetreatRunRef: { current: null },
+    lastRetreatRunRef: { current: null }, goBack: () => {},
     __PLAYTEST__: false, playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {}, setPlaytestEnding: () => {},
     appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER, tellExpedition, createRng,
     factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
@@ -464,7 +464,7 @@ function settlementUi(members: Member[]) {
     playtestAllows, hintsSeen: [] as string[], factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } },
     markExpeditionStart: () => {}, markTold: () => {}, story: null, setPlaytestEnding: () => {},
     playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {},
-    lastRetreatRunRef: { current: null }, dismissHint: () => {},
+    lastRetreatRunRef: { current: null }, goBack: () => {}, dismissHint: () => {},
   }
   for (const key of ['Members', 'Manual', 'DungeonMastery', 'TowerBest', 'RecruitCooldown', 'Inventory', 'LastDrops', 'PendingRelics', 'Memorial', 'Gold', 'StarMarrow', 'Blessing', 'Statistics', 'Chronicle', 'ScarNotices']) {
     scope['set' + key] = (v: any) => {
