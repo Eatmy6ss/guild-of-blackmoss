@@ -79,6 +79,7 @@ import { ManualScreen } from './ui/screens/ManualScreen'
 import { RosterScreen } from './ui/screens/RosterScreen'
 import { TavernScreen } from './ui/screens/TavernScreen'
 import { BaseScreen } from './ui/screens/BaseScreen'
+import { ExpeditionBoard } from './ui/screens/ExpeditionBoard'
 import { attrsLine, personalityLine } from './ui/screens/member-lines'
 import { WarehouseScreen } from './ui/screens/WarehouseScreen'
 import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
@@ -99,7 +100,7 @@ import { chronicleRaw } from './sim/chronicle'
 import { grantExp } from './sim/gen'
 import { JOBS, specOf } from './data/jobs'
 import { HYBRIDS, isHybrid } from './data/vocations'
-import { REGIONS, dungeonLock, nextRegionLocked, playtestAllows } from './data/regions'
+import { playtestAllows } from './data/regions'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
 // 花名册 = 全体成员（含亡者记录）；远征队 = 花名册前三名幸存者。
@@ -1882,60 +1883,11 @@ export default function App() {
           {(inBattle || inTowerBattle) && battle && <BattleIntel battle={battle} members={members} mapId={battleMapId} paused={inTowerBattle ? !towerRunning : !running} />}
           {/* 舞台常驻：渲染器挂载一次，非战斗阶段隐藏（避免 ref 为 null 导致挂载失败） */}
           <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }} />
+          {!run && !towerRun && <ExpeditionBoard dungeonId={dungeonId} manual={manual}
+            expeditionCount={expedition.length} activeDungeonSize={activeDungeon.size} activeDungeonName={activeDungeon.name}
+            canExpedition={canExpedition} busy={!!run || !!towerRun} playtestMode={!!__PLAYTEST__}
+            onSelectDungeon={setDungeonId} onDepart={() => startExpeditionRef.current?.()} />}
 
-          {!run && !towerRun && (
-            <>
-              <h2>⚔ 作战板</h2>
-              <p style={{ color: '#7a8191', marginBottom: 10 }}>
-                地图每趟随机生成，逐层选路——每一层的模样由你的熟练度决定（首打一片漆黑）。血量全程延续，
-                <b style={{ color: '#d48f8f' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
-              </p>
-              <div className="dungeon-picker">
-                {REGIONS.filter((rg) => !__PLAYTEST__ || rg.order === 1).map((rg) => {
-                  const regionDungeons = DUNGEONS.filter((d) => [...rg.main, ...rg.side, rg.finale].includes(d.id))
-                  const ordered = [...rg.main, ...rg.side, rg.finale].map((id) => regionDungeons.find((d) => d.id === id)!).filter(Boolean)
-                  return (
-                    <div key={rg.id} className="region-block">
-                      <p className="region-name">🗺 {rg.name}</p>
-                      <div className="region-dungeons">
-                        {ordered.map((d) => {
-                          const lock = dungeonLock(d.id, manual)
-                          return (
-                            <button
-                              key={d.id}
-                              className={d.id === dungeonId ? 'active' : ''}
-                              disabled={!!run || !!lock || !playtestAllows(d.id)}
-                              title={lock ?? undefined}
-                              onClick={() => setDungeonId(d.id)}
-                            >
-                              🗺 {d.name}{d.size > 3 ? `（${d.size} 人团本）` : ''}{lock || !playtestAllows(d.id) ? ' 🔒' : ''}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
-                {nextRegionLocked(manual) && (
-                  <p className="hint">🔒 下一版图:{nextRegionLocked(manual)}</p>
-                )}
-              </div>
-              <button
-                className="branch-btn primary"
-                disabled={!canExpedition}
-                onClick={() => startExpedition()}
-              >
-                ⚔ 出发：{activeDungeon.name}——每趟地图随机生成(U27①),在地图上逐层选路
-              </button>
-              {!canExpedition && (
-                <p style={{ color: '#d48f8f' }}>
-                  {expedition.length < activeDungeon.size
-                    ? `编制不足（${expedition.length}/${activeDungeon.size}）：去花名册编入队员，或去酒馆招募。`
-                    : ''}
-                </p>
-              )}
-            </>
-          )}
 
           {run && inBattle && (
             <>
