@@ -69,6 +69,8 @@ export interface GuildEventDef {
   choices: EventChoice[]
   /** 作用域(U27④):town=回城抽;dungeon=该副本的 event 节点抽;terrain=有该地形的节点抽(regions 二层过滤) */
   scope: EventScope
+  /** 前置(分类草案 §4.2):visited=该副本已有熟练度(去过才抽得到),防「没去过白霜却收到白霜来信」 */
+  requires?: { visited?: string }
 }
 
 // 试玩反馈④:回城事件率 0.45→0.3——「打完回城事件概率有点高」;访客 roll 互斥不变
@@ -1048,6 +1050,7 @@ title: '行脚药贩',
   {
     id: 'frost-envoy',
     scope: { kind: 'town' },
+    requires: { visited: 'frostgrave' },
     title: '白霜的信使',
     text: '一个嘴唇冻成青色的信使带来了白霜墓园的信:织法者们愿意付钱,只求公会不要再接去墓园的委托。「死者需要安静。」信纸落款处的名字,全是你葬送在那里的旧敌。',
     choices: [
@@ -1070,6 +1073,7 @@ title: '行脚药贩',
   {
     id: 'abyss-preacher',
     scope: { kind: 'town' },
+    requires: { visited: 'abyssaltar' },
     title: '渊底的传教士',
     text: '一个穿深袍的传教士在酒馆后巷布道,听众多是输光了的佣兵。他说渊底能让人「忘掉输掉的一切」。有人劝你们管管——也有人已经在问他入教的事。',
     choices: [
@@ -1136,6 +1140,7 @@ title: '老兵的遗产',
   {
     id: 'mining-strike',
     scope: { kind: 'town' },
+    requires: { visited: 'rustmine' },
     title: '矿工的请愿',
     text: '锈坑矿道的矿工们联名请愿:公会一直在给「换掉他们」的裸井队做护卫。他们不求公会倒戈,只求别再接那种活。',
     choices: [
@@ -1157,6 +1162,7 @@ title: '老兵的遗产',
   },  {
     id: 'snow-caravan',
     scope: { kind: 'town' },
+    requires: { visited: 'frostgrave' },
     title: '雪困的商队',
     text: '急报:一支商队困在白霜墓园外的雪坡上,看守的人手被「会走路的冰雕」冲散。货主开出的救援价很高——高到说明他清楚那些冰雕是什么。',
     choices: [

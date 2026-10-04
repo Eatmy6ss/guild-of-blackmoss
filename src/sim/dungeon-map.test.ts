@@ -86,6 +86,30 @@ describe('R1.1 generateMap 结构验收', () => {
     }
   })
 
+  it('U30 节点绑定(按风味名):路边圣龛/施舍台→鳞音教募捐,渊底低语→灵魂商人;仅 event 节点带绑定', () => {
+    const cases = [
+      { dungeon: 'emberpass', name: '路边圣龛', eventId: 'dragon-cult' },
+      { dungeon: 'scalehaven', name: '施舍台', eventId: 'dragon-cult' },
+      { dungeon: 'abyssaltar', name: '渊底低语', eventId: 'soul-trade' },
+    ] as const
+    for (const c of cases) {
+      const d = DUNGEONS.find((x) => x.id === c.dungeon)!
+      let saw = false
+      for (let i = 0; i < 120 && !saw; i++) {
+        const map = generateMap(d, 5000 + i * 313)
+        for (const n of map.layers.flat()) {
+          if (n.eventId !== undefined) {
+            saw = true
+            expect(n.kind, `${c.dungeon}#${i} ${n.id}`).toBe('event')
+            expect(n.name, '绑定点必须顶着承诺的风味名').toBe(c.name)
+            expect(n.eventId).toBe(c.eventId)
+          }
+        }
+      }
+      expect(saw, `${c.dungeon} 120 seed 内应出现绑定节点`).toBe(true)
+    }
+  })
+
   it('同 seed 生成同一张图;不同 seed 结构不同(抽样)', () => {
     const d = DUNGEONS[0]!
     const a = generateMap(d, 424242)

@@ -836,6 +836,14 @@ export default function App() {
       return
     }
     if (node.kind === 'event') {
+      // U30 补:节点绑定固定事件(desc 承诺固定兑现,如路边圣龛→鳞音教募捐)
+      const bound = node.eventId ? GUILD_EVENTS.find((e) => e.id === node.eventId) : undefined
+      if (bound) {
+        setPendingEvent(bound)
+        setEventResult(null)
+        setRun({ ...r })
+        return
+      }
       // 副本档延迟后果(events-draft §2.2):到期且指向本副本/不限副本时,本副本的 event 节点必出
       const dueNode = pendingConsequences.find((c) => c.dueDay <= day && consequenceFiresIn(c.eventId, runDungeon(r).id))
       if (dueNode) {
@@ -914,7 +922,7 @@ export default function App() {
       setVisitor(rollVisitor(guildRng, membersRef.current, buildings.tavern ?? 0, { hybrids: !__PLAYTEST__ }))
     } else if (roll < fx.visitorChance + 0.35 && !pendingEvent) {
       // U27④:回城只抽 town 池(修 bug:此前 town 文本带 region 的事件永远抽不到)
-      const ev = rollGuildEvent(guildRng, { where: 'town' })
+      const ev = rollGuildEvent(guildRng, { where: 'town', visited: dungeonMastery })
       if (ev) {
         setPendingEvent(ev); setEventResult(null); sfxVisitor()
       }

@@ -455,7 +455,7 @@ export const ABYSSALTAR: DungeonDef = {
   size: 3,
   terrains: {
     sanctum: { weight: 3, names: ['教徒环阵', '献祭阶梯'], encounters: ['enc-cultists'] },
-    under: { weight: 3, names: ['观渊回廊'], encounters: ['enc-eyes', 'enc-abyssmix'] },
+    under: { weight: 3, names: ['观渊回廊', '渊底低语'], encounters: ['enc-eyes', 'enc-abyssmix'] },
     water: { weight: 2, names: ['暗河渡道'], encounters: ['enc-ghouls', 'enc-bloodfeast'] },
     camp: { weight: 2, names: ['暗河石台'], encounters: [] },
   },

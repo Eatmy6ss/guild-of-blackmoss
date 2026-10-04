@@ -21,7 +21,7 @@ export function pickOutcome(def: GuildEventDef, choiceIdx: number, roll: number)
 }
 
 /** 事件抽取位置(U27④):town=回城;node=副本 event 节点(带地形后可抽地形池) */
-export type EventWhere = { where: 'town' } | { where: 'node'; dungeonId: string; terrain?: TerrainId }
+export type EventWhere = { where: 'town'; visited?: Record<string, number> } | { where: 'node'; dungeonId: string; terrain?: TerrainId }
 
 /** 后续幕 id 集(动态推导):被任意 delayed 指向的事件永不随机抽中——只由合法前因进入(F08) */
 export const SECOND_ACT_IDS: ReadonlySet<string> = new Set(
@@ -38,7 +38,13 @@ function regionOfDungeon(dungeonId: string): EventRegion | undefined {
 /** 事件池(U27④):回城只抽 town;节点抽「本副本专属 + 本地地形(限版图)」,永不含 town,后续幕除外(F08) */
 export function eventPool(where: EventWhere): GuildEventDef[] {
   if (where.where === 'town') {
-    return GUILD_EVENTS.filter((e) => e.scope.kind === 'town' && !SECOND_ACT_IDS.has(e.id))
+    const visited = where.visited
+    return GUILD_EVENTS.filter((e) => {
+      if (e.scope.kind !== 'town' || SECOND_ACT_IDS.has(e.id)) return false
+      // 前置(草案 §4.2):requires.visited=该副本已有熟练度才可抽
+      if (e.requires?.visited && !(visited && (visited[e.requires.visited] ?? 0) > 0)) return false
+      return true
+    })
   }
   const region = regionOfDungeon(where.dungeonId)
   return GUILD_EVENTS.filter((e) => {

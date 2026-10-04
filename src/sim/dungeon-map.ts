@@ -30,6 +30,8 @@ export interface MapNode {
   kind: MapNodeKind
   /** battle/elite/boss:必须是该副本 encounters 里存在的 id */
   encounterId?: string
+  /** U30 补:事件节点绑定固定事件(节点 desc 承诺的内容固定兑现;空=从池里抽) */
+  eventId?: string
   /** 风味名,从该副本该地形的名表抽取 */
   name: string
   /** secret(暗道):只有高熟练度可见;走过它跳过一层并开出额外收获(R1.3 消费 hidden) */
@@ -168,6 +170,19 @@ export function generateMap(dungeon: DungeonDef, seed: number): DungeonMap {
     const encs = dungeon.terrains[n.terrain]?.encounters ?? []
     if (encs.length === 0) { n.kind = 'rest'; n.encounterId = undefined; continue }
     n.encounterId = pickOf(rng, encs)
+  }
+
+  // —— U30 补:event 节点绑定固定事件(草案 §4.3「绑定」项)——
+  // 新地图节点没有旧 id,按「风味名」绑定:名字来自各地形名表,摇到即固定兑现该事件
+  const NODE_EVENT_BINDINGS: Record<string, string> = {
+    '路边圣龛': 'dragon-cult',
+    '施舍台': 'dragon-cult',
+    '渊底低语': 'soul-trade',
+  }
+  for (const layer of layers) {
+    for (const n of layer) {
+      if (n.kind === 'event' && NODE_EVENT_BINDINGS[n.name]) n.eventId = NODE_EVENT_BINDINGS[n.name]
+    }
   }
 
   // —— 兜底保证:≥1 elite ≥1 rest;Boss 前一层 ≥1 非战斗 ——

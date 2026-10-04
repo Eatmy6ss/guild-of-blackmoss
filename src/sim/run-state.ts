@@ -127,6 +127,8 @@ export function validateRunState(value: unknown, roster: { id: string; hp: numbe
             !['battle','elite','event','rest','treasure','secret','boss'].includes(n.kind) ||
             typeof n.name !== 'string') return false
         if (n.encounterId !== undefined && !d.encounters.some(e => e.id === n.encounterId)) return false
+        if ((n as { eventId?: unknown }).eventId !== undefined &&
+            !GUILD_EVENTS.some(e => e.id === (n as { eventId: string }).eventId)) return false
       }
     }
     for (const [a, b] of r.map.edges as [string, string][]) if (!nodes.has(a) || !nodes.has(b)) return false

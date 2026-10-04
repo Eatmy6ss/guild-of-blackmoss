@@ -30,7 +30,7 @@ import { newKingdomState } from '../src/sim/kingdom'
 import { seedChronicle } from '../src/sim/chronicle'
 import { ITEM_BASES } from '../src/data/items'
 import { AFFIXES } from '../src/data/affixes'
-import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD } from '../src/data/dungeons'
+import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
 import { EMBERPASS, SCALEHAVEN, FIRERIDGE, PILGRIMPATH, FORGEWORKS, DRAGONMAW } from '../src/data/dungeons-r2'
 import { ECONOMY } from '../src/data/economy'
 import { playtestAllows } from '../src/data/regions'
@@ -899,8 +899,10 @@ test('event pools split town/dungeon/terrain without leakage (U27④)', () => {
   assert(townPool.length >= 45, 'town first-encounter pool = 52 town − 7 chain targets')
   const drawn = new Set<string>()
   const seqRng = createStatefulRng(424242)
+  // 前置件(草案 §4.2)之后:visited 全开才等价于完整 town 池
+  const allVisited = Object.fromEntries(DUNGEONS.map(d => [d.id, 100]))
   for (let i = 0; i < 2000; i++) {
-    const ev = rollGuildEvent(seqRng, { where: 'town' })
+    const ev = rollGuildEvent(seqRng, { where: 'town', visited: allVisited })
     if (ev) drawn.add(ev.id)
   }
   for (const e of townPool) assert(drawn.has(e.id), 'town roll missed ' + e.id)

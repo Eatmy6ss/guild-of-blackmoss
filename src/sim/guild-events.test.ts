@@ -123,4 +123,16 @@ describe('R1.4 事件 scope 数据校验', () => {
   it('事件总数 = 89 + 16, encyclopedia 完整', () => {
     expect(eventCount()).toBe(89 + 16)
   })
+
+  it('前置 requires:没去过对应副本抽不到,去过才进池(草案 §4.2)', () => {
+    const without = eventPool({ where: 'town' })
+    expect(without.some((e) => e.id === 'frost-envoy')).toBe(false)
+    expect(without.some((e) => e.id === 'snow-caravan')).toBe(false)
+    expect(without.some((e) => e.id === 'mining-strike')).toBe(false)
+    expect(without.some((e) => e.id === 'abyss-preacher')).toBe(false)
+    const withVisited = eventPool({ where: 'town', visited: { frostgrave: 12, rustmine: 3, abyssaltar: 1 } })
+    for (const id of ['frost-envoy', 'snow-caravan', 'mining-strike', 'abyss-preacher']) {
+      expect(withVisited.some((e) => e.id === id), id).toBe(true)
+    }
+  })
 })
