@@ -18,6 +18,8 @@ interface MapScreenProps {
   /** R4 酒馆情报的临时提档预留(每点 +1 档);R1 只接线不入口 */
   revealBonus?: number
   drops: ItemInstance[]
+  /** 最近一次节点选择的可见后果(休整/宝箱/挂机代选事件),选下一条路时刷新 */
+  notice?: string | null
   onChoose: (nodeId: string) => void
   onRetreat: () => void
 }
@@ -32,7 +34,7 @@ const KIND_LABEL: Record<MapNode['kind'], string> = {
   boss: '👑 Boss·依次连战',
 }
 
-export function MapScreen({ run, mastery, revealBonus = 0, drops, onChoose, onRetreat }: MapScreenProps) {
+export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoose, onRetreat }: MapScreenProps) {
   const dungeon = runDungeon(run)
   const cur = currentNode(run)
   // R1.3 四档:0 只知名与地形 / 1 相邻层类型 / 2 前两层类型+内容+路况 / 3 全图类型+暗道
@@ -101,6 +103,9 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, onChoose, onRe
           </div>
         )
       })()}
+      {notice && (
+        <div className="result-banner win" role="status">{notice}</div>
+      )}
       <div className="route-choice">
         <p className="hint">
           熟练度 {mastery} —— {lvl === 'hidden' ? `前路未知,只闻其名(相邻层的类型需熟练度 ${MASTERY.KIND})。` : lvl === 'kind' ? '你已记得这些路的类别。' : '这张图你闭着眼都能走。'}

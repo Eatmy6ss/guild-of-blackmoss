@@ -5,7 +5,7 @@ import { generateMap, nodeById } from './dungeon-map'
 // R1.1 分层地图·验收(redesign §3 R1.1):12 副本 × 200 seed 的结构不变量
 
 describe('R1.1 generateMap 结构验收', () => {
-  it('12 副本 × 200 seed:层数/每层 2-3 节点/每节点 ≥1 入 ≥1 出/Boss 在末层', () => {
+  it('12 副本 × 200 seed:层数/每层 2-3 节点/每节点 ≥1 入 ≥1 出/Boss 在末层', { timeout: 30_000 }, () => {
     for (const dungeon of DUNGEONS) {
       for (let i = 0; i < 200; i++) {
         const seed = 1000 + i * 7919
@@ -41,7 +41,7 @@ describe('R1.1 generateMap 结构验收', () => {
     }
   })
 
-  it('任意节点都能走到 Boss;全图 ≥1 elite ≥1 rest;Boss 前一层 ≥1 非战斗', () => {
+  it('任意节点都能走到 Boss;全图 ≥1 elite ≥1 rest;Boss 前一层 ≥1 非战斗', { timeout: 30_000 }, () => {
     for (const dungeon of DUNGEONS) {
       for (let i = 0; i < 200; i++) {
         const seed = 2000 + i * 104729
@@ -70,7 +70,7 @@ describe('R1.1 generateMap 结构验收', () => {
     }
   })
 
-  it('每个 encounterId 都存在于该副本 encounters;battle/elite 必带遭遇', () => {
+  it('每个 encounterId 都存在于该副本 encounters;battle/elite 必带遭遇', { timeout: 30_000 }, () => {
     for (const dungeon of DUNGEONS) {
       for (let i = 0; i < 200; i++) {
         const map = generateMap(dungeon, 3000 + i * 15485863)

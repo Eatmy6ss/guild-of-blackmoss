@@ -26,6 +26,8 @@ export interface RunUIState {
   pendingConsequence: { eventId: string; dueDay: number } | null
   dropIds: string[]
   notices: string[]
+  /** R1.2 反馈:最近一次节点选择的可见后果(休整/宝箱/挂机代选事件等),选下一条路时清空 */
+  lastNodeResult: string | null
   growthSnapshot: Record<string, GrowthSnapshot>
   /** A15 战后小结:最近一场战斗的败因/死因/关键时刻(战斗结束横幅下展示) */
   lastSummary?: BattleSummary
@@ -34,7 +36,7 @@ export interface RunUIState {
 export function initialRunState(): RunUIState {
   return { activeRun: null, playing: false, dungeonId: 'blackmoss', expeditionIds: [],
     autoLoop: false, eventId: null, eventResult: null, eventImpacts: [],
-    pendingDeparture: null, pendingConsequence: null, dropIds: [], notices: [], growthSnapshot: {} }
+    pendingDeparture: null, pendingConsequence: null, dropIds: [], notices: [], lastNodeResult: null, growthSnapshot: {} }
 }
 
 export type RunAction = { type: 'patch'; patch: Partial<RunUIState> } | { type: 'replace'; state: RunUIState }
@@ -74,7 +76,7 @@ export function validateRunState(value: unknown, roster: { id: string; hp: numbe
   const s = value
   if (typeof s.playing !== 'boolean' || typeof s.autoLoop !== 'boolean' ||
       !DUNGEONS.some(d => d.id === s.dungeonId) || !strings(s.expeditionIds) ||
-      !strings(s.dropIds) || !strings(s.notices) ||
+      !strings(s.dropIds) || !strings(s.notices) || !nullableString(s.lastNodeResult) ||
       !nullableString(s.eventId) || !nullableString(s.eventResult) || !nullableString(s.pendingDeparture) ||
       !Array.isArray(s.eventImpacts) || s.eventImpacts.some((i: unknown) => !object(i) || typeof i.t !== 'string') ||
       !object(s.growthSnapshot)) return false
@@ -134,9 +136,11 @@ export function validateRunState(value: unknown, roster: { id: string; hp: numbe
         (r.insuredNextFloor !== undefined && r.insuredNextFloor !== r.floor + 1)) return false
   } else return false
   const b = r.battle
-  // 刚出征还未选第一个节点:battle 为 null 是合法断点(U27① 地图首层待选)
+  // U27① 地图远征:battle 为 null 在「还没打过任何一场」时是合法断点——
+  // 首层待选、走过非战斗节点(休整/事件/宝箱)、没打就撤退都算;
+  // victory/defeat 必然打过的判断在 advanceRun 里,此处只挡明显矛盾(phase=battle 却无战)。
   if (b === null) {
-    if (r.phase !== 'rest' || (r.kind === 'dungeon' && r.path.length > 0)) return false
+    if (r.kind !== 'dungeon' || !['rest', 'retreated'].includes(r.phase)) return false
     return true
   }
   if (!object(b) || !count(b.tick) || !finite(b.rngState) || !count(b.unitSeq) ||

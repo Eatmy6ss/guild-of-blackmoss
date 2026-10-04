@@ -30,6 +30,10 @@ let unreadableSave = false
 let loadNotice = ''
 export const saveLoadNotice = () => loadNotice
 
+/** 最近一次保存失败的原因(空串=上次保存成功):区分程序校验失败与浏览器存储问题 */
+let saveFailReason = ''
+export const saveFailNotice = () => saveFailReason
+
 export interface PendingConsequence {
   eventId: string
   dueDay: number
@@ -294,11 +298,13 @@ function parseGuildSave(raw: string): GuildSave {
 
 export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): boolean {
   if (unreadableSave) return false
+  saveFailReason = ''
   try {
     assertItemOwnership(itemStateFromSave(s))
     if (!validateRunState(s.runState, s.members)) throw new Error('无效远征断点')
-  } catch {
-    console.warn('存档未写入：装备归属或远征断点异常，原存档已保留。')
+  } catch (e) {
+    saveFailReason = '存档内容未通过校验(程序缺陷,请把此提示反馈给开发者):' + (e instanceof Error ? e.message : String(e))
+    console.warn('存档未写入：', saveFailReason)
     return false
   }
   try {
@@ -309,7 +315,8 @@ export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): boolean {
     localStorage.setItem(KEY, JSON.stringify({ ...s, version: SAVE_VERSION, lastSeen: Date.now() }))
     return true
   } catch {
-    // 隐私模式等存储不可用:静默降级为无存档
+    // 隐私模式/配额不足等存储不可用:保留原文案语义
+    saveFailReason = '浏览器存储已满或不可用(隐私模式/配额不足),近期进度可能未保存,建议导出存档备份。'
     return false
   }
 }

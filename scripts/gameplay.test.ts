@@ -1400,7 +1400,7 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
       run.rng = () => values.shift() ?? 0.4
       const open = handler('chooseNode', {
         runRef: { current: run }, dungeonMastery: {}, moveTo, mapOptions, currentNode, nextBossEncounter, dungeonItemTier,
-        CONDITION_BY_ID, REST_HEAL_PCT,
+        CONDITION_BY_ID, REST_HEAL_PCT, describeItem,
         GUILD_EVENTS, pendingConsequences: [], consequenceFiresIn, rollGuildEvent,
         ITEM_BASES, rollDrop, Math: { random: () => values.shift() ?? 0.4, floor: Math.floor },
         gainGold: (n: number, source: string) => { assert.equal(source, 'event'); gold += n },

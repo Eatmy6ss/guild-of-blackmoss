@@ -8,7 +8,7 @@ import { StatisticsPanel } from './ui/StatisticsPanel'
 import { newStatistics, recordStatistics, expeditionStatistics, type StatisticsAction, type GoldSource } from './sim/statistics'
 import { COMMISSIONS, type CommissionDef } from './data/kingdom'
 import { acceptCommission, abandonCommission, advanceCommissions, claimCommission, newKingdomState, kingdomRank, kingdomTrust, royalPotionCost, type RoyalRewardChoice } from './sim/kingdom'
-import { useEffect, useRef, useState, useReducer } from 'react'
+import { useEffect, useRef, useState, useReducer, useMemo } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames, rollSpec, memberGenerationState, restoreMemberGeneration } from './sim/gen'
 import { statLayers } from './sim/combat'
@@ -54,7 +54,7 @@ import { powerScore } from './sim/combat'
 import { describeItem, slotsOf, dungeonItemTier } from './sim/loot'
 import { settleEncounter, type EncounterGuild, type EncounterOutcome } from './sim/settlement'
 import { createStatefulRng, newRngSeed, int, type Rng } from './sim/rng'
-import { loadGuildSave, saveGuild, clearGuildSave, exportSave, saveLoadNotice, combatSaveDue, type GuildSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
+import { loadGuildSave, saveGuild, clearGuildSave, exportSave, saveLoadNotice, saveFailNotice, combatSaveDue, type GuildSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
 import {
   createGuildItems, itemStateFromSave, resolveMembers, inventoryItems, relicItems, serializeGuildItems,
   addInventoryItems, equipRegisteredItem, removeInventoryItem, redeemRegisteredRelic,
@@ -73,6 +73,7 @@ import { autoPickNode } from './sim/dungeon-map'
 import { restHealMult } from './sim/conditions'
 import { CONDITION_BY_ID } from './data/conditions'
 import { MapScreen } from './ui/screens/MapScreen'
+import { sortInventoryItems, INV_SORT_LABEL, type InvSort } from './ui/inventory-sort'
 import { nextBattleSpeed, speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
@@ -311,6 +312,9 @@ export default function App() {
   const updateKingdom = (next: typeof kingdom) => { kingdomRef.current = next; setKingdom(next) }
 
   const inventory = inventoryItems(itemOwnership)
+  // 仓库排序(制作人反馈 2026-10-04):默认稀有度从高到低
+  const [invSort, setInvSort] = useState<InvSort>('rarity-desc')
+  const inventorySorted = useMemo(() => sortInventoryItems(inventory, invSort), [inventory, invSort])
   const lastDrops = progress.dropIds.map(id => itemOwnership.items[id]).filter((item): item is ItemInstance => !!item)
   const setLastDrops = (v: ItemInstance[] | ((items: ItemInstance[]) => ItemInstance[])) => {
     const old = progressRef.current.dropIds.map(id => itemOwnershipRef.current.items[id]).filter(Boolean)
@@ -837,6 +841,7 @@ export default function App() {
       if (picked) targetId = picked.id
     }
     if (!targetId) return // 不选路不能前进:没有「继续深入」
+    changeProgress({ lastNodeResult: null }) // 选下一条路即刷新上一站的后果条
     const condsBefore = [...(r.conditions ?? [])]
     const node = moveTo(r, targetId, dungeonMastery[runDungeon(r).id] ?? 0)
     if (!node) return
@@ -869,17 +874,28 @@ export default function App() {
       }
       // 事件节点必触发:先本副本专属池,再本地形事件池(U27④,地形随节点携带)
       const ev = rollGuildEvent(runRng(r), { where: 'node', dungeonId: runDungeon(r).id, terrain: node.terrain })
-      if (ev) { setPendingEvent(ev); setEventResult(null) }
+      if (ev) {
+        setPendingEvent(ev)
+        setEventResult(null)
+      } else {
+        // 池空兜底(不应发生):也必须有可见后果,不能静默
+        changeProgress({ lastNodeResult: `❓ ${node.name}:这里没什么动静——也许来早了。` })
+      }
       setRun({ ...r })
       return
     }
     if (node.kind === 'rest') {
       const healMult = restHealMult(r) // 疲惫:休整回复减半(U27②)
+      const healed: string[] = []
       for (const mem of runMembers(r, membersRef.current)) {
         if (!mem.alive) continue
         const max = maxHpOf(mem)
+        const before = mem.hp
         mem.hp = Math.min(max, mem.hp + Math.round(max * REST_HEAL_PCT * healMult))
+        if (mem.hp > before) healed.push(`${mem.name} +${mem.hp - before}`)
       }
+      // 结算反馈红线:休整后果必须在同一界面可见
+      changeProgress({ lastNodeResult: `⛺ ${node.name}:原地休整,回复 ${Math.round(REST_HEAL_PCT * healMult * 100)}% 生命${healMult < 1 ? '(疲惫:回复减半)' : ''}${healed.length ? ' —— ' + healed.join('、') : '(无人需要回复)'}` })
       setRun({ ...r })
       if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
       return
@@ -893,6 +909,8 @@ export default function App() {
       const baseId = bases[Math.floor(runRng(r)() * bases.length)]
       const item = rollDrop(baseId, runRng(r), { qualityBias: 0.3 })
       receiveItems([item], true)
+      // 结算反馈红线:收获了什么必须当场可见
+      changeProgress({ lastNodeResult: `🎁 ${node.name}:获得 ${gold2} 金与 ${describeItem(item)}(已入仓库)` })
       logChronicle(chronicleRaw(day, runDungeon(r).name + '的' + node.name + '开出了好东西。'))
       setRun({ ...r })
       if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
@@ -1178,6 +1196,8 @@ export default function App() {
 
   const dismissEvent = () => {
     eventResolvingRef.current = false
+    // R1 反馈:事件翻页后结果留在地图上(挂机代选不再是"直接关掉")
+    if (eventResult) changeProgress({ lastNodeResult: `❯ ${pendingEvent?.title ?? '事件'}:${eventResult}` })
     setPendingEvent(null)
     setEventResult(null)
     setEventImpacts([])
@@ -1685,7 +1705,7 @@ export default function App() {
         <span className="slice-tag" style={{ opacity: 0.55 }}>build {__BUILD_DATE__}</span>
       </div>
       {saveFailed && (
-        <div className="save-warning" role="alert">⚠ 存档写入失败:浏览器存储已满或不可用,近期进度可能未保存(游戏仍可继续,建议导出存档备份)。</div>
+        <div className="save-warning" role="alert">⚠ 存档写入失败:{saveFailNotice() || '未知原因'}(游戏仍可继续)</div>
       )}
       {scarNotices.length > 0 && <details className="enc-notices" open={!(inBattle || inTowerBattle) || battle?.status !== 'running'}>
         <summary>{scarNotices[0]} <span>· 查看 {scarNotices.length} 项结算</span></summary>
@@ -1973,10 +1993,20 @@ export default function App() {
                 </div>
               </div>
             )}
+            {inventory.length > 0 && (
+              <div className="tavern-row" role="group" aria-label="排序方式">
+                <span className="hint">排序:</span>
+                {(Object.keys(INV_SORT_LABEL) as InvSort[]).map((mode) => (
+                  <button key={mode} className={invSort === mode ? 'active' : ''} onClick={() => setInvSort(mode)}>
+                    {INV_SORT_LABEL[mode]}
+                  </button>
+                ))}
+              </div>
+            )}
             {inventory.length === 0 ? (
               <p className="hint">击败 boss 掉落装备（首次击杀保底一件）。从成员卡的下拉框穿戴。</p>
             ) : (
-              inventory.map((i) => (
+              inventorySorted.map((i) => (
                 <div key={i.id} className="inv-item">
                   {describeItem(i)}
                   {ITEM_BASES[i.baseId].tier === 3 && (
@@ -2783,6 +2813,7 @@ export default function App() {
               run={run}
               mastery={dungeonMastery[runDungeon(run).id] ?? 0}
               drops={lastDrops}
+              notice={progress.lastNodeResult}
               onChoose={(id) => continueDeepRef.current?.(id)}
               onRetreat={retreat}
             />
