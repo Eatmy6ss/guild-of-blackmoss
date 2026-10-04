@@ -74,13 +74,17 @@ import { restHealMult } from './sim/conditions'
 import { CONDITION_BY_ID } from './data/conditions'
 import { MapScreen } from './ui/screens/MapScreen'
 import { ResultScreen } from './ui/screens/ResultScreen'
+import { ChronicleScreen } from './ui/screens/ChronicleScreen'
+import { MemorialScreen } from './ui/screens/MemorialScreen'
+import { ManualScreen } from './ui/screens/ManualScreen'
+import { RosterScreen } from './ui/screens/RosterScreen'
 import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
 import { sortInventoryItems, INV_SORT_LABEL, type InvSort } from './ui/inventory-sort'
 import { nextBattleSpeed, speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
-import { memorialAura, legacyQuality, legacyCounts } from './sim/memorial'
+import { memorialAura } from './sim/memorial'
 import { rollWish, settleWishes, wishDone } from './sim/wish'
 import { assignTrait, TRAIT_LABELS } from './sim/member-traits'
 import { attemptHeal, healingTerms, scarStatName, type HealingMastery } from './sim/scars'
@@ -93,8 +97,6 @@ import { grantExp } from './sim/gen'
 import { JOBS, specOf } from './data/jobs'
 import { HYBRIDS, isHybrid } from './data/vocations'
 import { REGIONS, dungeonLock, nextRegionLocked, playtestAllows } from './data/regions'
-import { TRAIT_INFO } from './data/traits'
-import { MECHANIC_REGISTRY, mechanicBrief } from './sim/mechanic-registry'
 
 // M0 D11 开发架：公会层——永久死亡、纪念堂、撤退保护、招募三选一、战术手册。
 // 花名册 = 全体成员（含亡者记录）；远征队 = 花名册前三名幸存者。
@@ -2212,164 +2214,11 @@ export default function App() {
               </div>
               </div>
             )}
+            {hubScreen === 'chronicle' && <ChronicleScreen chronicle={chronicle} day={day} onOpenStatistics={() => setHubScreen('statistics')} onBack={goBack} />}
+            {hubScreen === 'memorial' && <MemorialScreen memorial={memorial} onBack={goBack} />}
+            {hubScreen === 'manual' && <ManualScreen manual={manual} eventsSeen={eventsSeen} protectOn={protectOn} onToggleProtect={() => setProtectOn((p) => !p)} onBack={goBack} />}
+            {hubScreen === 'roster' && <RosterScreen members={members} renderMemberCard={memberCard} onBack={goBack} />}
             {hubScreen === 'statistics' && <StatisticsPanel statistics={statistics} day={day} onClose={() => goBack()} onBack={() => setHubScreen('chronicle')} />}
-            {hubScreen === 'chronicle' && (
-              <div className="screen-overlay fullpage">
-                <div className="screen-panel">
-                  <div className="screen-head">
-                    <h2>📜 大事记</h2>
-                    <button onClick={() => setHubScreen('statistics')}>战绩统计</button>
-                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
-                  </div>
-          <div className="inv-panel">
-            <h2>📜 编年史（第 {day} 日 · {chronicle.length} 则）</h2>
-            <div className="chronicle-box">
-              {chronicle.length === 0 ? (
-                <p className="hint">还没有故事发生。故事从第一次出击开始。</p>
-              ) : (
-                chronicle.slice(-40).map((e) => (
-                  <div key={e.seq} className="chronicle-row">
-                    <span className="chronicle-day">第{e.day}日</span>
-                    <span>{e.text}</span>
-                  </div>
-                ))
-              )}
-            </div>
-                </div>
-              </div>
-              </div>
-            )}
-            {hubScreen === 'memorial' && (
-              <div className="screen-overlay fullpage">
-                <div className="screen-panel">
-                  <div className="screen-head">
-                    <h2>🕯 名人堂</h2>
-                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
-                  </div>
-          <div className="inv-panel">
-            <h2>
-              🕯 纪念堂（{memorial.length} 位英灵 · 全队伤害 +
-              {Math.round(memorialAura(memorial) * 100)}%，封顶 6%）
-            </h2>
-            {memorial.length > 0 && (
-              <p className="hint">{(() => { const c = legacyCounts(memorial); return `传奇 ${c.legendary} · 青史 ${c.honored} · 凡逝 ${c.common}` })()}</p>
-            )}
-            {memorial.length === 0 ? (
-              <p className="hint">还没有人牺牲。愿它一直空着。</p>
-            ) : (
-              memorial.map((h) => {
-                const q = legacyQuality(h)
-                const qLabel = q === 'legendary' ? '【传奇】' : q === 'honored' ? '【青史】' : '【凡逝】'
-                const pct = q === 'legendary' ? 3 : q === 'honored' ? 2 : 1
-                return (
-                  <div key={h.id} className="inv-item memorial-item">
-                    ⚰ {h.name}（{JOBS[h.job].name} Lv{h.level}）——{h.cause}
-                    <div className="hint" style={{ fontSize: 12 }}>
-                      {qLabel} 光环 +{pct}%{h.legacy?.deeds?.length ? ` · ${h.legacy.deeds.join(' · ')}` : ''}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-                </div>
-              </div>
-              </div>
-            )}
-            {hubScreen === 'manual' && (
-              <div className="screen-overlay fullpage">
-                <div className="screen-panel">
-                  <div className="screen-head">
-                    <h2>📖 战术手册</h2>
-                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
-                  </div>
-          <div className="inv-panel">
-            <h2>📖 战术手册（已研习 boss 伤害 +5%）</h2>
-            <p className="hint">
-              {manual.length === 0 ? '尚未研习任何 boss。' : `已研习：${manual.map((id) => DUNGEONS.map((d) => d.bosses[id]?.name).find(Boolean) ?? id).join('、')}`}
-            </p>
-            <button
-              className={protectOn ? 'active' : ''}
-              onClick={() => setProtectOn((p) => !p)}
-            >
-              🛡 撤退保护：{protectOn ? '开（濒危自动撤离）' : '关（搏命模式）'}
-            </button>
-            <div className="inv-panel">
-              <h2>☠ boss 机制图鉴(击败即研习,研习 boss 伤害 +5%)</h2>
-              {DUNGEONS.map((d) => (
-                <div key={d.id} className="inv-item">
-                  <b>🗺 {d.name}</b>
-                  {Object.values(d.bosses).map((boss) => {
-                    const learned = manual.includes(boss.id)
-                    return (
-                      <div key={boss.id} style={{ marginTop: 6 }}>
-                        {learned ? (
-                          <>
-                            <div>
-                              👹 <b>{boss.name}</b>
-                              <span className="hint">（{boss.maxHp} 血 / {boss.attack} 攻 / {boss.position === 'front' ? '前排' : '后排'}）</span>
-                            </div>
-                            {boss.mechanics.map((m) => (
-                              <div key={m.id} className="hint" style={{ marginLeft: 14, marginTop: 2 }}>
-                                ▸〔{MECHANIC_REGISTRY[m.kind]?.label ?? m.kind}〕<b>{m.name}</b> —— {mechanicBrief(m)}
-                              </div>
-                            ))}
-                            <div className="hint" style={{ marginLeft: 14, marginTop: 2 }}>
-                              🎁 固定掉落：{boss.dropTable.map((dr) => `${ITEM_BASES[dr.baseId]?.name ?? dr.baseId}（${Math.round(dr.chance * 100)}%）`).join('、')}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="hint" style={{ marginTop: 2 }}>🔒 ??? ——击败后研习其招式</div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-            <div className="inv-panel">
-              <h2>📜 事件图鉴（见过 {eventsSeen.length} / {GUILD_EVENTS.length}）</h2>
-              {GUILD_EVENTS.map((e) => {
-                const seen = eventsSeen.includes(e.id)
-                return (
-                  <div key={e.id} className="inv-item">
-                    {seen ? (
-                      <>
-                        <b>{e.title}</b>
-                        <div className="hint">{e.text}</div>
-                      </>
-                    ) : (
-                      <div className="hint">❓ ??? ——传闻里还没轮到你们的遭遇</div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            <div className="inv-panel">
-              <h2>👹 小怪特性图鉴（首次遭遇会收到提示）</h2>
-              {Object.values(TRAIT_INFO).map((tr) => (
-                <div key={tr.id} className="inv-item">
-                  <b>{tr.name}</b> —— {tr.desc}
-                  <div className="hint">💡 {tr.hint}</div>
-                </div>
-              ))}
-            </div>
-                </div>
-              </div>
-              </div>
-            )}
-            {hubScreen === 'roster' && (
-              <div className="screen-overlay fullpage">
-                <div className="screen-panel">
-                  <div className="screen-head">
-                    <h2>🛡 花名册</h2>
-                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
-                  </div>
-                  <div className="inv-panel">
-                    {members.filter((m) => m.alive).map(memberCard)}
-                  </div>
-                </div>
-              </div>
-            )}
         </div>
 
         <div className={`panel${inBattle || inTowerBattle ? ' battle-panel' : ''}`}>
