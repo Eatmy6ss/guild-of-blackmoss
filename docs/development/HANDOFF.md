@@ -1,5 +1,7 @@
 # 当前交接
 
+> **待 grill 材料(2026-10-05)**:[stoneshard-reference-grill-2026-10-05.md](stoneshard-reference-grill-2026-10-05.md) =创伤线两条引入(建议 U32:①治疗=稳定而非治愈,挂 S2/S3 实装前置;②压制=交易而非消音,挂 S2 酒馆压制)。**材料非拍板**,等制作人与 Claude/zcode 逐题 grill 后登记 DECISIONS。
+
 ## ✅ 工单完成:R3 武器系统 W1–W5 全部交付(认领人 zcode/本机,2026-10-04;交制作人自测+Codex 复审)
 
 **实际改动**(每大步一提交;W1/W3/W4 钩子 verify 全绿,W2 见下方诚实记录):
