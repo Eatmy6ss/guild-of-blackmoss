@@ -11,9 +11,7 @@ import { acceptCommission, abandonCommission, advanceCommissions, claimCommissio
 import { useEffect, useRef, useState, useReducer } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
 import { generateMember, maxHpOf, bondStars, seedMemberSeq, reserveNames, rollSpec, memberGenerationState, restoreMemberGeneration } from './sim/gen'
-import { statLayers } from './sim/combat'
 import { ITEM_BASES } from './data/items'
-import { describeEquipmentSet } from './sim/equipment-sets'
 import { RACES } from './data/races'
 import { guildGoals } from './sim/goals'
 import { guildRankOf } from './sim/rank'
@@ -90,7 +88,7 @@ import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
 import { memorialAura } from './sim/memorial'
-import { rollWish, settleWishes, wishDone } from './sim/wish'
+import { rollWish, settleWishes } from './sim/wish'
 import { assignTrait, TRAIT_LABELS } from './sim/member-traits'
 import { attemptHeal, healingTerms, scarStatName, type HealingMastery } from './sim/scars'
 import { DUNGEON_FINAL_BOSS } from './data/regions'
@@ -454,7 +452,7 @@ export default function App() {
       rendererRef.current?.setBattle(active.battle, [])
     }
     if (active.autoMode && !pendingEvent) {
-      if (active.phase === 'rest') window.setTimeout(() => active.kind === 'dungeon' ? continueDeepRef.current?.() : towerNextFloor(), 150)
+      if (active.phase === 'rest') window.setTimeout(() => active.kind === 'dungeon' ? continueDeepRef.current?.() : towerNextFloor(), 750)
       else if (active.kind === 'dungeon' && active.phase === 'victory') {
         backToGuild()
         window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.() }, 150)
@@ -656,7 +654,7 @@ export default function App() {
     // 自动循环的按钮/状态机留给 #0.6，沿用原来的回城和推进边界。
     if (r.autoMode) {
       if (endPhase === 'rest') {
-        window.setTimeout(() => continueDeepRef.current?.(), 150)
+        window.setTimeout(() => continueDeepRef.current?.(), 750)
       } else if (endPhase === 'victory') {
         backToGuild()
         window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.() }, 150)
@@ -973,7 +971,6 @@ export default function App() {
     setProtectOn(true)
     setDungeonId('blackmoss')
     setExpeditionIds([])
-    setDetailOpen(new Set())
     setSaveTransfer(null)
     towerRunRef.current = null
     setTowerRun(null)
@@ -1200,7 +1197,7 @@ export default function App() {
     if (r && r.phase !== 'rest') return
     const timer = setTimeout(() => {
       resolveEventRef.current?.(Math.floor(((runRef.current ? runRng(runRef.current) : guildRng))() * pendingEvent.choices.length))
-    }, 900)
+    }, 1800)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingEvent, eventResult, screen])
@@ -1208,7 +1205,7 @@ export default function App() {
   useEffect(() => {
     if (screen !== 'game' || !eventResult) return
     if (!autoLoopRef.current) return
-    const timer = setTimeout(() => dismissEventRef.current?.(), 1200)
+    const timer = setTimeout(() => dismissEventRef.current?.(), 2400)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventResult, screen])
@@ -1431,7 +1428,6 @@ export default function App() {
     return parent === 'hall' ? null : (parent as UIScreen)
   })
   // 透明面板(宪法 v3.2 缺陷二):展开显示乘区逐层明细的成员
-  const [detailOpen, setDetailOpen] = useState<Set<string>>(new Set())
   const battleMapId = towerRun ? 'tower' : run ? runDungeon(run).id : activeDungeon.id
   const hasBoss = battle?.combatants.some(c => c.boss && c.alive)
   useEffect(() => { rendererRef.current?.setTheme(battleMapId) }, [battleMapId])
@@ -1499,21 +1495,12 @@ export default function App() {
     const hp = c ? c.hp : m.hp
     const max = c ? c.maxHp : maxHpOf(m)
     const onExpedition = run != null ? runMembers(run, membersRef.current).includes(m) : expedition.includes(m)
-    const toggleDetails = () => setDetailOpen(cur => {
-      const next = new Set(cur)
-      if (next.has(m.id)) next.delete(m.id)
-      else next.add(m.id)
-      return next
-    })
-  // K08 套装计数(成员侧直接数装备)
-  const setCrown = Object.values(m.equipment).filter((e) => e && ITEM_BASES[e.baseId]?.setName === 'gray-crown').length
-  const setHunt = Object.values(m.equipment).filter((e) => e && ITEM_BASES[e.baseId]?.setName === 'wind-hunt').length
     return (
       <div key={m.id} className="member-card">
-        <div className="mc-head" role="button" tabIndex={0} aria-expanded={detailOpen.has(m.id)}
-          style={{ cursor: 'pointer' }} title="点击或按 Enter / 空格展开属性明细" onClick={toggleDetails}
+        <div className="mc-head" role="button" tabIndex={0} aria-expanded={false}
+          style={{ cursor: 'pointer' }} title="点击打开人物档案(全部属性/装备明细/换装)" onClick={() => setMemberSheetId(m.id)}
           onKeyDown={event => {
-            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleDetails() }
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setMemberSheetId(m.id) }
           }}>
           <HeroPortrait member={m} />
           <span className="name">{m.name}</span>
@@ -1526,41 +1513,6 @@ export default function App() {
             {c && !c.alive ? '（已倒下）' : ''}
           </span>
         </div>
-        {detailOpen.has(m.id) && (
-          <div className="stat-layers">
-            {statLayers(m).map((l, i) => (
-              <div key={i} className="stat-layer">
-                <span className="sl-label">{l.label}</span>
-                <span className={l.good ? 'good' : l.bad ? 'bad' : ''}>{l.text}</span>
-              </div>
-            ))}
-            {(setCrown > 0 || setHunt > 0) && (
-              <div className="stat-layer">
-                <span className="sl-label">套装</span>
-                <span>{[describeEquipmentSet('gray-crown', setCrown), describeEquipmentSet('wind-hunt', setHunt)].filter(Boolean).join(' · ')}</span>
-              </div>
-            )}
-            {(m.scars?.length ?? 0) > 0 && (
-              <div className="stat-layer">
-                <span className="sl-label">创伤</span>
-                <span>{m.scars!.map((sc) => scarStatName(sc.stat) + ' -' + sc.value).join(' · ')}</span>
-              </div>
-            )}
-            {m.trait && (
-              <div className="stat-layer">
-                <span className="sl-label">特性</span>
-                <span>{m.trait === 'drinker' ? '爱喝酒（庆功宴效果 +50%）' : m.trait === 'lucky' ? '幸运儿（掉宝率 +2%）' : m.trait === 'cool' ? '冷静（目睹阵亡冲击减半）' : m.trait}</span>
-              </div>
-            )}
-            {m.wish && (
-              <div className="stat-layer">
-                <span className="sl-label">心愿</span>
-                <span>{m.wish.text}{wishDone(m, m.wish, { dungeonCleared: (id) => manual.includes(DUNGEON_FINAL_BOSS[id] ?? ''), towerBest }) ? '（已达成!）' : ''}</span>
-              </div>
-            )}
-            <button className="ms-open" onClick={() => setMemberSheetId(m.id)}>📋 人物档案(全部属性与装备明细)</button>
-          </div>
-        )}
         <div className="row">
           <span>{attrsLine(m)}</span>
           <span>{personalityLine(m)}</span>
@@ -1668,7 +1620,8 @@ export default function App() {
         </div>
       )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
-      {memberSheet && <MemberPanel member={memberSheet} members={members} onClose={() => setMemberSheetId(null)} />}
+      {memberSheet && <MemberPanel member={memberSheet} members={members} onClose={() => setMemberSheetId(null)}
+              inventory={inventory} onEquip={(slot, itemId) => equip(memberSheet, slot, itemId)} />}
       {playtestEnding && (
         <div className="screen-overlay" style={{ zIndex: 110 }}>
           <div className="screen-panel" style={{ width: 'min(460px, 92vw)' }}>

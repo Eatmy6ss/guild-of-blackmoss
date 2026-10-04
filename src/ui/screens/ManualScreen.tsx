@@ -5,6 +5,7 @@ import { MECHANIC_REGISTRY, mechanicBrief } from '../../sim/mechanic-registry'
 
 import { GUILD_EVENTS } from '../../data/guild-events'
 import { TRAIT_INFO } from '../../data/traits'
+import { useState } from 'react'
 
 interface ManualScreenProps {
   manual: string[]
@@ -69,21 +70,7 @@ export function ManualScreen({ manual, eventsSeen, protectOn, onToggleProtect, o
           </div>
           <div className="inv-panel">
             <h2>📜 事件图鉴（见过 {eventsSeen.length} / {GUILD_EVENTS.length}）</h2>
-            {GUILD_EVENTS.map((e) => {
-              const seen = eventsSeen.includes(e.id)
-              return (
-                <div key={e.id} className="inv-item">
-                  {seen ? (
-                    <>
-                      <b>{e.title}</b>
-                      <div className="hint">{e.text}</div>
-                    </>
-                  ) : (
-                    <div className="hint">❓ ??? ——传闻里还没轮到你们的遭遇</div>
-                  )}
-                </div>
-              )
-            })}
+            <EventCodexPage eventsSeen={eventsSeen} />
           </div>
           <div className="inv-panel">
             <h2>👹 小怪特性图鉴（首次遭遇会收到提示）</h2>
@@ -97,5 +84,38 @@ export function ManualScreen({ manual, eventsSeen, protectOn, onToggleProtect, o
               </div>
             </div>
             </div>
+  )
+}
+
+const PAGE_SIZE = 12
+
+function EventCodexPage({ eventsSeen }: { eventsSeen: string[] }) {
+  const [page, setPage] = useState(0)
+  const pages = Math.max(1, Math.ceil(GUILD_EVENTS.length / PAGE_SIZE))
+  const safe = Math.min(page, pages - 1)
+  const slice = GUILD_EVENTS.slice(safe * PAGE_SIZE, safe * PAGE_SIZE + PAGE_SIZE)
+  return (
+    <>
+      {slice.map((e) => {
+        const seen = eventsSeen.includes(e.id)
+        return (
+          <div key={e.id} className="inv-item">
+            {seen ? (
+              <>
+                <b>{e.title}</b>
+                <div className="hint">{e.text}</div>
+              </>
+            ) : (
+              <div className="hint">❓ ??? ——传闻里还没轮到你们的遭遇</div>
+            )}
+          </div>
+        )
+      })}
+      <div className="tavern-row" style={{ marginTop: 8 }}>
+        <button disabled={safe === 0} onClick={() => setPage(safe - 1)}>← 上一页</button>
+        <span className="hint">第 {safe + 1} / {pages} 页 · 共 {GUILD_EVENTS.length} 条(见过 {eventsSeen.length})</span>
+        <button disabled={safe >= pages - 1} onClick={() => setPage(safe + 1)}>下一页 →</button>
+      </div>
+    </>
   )
 }

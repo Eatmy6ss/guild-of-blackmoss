@@ -1,13 +1,15 @@
 // T2 信息透明化:角色档案页(WoW 式全量面板)——从花名册点开,一个页面看懂一个人物。
 // 纪律:所有数值经 toCombatant/statLayers 真实计算;所有说明来自 effect-text.ts,禁止臆造。
 import { useEffect, useRef } from 'react'
-import type { Member } from '../sim/types'
+import type { ItemInstance, Member } from '../sim/types'
+import { sortInventoryItems } from './inventory-sort'
+import { useState } from 'react'
 import { JOBS, specOf } from '../data/jobs'
 import { HYBRIDS, isHybrid } from '../data/vocations'
 import { RACES } from '../data/races'
 import { ITEM_BASES } from '../data/items'
 import { AFFIXES } from '../data/affixes'
-import { STAT_NAME, formatStat } from '../sim/loot'
+import { STAT_NAME, formatStat, describeItem } from '../sim/loot'
 import { toCombatant } from '../sim/combat'
 import { SIGNATURE_SKILLS } from '../data/signature'
 import { skillLine, LEGACY_INFO } from '../data/effect-text'
@@ -18,13 +20,19 @@ interface Props {
   member: Member
   members: Member[]
   onClose: () => void
+  /** U29 反馈⑤:档案页直接换装(可选;缺省=只读档案) */
+  inventory?: ItemInstance[]
+  onEquip?: (slot: 'weapon' | 'armor' | 'trinket', itemId: string) => void
 }
 
 const SLOTS: (keyof Member['equipment'])[] = ['weapon', 'armor', 'trinket']
 const slotName: Record<string, string> = { weapon: '武器', armor: '护甲', trinket: '饰品' }
 const ATTR_NAMES: Record<string, string> = { str: '力量', agi: '敏捷', int: '智力', vit: '体质', spr: '精神', lck: '幸运' }
 
-export function MemberPanel({ member, members, onClose }: Props) {
+const QUALITY_TAG: Record<string, string> = { purple: '【史诗】', green: '【精良】', white: '' }
+
+export function MemberPanel({ member, members, onClose, inventory, onEquip }: Props) {
+  const [equipSort, setEquipSort] = useState<'rarity-desc' | 'name'>('rarity-desc')
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
     panel.current?.focus()
@@ -33,6 +41,10 @@ export function MemberPanel({ member, members, onClose }: Props) {
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const canEquip = !!(inventory && onEquip)
+  const slots: (keyof Member['equipment'])[] = ['weapon', 'armor', 'trinket']
+  const slotNames: Record<string, string> = slotName
+  const sortMode = equipSort === 'name' ? 'name' : 'rarity-desc' as const
   const job = JOBS[member.job]
   const race = RACES[member.race ?? 'human']
   const spec = isHybrid(member.spec) ? HYBRIDS[member.spec!] : specOf(member.job, member.spec)
@@ -174,6 +186,42 @@ export function MemberPanel({ member, members, onClose }: Props) {
           </div>
         </div>
       </section>
-    </div>
+            {canEquip && (
+          <div className="inv-panel">
+            <h2>⚔ 换装(从仓库穿戴)</h2>
+            <div className="tavern-row" role="group" aria-label="装备排序">
+              <span className="hint">排序:</span>
+              <button className={equipSort === 'rarity-desc' ? 'active' : ''} onClick={() => setEquipSort('rarity-desc')}>稀有度 ↓</button>
+              <button className={equipSort === 'name' ? 'active' : ''} onClick={() => setEquipSort('name')}>名称 A-Z</button>
+            </div>
+            <div className="voc-btns">
+              {slots.map((slot) => {
+                const equipped = member.equipment[slot]
+                const options = sortInventoryItems(inventory!.filter((i) => ITEM_BASES[i.baseId]?.slot === slot), sortMode)
+                return (
+                  <label key={slot} className="gear-control">
+                    <span>{slotNames[slot]}</span>
+                    <select
+                      aria-label={member.name + '的' + slotNames[slot]}
+                      className="slot-select"
+                      value={equipped?.id ?? ''}
+                      title={equipped ? '已穿戴' : `${slotNames[slot]}(空)`}
+                      onChange={(e) => onEquip!(slot, e.target.value)}
+                    >
+                      <option value="">{slotNames[slot]}·空</option>
+                      {options.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {QUALITY_TAG[i.quality ?? 'white']}{describeItem(i)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
   )
 }
+
