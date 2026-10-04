@@ -37,7 +37,6 @@ import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE, FIRST_RETURN_TIP 
 import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
 import { SIGNATURE_SKILLS } from './data/signature'
-import { skillLine, SPEC_PASSIVE_DESC } from './data/effect-text'
 import { MemberPanel } from './ui/MemberPanel'
 import { renderWarReportCard, downloadWarReportCard } from './ui/war-report-card'
 import { createRng } from './sim/rng'
@@ -79,6 +78,7 @@ import { MemorialScreen } from './ui/screens/MemorialScreen'
 import { ManualScreen } from './ui/screens/ManualScreen'
 import { RosterScreen } from './ui/screens/RosterScreen'
 import { TavernScreen } from './ui/screens/TavernScreen'
+import { BaseScreen } from './ui/screens/BaseScreen'
 import { attrsLine, personalityLine } from './ui/screens/member-lines'
 import { WarehouseScreen } from './ui/screens/WarehouseScreen'
 import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
@@ -1820,194 +1820,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            {hubScreen === 'base' && (
-              <div className="screen-overlay fullpage">
-                <div className="screen-panel">
-                  <div className="screen-head">
-                    <h2>🏰 公会基地</h2>
-                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
-                  </div>
-          <div className="inv-panel">
-            <h2>🏰 公会基地（第 {day} 日）</h2>
-            <div className="potion-supply">
-              <span>特权训练：150 金，下次远征所有胜场经验 +25%；资格可保存，出征使用一次。</span>
-              <button disabled={trainingReady || gold < 150 || !!run || !!towerRun} onClick={() => {
-                if (trainingReadyRef.current || gold < 150 || runRef.current || towerRunRef.current) return
-                trainingReadyRef.current = true
-                setTrainingReady(true)
-                setGold(g => g - 150)
-                logChronicle(chronicleRaw(day, '花费 150 金完成特权训练，下次远征经验 +25%。'))
-                sfxCoin()
-              }}>{trainingReady ? '✓ 已备好训练资格' : '购买特权训练（150 金）'}</button>
-            </div>
-            {healingNotice && <p className="hint" role="status">{healingNotice}</p>}
-            {members.some((m) => m.alive && m.scars?.length) && (
-              <div className="potion-supply">
-                <span className="hint">🏥 疗养所——轻度：60 金 + 1 祝福，基础成功率 85%；重度：120 金 + 3 祝福，基础成功率 65%。每次治疗同维度熟练度 +5%，最多 +25%（成功率最高 100%）；轻度治疗失败后有 15% 概率恶化。当前熟练度：{Object.entries(healingMastery).map(([k, v]) => scarStatName(k as 'str') + ' + ' + Math.min(v * 5, 25) + '%').join(' · ') || '无'}</span>
-                {members.filter((m) => m.alive && m.scars?.length).flatMap((m) =>
-                  (m.scars ?? []).map((sc, si) => (
-                    <div key={m.id + '-' + si} className="tavern-row">
-                      <span className="hint">{m.name}:{scarStatName(sc.stat)} -{sc.value}({sc.text})</span>
-                      <button disabled={!!run || !!towerRun || gold < healingTerms(sc).gold || blessing < healingTerms(sc).blessing} onClick={() => {
-                        if (healingBusyRef.current || runRef.current || towerRunRef.current) return
-                        const m2 = membersRef.current.find((x) => x.id === m.id)
-                        if (!m2?.alive || m2.scars?.[si] !== sc) return
-                        const mastery = healingMastery[sc.stat] ?? 0
-                        const cost = healingTerms(sc, mastery)
-                        if (gold < cost.gold || blessing < cost.blessing) return
-                        const r = attemptHeal(m2, si, mastery, guildRng)
-                        if (!r) return
-                        healingBusyRef.current = true
-                        setHealingMastery((q) => ({ ...q, [sc.stat]: (q[sc.stat] ?? 0) + r.masteryGain }))
-                        setBlessing((b) => b - cost.blessing)
-                        setGold((g) => g - cost.gold)
-                        noteStatistics({ type: 'healing', gold: cost.gold, blessing: cost.blessing })
-                        setMembers([...membersRef.current])
-                        const outcome = r.result === 'success' ? '已治愈，属性恢复。' : r.result === 'worsen' ? '治疗失败，创伤恶化为重度。' : '治疗未起效，创伤保留。'
-                        const notice = m2.name + ' 的' + scarStatName(sc.stat) + '创伤：' + outcome + ' 消耗 ' + cost.gold + ' 金、' + cost.blessing + ' 祝福；该维度疗养经验 +' + r.masteryGain + '。'
-                        setHealingNotice(notice)
-                        logChronicle(chronicleRaw(day, notice))
-                      }}>
-                        🏥 治疗（{healingTerms(sc).gold} 金 + {healingTerms(sc).blessing} 祝福，成功率 {Math.round(healingTerms(sc, healingMastery[sc.stat] ?? 0).rate * 100)}%）
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-            <div className="base-grid">
-              {BUILDINGS.map((def) => {
-                const lv = buildings[def.id] ?? 0
-                const maxed = lv >= def.maxLevel
-                const cost = maxed ? null : def.costs[lv]
-                const affordable = cost != null && gold >= cost.gold && blessing >= (cost.blessing ?? 0)
-                return (
-                  <div key={def.id} className={`base-card${lv > 0 ? ' owned' : ''}`}>
-                    <div className="base-head">
-                      <span className="base-name">{def.icon} {def.name}</span>
-                      <span className="base-lv">{lv > 0 ? 'Lv' + lv : '未建'}</span>
-                    </div>
-                    <p className="hint">{def.desc}</p>
-                    {maxed ? (
-                      <button disabled>已满级</button>
-                    ) : (
-                      <button disabled={!!run || !affordable} onClick={() => upgradeBuilding(def.id)}>
-                        升到 Lv{lv + 1}：{cost!.gold} 金{cost!.blessing ? ` + ${cost!.blessing} 祝福` : ''}
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            <div className="voc-panel">
-              <h2>⚔ 训练场 —— 行当更换</h2>
-              <div className="voc-tabs">
-                {members.filter((m) => m.alive).map((m) => (
-                  <button key={m.id} className={`voc-tab${trainSelId === m.id ? ' sel' : ''}`}
-                    onClick={() => setTrainSelId(m.id)}>
-                    {m.name}<span className="hint"> {isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="hint">
-                换行当:{ECONOMY.vocation.switchGold} 金 + {ECONOMY.vocation.switchBlessing} 祝福。
-                混合职阶首次解锁 {ECONOMY.vocation.hybridUnlockGold} 金 + {ECONOMY.vocation.hybridUnlockBlessing} 祝福,
-                且要求本人默契 ≥ {ECONOMY.hybridBondRequirement} 星(共同远征积累)。🔒 = 公会尚未解锁该混合行当。
-              </p>
-              {members.filter((m) => m.alive && m.id === trainSelId).map((m) => {
-                const cur = isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name
-                const sameLine = Object.values(JOBS[m.job].specs).filter((sp) => sp.id !== m.spec)
-                const bond = bondTotalOf(m)
-                const canSwitch = !run && gold >= ECONOMY.vocation.switchGold && blessing >= ECONOMY.vocation.switchBlessing
-                return (
-                  <div key={m.id} className="voc-row">
-                    <div className="voc-head">
-                      <b>{m.name}</b>
-                      <span className="hint">现为 {cur} · Lv{m.level} · 默契 {bond} 星</span>
-                    </div>
-                    <div className="voc-btns">
-                      {sameLine.map((sp) => (
-                        <details key={sp.id} className="voc-card">
-                          <summary className={canSwitch ? '' : 'locked'} title={sp.identity}>
-                            {sp.name}{m.spec === sp.id ? '(当前)' : ''}
-                          </summary>
-                          <div className="voc-card-body">
-                            <p className="hint">{sp.identity}</p>
-                            <p className="hint">{SPEC_PASSIVE_DESC[sp.passive ?? ''] ?? ''}{sp.statMods?.critChance ? ` 暴击 +${Math.round(sp.statMods.critChance * 100)}%。` : ''}</p>
-                            <ul className="ms-list">
-                              {sp.skills.map((sk) => <li key={sk.id}>{skillLine(sk)}</li>)}
-                            </ul>
-                            {SIGNATURE_SKILLS[sp.id] && (
-                              <p className="hint">【招牌技】{SIGNATURE_SKILLS[sp.id].name}:{SIGNATURE_SKILLS[sp.id].desc}(冷却 {SIGNATURE_SKILLS[sp.id].cdTicks / 10} 秒)</p>
-                            )}
-                            {!canSwitch ? <p className="hint">⚠ 等级或资源不足,暂不能转职。</p> : (
-                              <button disabled={!canSwitch} onClick={() => changeVocation(m.id, sp.id)}>转职为{sp.name}</button>
-                            )}
-                          </div>
-                        </details>
-                      ))}
-                      {Object.values(HYBRIDS).map((hy) => {
-                        const unlocked = unlockedHybrids.includes(hy.id)
-                        const canBond = bond >= ECONOMY.hybridBondRequirement
-                        const canPay = gold >= ECONOMY.vocation.hybridUnlockGold && blessing >= ECONOMY.vocation.hybridUnlockBlessing
-                        // K04:种族不允许的混合线直接隐藏(硬规则,不给点了再拒绝的挫败)
-                        const raceAllows = HYBRIDS[hy.id].lines.every((l) => RACES[m.race ?? 'human'].allowedLines.includes(l))
-                        if (!raceAllows) return null
-                        return (
-                          <details key={hy.id} className="voc-card">
-                            <summary className={canSwitch && canBond && (unlocked || canPay) ? '' : 'locked'}
-                              title={hy.identity + (unlocked ? '' : '(首次解锁需额外花费)')}>
-                              {hy.name}{unlocked ? '' : ' 🔒'}
-                            </summary>
-                            <div className="voc-card-body">
-                              <p className="hint">{hy.identity}</p>
-                              <ul className="ms-list">
-                                {hy.skills.map((sk) => <li key={sk.id}>{skillLine(sk)}</li>)}
-                              </ul>
-                              {!canSwitch || m.spec === hy.id || !canBond || (!unlocked && !canPay) ? (
-                                <p className="hint">{!canBond ? `需默契 ≥ ${ECONOMY.hybridBondRequirement} 星` : !unlocked && !canPay ? `首次解锁 ${ECONOMY.vocation.hybridUnlockGold} 金 + ${ECONOMY.vocation.hybridUnlockBlessing} 祝福` : ''}</p>
-                              ) : (
-                                <button disabled={!canSwitch} onClick={() => changeVocation(m.id, hy.id)}>转职为{hy.name}</button>
-                              )}
-                            </div>
-                          </details>
-                        )
-                      })}
-                    </div>
-                    {!isHybrid(m.spec) && m.level >= 6 && (
-                      <div className="voc-row2">
-                        <span className="hint">精进:</span>
-                        {(specOf(m.job, m.spec).advancedSkills ?? []).map((sk) => {
-                          const chosen = m.specAdvanced?.[specOf(m.job, m.spec).id] === sk.id
-                          const any = !!m.specAdvanced?.[specOf(m.job, m.spec).id]
-                          return (
-                            <button key={sk.id} disabled={any || !!run || gold < ECONOMY.advancedCost.gold || blessing < ECONOMY.advancedCost.blessing} title={sk.name} onClick={() => advanceSpec(m.id, sk.id)}>
-                              {sk.name}{chosen ? ' ✓' : ''}
-                            </button>
-                          )
-                        })}
-                        {m.specAdvanced?.[specOf(m.job, m.spec).id] ? <span className="hint">已精进</span> : null}
-                      </div>
-                    )}
-                    <div className="voc-row2">
-                      <span className="hint">通用战技:</span>
-                      {(Object.entries(ECONOMY.augments) as [string, { name: string; desc: string }][]).map(([id, ag]) => {
-                        const learned = m.augments?.includes(id)
-                        return (
-                          <button key={id} disabled={!!run || !!learned || blessing < ECONOMY.augmentCost} title={ag.desc} onClick={() => learnAugment(m.id, id)}>
-                            {ag.name}{learned ? ' ✓' : ' ' + ECONOMY.augmentCost + '🕯'}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-                </div>
-              </div>
-              </div>
-            )}
             {hubScreen === 'tavern' && <TavernScreen gold={gold} blessing={blessing} members={members}
               visitor={visitor} candidates={candidates} effectiveCooldown={effectiveCooldown} busy={!!run || !!towerRun}
               onFeast={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); for (const d of membersRef.current) { if (d.alive && d.trait === 'drinker') d.morale = Math.min(100, (d.morale ?? 60) + Math.round(baseEffects(buildings).feastBoost * 0.5)) } setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
@@ -2018,6 +1830,47 @@ export default function App() {
               invSort={invSort} onSortChange={setInvSort} onBuyPotion={buyPotion} onRedeemRelic={redeemRelic}
               onDismantle={dismantleT3} onSell={sellItem} onExchange={exchangeT3}
               lastDropCount={lastDrops.length} sellMult={baseEffects(buildings).sellMult} onBack={goBack} />}
+            {hubScreen === 'base' && <BaseScreen day={day} gold={gold} blessing={blessing} members={members}
+              busy={!!run || !!towerRun} trainingReady={trainingReady} healingNotice={healingNotice}
+              healingMastery={healingMastery} buildings={buildings} unlockedHybrids={unlockedHybrids}
+              trainSelId={trainSelId} bondTotal={bondTotalOf}
+              onBuyTraining={() => {
+                if (trainingReadyRef.current || gold < 150 || runRef.current || towerRunRef.current) return
+                trainingReadyRef.current = true
+                setTrainingReady(true)
+                setGold(g => g - 150)
+                logChronicle(chronicleRaw(day, '花费 150 金完成特权训练，下次远征经验 +25%。'))
+                sfxCoin()
+              }}
+              onHeal={(memberId, si, scar) => {
+                if (healingBusyRef.current || runRef.current || towerRunRef.current) return
+                const m2 = membersRef.current.find((x) => x.id === memberId)
+                if (!m2?.alive) return
+                const cur = m2.scars?.[si]
+                // 陈旧索引守卫:渲染后伤疤数组若已位移,拒绝误治
+                if (!cur || cur !== scar) return
+                const mastery = healingMastery[cur.stat] ?? 0
+                const cost = healingTerms(cur, mastery)
+                if (gold < cost.gold || blessing < cost.blessing) return
+                const r = attemptHeal(m2, si, mastery, guildRng)
+                if (!r) return
+                healingBusyRef.current = true
+                setHealingMastery((q) => ({ ...q, [cur.stat]: (q[cur.stat] ?? 0) + r.masteryGain }))
+                setBlessing((b) => b - cost.blessing)
+                setGold((g) => g - cost.gold)
+                noteStatistics({ type: 'healing', gold: cost.gold, blessing: cost.blessing })
+                setMembers([...membersRef.current])
+                const outcome = r.result === 'success' ? '已治愈，属性恢复。' : r.result === 'worsen' ? '治疗失败，创伤恶化为重度。' : '治疗未起效，创伤保留。'
+                const notice = m2.name + ' 的' + scarStatName(cur.stat) + '创伤：' + outcome + ' 消耗 ' + cost.gold + ' 金、' + cost.blessing + ' 祝福；该维度疗养经验 +' + r.masteryGain + '。'
+                setHealingNotice(notice)
+                logChronicle(chronicleRaw(day, notice))
+              }}
+              onUpgrade={upgradeBuilding}
+              onSelectMember={setTrainSelId}
+              onChangeVocation={changeVocation}
+              onAdvanceSpec={advanceSpec}
+              onLearnAugment={learnAugment}
+              onBack={goBack} />}
             {hubScreen === 'chronicle' && <ChronicleScreen chronicle={chronicle} day={day} onOpenStatistics={() => setHubScreen('statistics')} onBack={goBack} />}
             {hubScreen === 'memorial' && <MemorialScreen memorial={memorial} onBack={goBack} />}
             {hubScreen === 'manual' && <ManualScreen manual={manual} eventsSeen={eventsSeen} protectOn={protectOn} onToggleProtect={() => setProtectOn((p) => !p)} onBack={goBack} />}

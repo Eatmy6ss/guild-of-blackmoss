@@ -1144,7 +1144,8 @@ test('actual healing callback: guarded spending, feedback, no duplicate or stale
   let stats=newStatistics()
   scope.noteStatistics=(action:any)=>{stats=recordStatistics(stats,action)}
   for(const key of ['Gold','Blessing','HealingMastery']) scope['set'+key]=(f:any)=>{const k=key[0].toLowerCase()+key.slice(1);state[k]=f(state[k])}
-  const heal=(overrides:any={})=>callback('const cost = healingTerms(sc, mastery)',{...scope,...state,...overrides})()
+  // R2-5:疗养回调签名改 (memberId, si),从 membersRef 里按 id 找人
+  const heal=(overrides:any={})=>callback('const cost = healingTerms(cur, mastery)',{...scope,...state,...overrides})(m.id,0,sc)
   heal({gold:119}); heal({blessing:2}); assert.equal(state.gold,300); assert.equal(m.scars.length,2)
   heal({runRef:{current:{}}}); assert.equal(state.gold,300)
   heal(); heal()
