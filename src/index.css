@@ -872,3 +872,69 @@ button.primary:hover:not(:disabled) {
 .voc-card-body button { margin-top: 4px; padding: 4px 10px; border: 1px solid var(--edge-gold-hi);
   background: transparent; color: var(--edge-gold-hi); cursor: pointer; font-size: 11.5px; }
 .voc-card-body button:hover:not(:disabled) { background: rgba(200, 160, 74, 0.12); }
+
+/* ===== U29 副本节点图(R2-3):分层节点+连线,走过路径点亮,悬停情报框 ===== */
+.dungeon-graph {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
+  margin: 10px 0;
+  border: 2px solid var(--panel-edge);
+  outline: 2px solid var(--edge-gold);
+  outline-offset: -6px;
+  background:
+    radial-gradient(ellipse 600px 320px at 50% 0%, rgba(120, 90, 50, 0.12) 0%, rgba(120, 90, 50, 0) 60%),
+    linear-gradient(#171310, #100d09);
+  overflow: hidden;
+}
+.dg-edges { position: absolute; inset: 0; width: 100%; height: 100%; }
+.dg-edges line { stroke: #3d3428; stroke-width: 0.35; vector-effect: non-scaling-stroke; }
+.dg-edges line.walked { stroke: var(--gold, #d8a24a); stroke-width: 0.7; filter: drop-shadow(0 0 2px rgba(216, 162, 74, 0.6)); }
+.dg-edges line.open { stroke: #8a6d3a; stroke-width: 0.55; stroke-dasharray: 1.6 1; }
+.dg-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: #241f18;
+  border: 2px solid #4a3f30;
+  border-radius: 6px;
+  padding: 6px 8px 4px;
+  min-width: 64px;
+  color: #b9ab90;
+  cursor: default;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+.dg-node .dg-icon { font-size: 18px; line-height: 1; }
+.dg-node .dg-name { font-size: 11px; letter-spacing: 0.08em; white-space: nowrap; }
+.dg-node.current { border-color: var(--gold, #d8a24a); box-shadow: 0 0 10px rgba(216, 162, 74, 0.45); color: var(--gold, #d8a24a); }
+.dg-node.available { border-color: #9c7c3f; color: #e8d9b0; cursor: pointer; animation: dg-pulse 1.6s ease-in-out infinite; }
+.dg-node.available:hover { transform: translate(-50%, -50%) scale(1.07); border-color: var(--gold, #d8a24a); z-index: 3; }
+.dg-node.walked { opacity: 0.55; }
+.dg-node.masked { border-style: dashed; opacity: 0.7; }
+.dg-node.boss { border-color: #7a4a3a; }
+.dg-node.boss .dg-icon { font-size: 22px; }
+.dg-node.boss.current { border-color: #d48f8f; box-shadow: 0 0 12px rgba(212, 143, 143, 0.5); }
+@keyframes dg-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(216, 162, 74, 0.25); }
+  50% { box-shadow: 0 0 12px rgba(216, 162, 74, 0.55); }
+}
+.dg-intel {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 4;
+  max-width: 240px;
+  background: rgba(16, 12, 7, 0.94);
+  border: 2px solid var(--edge-gold, #8a6d3a);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #e0d3b4;
+  pointer-events: none;
+}
+.dg-intel p { margin: 4px 0 0; }
+.dg-intel .dg-risk { color: #d48f8f; }

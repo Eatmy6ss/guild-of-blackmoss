@@ -117,8 +117,8 @@ const STEP = (prio) => `(()=>{${BTN_HELPER}
     if(!body.includes('挂机中')) hit((t)=>t.startsWith('🤖 挂机'));
     r.acted = hit((t)=>t.includes('跑到结束')) || 'battle-wait';
   }
-  // U27① R1.1:地图选路——点 .route-choices 里的节点按钮(不选路不能前进,没有「继续深入」)
-  if(!r.acted){const c=[...document.querySelectorAll('.route-choices button')].find((x)=>!x.disabled);if(c){c.click();r.acted='NODE:'+c.textContent.trim().slice(0,20)}}
+  // U27① R1.1+U29 节点图:点可走的地图节点(不选路不能前进,没有「继续深入」)
+  if(!r.acted){const c=[...document.querySelectorAll('.dungeon-graph .dg-node.available')][0];if(c){c.click();r.acted='NODE:'+c.textContent.trim().slice(0,20)}}
   if(!r.acted){const c=[...document.querySelectorAll('button')].find((x)=>!x.disabled&&x.textContent.includes('👑 连战'));if(c){c.click();r.acted='BOSS-CHAIN'}}
   if(!r.acted){const x=hit((t)=>t==='← 返回公会'); if(x) r.acted='RETURN'}
   if(!r.acted && document.querySelector('.screen-panel')) r.acted='ESC';
@@ -230,9 +230,11 @@ async function phaseFresh() {
       if (depart) {
         const probe = await b.evalJs(`(()=>{
           const body=document.body.innerText
-          const nodes=[...document.querySelectorAll('.route-choices button')].map(x=>x.textContent.trim())
+          const nodes=[...document.querySelectorAll('.dungeon-graph .dg-node')].map(x=>x.textContent.trim())
+          const icons=[...document.querySelectorAll('.dungeon-graph .dg-node:not(.walked):not(.current) .dg-icon')].map(x=>x.textContent.trim())
           return { inMap: nodes.length > 0, hasDeep: body.includes('继续深入'), nodes,
-                   leak: nodes.filter(n=>/精英|宝箱|暗道|休整|事件/.test(n)) } })()`)
+                   leak: nodes.filter(n=>/精英|宝箱|暗道|休整|事件/.test(n))
+                     .concat(icons.filter(ic=>/⚔|☠|🎁|⛺|🕳|👑/.test(ic))) } })()`)
         check('M1', '地图:不选路不能前进(无「继续深入」)', probe.inMap && !probe.hasDeep ? 'PASS' : 'FAIL', `节点数=${probe.nodes.length}`)
         check('M2', '熟练度 0 不泄露节点类型', probe.inMap && probe.leak.length === 0 ? 'PASS' : 'FAIL', probe.leak.join('|') || '零泄露')
         await clickText(b, '🏳 撤退回城'); await sleep(500)
