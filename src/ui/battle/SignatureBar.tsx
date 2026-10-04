@@ -2,6 +2,7 @@
 // 目标语义:打断系=正在咏唱的敌人(intents.casterId);其余敌方点名=集火目标优先,兜底咏唱者/最残血;
 // 友方系(圣疗)=按钮旁逐一点名队友。无读条只禁打断系,其他技能随时可用。
 import { SIGNATURE_SKILLS } from '../../data/signature'
+import { skillFamilyBlocked } from '../../sim/combat'
 import type { BattleState } from '../../sim/types'
 
 export function SignatureBar(props: {
@@ -36,25 +37,29 @@ export function SignatureBar(props: {
         const isDetonate = skill.effect === 'detonate-burn'
         const tid = targetId(c.specId)
         const stacks = isDetonate && tid ? foes.find((f) => f.id === tid)?.burnStacks ?? 0 : 0
-        const blocked = (isInterrupt && !casterId) || (isDetonate && stacks === 0)
+        // R3/W3:武器族门槛——禁用+原因与引擎 useSignature 同源(skillFamilyBlocked 单点)
+        const famBlock = skillFamilyBlocked(c, skill.weaponFamily)
+        const blocked = (isInterrupt && !casterId) || (isDetonate && stacks === 0) || !!famBlock
         const disabled = remaining > 0 || blocked
-        const meta = remaining > 0
-          ? ` · 冷却 ${remaining}`
-          : isInterrupt && !casterId
-            ? ' · 无读条'
-            : isDetonate && stacks === 0
-              ? ' · 未叠灼烧'
-              : isDetonate
-                ? ` · ${stacks} 层灼烧`
-                : skill.targeting === 'enemy'
-                  ? ' · 对集火目标'
-                  : ''
+        const meta = famBlock
+          ? ` · ⚠ ${famBlock}`
+          : remaining > 0
+            ? ` · 冷却 ${remaining}`
+            : isInterrupt && !casterId
+              ? ' · 无读条'
+              : isDetonate && stacks === 0
+                ? ' · 未叠灼烧'
+                : isDetonate
+                  ? ` · ${stacks} 层灼烧`
+                  : skill.targeting === 'enemy'
+                    ? ' · 对集火目标'
+                    : ''
         return (
           <div key={c.id} className="sig-group">
             <button
               className={`sig-btn${disabled ? '' : ' ready'}`}
               disabled={disabled || skill.targeting === 'ally'}
-              title={skill.desc}
+              title={skill.desc + (famBlock ? ` ⚠ ${famBlock}` : '')}
               onClick={() => {
                 if (!disabled && skill.targeting !== 'ally') onUse(c.memberId!, tid)
               }}

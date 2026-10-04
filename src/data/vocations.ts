@@ -27,8 +27,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 150, attack: 7, defense: 8, speed: 7, critChance: 0.05 },
     skills: [
-      { id: 'saint-taunt', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
-      { id: 'saint-shield', name: '移形圣盾', effect: 'shield-ally', target: 'ally', cooldownTicks: 70 },
+      { id: 'saint-taunt', weaponFamily: 'universal', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
+      { id: 'saint-shield', weaponFamily: 'universal', name: '移形圣盾', effect: 'shield-ally', target: 'ally', cooldownTicks: 70 },
     ],
   }),
   'hy-ranger-guard': h({
@@ -41,7 +41,7 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 150, attack: 8, defense: 7, speed: 8, critChance: 0.07 },
     skills: [
-      { id: 'rg-charge', name: '持盾冲锋', effect: 'charge-strike', target: 'enemy', cooldownTicks: 70 },
+      { id: 'rg-charge', weaponFamily: [ 'blade', 'axe' ], name: '持盾冲锋', effect: 'charge-strike', target: 'enemy', cooldownTicks: 70 },
     ],
   }),
   'hy-warlord': h({
@@ -54,7 +54,7 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 162, attack: 8, defense: 7, speed: 7, critChance: 0.06 },
     skills: [
-      { id: 'wl-cleave', name: '裂阵重劈', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
+      { id: 'wl-cleave', weaponFamily: [ 'blade', 'axe' ], name: '裂阵重劈', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
     ],
     passive: 'counter',
   }),
@@ -68,8 +68,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 148, attack: 8, defense: 8, speed: 6, critChance: 0.05 },
     skills: [
-      { id: 'rb-taunt', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
-      { id: 'rb-enchant', name: '符文赋能', effect: 'enchant-self', target: 'ally', cooldownTicks: 150 },
+      { id: 'rb-taunt', weaponFamily: 'universal', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
+      { id: 'rb-enchant', weaponFamily: 'universal', name: '符文赋能', effect: 'enchant-self', target: 'ally', cooldownTicks: 150 },
     ],
   }),
   'hy-soulbinder': h({
@@ -82,8 +82,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 150, attack: 8, defense: 8, speed: 7, critChance: 0.05 },
     skills: [
-      { id: 'sb-chain', name: '缚魂锁链', effect: 'trap-bind', target: 'enemy', cooldownTicks: 100 },
-      { id: 'sb-taunt', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
+      { id: 'sb-chain', weaponFamily: 'universal', name: '缚魂锁链', effect: 'trap-bind', target: 'enemy', cooldownTicks: 100 },
+      { id: 'sb-taunt', weaponFamily: 'universal', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
     ],
   }),
 
@@ -98,7 +98,7 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'ranged',
     base: { maxHp: 128, attack: 8.5, defense: 4, speed: 8, critChance: 0.09 },
     skills: [
-      { id: 'hx-mark', name: '咒印之箭', effect: 'curse-mark', target: 'enemy', cooldownTicks: 95 },
+      { id: 'hx-mark', weaponFamily: [ 'bow' ], name: '咒印之箭', effect: 'curse-mark', target: 'enemy', cooldownTicks: 95 },
     ],
   }),
   'hy-luminary': h({
@@ -111,8 +111,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'ranged',
     base: { maxHp: 118, attack: 8, defense: 4, speed: 6, critChance: 0.07 },
     skills: [
-      { id: 'lu-heal', name: '辉光颂', effect: 'heal-lowest', target: 'ally', cooldownTicks: 18 },
-      { id: 'lu-nova', name: '圣光新星', effect: 'group-heal', target: 'ally', cooldownTicks: 140 },
+      { id: 'lu-heal', weaponFamily: 'universal', name: '辉光颂', effect: 'heal-lowest', target: 'ally', cooldownTicks: 18 },
+      { id: 'lu-nova', weaponFamily: 'universal', name: '圣光新星', effect: 'group-heal', target: 'ally', cooldownTicks: 140 },
     ],
   }),
   'hy-pactpriest': h({
@@ -125,8 +125,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'ranged',
     base: { maxHp: 122, attack: 7.5, defense: 4, speed: 6, critChance: 0.05 },
     skills: [
-      { id: 'pp-heal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 20 },
-      { id: 'pp-imp', name: '召唤契灵', effect: 'summon-pet', target: 'ally', cooldownTicks: 200 },
+      { id: 'pp-heal', weaponFamily: 'universal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 20 },
+      { id: 'pp-imp', weaponFamily: 'universal', name: '召唤契灵', effect: 'summon-pet', target: 'ally', cooldownTicks: 200 },
     ],
   }),
   'hy-crusader': h({
@@ -139,8 +139,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 145, attack: 8, defense: 7, speed: 7, critChance: 0.05 },
     skills: [
-      { id: 'cr-heal', name: '战地急救', effect: 'heal-lowest', target: 'ally', cooldownTicks: 22 },
-      { id: 'cr-channel', name: '战地祷告', effect: 'channel-heal', target: 'ally', cooldownTicks: 175 },
+      { id: 'cr-heal', weaponFamily: 'universal', name: '战地急救', effect: 'heal-lowest', target: 'ally', cooldownTicks: 22 },
+      { id: 'cr-channel', weaponFamily: 'universal', name: '战地祷告', effect: 'channel-heal', target: 'ally', cooldownTicks: 175 },
     ],
   }),
 
@@ -155,8 +155,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'ranged',
     base: { maxHp: 126, attack: 9, defense: 3, speed: 9, critChance: 0.1 },
     skills: [
-      { id: 'ma-nova', name: '冰霜箭雨', effect: 'frost-nova', target: 'enemy', cooldownTicks: 130 },
-      { id: 'ma-aimed', name: '元素瞄准', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
+      { id: 'ma-nova', weaponFamily: [ 'bow', 'staff' ], name: '冰霜箭雨', effect: 'frost-nova', target: 'enemy', cooldownTicks: 130 },
+      { id: 'ma-aimed', weaponFamily: [ 'bow' ], name: '元素瞄准', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
     ],
   }),
   'hy-hexarcher': h({
@@ -169,8 +169,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'ranged',
     base: { maxHp: 128, attack: 8.5, defense: 3, speed: 9, critChance: 0.1 },
     skills: [
-      { id: 'ha-curse', name: '蚀魂咒箭', effect: 'curse-mark', target: 'enemy', cooldownTicks: 100 },
-      { id: 'ha-aimed', name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 75 },
+      { id: 'ha-curse', weaponFamily: [ 'bow' ], name: '蚀魂咒箭', effect: 'curse-mark', target: 'enemy', cooldownTicks: 100 },
+      { id: 'ha-aimed', weaponFamily: [ 'bow' ], name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 75 },
     ],
   }),
   'hy-skirmisher': h({
@@ -183,8 +183,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 150, attack: 9, defense: 5, speed: 9, critChance: 0.09 },
     skills: [
-      { id: 'sk-reposition', name: '游刃换位', effect: 'reposition', target: 'ally', cooldownTicks: 90 },
-      { id: 'sk-whirl', name: '回旋刃', effect: 'multishot', target: 'enemy', cooldownTicks: 80 },
+      { id: 'sk-reposition', weaponFamily: [ 'polearm' ], name: '游刃换位', effect: 'reposition', target: 'ally', cooldownTicks: 90 },
+      { id: 'sk-whirl', weaponFamily: [ 'blade', 'axe' ], name: '回旋刃', effect: 'multishot', target: 'enemy', cooldownTicks: 80 },
     ],
   }),
   'hy-battlemage': h({
@@ -197,8 +197,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 148, attack: 9.5, defense: 5, speed: 7, critChance: 0.07 },
     skills: [
-      { id: 'bm-enchant', name: '武器附魔', effect: 'enchant-self', target: 'ally', cooldownTicks: 150 },
-      { id: 'bm-combo', name: '符文连斩', effect: 'combo-strike', target: 'enemy', cooldownTicks: 65 },
+      { id: 'bm-enchant', weaponFamily: 'universal', name: '武器附魔', effect: 'enchant-self', target: 'ally', cooldownTicks: 150 },
+      { id: 'bm-combo', weaponFamily: [ 'blade', 'axe' ], name: '符文连斩', effect: 'combo-strike', target: 'enemy', cooldownTicks: 65 },
     ],
   }),
   'hy-bloodreaver': h({
@@ -211,7 +211,7 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'melee',
     base: { maxHp: 158, attack: 10, defense: 4, speed: 8, critChance: 0.08 },
     skills: [
-      { id: 'br-combo', name: '血宴连击', effect: 'combo-strike', target: 'enemy', cooldownTicks: 70 },
+      { id: 'br-combo', weaponFamily: [ 'blade', 'axe' ], name: '血宴连击', effect: 'combo-strike', target: 'enemy', cooldownTicks: 70 },
     ],
   }),
   'hy-spellfire': h({
@@ -224,8 +224,8 @@ export const HYBRIDS: Record<string, HybridDef> = {
     range: 'ranged',
     base: { maxHp: 112, attack: 10.5, defense: 3, speed: 7, critChance: 0.1 },
     skills: [
-      { id: 'sf-bolt', name: '咒火弹', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 60 },
-      { id: 'sf-missiles', name: '咒火飞弹', effect: 'multishot', target: 'enemy', cooldownTicks: 80 },
+      { id: 'sf-bolt', weaponFamily: [ 'staff' ], name: '咒火弹', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 60 },
+      { id: 'sf-missiles', weaponFamily: [ 'staff' ], name: '咒火飞弹', effect: 'multishot', target: 'enemy', cooldownTicks: 80 },
     ],
   }),
 }

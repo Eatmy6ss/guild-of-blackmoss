@@ -18,7 +18,7 @@ import { applyEnemyScaling as applyScaling, ELITE_ENEMY_MULT, towerEnemyScale, t
 import { scarPenalty, recordScarMechanic } from './scars'
 import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
-import { isFamilyProficient, getGuildLearnedFamilies } from '../data/weapon-families'
+import { isFamilyProficient, getGuildLearnedFamilies, WEAPON_FAMILIES } from '../data/weapon-families'
 import { RACES } from '../data/races'
 import type { SpecDef } from './types'
 import { processBossMechanics } from './mechanics'
@@ -436,6 +436,23 @@ function allowedPool(attacker: Combatant, foes: Combatant[]): Combatant[] {
   return foes
 }
 
+// ---- R3/W3 武器族技能门槛 ----
+
+/** 技能对当前武器是否可用;不可用返回人话原因(UI 悬停同源),可用返回 null。
+ *  敌方(含召唤增援)与未标注('universal'/undefined)一律放行——敌方技能默认通用;
+ *  空手(未持武器)不触发族门槛——R3 惩罚的是"拿错武器",不是"没拿武器",老档行为零变。 */
+export function skillFamilyBlocked(c: Combatant, families: readonly import('./types').WeaponFamily[] | 'universal' | undefined): string | null {
+  if (c.team !== 'guild') return null
+  if (!families || families === 'universal') return null
+  const fam = c.weaponFamily
+  if (!fam) return null
+  if (!families.includes(fam)) {
+    return `需 ${families.map((f) => WEAPON_FAMILIES[f].name).join('/')}(当前:${WEAPON_FAMILIES[fam].name})`
+  }
+  if (c.weaponProficient === false) return `${WEAPON_FAMILIES[fam].name}非熟练,族内技能失效`
+  return null
+}
+
 /** 敌方按威胁选目标，带抖动（偶尔打二号仇恨） */
 function pickByThreat(state: BattleState, pool: Combatant[], enemy: Combatant): Combatant {
   const scored = pool
@@ -701,6 +718,7 @@ function actWith(c: Combatant, state: BattleState): void {
   // AI 多技能择优:逆序逐个尝试(情境技/精进技优先,基础输出压轴),条件不满足则回落
   for (const ready of [...c.skills].reverse()) {
     if (ready.cooldownLeft > 0) continue
+    if (skillFamilyBlocked(c, ready.def.weaponFamily)) continue // R3/W3:非熟练/族不合,AI 不会傻按
     if (useSkill(c, ready.def, allies, pool, state)) {
       ready.cooldownLeft = ready.def.cooldownTicks
       return
@@ -1196,6 +1214,8 @@ export function useSignature(state: BattleState, memberId: string, targetId?: st
   if (!c?.specId) return false
   const skill = SIGNATURE_SKILLS[c.specId]
   if (!skill) return false
+  // R3/W3:武器族门槛(与 AI/基础技能同一条单点判定)
+  if (skillFamilyBlocked(c, skill.weaponFamily)) return false
   if (state.tick < (state.signatureCd?.[memberId] ?? 0)) return false
   // S4:被定身(束缚)的队员无法施放招牌技
   if ((c.boundUntilTick ?? 0) > state.tick) return false

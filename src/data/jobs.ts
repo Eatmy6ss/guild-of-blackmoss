@@ -28,11 +28,11 @@ export const JOBS: Record<string, JobDef> = {
         name: '铁壁卫士',
         identity: '盾墙即誓言——最经典的持盾守卫,嘲讽控场,稳如磐石。',
         skills: [
-          { id: 'guard-taunt', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
+          { id: 'guard-taunt', weaponFamily: 'universal', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
         ],
         advancedSkills: [
-          { id: 'guard-wall-slam', name: '盾墙猛击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
-          { id: 'guard-shieldbreak', name: '破甲盾击', effect: 'armor-break', target: 'enemy', cooldownTicks: 95 },
+          { id: 'guard-wall-slam', weaponFamily: [ 'blade', 'axe' ], name: '盾墙猛击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
+          { id: 'guard-shieldbreak', weaponFamily: [ 'blade', 'axe' ], name: '破甲盾击', effect: 'armor-break', target: 'enemy', cooldownTicks: 95 },
         ],
       }),
       'guard-thorns': spec({
@@ -41,11 +41,11 @@ export const JOBS: Record<string, JobDef> = {
         identity: '碰我一下,记你一笔——每一记落在盾上的拳头都会被奉还。',
         statMods: { defense: 2, speed: -1 },
         skills: [
-          { id: 'guard-taunt', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
+          { id: 'guard-taunt', weaponFamily: 'universal', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
         ],
         passive: 'counter',
         advancedSkills: [
-          { id: 'thorn-wave', name: '荆棘波浪', effect: 'multishot', target: 'enemy', cooldownTicks: 90 },
+          { id: 'thorn-wave', weaponFamily: [ 'blade', 'axe', 'polearm' ], name: '荆棘波浪', effect: 'multishot', target: 'enemy', cooldownTicks: 90 },
         ],
       }),
     },
@@ -71,12 +71,12 @@ export const JOBS: Record<string, JobDef> = {
         name: '圣光祭司',
         identity: '光落在伤口上——最经典的治疗,圣光术吞吐量最大。',
         skills: [
-          { id: 'priest-heal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 15 },
+          { id: 'priest-heal', weaponFamily: 'universal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 15 },
         ],
         advancedSkills: [
-          { id: 'holy-nova', name: '神圣新星', effect: 'group-heal', target: 'ally', cooldownTicks: 150 },
-          { id: 'holy-smite', name: '惩击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 90 },
-          { id: 'holy-channel', name: '虔信祷告', effect: 'channel-heal', target: 'ally', cooldownTicks: 170 },
+          { id: 'holy-nova', weaponFamily: 'universal', name: '神圣新星', effect: 'group-heal', target: 'ally', cooldownTicks: 150 },
+          { id: 'holy-smite', weaponFamily: [ 'staff' ], name: '惩击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 90 },
+          { id: 'holy-channel', weaponFamily: 'universal', name: '虔信祷告', effect: 'channel-heal', target: 'ally', cooldownTicks: 170 },
         ],
       }),
       'priest-discipline': spec({
@@ -84,11 +84,11 @@ export const JOBS: Record<string, JobDef> = {
         name: '戒律牧师',
         identity: '先立盾,后颂诗——预防性的真言盾,让伤害根本落不到肉上。',
         skills: [
-          { id: 'priest-heal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 24 },
-          { id: 'priest-shield', name: '真言盾', effect: 'shield-ally', target: 'ally', cooldownTicks: 50 },
+          { id: 'priest-heal', weaponFamily: 'universal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 24 },
+          { id: 'priest-shield', weaponFamily: 'universal', name: '真言盾', effect: 'shield-ally', target: 'ally', cooldownTicks: 50 },
         ],
         advancedSkills: [
-          { id: 'disc-burst', name: '苦修', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 95 },
+          { id: 'disc-burst', weaponFamily: [ 'staff' ], name: '苦修', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 95 },
         ],
       }),
     },
@@ -112,10 +112,10 @@ export const JOBS: Record<string, JobDef> = {
         name: '鹰眼神射',
         identity: '看哪儿,射哪儿——最经典的射手,瞄准射击一击致命。',
         skills: [
-          { id: 'ranger-aimed', name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
+          { id: 'ranger-aimed', weaponFamily: [ 'bow' ], name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
         ],
         advancedSkills: [
-          { id: 'hawk-double', name: '双重射击', effect: 'multishot', target: 'enemy', cooldownTicks: 85 },
+          { id: 'hawk-double', weaponFamily: [ 'bow' ], name: '双重射击', effect: 'multishot', target: 'enemy', cooldownTicks: 85 },
         ],
       }),
       'ranger-beastmaster': spec({
@@ -124,11 +124,11 @@ export const JOBS: Record<string, JobDef> = {
         identity: '它比你先看到猎物——召唤战狼并肩撕咬。',
         statMods: { attack: -1 },
         skills: [
-          { id: 'ranger-aimed', name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
-          { id: 'ranger-wolf', name: '召唤战狼', effect: 'summon-pet', target: 'ally', cooldownTicks: 200 },
+          { id: 'ranger-aimed', weaponFamily: [ 'bow' ], name: '瞄准射击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
+          { id: 'ranger-wolf', weaponFamily: 'universal', name: '召唤战狼', effect: 'summon-pet', target: 'ally', cooldownTicks: 200 },
         ],
         advancedSkills: [
-          { id: 'beast-frenzy', name: '野性鼓舞', effect: 'enchant-self', target: 'ally', cooldownTicks: 170 },
+          { id: 'beast-frenzy', weaponFamily: 'universal', name: '野性鼓舞', effect: 'enchant-self', target: 'ally', cooldownTicks: 170 },
         ],
       }),
     },
@@ -153,11 +153,11 @@ export const JOBS: Record<string, JobDef> = {
         identity: '每一下都劈在甲缝上——大开大合的重剑路数。',
         statMods: { attack: 1.5, speed: -1 },
         skills: [
-          { id: 'warrior-cleave', name: '重型劈砍', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 65 },
+          { id: 'warrior-cleave', weaponFamily: [ 'blade', 'axe' ], name: '重型劈砍', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 65 },
         ],
         advancedSkills: [
-          { id: 'wpn-break', name: '破甲斩', effect: 'curse-mark', target: 'enemy', cooldownTicks: 110 },
-          { id: 'wpn-combo', name: '连环三斩', effect: 'combo-strike', target: 'enemy', cooldownTicks: 60 },
+          { id: 'wpn-break', weaponFamily: [ 'blade', 'axe' ], name: '破甲斩', effect: 'curse-mark', target: 'enemy', cooldownTicks: 110 },
+          { id: 'wpn-combo', weaponFamily: [ 'blade', 'axe' ], name: '连环三斩', effect: 'combo-strike', target: 'enemy', cooldownTicks: 60 },
         ],
       }),
       'warrior-vanguard': spec({
@@ -166,11 +166,11 @@ export const JOBS: Record<string, JobDef> = {
         identity: '第一个冲进去,最后一个撤出来——也负责把阵型撕开口子。',
         statMods: { maxHp: 8 },
         skills: [
-          { id: 'warrior-charge', name: '冲锋号令', effect: 'charge-strike', target: 'enemy', cooldownTicks: 70 },
+          { id: 'warrior-charge', weaponFamily: [ 'blade', 'axe' ], name: '冲锋号令', effect: 'charge-strike', target: 'enemy', cooldownTicks: 70 },
         ],
         passive: 'counter',
         advancedSkills: [
-          { id: 'vg-reposition', name: '战术转移', effect: 'reposition', target: 'ally', cooldownTicks: 90 },
+          { id: 'vg-reposition', weaponFamily: [ 'polearm' ], name: '战术转移', effect: 'reposition', target: 'ally', cooldownTicks: 90 },
         ],
       }),
     },
@@ -195,10 +195,10 @@ export const JOBS: Record<string, JobDef> = {
         identity: '一发火球解决的事,不要用第二发——高爆单发的极致。',
         statMods: { critChance: 0.02 },
         skills: [
-          { id: 'mage-fireball', name: '火球术', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 60 },
+          { id: 'mage-fireball', weaponFamily: [ 'staff' ], name: '火球术', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 60 },
         ],
         advancedSkills: [
-          { id: 'fire-storm', name: '烈焰风暴', effect: 'multishot', target: 'enemy', cooldownTicks: 90 },
+          { id: 'fire-storm', weaponFamily: [ 'staff' ], name: '烈焰风暴', effect: 'multishot', target: 'enemy', cooldownTicks: 90 },
         ],
       }),
       'mage-frost': spec({
@@ -207,10 +207,10 @@ export const JOBS: Record<string, JobDef> = {
         identity: '寒冷不是杀伤,是判决——霜寒新星能让整片敌人慢下来。',
         statMods: { attack: -0.5 },
         skills: [
-          { id: 'mage-nova', name: '霜寒新星', effect: 'frost-nova', target: 'enemy', cooldownTicks: 120 },
+          { id: 'mage-nova', weaponFamily: [ 'staff' ], name: '霜寒新星', effect: 'frost-nova', target: 'enemy', cooldownTicks: 120 },
         ],
         advancedSkills: [
-          { id: 'frost-spear', name: '冰锥术', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
+          { id: 'frost-spear', weaponFamily: [ 'staff' ], name: '冰锥术', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
         ],
       }),
     },
@@ -234,10 +234,10 @@ export const JOBS: Record<string, JobDef> = {
         identity: '契约已签,小鬼已到——让召唤物替你挨刀、替你撕咬。',
         statMods: { maxHp: 8 },
         skills: [
-          { id: 'warlock-imp', name: '召唤小鬼', effect: 'summon-pet', target: 'ally', cooldownTicks: 190 },
+          { id: 'warlock-imp', weaponFamily: 'universal', name: '召唤小鬼', effect: 'summon-pet', target: 'ally', cooldownTicks: 190 },
         ],
         advancedSkills: [
-          { id: 'demon-rage', name: '恶魔之怒', effect: 'enchant-self', target: 'ally', cooldownTicks: 155 },
+          { id: 'demon-rage', weaponFamily: [ 'staff' ], name: '恶魔之怒', effect: 'enchant-self', target: 'ally', cooldownTicks: 155 },
         ],
       }),
       'warlock-affliction': spec({
@@ -246,10 +246,10 @@ export const JOBS: Record<string, JobDef> = {
         identity: '伤口会好,诅咒不会——易伤之靶,全队的刀都更进一寸。',
         statMods: { attack: -0.5 },
         skills: [
-          { id: 'warlock-curse', name: '痛苦诅咒', effect: 'curse-mark', target: 'enemy', cooldownTicks: 100 },
+          { id: 'warlock-curse', weaponFamily: [ 'staff' ], name: '痛苦诅咒', effect: 'curse-mark', target: 'enemy', cooldownTicks: 100 },
         ],
         advancedSkills: [
-          { id: 'afflict-bolt', name: '暗影箭', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
+          { id: 'afflict-bolt', weaponFamily: ['staff'], name: '暗影箭', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 80 },
         ],
       }),
     },

@@ -66,6 +66,9 @@ export interface SkillDef {
     | 'channel-heal'
   target: 'enemy' | 'ally'
   cooldownTicks: number
+  /** R3/W3 武器族绑定:'universal'=通用;族数组=需装备其中一族且熟练;undefined=敌方技能等默认通用。
+   *  我方技能(jobs/vocations/signature)必须显式标注(完整性单测守)。 */
+  weaponFamily?: WeaponFamily[] | 'universal'
 }
 
 /** 专精(宪法 v3 角色篇):同职业的三种打法,招募即带;undefined 引用 = defaultSpec(经典线,平衡假设保留) */
