@@ -78,6 +78,8 @@ import { ChronicleScreen } from './ui/screens/ChronicleScreen'
 import { MemorialScreen } from './ui/screens/MemorialScreen'
 import { ManualScreen } from './ui/screens/ManualScreen'
 import { RosterScreen } from './ui/screens/RosterScreen'
+import { TavernScreen } from './ui/screens/TavernScreen'
+import { attrsLine, personalityLine } from './ui/screens/member-lines'
 import { WarehouseScreen } from './ui/screens/WarehouseScreen'
 import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
 import { type InvSort } from './ui/inventory-sort'
@@ -105,7 +107,6 @@ import { REGIONS, dungeonLock, nextRegionLocked, playtestAllows } from './data/r
 const START_JOBS = ['guard', 'priest', 'ranger'] as const
 
 
-const ROLE_NAME: Record<string, string> = { tank: '坦克', healer: '治疗', dps: '输出' }
 const SLOT_NAME: Record<Slot, string> = { weapon: '武器', armor: '护甲', trinket: '饰品' }
 const SLOTS: Slot[] = ['weapon', 'armor', 'trinket']
 const SEED_BASE = 7777
@@ -121,22 +122,6 @@ function newRoster(rng: Rng): Member[] {
     m.equipment[job === 'guard' ? 'armor' : 'weapon'] = rollDrop(baseId, rng)
     return m
   })
-}
-
-function attrsLine(m: Member): string {
-  const a = m.attrs
-  return `力${a.str} 敏${a.agi} 智${a.int} 体${a.vit} 精${a.spr} 运${a.lck}`
-}
-
-function personalityLine(m: Member): string {
-  const p = m.personality
-  return `勇猛${p.bravery} 谨慎${p.caution} 贪婪${p.greed} 忠诚${p.loyalty}`
-}
-
-function natureLine(m: Member): string {
-  const n = m.nature
-  const best = (['str', 'agi', 'int'] as const).reduce((a, b) => (n.caps[a] >= n.caps[b] ? a : b))
-  return `天性上限：${best === 'str' ? '力' : best === 'agi' ? '敏' : '智'}${n.caps[best]}`
 }
 
 function encName(run: DungeonRun, stepId: string): string {
@@ -1835,113 +1820,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            {hubScreen === 'tavern' && (
-              <div className="screen-overlay fullpage">
-                <div className="screen-panel">
-                  <div className="screen-head">
-                    <h2>🍺 酒馆</h2>
-                    <button className="screen-close" onClick={() => goBack()}>✕ Esc</button>
-                  </div>
-                  <p className="screen-sub">
-                    💰 {gold} · 🕯 祝福 {blessing} · 招募位 {members.filter((m) => m.alive).length}/{ROSTER_CAP}
-                  </p>
-            <p className="hint">
-              {effectiveCooldown > 0
-                ? `招募冷却：完成 ${effectiveCooldown} 场战斗后解除（上门访客不受影响）`
-                : members.filter((m) => m.alive).length < 3
-                  ? '⚠ 人手不足：紧急招募免冷却'
-                  : '可招募'}
-            </p>
-            {visitor ? (
-              <div className="member-card candidate">
-                <div className="mc-head">
-                  <HeroPortrait member={visitor.member} />
-                  <span className="name">🚪 {visitor.member.name}</span>
-                  <span className="job">
-                    {JOBS[visitor.member.job].name} Lv{visitor.member.level} · {ROLE_NAME[JOBS[visitor.member.job].role]}
-                  </span>
-                  <span className="hp">战力 {powerScore(visitor.member)}</span>
-                </div>
-                <div className="row">
-                  <span>{attrsLine(visitor.member)}</span>
-                  <span>{personalityLine(visitor.member)}</span>
-                </div>
-                <p className="hint">“{visitor.story}”</p>
-                <button onClick={signVisitor} disabled={!!run || members.filter((m) => m.alive).length >= ROSTER_CAP}>
-                  ✋ 免费签下（缘分不排队）
-                </button>
-              </div>
-            ) : members.filter((m) => m.alive).length < 3 ? (
-              <div>
-                <p className="hint">🚪 暂时没有访客——但公会正缺人手,守夜人去酒馆后巷喊一嗓子总会有人应。</p>
-                <button
-                  disabled={!!run}
-                  onClick={() => setVisitor(rollVisitor(guildRng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))}
-                >
-                  🌙 在酒馆等一晚(必定有人上门)
-                </button>
-              </div>
-            ) : (
-              <p className="hint">🚪 暂时没有访客——每次回城都有概率有人上门。</p>
-            )}
-            <div className="tavern-row">
-              <button
-                disabled={!!run || gold < 60}
-                onClick={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); for (const d of membersRef.current) { if (d.alive && d.trait === 'drinker') d.morale = Math.min(100, (d.morale ?? 60) + Math.round(baseEffects(buildings).feastBoost * 0.5)) } setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
-              >
-                🍻 庆功宴（60 金）：全员士气 +30
-              </button>
-            </div>
-            <div className="tavern-row">
-              <span className="cmd-label">定向悬赏：</span>
-              {START_JOBS.map((job) => (
-                <button
-                  key={job}
-                  disabled={!!run || effectiveCooldown > 0 || gold < ECONOMY.bountyCost || members.filter((m) => m.alive).length >= ROSTER_CAP}
-                  onClick={() => hireBounty(job)}
-                >
-                  {JOBS[job].name} {ECONOMY.bountyCost} 金
-                </button>
-              ))}
-            </div>
-            <div className="tavern-row">
-              <button
-                disabled={!!run || effectiveCooldown > 0 || gold < ECONOMY.taleCost.gold || blessing < ECONOMY.taleCost.blessing || members.filter((m) => m.alive).length >= ROSTER_CAP}
-                onClick={rollTale}
-              >
-                🎲 酒馆传闻：{ECONOMY.taleCost.gold} 金 + {ECONOMY.taleCost.blessing} 祝福，三选一（品质更高）
-              </button>
-            </div>
-            {candidates.length > 0 && (
-              <div>
-                <h2>来应征的冒险者（选一位入职）</h2>
-                {candidates.map((m) => (
-                  <div key={m.id} className="member-card candidate">
-                    <div className="mc-head">
-                      <HeroPortrait member={m} />
-                      <span className="name">{m.name}</span>
-                      <span className="job">
-                        {RACES[m.race ?? 'human'].name}·{isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
-                      </span>
-                      <div className="row">
-                        <span className="hint">{isHybrid(m.spec) ? HYBRIDS[m.spec!].identity : specOf(m.job, m.spec).identity}</span>
-                      </div>
-                      <span className="hp">战力 {powerScore(m)}</span>
-                    </div>
-                    <div className="row">
-                      <span>{attrsLine(m)} · {natureLine(m)}</span>
-                    </div>
-                    <div className="row">
-                      <span>{personalityLine(m)}</span>
-                    </div>
-                    <button onClick={() => hire(m)}>✋ 招募入职</button>
-                  </div>
-                ))}
-              </div>
-            )}
-                </div>
-              </div>
-            )}
             {hubScreen === 'base' && (
               <div className="screen-overlay fullpage">
                 <div className="screen-panel">
@@ -2130,6 +2008,11 @@ export default function App() {
               </div>
               </div>
             )}
+            {hubScreen === 'tavern' && <TavernScreen gold={gold} blessing={blessing} members={members}
+              visitor={visitor} candidates={candidates} effectiveCooldown={effectiveCooldown} busy={!!run || !!towerRun}
+              onFeast={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); for (const d of membersRef.current) { if (d.alive && d.trait === 'drinker') d.morale = Math.min(100, (d.morale ?? 60) + Math.round(baseEffects(buildings).feastBoost * 0.5)) } setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
+              onWaitNight={() => setVisitor(rollVisitor(guildRng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))}
+              onSign={signVisitor} onBounty={hireBounty} onTale={rollTale} onHire={hire} onBack={goBack} />}
             {hubScreen === 'warehouse' && <WarehouseScreen inventory={inventory} potions={potions} gold={gold} kingdom={kingdom}
               pendingRelics={pendingRelics} starMarrow={starMarrow} blessing={blessing} busy={!!run || !!towerRun}
               invSort={invSort} onSortChange={setInvSort} onBuyPotion={buyPotion} onRedeemRelic={redeemRelic}
