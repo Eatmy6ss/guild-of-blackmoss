@@ -3,11 +3,11 @@ import type { ItemBaseDef } from '../sim/types'
 // 装备基础盘（M0：3 槽位 × 2 阶）。boss 掉落表引用这里的 id（Q22）
 export const ITEM_BASES: Record<string, ItemBaseDef> = {
   'wpn-t1-sword': {
-    id: 'wpn-t1-sword', name: '戍卒铁剑', slot: 'weapon', tier: 1,
+    id: 'wpn-t1-sword', name: '戍卒铁剑', slot: 'weapon', family: 'blade', tier: 1,
     stat: 'attack', value: 6, affixCount: [1, 2],
   },
   'wpn-t2-bow': {
-    id: 'wpn-t2-bow', name: '逐风长弓', slot: 'weapon', tier: 2,
+    id: 'wpn-t2-bow', name: '逐风长弓', slot: 'weapon', family: 'bow', tier: 2,
     stat: 'attack', value: 12, affixCount: [2, 3], legacy: 'killheal', setName: 'wind-hunt',
   },
   'arm-t1-mail': {
@@ -28,23 +28,23 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   // ===== 装备扩容(2026-09-22):6→20,基础盘风格化(高攻少词条/均衡/多词条) =====
   'wpn-t1-axe': {
-    id: 'wpn-t1-axe', name: '开荒斧', slot: 'weapon', tier: 1,
+    id: 'wpn-t1-axe', name: '开荒斧', slot: 'weapon', family: 'axe', tier: 1,
     stat: 'attack', value: 8, affixCount: [0, 1],
   },
   'wpn-t1-dagger': {
-    id: 'wpn-t1-dagger', name: '哨探短刃', slot: 'weapon', tier: 1,
+    id: 'wpn-t1-dagger', name: '哨探短刃', slot: 'weapon', family: 'blade', tier: 1,
     stat: 'critChance', value: 0.04, affixCount: [2, 2],
   },
   'wpn-t2-greatsword': {
-    id: 'wpn-t2-greatsword', name: '折颈巨剑', slot: 'weapon', tier: 2,
+    id: 'wpn-t2-greatsword', name: '折颈巨剑', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'attack', value: 15, affixCount: [1, 2], legacy: 'focus',
   },
   'wpn-t2-staff': {
-    id: 'wpn-t2-staff', name: '春霖法杖', slot: 'weapon', tier: 2,
+    id: 'wpn-t2-staff', name: '春霖法杖', slot: 'weapon', family: 'staff', tier: 2,
     stat: 'healReceived', value: 0.06, affixCount: [2, 3], legacy: 'mend',
   },
   'wpn-t2-crossbow': {
-    id: 'wpn-t2-crossbow', name: '戍弩', slot: 'weapon', tier: 2,
+    id: 'wpn-t2-crossbow', name: '戍弩', slot: 'weapon', family: 'bow', tier: 2,
     stat: 'attack', value: 11, affixCount: [2, 2],
   },
   'arm-t1-leather': {
@@ -77,27 +77,27 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   // ===== 六线专属武器(掉落表按主题挂到对应 boss) =====
   'wpn-line-guard': {
-    id: 'wpn-line-guard', name: '苔盾剑', slot: 'weapon', tier: 2,
+    id: 'wpn-line-guard', name: '苔盾剑', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'defense', value: 5, affixCount: [2, 3], legacy: 'bulwark',
   },
   'wpn-line-priest': {
-    id: 'wpn-line-priest', name: '晨祷权杖', slot: 'weapon', tier: 2,
+    id: 'wpn-line-priest', name: '晨祷权杖', slot: 'weapon', family: 'staff', tier: 2,
     stat: 'healReceived', value: 0.09, affixCount: [2, 3], legacy: 'mend',
   },
   'wpn-line-ranger': {
-    id: 'wpn-line-ranger', name: '鹘眼长弓', slot: 'weapon', tier: 2,
+    id: 'wpn-line-ranger', name: '鹘眼长弓', slot: 'weapon', family: 'bow', tier: 2,
     stat: 'critChance', value: 0.06, affixCount: [2, 3], legacy: 'focus', setName: 'wind-hunt',
   },
   'wpn-line-warrior': {
-    id: 'wpn-line-warrior', name: '碎颚斧', slot: 'weapon', tier: 2,
+    id: 'wpn-line-warrior', name: '碎颚斧', slot: 'weapon', family: 'axe', tier: 2,
     stat: 'attack', value: 17, affixCount: [1, 2], legacy: 'elitewarden',
   },
   'wpn-line-mage': {
-    id: 'wpn-line-mage', name: '霜火宝珠', slot: 'weapon', tier: 2,
+    id: 'wpn-line-mage', name: '霜火宝珠', slot: 'weapon', family: 'staff', tier: 2,
     stat: 'attack', value: 13, affixCount: [2, 3], legacy: 'emberward',
   },
   'wpn-line-warlock': {
-    id: 'wpn-line-warlock', name: '缚魂典', slot: 'weapon', tier: 2,
+    id: 'wpn-line-warlock', name: '缚魂典', slot: 'weapon', family: 'staff', tier: 2,
     stat: 'lifesteal', value: 0.06, affixCount: [2, 3], legacy: 'killheal',
   },
   // ===== 六线专属防具+饰品(试玩反馈④:装备多样性——职阶专精可换装) =====
@@ -159,7 +159,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'defense', value: 9, affixCount: [2, 3], legacy: 'bulwark',
   },
   'wpn-sign-warbrand': {
-    id: 'wpn-sign-warbrand', name: '灰隼军刀', slot: 'weapon', tier: 2,
+    id: 'wpn-sign-warbrand', name: '灰隼军刀', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'attack', value: 14, affixCount: [2, 3], legacy: 'focus',
   },
   'trk-sign-frostheart': {
@@ -167,7 +167,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'defense', value: 5, affixCount: [2, 3], legacy: 'bulwark',
   },
   'wpn-sign-bloodletter': {
-    id: 'wpn-sign-bloodletter', name: '医官放血刃', slot: 'weapon', tier: 2,
+    id: 'wpn-sign-bloodletter', name: '医官放血刃', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'critChance', value: 0.07, affixCount: [2, 3], legacy: 'killheal',
   },
   'arm-sign-thornmail': {
@@ -182,23 +182,23 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
 
 // ===== T3 灰冠纪元(装备 2.0,2026-09-25):版图二毕业+高塔深层,全带传承威能 =====
   'wpn-t3-dawn': {
-    id: 'wpn-t3-dawn', name: '渊晨巨剑', slot: 'weapon', tier: 3,
+    id: 'wpn-t3-dawn', name: '渊晨巨剑', slot: 'weapon', family: 'blade', tier: 3,
     stat: 'attack', value: 26, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'wpn-t3-tide': {
-    id: 'wpn-t3-tide', name: '缚潮咒典', slot: 'weapon', tier: 3,
+    id: 'wpn-t3-tide', name: '缚潮咒典', slot: 'weapon', family: 'staff', tier: 3,
     stat: 'lifesteal', value: 0.1, affixCount: [2, 3], legacy: 'killheal', setName: 'gray-crown',
   },
   'wpn-t3-gale': {
-    id: 'wpn-t3-gale', name: '隼击长弓', slot: 'weapon', tier: 3,
+    id: 'wpn-t3-gale', name: '隼击长弓', slot: 'weapon', family: 'bow', tier: 3,
     stat: 'critChance', value: 0.08, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'wpn-t3-ember': {
-    id: 'wpn-t3-ember', name: '烬渊宝珠', slot: 'weapon', tier: 3,
+    id: 'wpn-t3-ember', name: '烬渊宝珠', slot: 'weapon', family: 'staff', tier: 3,
     stat: 'attack', value: 23, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
   'wpn-t3-vox': {
-    id: 'wpn-t3-vox', name: '春霖圣杖', slot: 'weapon', tier: 3,
+    id: 'wpn-t3-vox', name: '春霖圣杖', slot: 'weapon', family: 'staff', tier: 3,
     stat: 'healReceived', value: 0.12, affixCount: [2, 3], legacy: 'mend', setName: 'gray-crown',
   },
   'arm-t3-bulwark': {
@@ -235,7 +235,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'fireResist', value: 0.15, affixCount: [1, 2], legacy: 'emberward', setName: 'gray-crown',
   },
   'wpn-dragon-brand': {
-    id: 'wpn-dragon-brand', name: '烙焰长剑', slot: 'weapon', tier: 2,
+    id: 'wpn-dragon-brand', name: '烙焰长剑', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'attack', value: 14, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
 }

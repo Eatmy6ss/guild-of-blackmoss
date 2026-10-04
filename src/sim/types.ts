@@ -131,6 +131,9 @@ export interface AffixDef {
   range: [number, number]
 }
 
+// ===== 武器族(R3/U31):武器决定攻击方式与站位,职业决定能不能用好 =====
+export type WeaponFamily = 'blade' | 'bow' | 'staff' | 'axe' | 'polearm'
+
 export interface ItemBaseDef {
   id: string
   name: string
@@ -145,6 +148,8 @@ export interface ItemBaseDef {
   legacy?: string
   /** K08 套装系:gray-crown(灰冠)/wind-hunt(猎风) */
   setName?: string
+  /** R3 武器族(仅 slot='weapon' 必填;护甲/饰品无族) */
+  family?: WeaponFamily
 }
 
 /** 一次具体的掉落实例：baseId 固定来源，词条掉落时 roll（Q22） */
