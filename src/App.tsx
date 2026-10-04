@@ -2381,7 +2381,7 @@ export default function App() {
             <>
               <h2>⚔ 作战板</h2>
               <p style={{ color: '#7a8191', marginBottom: 10 }}>
-                选择路线：险路战斗更多、收获机会更多；稳路少打一场杂兵。血量全程延续，
+                地图每趟随机生成，逐层选路——每一层的模样由你的熟练度决定（首打一片漆黑）。血量全程延续，
                 <b style={{ color: '#d48f8f' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
               </p>
               <div className="dungeon-picker">

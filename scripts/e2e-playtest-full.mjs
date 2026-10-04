@@ -236,7 +236,9 @@ async function phaseFresh() {
                    leak: nodes.filter(n=>/精英|宝箱|暗道|休整|事件/.test(n))
                      .concat(icons.filter(ic=>/⚔|☠|🎁|⛺|🕳|👑/.test(ic))) } })()`)
         check('M1', '地图:不选路不能前进(无「继续深入」)', probe.inMap && !probe.hasDeep ? 'PASS' : 'FAIL', `节点数=${probe.nodes.length}`)
-        check('M2', '熟练度 0 不泄露节点类型', probe.inMap && probe.leak.length === 0 ? 'PASS' : 'FAIL', probe.leak.join('|') || '零泄露')
+        const allMasked = probe.nodes.every((n) => n.includes('未知岔路'))
+        check('M2', '熟练度 0 全盲(类型/路名/地形零泄露)', probe.inMap && probe.leak.length === 0 && allMasked ? 'PASS' : 'FAIL',
+          probe.leak.join('|') || (allMasked ? '零泄露' : '有节点未遮名'))
         await clickText(b, '🏳 撤退回城'); await sleep(500)
         await clickText(b, '← 返回公会'); await sleep(300)
       } else {

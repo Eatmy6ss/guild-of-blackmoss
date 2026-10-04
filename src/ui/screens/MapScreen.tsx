@@ -72,8 +72,10 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
   }
   const nodeByIdIn = (id: string) => nodeById(run.map, id)
 
-  // 揭示口径(R1.3):类型按档位范围;内容(遭遇名/事件)60+ 前两层、80+ 全图;暗道 80+ 才可见
+  // 揭示口径(R1.3 + 制作人 2026-10-04 调整):档 0 或迷途笼罩=整节点全盲(❓ 未知岔路,无名无地形);
+  // 档 1 起知名与地形;类型按档位范围;内容 60+ 前两层、80+ 全图;暗道 80+ 才可见
   const describe = (n: MapNode): { title: string; sub: string } => {
+    if (fullMask(n)) return { title: '未知岔路', sub: '迷雾笼罩,什么都看不见' }
     if (n.kind === 'secret' && tier < 3) return { title: '???', sub: '未曾注意的岔口' }
     const encounterName = n.encounterId
       ? dungeon.encounters.find((e) => e.id === n.encounterId)?.name
@@ -86,6 +88,14 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
         ? `${KIND_LABEL[n.kind]}${n.terrain ? ` · ${TERRAIN_NAMES[n.terrain]}` : ''}${cv && encounterName ? ` —— ${encounterName}` : ''}`
         : `❓ 未知${n.terrain ? ` · ${TERRAIN_NAMES[n.terrain]}` : ''}`,
     }
+  }
+  // 迷途(U27②)发作时:下一层的选项整体全盲——不是降一档,是一片漆黑(制作人 2026-10-04 定稿)
+  const penalty = revealPenaltyLayers(run)
+  // 全盲:没走过的节点,在「首次踏进(档 0)」或「迷途笼罩下一层」时只剩一个「?」
+  const fullMask = (n: MapNode): boolean => {
+    if (pathSet.has(n.id) || n.id === run.nodeId) return false
+    if (tier === 0) return true
+    return penalty > 0 && n.layer === curLayer + 1
   }
   const hovered = hoverId ? nodeByIdIn(hoverId) : undefined
   const hoveredRisks = hovered && tier >= 2
@@ -136,7 +146,8 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
       })()}
       <div className="route-choice">
         <p className="hint">
-          熟练度 {mastery} —— {tier === 0 ? `前路未知,只闻其名(相邻层的类型需熟练度 ${MASTERY.KIND})。` : tier === 1 ? '你已记得这些路的类别。' : tier === 2 ? '前两层的底细你已看在眼里。' : '这张图你闭着眼都能走(暗道也藏不住)。'}
+          熟练度 {mastery} —— {tier === 0 ? '初来乍到,一片漆黑——只能摸索着走(熟练度 35 起记得路名)。' : tier === 1 ? '你已记得这些路的模样与类别。' : tier === 2 ? '前两层的底细你已看在眼里。' : '这张图你闭着眼都能走(暗道也藏不住)。'}
+          {penalty > 0 && ' 迷途:下一层的选项一片漆黑。'}
         </p>
         {cur?.kind === 'boss' && bossLeft ? (
           <>
@@ -168,7 +179,7 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
                 const isCurrent = n.id === run.nodeId
                 const isAvailable = availableIds.has(n.id)
                 const isWalked = pathSet.has(n.id)
-                const secretMasked = n.kind === 'secret' && tier < 3
+                const secretMasked = (n.kind === 'secret' && tier < 3) || fullMask(n)
                 return (
                   <button
                     key={n.id}
@@ -199,7 +210,7 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
                   <b>{describe(hovered).title}</b>
                   <p>{describe(hovered).sub}</p>
                   {hoveredRisks.length > 0 && <p className="dg-risk">走这里可能:{hoveredRisks.map((c) => c.name).join('、')}</p>}
-                  {tier === 0 && <p className="hint" style={{ opacity: 0.7 }}>熟练度 {MASTERY.KIND} 后看得见类型</p>}
+                  {fullMask(hovered) && <p className="hint" style={{ opacity: 0.7 }}>{tier === 0 ? `熟练度 ${MASTERY.KIND} 后记得路名` : '迷途散去前,下一层看不见'}</p>}
                 </div>
               )}
             </div>

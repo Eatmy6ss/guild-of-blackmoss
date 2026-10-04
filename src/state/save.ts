@@ -33,6 +33,8 @@ export const saveLoadNotice = () => loadNotice
 /** 最近一次保存失败的原因(空串=上次保存成功):区分程序校验失败与浏览器存储问题 */
 let saveFailReason = ''
 export const saveFailNotice = () => saveFailReason
+/** 最近一次读档失败的真实异常(诊断用;玩家侧横幅也引用) */
+export let lastLoadError = ''
 
 export interface PendingConsequence {
   eventId: string
@@ -268,23 +270,29 @@ function sanitizeSavedMembers(save: GuildSave): void {
 export function loadGuildSave(): GuildSave | null {
   unreadableSave = false
   loadNotice = ''
+  lastLoadError = ''
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
     return parseGuildSave(raw)
-  } catch {
+  } catch (e) {
+    lastLoadError = e instanceof Error ? e.message : String(e)
+    console.warn('主存档读取失败(诊断):', lastLoadError)
     try {
       const backup = localStorage.getItem(KEY + '.bak')
       if (backup) {
         const recovered = parseGuildSave(backup)
         loadNotice = '当前存档无法读取，已恢复上一份有效备份，请核对远征进度。'
-        console.warn(loadNotice)
+        console.warn(loadNotice, '(主存档异常:', lastLoadError + ')')
         return recovered
       }
-    } catch { /* 保留原始数据，交给明确的重开操作处理。 */ }
+    } catch (e2) {
+      lastLoadError = `主:${lastLoadError};备份:${e2 instanceof Error ? e2.message : String(e2)}`
+    }
     unreadableSave = true
+    saveFailReason = '存档与备份均无法读取(只读保护中)——原始数据已保留;请导出存档并反馈,或重开公会。诊断:' + lastLoadError
     loadNotice = '当前存档与备份无法读取，原始数据已保留。请确认后重开公会；自动保存暂已停止。'
-    console.warn(loadNotice)
+    console.warn(loadNotice, '诊断:', lastLoadError)
     return null
   }
 }
@@ -297,7 +305,10 @@ function parseGuildSave(raw: string): GuildSave {
 }
 
 export function saveGuild(s: Omit<GuildSave, 'version' | 'lastSeen'>): boolean {
-  if (unreadableSave) return false
+  if (unreadableSave) {
+    saveFailReason = '存档与备份此前无法读取,处于只读保护——请重开公会或导入有效存档。诊断:' + (lastLoadError || '未知')
+    return false
+  }
   saveFailReason = ''
   try {
     assertItemOwnership(itemStateFromSave(s))
