@@ -277,10 +277,56 @@ async function phaseEnding() {
   console.log('\n▶ ending:Lv12 满编档打荆棘要塞 → 结束画面 → 导出')
   const save = await devSave(12)
   save.manual = [...REGION1_BOSSES]; save.day = 12
+  // R3/W5:①给一名成员注入其本命族线装(档案应示「✔ 熟练」);②给一名非守卫成员注入长柄
+  // (对非守卫族不熟练,档案应示「⚠ 非熟练·长柄」),并以长柄站位打完整场 Boss 战。
+  // 断言放本段而非 fresh:新档功能坞渐进解锁(A10),点不开基地/花名册。
+  const HOME_WEAPON = { guard: 'wpn-line-guard', warrior: 'wpn-line-warrior', ranger: 'wpn-line-ranger', priest: 'wpn-line-priest', mage: 'wpn-line-mage', warlock: 'wpn-line-warlock' }
+  let homeMember = null; let poleMember = null
+  const inject = (m, baseId) => {
+    const uid = 'it_' + (Number.isSafeInteger(save.itemSeq) ? save.itemSeq + 1 : 9001)
+    save.items = save.items ?? {}
+    save.items[uid] = { id: uid, baseId, rolls: [] }
+    save.itemSeq = (save.itemSeq ?? 0) + 1
+    m.equipment.weapon = uid
+    return m.name
+  }
+  {
+    const home = save.members.find((x) => x.job && HOME_WEAPON[x.job])
+    if (home) homeMember = { name: inject(home, HOME_WEAPON[home.job]), job: home.job }
+    const pole = save.members.find((x) => x.job && x.job !== 'guard')
+    if (pole) poleMember = { name: inject(pole, 'wpn-t2-tidebreak'), job: pole.job }
+    console.log(`  R3 注入:本命族=${homeMember ? homeMember.name + '(' + homeMember.job + ')' : '无'} 长柄=${poleMember ? poleMember.name + '(' + poleMember.job + ')' : '无'}`)
+  }
   const b = await openBrowser('ending')
   try {
     await b.send('Page.navigate', { url: pathToFileURL(HTML).href }); await sleep(2500)
     await importSave(b, encode(save))
+    // R3A:基地·武器专修区渲染五族
+    await clickText(b, '基地'); await sleep(600)
+    const fam = await b.evalJs(`(()=>{const g=document.querySelector('[aria-label="武器专修"]');if(!g)return null;return [...g.querySelectorAll('button')].map(x=>x.textContent.trim()).join('|')})()`)
+    check('R3A', '训练场·武器专修区渲染五族', fam && fam.split('|').length === 5 ? 'PASS' : 'FAIL', fam ?? '未找到 aria-label=武器专修')
+    await pressEscape(b); await sleep(300)
+    // R3B/R3C:花名册开档案——本命族成员 ✔ 熟练;长柄成员 ⚠ 非熟练·长柄
+    await clickText(b, '花名册'); await sleep(500)
+    const openProfile = async (name) => {
+      // 自导航:名册不在场才点「花名册」——功能坞按钮是开关式,名册开着时再点=关闭
+      const hasRoster = await b.evalJs(`!!document.querySelector('.member-card')`)
+      if (!hasRoster) { await clickText(b, '花名册'); await sleep(400) }
+      await b.evalJs(`(()=>{const cards=[...document.querySelectorAll('.member-card')];const t=cards.find((c)=>c.textContent.includes(${JSON.stringify(name)}));t?.querySelector('.mc-head')?.click()})()`)
+      await sleep(400)
+      const text = await b.evalJs(`document.querySelector('[data-testid="weapon-proficiency"]')?.textContent ?? null`)
+      await pressEscape(b); await sleep(250)
+      return text
+    }
+    if (homeMember) {
+      const prof = await openProfile(homeMember.name)
+      check('R3B', '本命族武器档案页示「✔ 熟练」', !!prof && prof.includes('熟练') && !prof.includes('非熟练') ? 'PASS' : 'FAIL', (prof ?? '元素缺失').slice(0, 60))
+    }
+    if (poleMember) {
+      const prof = await openProfile(poleMember.name)
+      check('R3C', '长柄注入后档案页示「非熟练·长柄」', !!prof && prof.includes('非熟练') && prof.includes('长柄') ? 'PASS' : 'FAIL', (prof ?? '元素缺失').slice(0, 60))
+    }
+    await pressEscape(b); await sleep(200)
     const t0 = Date.now()
     const r = await drive(b, { prio: ['荆棘要塞'], timeoutMs: 150_000 })
     await b.shot('ending')
