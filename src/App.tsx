@@ -10,7 +10,7 @@ import { COMMISSIONS, type CommissionDef } from './data/kingdom'
 import { acceptCommission, abandonCommission, advanceCommissions, claimCommission, newKingdomState, kingdomRank, kingdomTrust, royalPotionCost, type RoyalRewardChoice } from './sim/kingdom'
 import { useEffect, useRef, useState, useReducer, useMemo } from 'react'
 import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
-import { generateMember, maxHpOf, bondStars, xpNeeded, seedMemberSeq, reserveNames, rollSpec, memberGenerationState, restoreMemberGeneration } from './sim/gen'
+import { generateMember, maxHpOf, bondStars, seedMemberSeq, reserveNames, rollSpec, memberGenerationState, restoreMemberGeneration } from './sim/gen'
 import { statLayers } from './sim/combat'
 import { ITEM_BASES } from './data/items'
 import { describeEquipmentSet } from './sim/equipment-sets'
@@ -73,6 +73,7 @@ import { autoPickNode } from './sim/dungeon-map'
 import { restHealMult } from './sim/conditions'
 import { CONDITION_BY_ID } from './data/conditions'
 import { MapScreen } from './ui/screens/MapScreen'
+import { ResultScreen } from './ui/screens/ResultScreen'
 import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
 import { sortInventoryItems, INV_SORT_LABEL, type InvSort } from './ui/inventory-sort'
 import { nextBattleSpeed, speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
@@ -2814,63 +2815,15 @@ export default function App() {
           )}
 
           {finished && (
-            <>
-              <h2>远征结束</h2>
-              <div
-                className={`result-banner ${
-                  run!.phase === 'victory' ? 'win' : run!.phase === 'defeat' ? 'wipe' : 'win'
-                }`}
-              >
-                {run!.phase === 'victory'
-                  ? '★ 副本通关！（掉落与奖励已入仓库）'
-                  : run!.phase === 'defeat'
-                    ? '✝ 远征失败——阵亡的英雄已入纪念堂，愿他们安息'
-                    : '🏳 已撤退回城'}
-              </div>
-              {/* M1 P0 成长结算:这把你变强了什么(出击前快照 vs 现在) */}
-              {(() => {
-                const rows = runMembers(run!, membersRef.current).map((m) => {
-                  const snap = growthSnapshotRef.current.get(m.id)
-                  if (!snap) return null
-                  return { m, snap, power: powerScore(m) }
-                })
-                const survivors = runMembers(run!, membersRef.current).filter((m) => m.alive)
-                const pairs: { a: string; b: string; stars: number }[] = []
-                for (let i = 0; i < survivors.length; i++) {
-                  for (let j = i + 1; j < survivors.length; j++) {
-                    const stars = bondStars(survivors[i].bonds[survivors[j].id] ?? 0)
-                    if (stars > 0) pairs.push({ a: survivors[i].name, b: survivors[j].name, stars })
-                  }
-                }
-                return (
-                  <div className="inv-panel">
-                    <h2>📈 成长结算</h2>
-                    {rows.map((r) =>
-                      r ? (
-                        <div key={r.m.id} className={`growth-row${r.m.alive ? '' : ' dead'}`}>
-                          <span className="g-name">{r.m.alive ? r.m.name : `⚰ ${r.m.name}`}</span>
-                          <span>Lv{r.snap.level}→{r.m.level}</span>
-                          <span>
-                            战力 {r.snap.power}→{r.power}
-                            {r.power > r.snap.power ? `（+${r.power - r.snap.power}）` : ''}
-                          </span>
-                          <span className="g-exp">经验 {r.m.exp}/{xpNeeded(r.m.level)}</span>
-                        </div>
-                      ) : null,
-                    )}
-                    {pairs.length > 0 && (
-                      <p className="hint">
-                        🤝 默契:{pairs.map((p) => `${p.a} ↔ ${p.b} ${'★'.repeat(p.stars)}`).join('，')}
-                        （同队时每 ★ 全员伤害 +3%）
-                      </p>
-                    )}
-                  </div>
-                )
-              })()}
-              <div className="end-actions">
-                <button onClick={backToGuild}>← 返回公会</button>
-              </div>
-            </>
+            <ResultScreen
+              run={run!}
+              dungeonName={runDungeon(run!).name}
+              members={membersRef.current}
+              snapshot={growthSnapshotRef.current}
+              drops={lastDrops}
+              story={progress.notices.find((n) => n.startsWith('📖')) ?? null}
+              onBack={backToGuild}
+            />
           )}
         </div>
       </div>

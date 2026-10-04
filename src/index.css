@@ -938,3 +938,7 @@ button.primary:hover:not(:disabled) {
 }
 .dg-intel p { margin: 4px 0 0; }
 .dg-intel .dg-risk { color: #d48f8f; }
+
+/* ===== U29 独立结算屏(R2-4) ===== */
+.result-screen { max-width: 860px; margin: 0 auto; }
+.result-banner.xl { font-size: 1.25em; padding: 18px 20px; letter-spacing: 0.12em; text-align: center; }
