@@ -304,6 +304,17 @@ export function createBattle(
       boss.summonPool = dungeon.enemyGroups[String(sumMech.params.groupId)] ?? []
       boss.scaleFactors = factors
     }
+    // U28 变体:克隆机制表再改写——原型 BossDef 与原 encounters 不被污染(门禁直连不受影响)
+    if (enc.variant) {
+      const clone = def.mechanics.map((m) => ({ ...m, params: { ...m.params } }))
+      if (enc.variant.startEnrage !== undefined) {
+        const enrage = clone.find((m) => m.kind === 'enrage')
+        if (enrage) { enrage.params.atTick = 0; enrage.params.attackMult = enc.variant.startEnrage }
+      }
+      if (enc.variant.addMechanics?.length) clone.push(...enc.variant.addMechanics.map((m) => ({ ...m, params: { ...m.params } })))
+      boss.bossMechanics = clone
+      if (enc.variant.name) boss.name = enc.variant.name
+    }
     combatants.push(boss)
   }
 
@@ -355,6 +366,9 @@ export function createBattle(
     pushLog(state, 'system', '地面滚烫,热浪灼人——没有火抗的队伍会一直流血汗。')
   }
   pushLog(state, 'system', `—— ${enc.name} 战斗开始 ——`)
+  if (enc.variant) {
+    pushLog(state, 'system', `⚠ 眼前的 ${enc.variant?.name ?? enc.name} 与传闻中的同类不同——一现身就已在狂怒。`)
+  }
   return JSON.parse(JSON.stringify(state)) as BattleState
 }
 

@@ -142,6 +142,9 @@ export const BLACKMOSS: DungeonDef = {
     { id: 'enc-leeches', name: '沼泽水蛭', kind: 'wave', enemyGroupIds: ['leeches'] },
     { id: 'enc-grush', name: '沼泽食人魔·格鲁什', kind: 'boss', enemyGroupIds: [], bossId: 'grush' },
     { id: 'enc-talma', name: '深渊祭司·塔尔玛', kind: 'boss', enemyGroupIds: [], bossId: 'talma' },
+    // U28 变体(地图 Boss 链第二场):开局狂暴 ×1.35 + 渊底低语(自愈咏唱,逼打断优先级抉择);原 enc-talma 保留供门禁直连
+    { id: 'enc-talma-risen', name: '深渊狂信·塔尔玛', kind: 'boss', enemyGroupIds: [], bossId: 'talma', bossVariantOf: 'enc-talma',
+      variant: { name: '深渊狂信·塔尔玛', startEnrage: 1.35, addMechanics: [{ id: 'talma-whisper', kind: 'cast-heal', name: '渊底低语', params: { castTicks: 30, healAmount: 140, everyTicks: 300, breakDamage: 110 } }] } },
     { id: 'enc-quirrel', name: '蛙人狼群混编', kind: 'wave', enemyGroupIds: ['frogs-frail', 'wolves'] },
     { id: 'enc-mire', name: '水蛭蛙人沼腹', kind: 'wave', enemyGroupIds: ['leeches', 'frogs-frail'] },
   ],
@@ -681,6 +684,9 @@ export const THORNHOLD: DungeonDef = {
     { id: 'enc-heavies', name: '重斧亲卫', kind: 'wave', enemyGroupIds: ['heavies'] },
     { id: 'enc-colt', name: '掌旗官·科尔特', kind: 'boss', enemyGroupIds: [], bossId: 'colt' },
     { id: 'enc-victor', name: '割据团长·维克托', kind: 'boss', enemyGroupIds: [], bossId: 'victor' },
+    // U28 变体(地图 Boss 链第二场):开局狂暴 ×1.3 + 割据者威压(龙威光环,逼打断/补伤害抉择);原 enc-victor 保留供门禁直连
+    { id: 'enc-victor-sovereign', name: '割据君王·维克托', kind: 'boss', enemyGroupIds: [], bossId: 'victor', bossVariantOf: 'enc-victor',
+      variant: { name: '割据君王·维克托', startEnrage: 1.3, addMechanics: [{ id: 'victor-pressure', kind: 'fear-aura', name: '割据者威压', params: { castTicks: 30, durationTicks: 180, everyTicks: 320, breakDamage: 120 } }] } },
     { id: 'enc-siege', name: '攻城混编', kind: 'wave', enemyGroupIds: ['swords', 'heavies'] },
     { id: 'enc-vanguard2', name: '前卫余部', kind: 'wave', enemyGroupIds: ['honor-frail', 'mercs-frail'] },
   ],

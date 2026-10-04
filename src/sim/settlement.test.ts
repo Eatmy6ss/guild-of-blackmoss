@@ -4,7 +4,7 @@ import { BLACKMOSS, THORNHOLD } from '../data/dungeons'
 import { ECONOMY } from '../data/economy'
 import { ITEM_BASES } from '../data/items'
 import { baseEffects } from '../data/base'
-import { markPermadeath, settleGrowth } from './run'
+import { markPermadeath, settleGrowth, bossSequence } from './run'
 import { towerGold, towerExp, towerItemTier } from './tower'
 import { generateMember, xpNeeded } from './gen'
 import { createRng } from './rng'
@@ -30,13 +30,14 @@ function guild(members = roster()): EncounterGuild {
     recruitCooldown: 2, day: 7, buildings: {}, factLedger: { ...EMPTY_LEDGER }, chronicle: [{ seq: 15, day: 6, text: '既有故事' }] }
 }
 
-/** R1.1 夹具:把 run 送到 Boss 节点并推进到末位 boss(双 boss 副本伪造前一场已胜) */
+/** R1.1 夹具:把 run 送到 Boss 节点并推进到末位 boss(双 boss 副本伪造前一场已胜)。
+ *  U28 后链上末位可能是变体遭遇——伪造前一场必须用 bossSequence(链口径),不能用原始 encounters 数组 */
 function beginBossFinal(r: ReturnType<typeof createRun>, dungeon: typeof BLACKMOSS | typeof THORNHOLD, seed: number) {
   const bossNode = r.map.layers[r.map.layers.length - 1]![0]!
   r.nodeId = bossNode.id
   r.path = [bossNode.id]
-  const bosses = dungeon.encounters.filter(e => e.kind === 'boss')
-  const prior = bosses.length > 1 ? bosses[bosses.length - 2]!.id : undefined
+  const chain = bossSequence(dungeon)
+  const prior = chain.length > 1 ? chain[chain.length - 2]!.id : undefined
   if (prior) {
     r.battlesFought = 1
     r.battle = { encounterId: prior, status: 'guild-win', combatants: [], log: [], events: [], tick: 0, rngState: 1,

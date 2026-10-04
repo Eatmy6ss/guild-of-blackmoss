@@ -34,7 +34,7 @@ import { bossIntents, processBossMechanics } from '../src/sim/mechanics'
 import { applyMoraleDelta } from '../src/sim/morale'
 import { chronicleRaw } from '../src/sim/chronicle'
 import { rollDrop } from '../src/sim/loot'
-import { markPermadeath, settleGrowth, mapOptions, moveTo, nextBossEncounter, revealTier, MASTERY } from '../src/sim/run'
+import { markPermadeath, settleGrowth, mapOptions, moveTo, nextBossEncounter, bossSequence, revealTier, MASTERY } from '../src/sim/run'
 import { generateMap, nodeById } from '../src/sim/dungeon-map'
 import type { Member } from '../src/sim/types'
 import { JOBS as JOB_TABLE, type JobId } from '../src/data/jobs'
@@ -1345,7 +1345,8 @@ const towerFailures: string[] = []
   }
   for (const d of DUNGEONS) {
     const waveEnc = d.encounters.find((e) => e.kind === 'wave')
-    const bossEncs = d.encounters.filter((e) => e.kind === 'boss')
+    // U28 变体遭遇不在 ⑲ 直连考试里(它们是地图 Boss 链专用,数值为结构占位;原型场照考)
+    const bossEncs = d.encounters.filter((e) => e.kind === 'boss' && !e.bossVariantOf)
     if (!waveEnc || bossEncs.length === 0) {
       fail19.push(`⑲ ${d.id} 缺 wave/boss 场`)
       continue
@@ -2445,7 +2446,7 @@ const towerFailures: string[] = []
     run.path = [bossNode.id]
     run.battle = null
     run.phase = 'rest'
-    const seq = run.dungeon.encounters.filter((e) => e.kind === 'boss')
+    const seq = bossSequence(run.dungeon)
     startStep(run, 777)
     if (run.battle!.encounterId !== seq[0]!.id) fail34.push(`㉞ Boss 首场应为 ${seq[0]!.id},得 ${run.battle!.encounterId}`)
     run.battle!.status = 'guild-win'
@@ -2453,6 +2454,18 @@ const towerFailures: string[] = []
     if (run.phase !== 'rest') fail34.push(`㉞ 双 Boss 首场后应回 rest,得 ${run.phase}`)
     startStep(run, 778)
     if (run.battle!.encounterId !== seq[1]!.id) fail34.push(`㉞ Boss 连战第二场应为 ${seq[1]!.id},得 ${run.battle!.encounterId}`)
+    // U28:链上第二场是变体——开局狂暴+新机制,bossId 与原型一致
+    {
+      const venc = seq[1]!
+      if (!venc.bossVariantOf || !venc.variant) fail34.push('㉞ 双 Boss 链第二场应挂变体(U28)')
+      const vb = run.battle!
+      const vboss = vb.combatants.find((c) => c.boss)
+      if (!vboss || !vboss.name.includes('狂信')) fail34.push(`㉞ 变体名未生效:${vboss?.name}`)
+      if (!vboss?.bossMechanics?.some((m) => m.kind === 'cast-heal')) fail34.push('㉞ 变体新机制缺失')
+      const baseEnc = run.dungeon.encounters.find((e) => e.id === venc.bossVariantOf)!
+      const baseBoss = run.dungeon.bosses[baseEnc.bossId!]
+      if (baseBoss.mechanics.find((m) => m.kind === 'enrage')!.params.atTick !== 140) fail34.push('㉞ 原型机制被污染(应保留 atTick=140)')
+    }
     run.battle!.status = 'guild-win'
     advanceRun(run)
     if (run.phase !== 'victory') fail34.push(`㉞ Boss 全部打完应通关,得 ${run.phase}`)

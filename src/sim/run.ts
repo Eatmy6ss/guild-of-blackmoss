@@ -50,9 +50,12 @@ export interface DungeonRun extends RunCore {
   rareHunt?: { mult: number; rewardMult: number }
 }
 
-/** 副本的全部 boss 遭遇(按 encounters 顺序,双 boss 副本在 Boss 节点依次连战) */
+/** 副本的 Boss 链遭遇(按 encounters 顺序):有变体(U28)的原型位由变体顶替——
+ *  双 Boss 副本第二场 = 怪物猎人式变体;原 encounters 保留供 ⑲ 门禁直连单场调用 */
 export function bossSequence(dungeon: DungeonDef): EncounterDef[] {
-  return dungeon.encounters.filter((e) => e.kind === 'boss')
+  const bosses = dungeon.encounters.filter((e) => e.kind === 'boss')
+  const variants = new Map(bosses.filter((e) => e.bossVariantOf).map((e) => [e.bossVariantOf!, e] as const))
+  return bosses.filter((e) => !e.bossVariantOf).map((e) => variants.get(e.id) ?? e)
 }
 
 /** Boss 节点的下一场:按已打完的 boss 遭遇推进一步;全部打完返回 null */

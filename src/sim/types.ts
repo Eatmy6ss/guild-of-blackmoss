@@ -382,6 +382,11 @@ export interface EncounterDef {
   kind: 'wave' | 'boss'
   enemyGroupIds: string[]
   bossId?: string
+  /** U28(制作人 2026-10-04,怪物猎人式变体):本遭遇是 bossVariantOf 指向的原型遭遇的「地图 Boss 链变体」——
+   *  链上用变体替换原型;bossId 不变(首杀/手册/委托/位阶键零迁移);原 encounters 保留供门禁直连单场。 */
+  bossVariantOf?: string
+  /** 变体参数:开局狂暴(克隆原型机制,把 enrage 改为 atTick=0)+ 新增机制(kind 不得与原型重叠) */
+  variant?: { name?: string; startEnrage?: number; addMechanics?: BossMechanicDef[] }
 }
 
 export interface DungeonDef {
