@@ -837,10 +837,10 @@ test('tower manual stepping updates the authoritative battle, not the UI snapsho
   const t = startTower(squad(),81)
   const snapshot = {...t.battle!}
   let synced: unknown, running = true
-  callback('const current = towerRunRef.current?.battle', {
-    towerRunRef:{current:t}, battle:snapshot, stepBattle,
-    setTowerRunning:(v:boolean)=>{running=v},
-    drainAndSync:(b:unknown)=>{synced=b},
+  // R5.2c:×10 步进处理器迁 TowerScreens.tsx,自由标识符经 props(锚与作用域随新文本)
+  callback('const current = props.towerRunRef.current?.battle', {
+    props:{ towerRunRef:{current:t}, setTowerRunning:(v:boolean)=>{running=v}, drainAndSync:(b:unknown)=>{synced=b} },
+    stepBattle,
   })()
   assert.equal(t.battle!.tick,10)
   assert.equal(snapshot.tick,0)
@@ -1065,7 +1065,10 @@ test('pre-departure run buffs persist and apply to exactly the next expedition, 
 test('automatic toggle persists beyond the current battle into run and repeat state', () => {
   const b = beginBattle(createRun(squad(),BLACKMOSS,49),49).battle!
   const runRef = {current:{autoMode:false}}, autoLoopRef={current:false}
-  const toggle = callback('autoLoopRef.current = b.commands.autoMode',{runRef,autoLoopRef})
+  // R5.2c:挂机开关箭头迁 BattleScreen.tsx(autoLoop/run 写入经 props.autoLoopSet/runAutoOff)
+  const toggle = callback('props.autoLoopSet(b.commands.autoMode)',{
+    props:{ autoLoopSet:(v:boolean)=>{autoLoopRef.current=v}, runAutoSet:(v:boolean)=>{ if (runRef.current) runRef.current.autoMode = v } },
+  })
   toggle(b)
   assert.equal(b.commands.autoMode,true); assert.equal(runRef.current.autoMode,true); assert.equal(autoLoopRef.current,true)
   toggle(b)

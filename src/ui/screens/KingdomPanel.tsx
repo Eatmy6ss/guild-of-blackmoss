@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { COMMISSIONS, COMMISSION_LIMIT, KINGDOM_NAME, KINGDOM_RANKS, type CommissionDef } from '../data/kingdom'
-import { commissionLock, commissionReward, kingdomRank, kingdomTrust, royalPotionCost, type KingdomContext, type KingdomState, type RoyalRewardChoice } from '../sim/kingdom'
-import { describeItem } from '../sim/loot'
+import { COMMISSIONS, COMMISSION_LIMIT, KINGDOM_NAME, KINGDOM_RANKS, type CommissionDef } from '../../data/kingdom'
+import { commissionLock, commissionReward, kingdomRank, kingdomTrust, royalPotionCost, type KingdomContext, type KingdomState, type RoyalRewardChoice } from '../../sim/kingdom'
+import { describeItem } from '../../sim/loot'
 
 interface Props {
   state: KingdomState

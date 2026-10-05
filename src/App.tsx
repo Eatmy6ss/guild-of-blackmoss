@@ -1,42 +1,34 @@
 import { HeroPortrait, ArtCanvas } from './ui/art/ArtCanvas'
-import { itemIcon, DOCK_ART } from './ui/art/catalog'
+import { itemIcon } from './ui/art/catalog'
 import { BattleIntel } from './ui/art/BattleIntel'
 import { CreditsDialog } from './ui/art/Credits'
-import { KingdomPanel } from './ui/KingdomPanel'
+import { KingdomPanel } from './ui/screens/KingdomPanel'
 import { SaveTransferPanel } from './ui/SaveTransferPanel'
-import { StatisticsPanel } from './ui/StatisticsPanel'
+import { StatisticsPanel } from './ui/screens/StatisticsPanel'
 import { newStatistics, recordStatistics, expeditionStatistics, type StatisticsAction, type GoldSource } from './sim/statistics'
 import { COMMISSIONS, type CommissionDef } from './data/kingdom'
 import { acceptCommission, abandonCommission, advanceCommissions, claimCommission, newKingdomState, kingdomRank, kingdomTrust, royalPotionCost, type RoyalRewardChoice } from './sim/kingdom'
 import { useEffect, useRef, useState, useReducer } from 'react'
-import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot, Stance } from './sim/types'
+import type { BattleState, DeadHero, ItemInstance, JobId, Member, Slot } from './sim/types'
 import { generateMember, maxHpOf, bondStars, seedMemberSeq, reserveNames, rollSpec, memberGenerationState, restoreMemberGeneration } from './sim/gen'
 import { ITEM_BASES } from './data/items'
 import { RACES } from './data/races'
-import { guildGoals } from './sim/goals'
 import { guildRankOf } from './sim/rank'
 import { applyFeast, applyRestMorale, refusesToMarch } from './sim/morale'
 import { chronicleFeast, chronicleRefusal, chronicleRecruit, chronicleBuilding, moraleReadout, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import {
   TICK_MS,
   stepBattle,
-  setStance,
   setFocus,
-  useHealPotion,
-  useFuryPotion,
   orderRetreat,
   useSignature,
-  STANCE_NAME,
   toCombatant,
 } from './sim/combat'
-import { SignatureBar } from './ui/battle/SignatureBar'
-import { BattleHints } from './ui/battle/BattleHints'
-import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE, FIRST_RETURN_TIP } from './data/tutorial'
+import { DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { tellExpedition } from './sim/storyteller'
-import { SIGNATURE_SKILLS } from './data/signature'
 import { WEAPON_FAMILIES, setGuildLearnedFamilies } from './data/weapon-families'
-import { MemberPanel } from './ui/MemberPanel'
+import { MemberPanel } from './ui/screens/MemberPanel'
 import { renderWarReportCard, downloadWarReportCard } from './ui/war-report-card'
 import { createRng } from './sim/rng'
 import {
@@ -65,7 +57,7 @@ import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, setMusicMood, toggleMute, isMuted, setVolume, getVolume, sfxVictory, sfxDefeat, sfxCoin, sfxVisitor, sfxCmd } from './ui/audio'
 import { bossIntents } from './sim/mechanics'
 import { BLACKMOSS, DUNGEONS } from './data/dungeons'
-import { startTower, insureNextTowerFloor, towerRest, towerNext, towerFloorIsBoss, type TowerRun } from './sim/tower'
+import { startTower, towerRest, towerNext, type TowerRun } from './sim/tower'
 import { revealTier, moveTo, mapOptions, currentNode, nextBossEncounter } from './sim/run'
 import { autoPickNode } from './sim/dungeon-map'
 import { restHealMult, terrainEntryReward, revealPenaltyLayers } from './sim/conditions'
@@ -83,8 +75,12 @@ import { TitleScreen } from './ui/screens/TitleScreen'
 import { attrsLine, personalityLine } from './ui/screens/member-lines'
 import { WarehouseScreen } from './ui/screens/WarehouseScreen'
 import { HUB_DOCK, backTargetOf, type Screen } from './ui/screens'
+import { EventModal } from './ui/screens/EventModal'
+import { BattleScreen } from './ui/screens/BattleScreen'
+import { TowerBattleScreen, TowerRestScreen, TowerEndedScreen } from './ui/screens/TowerScreens'
+import { HallScreen } from './ui/screens/HallScreen'
 import { type InvSort } from './ui/inventory-sort'
-import { nextBattleSpeed, speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
+import { speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
 import { ECONOMY } from './data/economy'
 import { BUILDINGS, baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, sellValue, cooldownNeeded, offlineGain } from './sim/tavern'
@@ -1751,131 +1747,23 @@ export default function App() {
         onImportSave={() => setSaveTransfer({ mode: 'import', code: '' })}
       />}
       <div className={`layout${inBattle || inTowerBattle ? ' battle-mode' : ''}`}>
-        <div className="panel hub-panel">
-          <div className="hub-topbar">
-            <span className="hub-title">🏰 黑苔公会</span>
-            <span>第 {day} 日</span>
-            <span>💰 {gold}</span>
-            <span>🕯 {blessing}</span>
-            <span>👥 {members.filter((m) => m.alive).length}/{ROSTER_CAP}</span>
-            <span>🧪 {potions.heal}</span>
-            <span>⚡ {potions.fury}</span>
-            <span className="tb-volume">
-              <button className="tb-mute" aria-label={muted ? "开启声音" : "静音"} title={muted ? "开启声音" : "静音"} onClick={() => { initAudio(); setMuted(toggleMute()) }}>{muted ? '🔇' : '🔊'}</button>
-              <input className="tb-volume-slider" type="range" min={0} max={100} value={Math.round(volume * 100)} aria-label="主音量" title="主音量"
-                onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }} />
-              {__PLAYTEST__ && <button className="tb-mini" title="导出试玩记录 JSON" onClick={() => { initAudio(); exportPlaytestReport() }}>📤</button>}
-              {__PLAYTEST__ && <button className="tb-mini" title="生成战报卡 PNG" onClick={() => { initAudio(); makeWarReportCard() }}>📷</button>}
-            </span>
-          </div>
-          <h2>公会大厅</h2>
-          <div className="hub-dock">
-            {HUB_DOCK.map((it) => {
-              const unlockDay = DOCK_UNLOCK_DAY[it.key] ?? 1
-              const locked = !dockUnlocked(it.key)
-              return (
-              <button
-                key={it.key}
-                disabled={!!run || !!towerRun || locked}
-                className={`dock-btn${screen === it.key ? ' open' : ''}`}
-                onClick={() => go(screen === it.key ? 'hall' : it.key)}
-              >
-                <span className="dock-icon"><ArtCanvas paths={[DOCK_ART[it.key] ?? '/assets/icons/book.png']} label="" size={32} /></span>
-                <span className="dock-label">{locked ? `${it.label}·第${unlockDay}天` : it.label}</span>
-                <span className="dock-key">{locked ? '🔒' : it.hotkey}</span>
-              </button>
-              )
-            })}
-          </div>
-          {(() => {
-            const masteryTotal = Object.values(dungeonMastery).reduce((a, b) => a + b, 0)
-            const goals = guildGoals({ members, inventory, manual, expedition, towerBest, masteryTotal, kingdomDone: kingdom.completed.length })
-            const cur = goals.find((g) => !g.done)
-            const rank = guildRankOf(manual)
-            const showFirstReturnTip = hintsSeen.includes('first-return-done') && !hintsSeen.includes('first-return-tip-done')
-            return (
-              <>
-                {showFirstReturnTip && (
-                  <div className="first-return-tip">
-                    <span>💡 {FIRST_RETURN_TIP}</span>
-                    <button onClick={() => dismissHint('first-return-tip-done')}>知道了</button>
-                  </div>
-                )}
-                <p className="hub-goal">
-                  🏅 公会位阶:{rank.name}{rank.promotion
-                    ? ` —— 晋升委托:${rank.promotion.text}`
-                    : '(位阶完整版随首轮试玩反馈开启)'}
-                </p>
-                <p className="hub-goal">
-                  📋 当前目标:{cur ? cur.text : '全部达成!'}{cur?.progress ? `(${cur.progress})` : ''}
-                </p>
-              </>
-            )
-          })()}
-          <button className="royal-hub-link" disabled={!!run || !!towerRun || !dockUnlocked('kingdom')} onClick={() => go('kingdom')}>
-            <span>♜ {kingdomRank(kingdom).name} · 信任 {kingdomTrust(kingdom)}</span>
-            <span>{!dockUnlocked('kingdom') ? '第 4 天开放' : kingdom.active.some((r) => r.progress >= COMMISSIONS.find((q) => q.id === r.id)!.objective.target)
-              ? '有委托可交付 →' : kingdom.active.length ? `在办委托 ${kingdom.active.length}/2 · 查看进度 →` : kingdom.completed.length === COMMISSIONS.length ? '本批委托已结案 · 回信档案 →' : '王国来函 · 查看委托 →'}</span>
-          </button>
+        <HallScreen
+          screen={screen} day={day} gold={gold} blessing={blessing} members={members} potions={potions}
+          muted={muted} volume={volume} towerBest={towerBest} towerUnlocked={towerUnlocked}
+          canExpedition={canExpedition} busy={!!run || !!towerRun} kingdom={kingdom}
+          dungeonMastery={dungeonMastery} inventory={inventory as never} expedition={expedition as never} manual={manual}
+          hintsSeen={hintsSeen} playtest={!!__PLAYTEST__} dockUnlocked={dockUnlocked} go={go}
+          enterTower={enterTower} restartAsk={() => setConfirmAsk({ text: '确定重开公会？所有英雄、装备与纪念堂记录将全部清空。', okLabel: '☠ 确认清空', onOk: () => restartGuild() })}
+          initAudio={initAudio} setMuted={setMuted} toggleMute={toggleMute} setVolume={setVolume} setVolumeState={setVolumeState}
+          exportPlaytestReport={exportPlaytestReport} makeWarReportCard={makeWarReportCard} dismissHint={dismissHint}
+        >
           {screen === 'kingdom' && !run && !towerRun && <KingdomPanel state={kingdom} context={royalContext} notice={royalNotice} playtestLock={(d) => !playtestAllows(d)}
             onClose={() => goBack()} onAccept={acceptRoyal} onClaim={claimRoyal} onTravel={travelRoyal}
             onAbandon={(id) => { if (runRef.current || towerRunRef.current) return; updateKingdom(abandonCommission(kingdomRef.current, id)); setRoyalNotice('委托已撤销，可重新接取。王国信任不变。') }} />}
-          <div className="inv-panel tower-entry">
-            <h2>🗼 黑苔高塔 —— 最高纪录 第 {towerBest} 层</h2>
-            <p className="hint">
-              逐层深入，敌人逐层变强；每 3 层遭遇守塔 boss。第 5 层起药水减半，
-              <b style={{ color: '#d48f8f' }}>第 9 层起撤退保护失效</b>。奖励逐层立即入账，随时可带着离开。
-            </p>
-            <p className="hint">
-              ⚔ 大秘境：守塔 boss 必掉装备，层数越深奖励越厚。纪录只认亲手挑战——挂机者不受青史留名。
-            </p>
-            {towerUnlocked ? (
-              <button className="branch-btn primary" disabled={!canExpedition} onClick={enterTower}>
-                🗼 进入高塔（从第 1 层开始）
-              </button>
-            ) : (
-              <p className="hint">🔒 击败深渊祭司·塔尔玛后解锁</p>
-            )}
-          </div>
-          <p className="hint hub-keys">
-            快捷键:Q 王国委托 · C 花名册 · T 酒馆 · B 仓库 · N 基地 · J 大事记 · H 名人堂 · K 手册 · Esc 关闭
-          </p>
-          <div className="end-actions">
-            <button onClick={() => setConfirmAsk({ text: '确定重开公会？所有英雄、装备与纪念堂记录将全部清空。', okLabel: '☠ 确认清空', onOk: () => restartGuild() })}>☠ 重开公会</button>
-          </div>
           {screen !== 'title' && pendingEvent && (
-            <div className="screen-overlay event-overlay">
-              <div className="screen-panel event-modal">
-                <div className="screen-head">
-                  <h2>⚖ {pendingEvent.title}</h2>
-                </div>
-                {eventResult ? (
-                  <>
-                    <p className="event-result">{eventResult}</p>
-                    {eventImpacts.length > 0 && (
-                      <div className="event-impacts">
-                        {eventImpacts.map((im, i) => (
-                          <span key={i} className={`impact-chip${im.tone ? ` impact-${im.tone}` : ''}`}>{im.t}</span>
-                        ))}
-                      </div>
-                    )}
-                    <button onClick={dismissEvent}>知道了</button>
-                  </>
-                ) : (
-                  <>
-                    <p className="event-text">{pendingEvent.text}</p>
-                    <div className="event-choices">
-                      {pendingEvent.choices.map((c, i) => (
-                        <button key={i} disabled={!!run && run.phase === 'battle'} onClick={() => resolveEvent(i)}>
-                          {c.text}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-                </div>
-              </div>
-            )}
+            <EventModal event={pendingEvent} result={eventResult} impacts={eventImpacts}
+              inBattle={!!run && run.phase === 'battle'} onResolve={resolveEvent} onDismiss={dismissEvent} />
+          )}
             {screen === 'tavern' && <TavernScreen gold={gold} blessing={blessing} members={members}
               visitor={visitor} candidates={candidates} effectiveCooldown={effectiveCooldown} busy={!!run || !!towerRun}
               onFeast={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); for (const d of membersRef.current) { if (d.alive && d.trait === 'drinker') d.morale = Math.min(100, (d.morale ?? 60) + Math.round(baseEffects(buildings).feastBoost * 0.5)) } setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
@@ -1944,7 +1832,7 @@ export default function App() {
             {screen === 'manual' && <ManualScreen manual={manual} eventsSeen={eventsSeen} protectOn={protectOn} onToggleProtect={() => setProtectOn((p) => !p)} onBack={goBack} />}
             {screen === 'roster' && <RosterScreen members={members} renderMemberCard={memberCard} onBack={goBack} />}
             {screen === 'statistics' && <StatisticsPanel statistics={statistics} day={day} onClose={() => back()} onBack={() => go('chronicle')} />}
-        </div>
+        </HallScreen>
 
         <div className={`panel${inBattle || inTowerBattle ? ' battle-panel' : ''}`}>
           {(inBattle || inTowerBattle) && battle && <BattleIntel battle={battle} members={members} mapId={battleMapId} paused={inTowerBattle ? !towerRunning : !running} />}
@@ -1956,369 +1844,38 @@ export default function App() {
             onSelectDungeon={setDungeonId} onDepart={() => startExpeditionRef.current?.()} />}
 
 
-          {screen === 'battle' && run && inBattle && (
-            <>
-              <h2>
-                {encName(run, run.battle?.encounterId ?? '')}（第 {run.battlesFought} 场）
-              </h2>
-              {/* ===== 团长指挥台（Q27）===== */}
-              {battle && battle.status === 'running' && (
-                <div className="cmd-bar">
-                  <button
-                    className={battle.commands.autoMode ? 'active' : ''}
-                    onClick={() =>
-                      cmd(
-                        (b) => {
-                          b.commands.autoMode = !b.commands.autoMode
-                          autoLoopRef.current = b.commands.autoMode
-                          if (runRef.current) runRef.current.autoMode = b.commands.autoMode
-                        },
-                        true,
-                      )
-                    }
-                  >
-                    🤖 挂机{battle.commands.autoMode ? '中（队长代打）' : ''}
-                  </button>
-                  <span className="cmd-label">│</span>
-                  <span className="cmd-label">阵型</span>
-                  {(Object.keys(STANCE_NAME) as Stance[]).map((s) => (
-                    <button
-                      key={s}
-                      className={
-                        (battle.commands.stance === s ? 'active' : '') +
-                        (intents?.telegraphing && s === 'spread' ? ' urgent' : '')
-                      }
-                      disabled={battle.commands.autoMode}
-                      onClick={() => {
-                        sfxCmd()
-                        cmd((b) => setStance(b, s))
-                      }}
-                    >
-                      {STANCE_NAME[s]}
-                    </button>
-                  ))}
-                  <span className="cmd-label">│</span>
-                  <button
-                    onClick={() => {
-                      sfxCmd()
-                      cmd(useHealPotion)
-                    }}
-                    disabled={
-                      battle.commands.autoMode ||
-                      battle.commands.healStock <= 0 ||
-                      battle.commands.healCd > 0
-                    }
-                  >
-                    💊 治疗药×{battle.commands.healStock}
-                    {battle.commands.healCd > 0 ? `（${Math.ceil(battle.commands.healCd / 10)}s）` : ''}
-                  </button>
-                  <button
-                    onClick={() => {
-                      sfxCmd()
-                      cmd(useFuryPotion)
-                    }}
-                    disabled={
-                      battle.commands.autoMode ||
-                      battle.commands.furyStock <= 0 ||
-                      battle.commands.furyCd > 0
-                    }
-                  >
-                    ⚡ 爆发药×{battle.commands.furyStock}
-                    {battle.commands.furyCd > 0 ? `（${Math.ceil(battle.commands.furyCd / 10)}s）` : ''}
-                  </button>
-                  <span className="cmd-label">│</span>
-                  <button
-                    className={battle.commands.protectRetreat ? 'active' : ''}
-                    disabled={battle.commands.autoMode}
-                    onClick={() =>
-                      cmd((b) => {
-                        b.commands.protectRetreat = !b.commands.protectRetreat
-                      })
-                    }
-                  >
-                    🛡 保护{battle.commands.protectRetreat ? '开' : '关'}
-                  </button>
-                  {intents?.casting && intents.casterId && !battle.commands.autoMode && (
-                    <button
-                      className="urgent"
-                      onClick={() => {
-                        if (!intents?.casterId) return
-                        sfxCmd()
-                        cmd((b) => setFocus(b, intents.casterId))
-                      }}
-                    >
-                      ⚔ 打断咏唱！
-                    </button>
-                  )}
-                  {battle.commands.focusId && (
-                    <button
-                      className="focus-tag"
-                      disabled={battle.commands.autoMode}
-                      onClick={() => cmd((b) => setFocus(b, undefined))}
-                    >
-                      ✕ 取消集火
-                    </button>
-                  )}
-                  {battle.commands.extractingUntil !== undefined ? (
-                    <button disabled>
-                      🏳 撤离中…{Math.max(0, Math.ceil((battle.commands.extractingUntil - battle.tick) / 10))}s
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        sfxCmd()
-                        retreat()
-                      }}
-                      disabled={battle.commands.autoMode}
-                    >
-                      🏳 撤退令
-                    </button>
-                  )}
-                </div>
-              )}
-              <div className="enc-row">
-                <button onClick={() => setRunning((r) => !r)} disabled={battleOver}>
-                  {running ? '⏸ 暂停' : '⏵ 继续'}
-                </button>
-                <button onClick={stepTen} disabled={battleOver || running}>
-                  ⏩ ×10 tick
-                </button>
-                <button onClick={finishBattle} disabled={battleOver || running}>
-                  ⏭ 跑到结束
-                </button>
-                <button
-                  className="speed-btn"
-                  disabled={battleOver}
-                  title="实时推进速度"
-                  onClick={() => { const next = nextBattleSpeed(battleSpeed); setBattleSpeed(next); try { localStorage.setItem('gg-speed', String(next)) } catch { /* 会话级回落 */ } }}
-                >
-                  ⏩ {battleSpeed}×
-                </button>
-                <span className="tick-info">tick {battle?.tick ?? 0}</span>
-              </div>
-              {(inBattle || inTowerBattle) && battle && battle.status === 'running' && !battleOver && (
-                <BattleHints
-                  hints={BATTLE_HINTS.filter((h) => !hintsSeen.includes(h.id) && (h.applies?.({ hasSignature: battle.combatants.some((c) => c.team === 'guild' && c.alive && !!c.specId && SIGNATURE_SKILLS[c.specId]) }) ?? true)).map(({ id, text }) => ({ id, text }))}
-                  onDismiss={dismissHint}
-                />
-              )}
-              {(inBattle || inTowerBattle) && battle && battle.status === 'running' && (
-                <SignatureBar
-                  battle={battle}
-                  casterId={intents?.casterId}
-                  focusId={battle.commands.focusId}
-                  onUse={(memberId, targetId) => { setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 })); useSignature(battle, memberId, targetId) }}
-                />
-              )}
-              {battle && !battleOver && (
-                <p className="hint">
-                  点击场上敌人 = 集火 · boss 蓄力出现红条倒计时 = 切「分散」减伤 · boss 出现紫条咏唱 = 点「打断咏唱！」 ·
-                  狂暴前 = 爆发药或撤退令 · 倒下即永久牺牲
-                </p>
-              )}
-              {battleOver && (
-                <div
-                  className={`result-banner ${
-                    battle!.status === 'guild-win'
-                      ? 'win'
-                      : battle!.status === 'retreated'
-                        ? 'win'
-                        : 'wipe'
-                  }`}
-                >
-                  {battle!.status === 'guild-win'
-                    ? '★ 战斗胜利'
-                    : battle!.status === 'retreated'
-                      ? '🏳 已撤离'
-                      : '✝ 队伍全灭'}
-                </div>
-              )}
-              {battleOver && progress.lastSummary && (
-                <div className="battle-summary">
-                  {progress.lastSummary.deaths.length > 0 && (
-                    <div className="bs-row">
-                      <span className="bs-label">阵亡</span>
-                      <span className="bs-text">
-                        {progress.lastSummary.deaths.map((d) =>
-                          d.name + '(' + d.cause + (d.killerName ? ' · 出手者 ' + d.killerName : '') + ')',
-                        ).join(';')}
-                      </span>
-                    </div>
-                  )}
-                  {progress.lastSummary.wiped && progress.lastSummary.topDamage.length > 0 && (
-                    <div className="bs-row">
-                      <span className="bs-label">败因</span>
-                      <span className="bs-text">
-                        {progress.lastSummary.topDamage.map((t) => t.name + ' 输出 ' + t.amount).join(' · ')}
-                      </span>
-                    </div>
-                  )}
-                  {progress.lastSummary.moments.length > 0 && (
-                    <div className="bs-row">
-                      <span className="bs-label">关键时刻</span>
-                      <span className="bs-text">{progress.lastSummary.moments.join(' · ')}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              {battle && (
-                <div
-                  className="log-box"
-                  ref={logBoxRef}
-                  onScroll={(e) => {
-                    const box = e.currentTarget
-                    logPinnedRef.current = box.scrollHeight - box.scrollTop - box.clientHeight < 40
-                  }}
-                >
-                  {battle.log.map((entry, i) => (
-                    <div key={i} className={`log-${entry.kind}`}>
-                      <span className="log-tick">[{entry.tick}]</span>
-                      {entry.text}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+          {screen === 'battle' && run && inBattle && battle && (
+            <BattleScreen
+              run={run} battle={battle} inBattle={inBattle} inTowerBattle={inTowerBattle}
+              battleOver={battleOver} running={running} battleSpeed={battleSpeed} intents={intents}
+              hintsSeen={hintsSeen} lastSummary={progress.lastSummary ?? null} encName={encName}
+              cmd={cmd} autoLoopSet={(v) => { autoLoopRef.current = v }} runAutoSet={(v) => { if (runRef.current) runRef.current.autoMode = v }}
+              sfxCmd={sfxCmd} setRunning={setRunning} stepTen={stepTen} finishBattle={finishBattle}
+              setBattleSpeed={setBattleSpeed} dismissHint={dismissHint}
+              onSignatureUse={() => setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))}
+              useSignatureCmd={(b, mid, tid) => useSignature(b, mid, tid)}
+              logBoxRef={logBoxRef} logPinnedRef={logPinnedRef} retreat={retreat}
+            />
           )}
 
           {screen === 'tower' && towerRun?.phase === 'battle' && battle && (
-            <>
-              <h2>🗼 黑苔高塔 · 第 {towerRun.floor} 层{towerFloorIsBoss(towerRun.floor) ? '（守塔者）' : ''}</h2>
-              <div className="cmd-bar">
-                <button
-                  className={battle.commands.autoMode ? 'active' : ''}
-                  onClick={() => cmdTower((b) => { b.commands.autoMode = !b.commands.autoMode; if (towerRunRef.current) towerRunRef.current.autoMode = b.commands.autoMode }, true)}
-                >
-                  🤖 挂机{battle.commands.autoMode ? '中（自动深入）' : ''}
-                </button>
-                <span className="cmd-label">│</span>
-                <span className="cmd-label">阵型</span>
-                {(Object.keys(STANCE_NAME) as Stance[]).map((st) => (
-                  <button
-                    key={st}
-                    className={
-                      (battle.commands.stance === st ? 'active' : '') +
-                      (intents?.telegraphing && st === 'spread' ? ' urgent' : '')
-                    }
-                    disabled={battle.commands.autoMode}
-                    onClick={() => {
-                      sfxCmd()
-                      cmdTower((b) => setStance(b, st))
-                    }}
-                  >
-                    {STANCE_NAME[st]}
-                  </button>
-                ))}
-                <span className="cmd-label">│</span>
-                <button
-                  onClick={() => {
-                    sfxCmd()
-                    cmdTower((b) => useHealPotion(b))
-                  }}
-                  disabled={battle.commands.autoMode || battle.commands.healStock <= 0 || battle.commands.healCd > 0}
-                >
-                  💊 治疗药×{battle.commands.healStock}
-                </button>
-                <button
-                  onClick={() => {
-                    sfxCmd()
-                    cmdTower((b) => useFuryPotion(b))
-                  }}
-                  disabled={battle.commands.autoMode || battle.commands.furyStock <= 0 || battle.commands.furyCd > 0}
-                >
-                  ⚡ 爆发药×{battle.commands.furyStock}
-                </button>
-                {intents?.casting && intents.casterId && !battle.commands.autoMode && (
-                  <button
-                    className="urgent"
-                    onClick={() => {
-                      if (!intents?.casterId) return
-                      sfxCmd()
-                      cmdTower((b) => setFocus(b, intents.casterId))
-                    }}
-                  >
-                    ⚔ 打断咏唱！
-                  </button>
-                )}
-                <button
-                  className="focus-tag"
-                  onClick={() => {
-                    sfxCmd()
-                    cmdTower((b) => orderRetreat(b))
-                  }}
-                >
-                  🏳 撤退令
-                </button>
-              </div>
-              <div className="enc-row">
-                <button onClick={() => setTowerRunning((r) => !r)} disabled={battle.status !== 'running'}>
-                  {towerRunning ? '⏸ 暂停' : '⏵ 继续'}
-                </button>
-                <button
-                  onClick={() => {
-                    const current = towerRunRef.current?.battle
-                    if (!current || current.status !== 'running') return
-                    setTowerRunning(false)
-                    for (let i = 0; i < 10 && current.status === 'running'; i++) stepBattle(current)
-                    drainAndSync(current)
-                  }}
-                  disabled={battle.status !== 'running'}
-                >
-                  ⏭ ×10 tick
-                </button>
-                <span className="tick-info">tick {battle.tick}</span>
-                <span className="tick-info">· 塔内金币已入账 {towerRun.goldEarned}{towerRun.insuredFloor ? ' · 🛡 本层已投保' : ''}</span>
-              </div>
-              <div className="log-box">
-                {battle.log.map((entry, i) => (
-                  <div key={i} className={`log-${entry.kind}`}>
-                    <span className="log-tick">[{entry.tick}]</span>
-                    {entry.text}
-                  </div>
-                ))}
-              </div>
-            </>
+            <TowerBattleScreen
+              towerRun={towerRun} battle={battle} intents={intents} towerRunning={towerRunning}
+              cmdTower={cmdTower} sfxCmd={sfxCmd} towerRunRef={towerRunRef}
+              setTowerRunning={setTowerRunning} drainAndSync={drainAndSync}
+            />
           )}
 
           {screen === 'tower' && towerRun && towerRun.phase === 'rest' && (
-            <>
-              <h2>🗼 第 {towerRun.floor} 层突破</h2>
-              <div className="result-banner win">
-                幸存者回复 20% 生命。第 9 层起撤退保护失效——量力而行。
-              </div>
-              <div className="end-actions">
-                <button
-                  onClick={() => {
-                    const t = towerRunRef.current
-                    if (!t) return
-                    const premium = insureNextTowerFloor(t, gold)
-                    if (!premium) return
-                    setGold((g) => g - premium)
-                    setTowerRun({ ...t })
-                    logChronicle(chronicleRaw(day, '为第 ' + (t.floor + 1) + ' 层投了保(保费 ' + premium + ' 金)——下一层若有人倒下,装备免费归还。'))
-                  }}
-                  disabled={gold < (towerRun.floor + 1) * 40 || towerRun.insuredNextFloor === towerRun.floor + 1}
-                >
-                  {towerRun.insuredNextFloor === towerRun.floor + 1 ? '✓ 下一层已投保' : `🛡 投保第 ${towerRun.floor + 1} 层（${(towerRun.floor + 1) * 40} 金，阵亡装备免赎回）`}
-                </button>
-                <button onClick={towerNextFloor}>⬆ 深入第 {towerRun.floor + 1} 层</button>
-                <button onClick={leaveTower}>🏰 带着奖励离开</button>
-              </div>
-            </>
+            <TowerRestScreen
+              towerRun={towerRun} gold={gold} setGold={setGold} towerRunRef={towerRunRef}
+              setTowerRun={setTowerRun} logChronicle={logChronicle} chronicleRaw={chronicleRaw} day={day}
+              towerNextFloor={towerNextFloor} leaveTower={leaveTower}
+            />
           )}
 
           {screen === 'tower' && towerRun && towerRun.phase === 'ended' && (
-            <>
-              <h2>塔内征程结束</h2>
-              <div className={`result-banner ${towerRun.result === 'defeated' ? 'wipe' : 'win'}`}>
-                {towerRun.result === 'defeated'
-                  ? '✝ 高塔吞没了远征队——已得奖励保留，阵亡者入纪念堂'
-                  : '🏰 你带着收获离开了高塔'}
-              </div>
-              <div className="end-actions">
-                <button onClick={leaveTower}>← 返回公会</button>
-              </div>
-            </>
+            <TowerEndedScreen towerRun={towerRun} leaveTower={leaveTower} />
           )}
 
           {run && (run.phase === 'rest' || finished) && kingdom.active.length > 0 && <div className="royal-field-status" role="status">

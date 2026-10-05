@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { exportStatistics, GOLD_SOURCES, totalGoldEarned, totalOutcomes, winRate, type GameplayStatistics, type GoldSource } from '../sim/statistics'
-import './statistics.css'
+import { exportStatistics, GOLD_SOURCES, totalGoldEarned, totalOutcomes, winRate, type GameplayStatistics, type GoldSource } from '../../sim/statistics'
+import '../statistics.css'
 
 export function StatisticsPanel({ statistics, day, onClose, onBack }: {
   statistics: GameplayStatistics
