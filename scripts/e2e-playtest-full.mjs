@@ -223,27 +223,32 @@ async function phaseFresh() {
     const exportBeforeEnding = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&(x.textContent.includes('导出试玩记录')||x.title?.includes('导出试玩记录')))`)
     check('S1', '结束画面之前也能导出试玩记录(流失玩家能回传)', exportBeforeEnding ? 'PASS' : 'FAIL', exportBeforeEnding ? '' : '大厅无导出入口')
 
-    // U27①/R1.3 断言:新档(熟练度 0)的地图——不选路不能前进,且节点不泄露类型
+    // U27①/R1.3 断言:新档(熟练度 0)的地图——不选路不能前进;U33③④ 修订:相邻层见地形、更远层全盲、暗道零渲染
     {
       await clickText(b, '黑苔沼泽'); await sleep(300)
       const depart = await clickText(b, '出发'); await sleep(800)
       if (depart) {
         const probe = await b.evalJs(`(()=>{
           const body=document.body.innerText
-          const nodes=[...document.querySelectorAll('.dungeon-graph .dg-node')].map(x=>x.textContent.trim())
+          const cells=[...document.querySelectorAll('.dungeon-graph .dg-node')].map(x=>({t:x.textContent.trim(), n:x.querySelector('.dg-name')?.textContent.trim() ?? ''}))
           const icons=[...document.querySelectorAll('.dungeon-graph .dg-node:not(.walked):not(.current) .dg-icon')].map(x=>x.textContent.trim())
-          return { inMap: nodes.length > 0, hasDeep: body.includes('继续深入'), nodes,
-                   leak: nodes.filter(n=>/精英|宝箱|暗道|休整|事件/.test(n))
-                     .concat(icons.filter(ic=>/⚔|☠|🎁|⛺|🕳|👑/.test(ic))) } })()`)
-        check('M1', '地图:不选路不能前进(无「继续深入」)', probe.inMap && !probe.hasDeep ? 'PASS' : 'FAIL', `节点数=${probe.nodes.length}`)
-        const allMasked = probe.nodes.every((n) => n.includes('未知岔路'))
-        check('M2', '熟练度 0 全盲(类型/路名/地形零泄露)', probe.inMap && probe.leak.length === 0 && allMasked ? 'PASS' : 'FAIL',
-          probe.leak.join('|') || (allMasked ? '零泄露' : '有节点未遮名'))
+          const TERRAINS=['水域','林野','道路','营地','地下','废墟','墓地','圣所','熔岩']
+          const leak=cells.filter(c=>/精英|宝箱|暗道|休整|事件/.test(c.t)).map(c=>c.t)
+            .concat(icons.filter(ic=>/⚔|☠|🎁|⛺|🕳|👑/.test(ic)))
+          const terrainShown=cells.filter(c=>TERRAINS.includes(c.n)).length
+          const masked=cells.filter(c=>c.n==='未知岔路').length
+          const allKnown=cells.every(c=>TERRAINS.includes(c.n)||c.n==='未知岔路')
+          const flavor=cells.filter(c=>/洼地|猎场|栈道|棚屋|林地/.test(c.n)).map(c=>c.n)
+          return { inMap: cells.length>0, hasDeep: body.includes('继续深入'), terrainShown, masked, allKnown, leak, flavor } })()`)
+        check('M1', '地图:不选路不能前进(无「继续深入」)', probe.inMap && !probe.hasDeep ? 'PASS' : 'FAIL', `节点数=${probe.terrainShown + probe.masked}`)
+        check('M2', 'U33③④ 迷雾起点:相邻层见地形、更远层全盲、类型/风味名零泄露、暗道零渲染',
+          probe.inMap && probe.leak.length === 0 && probe.allKnown && probe.terrainShown > 0 && probe.masked > 0 && probe.flavor.length === 0 ? 'PASS' : 'FAIL',
+          `地形名 ${probe.terrainShown} / 全盲 ${probe.masked}${probe.leak.length ? ';泄露:' + probe.leak.join('|') : ''}${probe.flavor.length ? ';风味名:' + probe.flavor.join('|') : ''}`)
         await clickText(b, '🏳 撤退回城'); await sleep(500)
         await clickText(b, '返回公会'); await sleep(300)
       } else {
         check('M1', '地图:不选路不能前进(无「继续深入」)', 'SKIP', '出发不可点(编制/锁定)')
-        check('M2', '熟练度 0 不泄露节点类型', 'SKIP', '同上')
+        check('M2', 'U33③④ 迷雾起点断言', 'SKIP', '同上')
       }
     }
 

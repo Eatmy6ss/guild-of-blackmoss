@@ -73,11 +73,13 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
   }
   const nodeByIdIn = (id: string) => nodeById(run.map, id)
 
-  // 揭示口径(R1.3 + 制作人 2026-10-04 调整):档 0 或迷途笼罩=整节点全盲(❓ 未知岔路,无名无地形);
-  // 档 1 起知名与地形;类型按档位范围;内容 60+ 前两层、80+ 全图;暗道 80+ 才可见
+  // 揭示口径(R1.3 + U30 + U33③④ 修订):
+  // 档 0 = 迷雾起点:相邻一层只显示地形(不显名/类型/内容),更远的层全盲;迷途笼罩下一层仍全盲;
+  // 档 1 起知名与地形;类型按档位范围;内容 60+ 前两层、80+ 全图;
+  // 暗道 80+ 才可见(U33⑧④:档 <3 完全不渲染,无「???」无跳层线);迷途的好处=后两层暗道显形
   const describe = (n: MapNode): { title: string; sub: string } => {
     if (fullMask(n)) return { title: '未知岔路', sub: '迷雾笼罩,什么都看不见' }
-    if (n.kind === 'secret' && tier < 3 && !(lostReveals && n.layer <= curLayer + 2)) return { title: '???', sub: '未曾注意的岔口' }
+    if (fogStartTerrain(n)) return { title: TERRAIN_NAMES[n.terrain], sub: '看得出地形,认不出路' }
     const encounterName = n.encounterId
       ? dungeon.encounters.find((e) => e.id === n.encounterId)?.name
       : undefined
@@ -94,10 +96,17 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
   const penalty = revealPenaltyLayers(run)
   // R5.1b 迷途的好处:后两层若有暗道,无视档位直接显示
   const lostReveals = activeConditions(run).some((c) => c.upside?.secretReveal)
-  // 全盲:没走过的节点,在「首次踏进(档 0)」或「迷途笼罩下一层」时只剩一个「?」
+  // U33⑧④:暗道在档 <3 时完全不显示(既没有「???」也没有跳层线)
+  const secretHidden = (n: MapNode): boolean =>
+    n.kind === 'secret' && tier < 3 && !(lostReveals && n.layer <= curLayer + 2)
+  // U33③ 迷雾起点:档 0 时相邻一层只看到地形
+  const fogStartTerrain = (n: MapNode): boolean =>
+    tier === 0 && !pathSet.has(n.id) && n.id !== run.nodeId && n.layer === curLayer + 1
+  // 全盲:没走过的节点,在「更远的层(档 0)」「迷途笼罩下一层」时只剩一个「?」
   const fullMask = (n: MapNode): boolean => {
     if (pathSet.has(n.id) || n.id === run.nodeId) return false
-    if (tier === 0) return true
+    if (secretHidden(n)) return true
+    if (tier === 0) return !fogStartTerrain(n)
     return penalty > 0 && n.layer === curLayer + 1
   }
   const hovered = hoverId ? nodeByIdIn(hoverId) : undefined
@@ -151,7 +160,7 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
       })()}
       <div className="route-choice">
         <p className="hint">
-          熟练度 {mastery} —— {tier === 0 ? '初来乍到,一片漆黑——只能摸索着走(熟练度 35 起记得路名)。' : tier === 1 ? '你已记得这些路的模样与类别。' : tier === 2 ? '前两层的底细你已看在眼里。' : '这张图你闭着眼都能走(暗道也藏不住)。'}
+          熟练度 {mastery} —— {tier === 0 ? '初来乍到——相邻一步的地形看得出来,其余一片漆黑(熟练度 35 起记得路名)。' : tier === 1 ? '你已记得这些路的模样与类别。' : tier === 2 ? '前两层的底细你已看在眼里。' : '这张图你闭着眼都能走(暗道也藏不住)。'}
           {penalty > 0 && ' 迷途:下一层的选项一片漆黑。'}
         </p>
         {cur?.kind === 'boss' && bossLeft ? (
@@ -170,6 +179,8 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
                   const na = nodeByIdIn(a)
                   const nb = nodeByIdIn(b)
                   if (!na || !nb) return null
+                  // U33⑧④:暗道在档 <3 不显示——跳层线一并隐藏
+                  if (secretHidden(na) || secretHidden(nb)) return null
                   const pa = nodePos(na)
                   const pb = nodePos(nb)
                   const walked = walkedEdges.has(`${a}->${b}`)
@@ -179,12 +190,14 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
                 })}
               </svg>
               {run.map.layers.flat().map((n) => {
+                // U33⑧④:暗道在档 <3 完全不渲染(节点本身消失,玩家点不到)
+                if (secretHidden(n)) return null
                 const p = nodePos(n)
                 const d = describe(n)
                 const isCurrent = n.id === run.nodeId
                 const isAvailable = availableIds.has(n.id)
                 const isWalked = pathSet.has(n.id)
-                const secretMasked = (n.kind === 'secret' && tier < 3 && !(lostReveals && n.layer <= curLayer + 2)) || fullMask(n)
+                const secretMasked = fullMask(n)
                 return (
                   <button
                     key={n.id}
