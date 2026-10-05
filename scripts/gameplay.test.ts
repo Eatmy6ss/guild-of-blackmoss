@@ -383,7 +383,7 @@ test('third tower boss pulls a backliner, who returns after the duration expires
 })
 
 // R2 界面拆分(U29):处理器/回调随界面搬进 src/ui/screens/*——抽取机制跨全部 UI 源文件搜索。
-const UI_SOURCES = ['src/App.tsx', ...readdirSync('src/ui/screens').filter((f) => f.endsWith('.tsx') || f.endsWith('.ts')).map((f) => `src/ui/screens/${f}`)]
+const UI_SOURCES = ['src/App.tsx', 'src/ui/controllers.ts', ...readdirSync('src/ui/screens').filter((f) => f.endsWith('.tsx') || f.endsWith('.ts')).map((f) => `src/ui/screens/${f}`)]
 const UI_ASTS = UI_SOURCES.map((path) => ({
   path,
   ast: ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),
