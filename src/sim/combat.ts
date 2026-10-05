@@ -593,12 +593,15 @@ export function applyHit(
     target.channelTaken = (target.channelTaken ?? 0) + amount
   }
   // Ordinary enemies and bosses share declaration-based interrupt accumulation.
+  // R5.3c(U33⑤)打断改规则:只有锤斧族的伤害按 1.0 累积读条打断值,其他武器/来源按 0.25
+  // (C4 占位;打断类招牌技不受影响——executeSignature 直接置 taken=阈值,不经此通道)。
   if (target.bossMechanics && target.mech) {
+    const interruptMult = attacker.weaponFamily === 'axe' ? 1 : 0.25
     for (const def of target.bossMechanics) {
       if (interruptThreshold(def) === undefined) continue
       const rt = target.mech[def.kind]
       if (rt?.until !== undefined && state.tick < rt.until) {
-        rt.taken = (rt.taken ?? 0) + amount
+        rt.taken = (rt.taken ?? 0) + amount * interruptMult
       }
     }
   }

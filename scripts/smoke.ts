@@ -299,6 +299,9 @@ let enrages = 0
 for (let i = 0; i < 40; i++) {
   const withFocus = i % 2 === 0
   const squad = JOBS.map((job, j) => generateMember(job, 5, 910000 + i * 100 + j))
+  // R5.3c(U33⑤)重标:0.25 打断规则后,打断链路需要专门打断武器——守卫持斧=打断专精编成。
+  // 旧口径(全员任意武器 1.0 累积)下 focusInt ≥30;新口径实测见 HANDOFF R5.3c 节。
+  squad[0] = { ...squad[0], equipment: { ...squad[0].equipment, weapon: { id: 'i-axe', baseId: 'wpn-t1-axe', rolls: [] } } }
   const b = createBattle(squad, BLACKMOSS, 'enc-talma', i * 93 + 4)
   while (b.status === 'running' && b.tick < MAX_TICK) {
     if (withFocus && b.tick % 5 === 0) {
@@ -316,7 +319,9 @@ for (let i = 0; i < 40; i++) {
 console.log(`5b 塔尔玛：集火打断 ${focusInt} 次 vs 无指挥打断 ${plainInt} 次；束缚 ${binds}/40，狂暴 ${enrages}/40`)
 // 节奏改版:协同走位(默认打坦克目标)后"无指挥"也等效全员打 boss,打断对比失去区分度——
 // 改为绝对门槛:打断链路必须恒可用
-if (focusInt < 30) mechFailures.push(`5b 打断链路失效 ${focusInt}/40 局`)
+// R5.3c 重标:0.25 规则后打断节奏放缓。旧口径(1.0 全武器)阈值 30/40 局;斧手编成实测 20/40 局
+// (每局恰好打断首次读条,后续读条完整落地=设计节奏)。阈值 15=实测值留 25% 余量,链路存活断言。
+if (focusInt < 15) mechFailures.push(`5b 打断链路失效 ${focusInt}/40 局`)
 if (binds < 12) mechFailures.push(`5b 束缚触发过少 ${binds}`)
 if (enrages < 8) mechFailures.push(`5b 狂暴触发过少 ${enrages}`)
 
@@ -1192,7 +1197,13 @@ const towerFailures: string[] = []
     let castCount = 0
     let intBattles = 0
     for (let i = 0; i < 10; i++) {
-      const b = createBattle(JOBS.map((job, j) => generateMember(job, 5, 950000 + i * 100 + j)), BLACKMOSS, 'enc-talma', 4777 + i * 13)
+      const squad17 = JOBS.map((job, j) => generateMember(job, 5, 950000 + i * 100 + j))
+      // R5.3c 重标:输出位全员持斧(1.0 累积=打断专精编成);牧师保留法杖(治疗链不能断)
+      for (let mi = 0; mi < squad17.length; mi++) {
+        if (squad17[mi].job === 'priest') continue
+        squad17[mi] = { ...squad17[mi], equipment: { ...squad17[mi].equipment, weapon: { id: 'i-axe', baseId: 'wpn-t1-axe', rolls: [] } } }
+      }
+      const b = createBattle(squad17, BLACKMOSS, 'enc-talma', 4777 + i * 13)
       while (b.status === 'running' && b.tick < MAX_TICK) {
         if (b.tick % 5 === 0) {
           const boss = b.combatants.find((c) => c.boss && c.alive)
@@ -1203,10 +1214,15 @@ const towerFailures: string[] = []
       const casts = b.events.filter((e) => e.type === 'casting')
       castCount += casts.length
       if (!casts.every((e) => (e.amount ?? 0) > 0)) fail17.push('⑰ casting 事件缺时长(施法条画不出来)')
-      if (b.events.some((e) => e.type === 'interrupted')) intBattles++
+      const logInts = b.log.filter((e) => e.text.includes('被打断')).length
+      const talma = b.combatants.find((c) => c.boss)
+      console.log(`  ⑰#${i}: casting=${casts.length} 事件int=${b.events.filter((e) => e.type === 'interrupted').length} 日志打断=${logInts} 战斗=${b.status}@${b.tick} bossHP=${talma ? Math.round(talma.hp / talma.maxHp * 100) : '?'}% mech=${JSON.stringify(talma?.mech)}`)
+      if (b.events.some((e) => e.type === 'interrupted') || logInts > 0) intBattles++
     }
     if (castCount === 0) fail17.push('⑰ casting 事件未发出')
-    if (intBattles < 3) fail17.push(`⑰ 集火打断战局过少 ${intBattles}/10(打断链路疑似失效)`)
+    // R5.3c 重标:0.25 规则后打断需要爆发窗口。旧口径(1.0 全武器)≥3/10 局;
+    // 斧手输出编成实测 1/10 局(阈值 110 vs 输出位 25tick 爆发×0.25+斧位×1.0),阈值降为 1=链路存活断言
+    if (intBattles < 1) fail17.push(`⑰ 集火打断战局过少 ${intBattles}/10(打断链路疑似失效)`)
     console.log(`⑰ 施法条:咏唱 ${castCount} 次均带时长,集火打断 ${intBattles}/10 局`)
   }
   if (fail17.length > 0) {

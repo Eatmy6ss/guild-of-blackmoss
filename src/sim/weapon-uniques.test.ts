@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { applyHit, stepBattle, pickBowTarget, toCombatant } from './combat'
-import { BLACKMOSS } from '../data/dungeons'
 import { beginBattle, createRun } from '../../scripts/run-test-compat'
+import { describe, expect, it } from 'vitest'
+import { applyHit, stepBattle, pickBowTarget, toCombatant, createBattle } from './combat'
+import { BLACKMOSS } from '../data/dungeons'
 import type { BattleState, Combatant, Member } from './types'
 
 // R5.3b(U33⑤)五族独有用处:刃暴击流血 / 锤斧普攻破甲 / 长柄替身挡击 / 弓优先读条后排。
@@ -107,5 +107,35 @@ describe('R5.3b 弓·优先读条后排', () => {
     expect(pickBowTarget(state, [front, plainBack, casterBack])?.id).toBe('e1')
     // 无读条 → 残血优先(plainBack 100/300 低于 front 50/300?50/300 更残 → front)
     expect(pickBowTarget(state, [front, plainBack])?.id).toBe('e3')
+  })
+})
+
+// R5.3c(U33⑤)打断改规则:非锤斧伤害按 0.25 累积读条打断值
+describe('R5.3c 打断累积倍率', () => {
+  function mkFoe(): { state: BattleState; foe: Combatant; axe: Combatant; blade: Combatant } {
+    const axeM = mk('warrior', 'wpn-t1-axe'); axeM.id = 'm-axe'
+    const bladeM = mk('warrior', 'wpn-t1-sword'); bladeM.id = 'm-blade'
+    // 直连格鲁什 boss(咏唱机制载体;杂兵战没有读条)
+    const state = createBattle([axeM, bladeM], BLACKMOSS, 'enc-talma', 604)
+    const foe = state.combatants.find((c) => c.team === 'enemy' && c.bossMechanics)!
+    const axe = state.combatants.find((c) => c.memberId === axeM.id)!
+    const blade = state.combatants.find((c) => c.memberId === bladeM.id)!
+    return { state, foe, axe, blade }
+  }
+
+  it('同伤害:斧累积 1.0,刃累积 0.25', () => {
+    const { state, foe, axe, blade } = mkFoe()
+    const def = foe.bossMechanics!.find((d) => d.kind === 'cast-buff')!
+    // grush 的咏唱机制可能尚未初始化运行时——伪造一个进行中的读条窗口
+    foe.mech = foe.mech ?? {}
+    const rt = foe.mech['cast-buff'] = { until: state.tick + 100, taken: 0 }
+    applyHit(state, axe, foe, 40, '攻击')
+    const axeTaken = rt.taken
+    rt.taken = 0
+    applyHit(state, blade, foe, 40, '攻击')
+    const bladeTaken = rt.taken
+    expect(axeTaken).toBe(40)
+    expect(bladeTaken).toBe(10)
+    void def
   })
 })

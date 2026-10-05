@@ -100,6 +100,7 @@ test('emberpass wave telegraphs respect spread and fire resistance without boss-
 test('emberpass chanter has a real interruptible cast, not an instant heal skill', () => {
   for (const interrupt of [true, false]) {
     const b = createBattle(squad(), EMBERPASS, 'enc-pilgrims', 555)
+    b.combatants[0].weaponFamily = 'axe' // R5.3c:1.0 打断累积(0.25 规则的单测在 weapon-uniques)
     const chanter = b.combatants.find(c => c.name === '唱诗朝圣者')!
     assert(!chanter.boss)
     assert.equal(chanter.skills.length, 0)
@@ -122,6 +123,7 @@ test('emberpass chanter has a real interruptible cast, not an instant heal skill
 test('chanter last-tick interrupt and death cancel healing; damage at deadline does not interrupt', () => {
   for (const mode of ['last-tick', 'deadline', 'dead'] as const) {
     const b = createBattle(squad(), EMBERPASS, 'enc-pilgrims', 557)
+    b.combatants[0].weaponFamily = 'axe' // R5.3c:1.0 打断累积
     const chanter = b.combatants.find(c => c.name === '唱诗朝圣者')!
     const ally = b.combatants.find(c => c.name === '朝圣狂徒')!
     ally.hp -= 300

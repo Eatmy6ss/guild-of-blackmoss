@@ -23,6 +23,9 @@ function fixture(kind: MechanicKind, boss = true, params?: BossMechanicDef['para
   target.traits = []
   target.maxHp = 100000
   target.hp = 90000
+  // R5.3c:打断 0.25 规则下,语义测试的攻击者持斧保持 1.0 累积(原伤害算术不变;斧语义单测在 weapon-uniques)
+  const attacker = battle.combatants.find(c => c.team === 'guild')!
+  attacker.weaponFamily = 'axe'
   battle.commands.protectRetreat = true
   return { battle, target, def, attacker: battle.combatants.find(c => c.team === 'guild')! }
 }
