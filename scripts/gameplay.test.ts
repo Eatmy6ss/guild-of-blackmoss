@@ -441,6 +441,7 @@ function rngScope(scope: Record<string, unknown>) {
     factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
     storyCursorRef: { current: 0 }, expeditionStartFactRef: { current: 0 },
     weaponTraining: [] as string[], weaponTrainingRef: { current: [] as string[] }, setWeaponTraining: () => {},
+    applyRetreatDeduction: () => {}, setDungeonMastery: () => {},
     hintsSeen: [] as string[], hintsSeenRef: { current: [] as string[] }, dismissHint: () => {},
     membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
     runMembers: (r: any, ms: Member[]) => r.memberIds ? resolveRunMembers(r, ms?.length ? ms : r.members ?? []) : r.members,

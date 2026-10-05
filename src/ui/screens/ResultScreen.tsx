@@ -69,6 +69,8 @@ export function ResultScreen({ run, dungeonName, members, snapshot, drops, story
   }
   const win = run.phase === 'victory'
   const dead = run.phase === 'defeat'
+  // R5.1e(U33④):撤退代价展示
+  const cost = run.phase === 'retreated' ? run.retreatCost : undefined
   return (
     <div className={`result-screen${dead ? ' rs-defeat' : ''}`}>
       {/* ① 核心结果:盖章仪式——缩放砸下,悬停大字 */}
@@ -77,8 +79,11 @@ export function ResultScreen({ run, dungeonName, members, snapshot, drops, story
         <span className="rs-stamp-text">
           {win ? '副本通关' : dead ? '远征失败' : '撤退回城'}
         </span>
-        <span className="rs-stamp-sub">{dungeonName}{win ? ' · 掉落与奖励已入仓库' : dead ? ' · 阵亡者已入纪念堂' : ' · 幸存者保留状态'}</span>
+        <span className="rs-stamp-sub">{dungeonName}{win ? ' · 掉落与奖励已入仓库' : dead ? ' · 阵亡者已入纪念堂' : cost ? ` · 撤退:金币 −${cost.gold}、熟练度 −${cost.mastery}` : ' · 幸存者保留状态'}</span>
       </div>
+      {cost && (cost.gold > 0 || cost.mastery > 0) && (
+        <p className="hint" role="status" style={{ textAlign: 'center', opacity: 0.85 }}>撤退:金币 −{cost.gold}、熟练度 −{cost.mastery}(装备照拿,药水照退)</p>
+      )}
 
       {/* ② 成长:错峰浮入,数字滚动 */}
       <div className="rs-section">

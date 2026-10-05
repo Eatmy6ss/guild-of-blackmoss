@@ -161,6 +161,8 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       ? Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) *
           (isEliteNode ? 2 : 1) * // R5/U33②:精英金币 ×2
           (r.rareHunt && r.battlesFought === 1 ? r.rareHunt.rewardMult : 1)) : 0
+    // R5.1e(U33④):本趟收益累计——撤退代价的基数
+    r.earnedGold = (r.earnedGold ?? 0) + outcome.loot.gold
     // 必须在推进索引前捕获遭遇奖励/委托；先推进再登记死亡保持副本旧顺序。
     // R5.1b:经验/掉落倍率要在 advanceRun 消退状态前捕获;消退的状态写成可见提示。
     const condsBeforeSettle = [...(r.conditions ?? [])]
@@ -179,6 +181,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       const gain = Math.round((enc?.kind === 'boss' || isEliteNode ? 2 : 1) * masteryMult)
       guild.dungeonMastery[runDungeon(r).id] = (guild.dungeonMastery[runDungeon(r).id] ?? 0) + gain
       c.mastery = { dungeonId: runDungeon(r).id, gain }
+      r.earnedMastery = (r.earnedMastery ?? 0) + gain
     }
     guild.recruitCooldown = Math.max(0, guild.recruitCooldown - 1)
     if (r.phase === 'victory') { outcome.loot.clearGold = ECONOMY.clearBonus; outcome.sound = 'victory' }

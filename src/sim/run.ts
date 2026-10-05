@@ -48,6 +48,11 @@ export interface DungeonRun extends RunCore {
   buffs: RunBuffDef[]
   /** 稀有猎杀(事件二期,WoW 式):首场遭遇敌方强化,奖励加厚,用后即逝 */
   rareHunt?: { mult: number; rewardMult: number }
+  /** R5.1e(U33④):本趟已入账的金币/熟练度累计(撤退代价的基数;胜利/团灭不消费) */
+  earnedGold?: number
+  earnedMastery?: number
+  /** R5.1e:撤退时结算的代价(本趟金币/熟练度各留一半,向下取整);团灭不产生 */
+  retreatCost?: { gold: number; mastery: number; dungeonId: string }
 }
 
 /** 副本的 Boss 链遭遇(按 encounters 顺序):有变体(U28)的原型位由变体顶替——
@@ -181,6 +186,7 @@ export function advanceRun(run: DungeonRun, roster: Member[] = []): void {
   }
   if (b.status === 'retreated') {
     run.phase = 'retreated'
+    applyRetreatCost(run)
     return
   }
   const node = currentNode(run)
@@ -307,13 +313,23 @@ export function settleGrowth(run: GrowthRun, expMult = 1, floorReward?: { exp: n
   return result
 }
 
-/** 撤退（休整界面直接回城）：幸存者保留现状 */
+/** R5.1e(U33④):撤退代价——本趟已获得的金币和熟练度只保留一半(向下取整),装备照拿,药水照退。
+ *  团灭不在此列(走 defeat 原逻辑)。战斗中撤离与休整回城两条路都在此收口。 */
+export function applyRetreatCost(run: DungeonRun): { gold: number; mastery: number } {
+  const gold = Math.floor((run.earnedGold ?? 0) / 2)
+  const mastery = Math.floor((run.earnedMastery ?? 0) / 2)
+  run.retreatCost = { gold, mastery, dungeonId: run.dungeonId }
+  return run.retreatCost
+}
+
+/** 撤退（休整界面直接回城）：幸存者保留现状;R5.1e 撤退代价在此结算 */
 export function retreatRun(run: DungeonRun, roster: Member[] = []): void {
   for (const m of runMembers(run, roster)) {
     if (m.alive && m.hp <= 0) m.hp = 1
   }
   syncRunParty(run, roster)
   run.phase = 'retreated'
+  applyRetreatCost(run)
 }
 
 /** 返回公会：幸存者满血重整 */

@@ -647,6 +647,17 @@ export default function App() {
     setExpeditionIds((ids) => ids.filter((x) => x !== id))
   }
 
+  // R5.1e(U33④):撤退代价入账——本趟金币/熟练度各扣一半(已入账的部分回吐公会)
+  const applyRetreatDeduction = (r: DungeonRun) => {
+    const cost = r.retreatCost
+    if (!cost || (cost.gold <= 0 && cost.mastery <= 0)) return
+    if (cost.gold > 0) setGold((g) => g - cost.gold)
+    if (cost.mastery > 0) {
+      setDungeonMastery((prev) => ({ ...prev, [cost.dungeonId]: Math.max(0, (prev[cost.dungeonId] ?? 0) - cost.mastery) }))
+    }
+    logChronicle(chronicleRaw(day, `撤退回城:本趟金币 −${cost.gold}、${runDungeon(r).name}熟练度 −${cost.mastery}(撤退代价,装备照拿)。`))
+  }
+
   // 结算入口的阶段守卫确保指挥、快进和终局 effect 都不能重复发奖。
   const settleBattleEnd = (current: DungeonRun) => {
     if (runRef.current !== current) return // 忽略已应用结果替代掉的旧闭包。
@@ -655,6 +666,7 @@ export default function App() {
     applyOutcome(o)
     const r = o.run
     const endPhase = r.phase
+    if (endPhase === 'retreated') applyRetreatDeduction(r) // R5.1e:战斗中撤离同样收撤退代价
     if (o.sound === 'victory') sfxVictory()
     if (o.sound === 'defeat') sfxDefeat()
     // 自动循环的按钮/状态机留给 #0.6，沿用原来的回城和推进边界。
@@ -715,6 +727,7 @@ export default function App() {
       r.autoMode = false
       setRunning(false)
       retreatRun(r, membersRef.current)
+      applyRetreatDeduction(r) // R5.1e:撤退代价(金币/熟练度减半)
       noteStatistics(expeditionStatistics(r))
       syncAll()
     }
@@ -905,6 +918,7 @@ export default function App() {
       // 宝箱/暗道节点:不战斗,纯收获——金币+一件带品级的装备;暗道另已是跳层捷径
       const gold2 = 60 + Math.floor(runRng(r)() * 90)
       gainGold(gold2, 'event')
+      r.earnedGold = (r.earnedGold ?? 0) + gold2 // R5.1e:宝箱金币也计入撤退代价基数
       const tier = dungeonItemTier(runDungeon(r).id)
       const bases = Object.keys(ITEM_BASES).filter((id) => ITEM_BASES[id].tier === tier)
       const baseId = bases[Math.floor(runRng(r)() * bases.length)]
