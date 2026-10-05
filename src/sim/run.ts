@@ -5,7 +5,7 @@ import { createBattle, POTION_STOCK, toCombatant } from './combat'
 import { grantExp, xpNeeded } from './gen'
 import { createRunCore, runDungeon, runMembers, syncRunParty, type RunCore } from './run-core'
 import { generateMap, nodeById, nextOptions, type DungeonMap, type MapNode } from './dungeon-map'
-import { enterNodeConditions, triggerAfterElite, conditionBattleMods } from './conditions'
+import { enterNodeConditions, triggerAfterElite, conditionBattleMods, expireConditions } from './conditions'
 
 // 远征状态机(U27① 改版):分层地图 → 逐节点选择 → 血量延续 → 战间歇整 → 通关/团灭/撤退。
 // 每战之后在地图上选一条出边才能前进;没有「继续深入」。D11:战斗死亡 = 永久死亡。
@@ -107,11 +107,13 @@ export function createRun(
 }
 
 /** 踏上一个节点(必须是与当前节点的出边,或空路径时的第 0 层)。
- *  落地即掷路况(U27②):按地形解除/触发,连战计数;开战/事件由调用方接。 */
+ *  落地即掷路况(U27②):按地形解除/触发,连战计数;开战/事件由调用方接。
+ *  R5.1b:走过一层后,'next-layer' 类状态(迷途)自动消退(先消退再掷新触发,重触发会重新亮起)。 */
 export function moveTo(run: DungeonRun, nodeId: string, mastery = 0): MapNode | null {
   const opts = mapOptions(run)
   const node = opts.find((n) => n.id === nodeId)
   if (!node) return null
+  expireConditions(run, 'next-layer')
   run.nodeId = node.id
   run.path.push(node.id)
   enterNodeConditions(run, node, mastery)
@@ -184,6 +186,8 @@ export function advanceRun(run: DungeonRun, roster: Member[] = []): void {
   const node = currentNode(run)
   // 惊动(U27②):任何精英节点打完触发,后续层精英权重 ×2
   if (b.status === 'guild-win' && node?.kind === 'elite') triggerAfterElite(run)
+  // R5.1b:打完一场后,'next-battle' 类状态(暴露)自动消退
+  expireConditions(run, 'next-battle')
   // 通关判定:Boss 节点且 boss 序列已打完(U27①:全部 boss 在同一节点依次连战)
   if (node?.kind === 'boss' && nextBossEncounter(run) === null) {
     run.phase = 'victory'

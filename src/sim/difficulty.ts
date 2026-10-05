@@ -22,6 +22,8 @@ export interface EnemyScaleFactors {
   hpFactor: number
   difficultyAttack: number
   difficultyHp: number
+  /** R5.1b(阴寒 upside):敌方攻击间隔倍率(>1=更慢);召唤增援经 scaleFactors 继承 */
+  difficultySpd?: number
   elite?: boolean
 }
 
@@ -37,6 +39,9 @@ function scaledStats(base: Pick<EnemyDef, 'maxHp' | 'attack'>, f: EnemyScaleFact
 /** 初始与召唤共用单舍入语义；预缩放定义不再乘算，精英身份仍继承。 */
 export function applyEnemyScaling(c: Combatant, f: EnemyScaleFactors): void {
   if (f.elite) c.elite = true
+  if (f.difficultySpd !== undefined && f.difficultySpd !== 1) {
+    c.attackInterval = Math.max(6, Math.round(c.attackInterval * f.difficultySpd))
+  }
   if (c.enemyDef?.difficultyScaled) return
   Object.assign(c, scaledStats(c, f))
   c.hp = c.maxHp

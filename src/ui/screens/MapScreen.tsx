@@ -77,7 +77,7 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
   // 档 1 起知名与地形;类型按档位范围;内容 60+ 前两层、80+ 全图;暗道 80+ 才可见
   const describe = (n: MapNode): { title: string; sub: string } => {
     if (fullMask(n)) return { title: '未知岔路', sub: '迷雾笼罩,什么都看不见' }
-    if (n.kind === 'secret' && tier < 3) return { title: '???', sub: '未曾注意的岔口' }
+    if (n.kind === 'secret' && tier < 3 && !(lostReveals && n.layer <= curLayer + 2)) return { title: '???', sub: '未曾注意的岔口' }
     const encounterName = n.encounterId
       ? dungeon.encounters.find((e) => e.id === n.encounterId)?.name
       : undefined
@@ -92,6 +92,8 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
   }
   // 迷途(U27②)发作时:下一层的选项整体全盲——不是降一档,是一片漆黑(制作人 2026-10-04 定稿)
   const penalty = revealPenaltyLayers(run)
+  // R5.1b 迷途的好处:后两层若有暗道,无视档位直接显示
+  const lostReveals = activeConditions(run).some((c) => c.upside?.secretReveal)
   // 全盲:没走过的节点,在「首次踏进(档 0)」或「迷途笼罩下一层」时只剩一个「?」
   const fullMask = (n: MapNode): boolean => {
     if (pathSet.has(n.id) || n.id === run.nodeId) return false
@@ -182,7 +184,7 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
                 const isCurrent = n.id === run.nodeId
                 const isAvailable = availableIds.has(n.id)
                 const isWalked = pathSet.has(n.id)
-                const secretMasked = (n.kind === 'secret' && tier < 3) || fullMask(n)
+                const secretMasked = (n.kind === 'secret' && tier < 3 && !(lostReveals && n.layer <= curLayer + 2)) || fullMask(n)
                 return (
                   <button
                     key={n.id}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { createRun, moveTo, startStep, mapOptions } from './run'
-import { enterNodeConditions, triggerAfterElite, conditionBattleMods, restHealMult, conditionChanceMod, eliteWeightMult } from './conditions'
+import { createRun, moveTo, startStep, mapOptions, advanceRun } from './run'
+import { enterNodeConditions, triggerAfterElite, conditionBattleMods, restHealMult, conditionChanceMod, eliteWeightMult, expireConditions, conditionExpMult, conditionDropMult } from './conditions'
 
 import { generateMember } from './gen'
 import { BLACKMOSS } from '../data/dungeons'
@@ -151,5 +151,83 @@ describe('R1.2 路况状态', () => {
     moveTo(run, picked.id, 0)
     expect(run.path.length).toBe(before + 1)
     expect(Array.isArray(run.conditions)).toBe(true)
+  })
+})
+
+// R5.1b 路况双刃(U33①):upside 消费 + expires 按时消退 + Boss 节点不掷路况(U33⑧⑥)
+describe('R5.1b 路况双刃与按时消退', () => {
+  it('upside 消费:湿透火抗 +0.15/阴寒敌方减速 ×1.1/疲惫经验 ×1.2/暴露掉落 ×2', () => {
+    const members = squad()
+    const run = createRun(members, BLACKMOSS, 5)
+    run.conditions = ['soaked', 'chill', 'tired', 'exposed']
+    const { mods, enemyMods } = conditionBattleMods(run)
+    expect(mods.fireRes).toBeCloseTo(0.15, 5)
+    expect(enemyMods.spd).toBeCloseTo(1.1, 5)
+    expect(conditionExpMult(run)).toBeCloseTo(1.2, 5)
+    expect(conditionDropMult(run)).toBe(2)
+  })
+
+  it('战斗引擎吃进好处面:阴寒下敌方攻击间隔变慢;湿透下我方火抗上升', () => {
+    const members = squad()
+    const run = createRun(members, BLACKMOSS, 5)
+    const node = run.map.layers[0].find((n) => n.kind === 'battle')!
+    run.nodeId = node.id
+    run.path = [node.id]
+    run.conditions = []
+    startStep(run, 99, 0, members)
+    const baseSpd = run.battle!.combatants.filter((c) => c.team === 'enemy').reduce((s, c) => s + c.attackInterval, 0)
+    const baseFire = run.battle!.combatants.filter((c) => c.team === 'guild').reduce((s, c) => s + (c.fireResist ?? 0), 0)
+    run.battle = null
+    run.phase = 'rest'
+    run.conditions = ['chill', 'soaked']
+    startStep(run, 99, 0, members)
+    const chillSpd = run.battle!.combatants.filter((c) => c.team === 'enemy').reduce((s, c) => s + c.attackInterval, 0)
+    const soakedFire = run.battle!.combatants.filter((c) => c.team === 'guild').reduce((s, c) => s + (c.fireResist ?? 0), 0)
+    expect(chillSpd).toBeGreaterThan(baseSpd)
+    expect(soakedFire - baseFire).toBeCloseTo(0.45, 5) // 3 名队员各 +0.15
+  })
+
+  it('暴露打完一场后消退(advanceRun),迷途走过一层后消退(moveTo)', () => {
+    const members = squad()
+    const run = createRun(members, BLACKMOSS, 88)
+    const node = run.map.layers[0].find((n) => n.kind === 'battle')!
+    run.nodeId = node.id
+    run.path = [node.id]
+    run.conditions = ['exposed', 'lost']
+    startStep(run, 88, 0, members)
+    run.battle!.status = 'guild-win'
+    advanceRun(run, members)
+    expect(run.conditions.includes('exposed'), '暴露应打完一场后消退').toBe(false)
+    expect(run.conditions.includes('lost'), '迷途不受战斗消退影响(归层消退)').toBe(true)
+    const opts = mapOptions(run)
+    expect(opts.length).toBeGreaterThan(0)
+    moveTo(run, opts[0]!.id, 0)
+    expect(run.conditions.includes('lost'), '迷途应走过一层后消退').toBe(false)
+  })
+
+  it('expireConditions 返回被消退的状态名(供可见提示)', () => {
+    const members = squad()
+    const run = createRun(members, BLACKMOSS, 89)
+    run.conditions = ['exposed', 'lost', 'chill']
+    const removed = expireConditions(run, 'next-battle')
+    expect(removed).toEqual(['暴露'])
+    expect(run.conditions).toEqual(['lost', 'chill'])
+  })
+
+  it('Boss 节点不掷路况(U33⑧⑥):走到 Boss 层不新增状态', () => {
+    const members = squad()
+    let ok = false
+    for (let seed = 1; seed < 60 && !ok; seed++) {
+      const run = createRun(members, BLACKMOSS, seed)
+      // 伪造湿透在场(若 Boss 节点掷地形,水域/营地等可能解除或新增——关键是"新增"必须为零)
+      run.conditions = []
+      const bossNode = run.map.layers[run.map.layers.length - 1]![0]!
+      run.nodeId = bossNode.id
+      run.path = [bossNode.id]
+      const gained = enterNodeConditions(run, bossNode, 0)
+      expect(gained.length, `seed=${seed} Boss 节点不应触发路况`).toBe(0)
+      ok = true
+    }
+    expect(ok).toBe(true)
   })
 })

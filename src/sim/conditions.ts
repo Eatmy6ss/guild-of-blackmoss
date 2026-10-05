@@ -59,28 +59,59 @@ export function revealPenaltyLayers(run: Pick<DungeonRun, 'conditions'>): number
   return n
 }
 
-/** 战斗乘区:我方 mods(与事件 runBuff 同通道)+ 敌方 enemyMods(暴露) */
+/** 战斗乘区:我方 mods(与事件 runBuff 同通道,含火抗加算)+ 敌方 enemyMods(暴露攻击/阴寒减速) */
 export function conditionBattleMods(run: Pick<DungeonRun, 'conditions'>): {
-  mods: { atk?: number; def?: number; hp?: number; heal?: number }
-  enemyMods: { atk?: number }
+  mods: { atk?: number; def?: number; hp?: number; heal?: number; fireRes?: number }
+  enemyMods: { atk?: number; spd?: number }
 } {
-  const mods: { atk?: number; def?: number; hp?: number; heal?: number } = {}
-  const enemyMods: { atk?: number } = {}
+  const mods: { atk?: number; def?: number; hp?: number; heal?: number; fireRes?: number } = {}
+  const enemyMods: { atk?: number; spd?: number } = {}
   for (const c of activeConditions(run)) {
-    if (!c.battle) continue
-    for (const [k, v] of Object.entries(c.battle)) {
-      if (k === 'enemy') {
-        for (const [ek, ev] of Object.entries(c.battle.enemy ?? {})) {
-          const key = ek as 'atk'
-          enemyMods[key] = (enemyMods[key] ?? 1) * (ev as number)
+    if (c.battle) {
+      for (const [k, v] of Object.entries(c.battle)) {
+        if (k === 'enemy') {
+          for (const [ek, ev] of Object.entries(c.battle.enemy ?? {})) {
+            const key = ek as 'atk'
+            enemyMods[key] = (enemyMods[key] ?? 1) * (ev as number)
+          }
+          continue
         }
-        continue
+        const key = k as 'atk' | 'def' | 'hp' | 'heal'
+        mods[key] = (mods[key] ?? 1) * (v as number)
       }
-      const key = k as 'atk' | 'def' | 'hp' | 'heal'
-      mods[key] = (mods[key] ?? 1) * (v as number)
     }
+    // R5/U33① 好处面:火抗加算/敌方减速
+    if (c.upside?.fireRes) mods.fireRes = (mods.fireRes ?? 0) + c.upside.fireRes
+    if (c.upside?.enemySlow) enemyMods.spd = (enemyMods.spd ?? 1) * c.upside.enemySlow
   }
   return { mods, enemyMods }
+}
+
+/** 本趟经验倍率(疲惫 upside,R5.1b) */
+export function conditionExpMult(run: Pick<DungeonRun, 'conditions'>): number {
+  let mult = 1
+  for (const c of activeConditions(run)) mult *= c.upside?.expMult ?? 1
+  return mult
+}
+
+/** 掉落率倍率(暴露 upside,R5.1b) */
+export function conditionDropMult(run: Pick<DungeonRun, 'conditions'>): number {
+  let mult = 1
+  for (const c of activeConditions(run)) mult *= c.upside?.dropMult ?? 1
+  return mult
+}
+
+/** 按时消退(R5.1b/U33⑧②):'next-battle'=打完一场;'next-layer'=走过一层。
+ *  返回被消退的状态名(调用方写「××消退」可见提示)。 */
+export function expireConditions(run: DungeonRun, ev: 'next-battle' | 'next-layer'): string[] {
+  const removed: string[] = []
+  for (const c of activeConditions(run)) {
+    if (c.expires === ev) {
+      removeCondition(run, c.id)
+      removed.push(c.name)
+    }
+  }
+  return removed
 }
 
 /** 走上节点(R1.2):先按地形解除,再掷地形触发器与连战计数。返回本次新挂上的状态名(供界面提示)。

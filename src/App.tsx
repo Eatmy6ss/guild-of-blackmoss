@@ -827,17 +827,19 @@ export default function App() {
     const condsBefore = [...(r.conditions ?? [])]
     const node = moveTo(r, targetId, dungeonMastery[runDungeon(r).id] ?? 0)
     if (!node) return
-    // 结算可见性(红线):新挂的路况当场提示一条,状态条在地图常驻
+    // 结算可见性(红线):新挂的路况当场提示一条,状态条在地图常驻;按时消退的状态写「消退」
     for (const id of (r.conditions ?? []).filter((c) => !condsBefore.includes(c))) {
       logChronicle(chronicleRaw(day, '路况:' + (CONDITION_BY_ID[id]?.name ?? id) + '——' + (CONDITION_BY_ID[id]?.desc ?? '')))
     }
+    const expiredNames = condsBefore.filter((c) => !(r.conditions ?? []).includes(c)).map((id) => CONDITION_BY_ID[id]?.name ?? id)
     // R5/U33①:地形回报(进入节点当场;与路况风险并列显示在悬停框,结果条写明)
     const entry = terrainEntryReward(r, node, membersRef.current)
     if (entry.blessing) setBlessing((b) => b + entry.blessing)
     if (entry.item) receiveItems([entry.item], true)
-    let entryText = entry.notes.length ? `【地形】${node.name}:${entry.notes.join(';')}` : ''
-    if (entry.blessing || entry.item) {
-      logChronicle(chronicleRaw(day, `${runDungeon(r).name}的${node.name}:${entry.notes.join(';')}。`))
+    const notes = [...expiredNames.map((n) => n + '消退了'), ...entry.notes]
+    let entryText = notes.length ? `【地形】${node.name}:${notes.join(';')}` : ''
+    if (entry.blessing || entry.item || expiredNames.length) {
+      logChronicle(chronicleRaw(day, `${runDungeon(r).name}的${node.name}:${notes.join(';')}。`))
     }
     if (node.kind === 'battle' || node.kind === 'elite' || node.kind === 'boss') {
       if (entryText) changeProgress({ lastNodeResult: entryText })

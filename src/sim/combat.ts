@@ -278,10 +278,10 @@ export function createBattle(
   protectOn = true,
   potions?: { heal: number; fury: number },
   modifiers: DifficultyModifiers = {},
-  /** 远征内事件状态(反馈④事件大项):乘数,只作用于我方 */
-  mods?: { atk?: number; def?: number; hp?: number; heal?: number },
-  /** 路况敌方修正(U27② 暴露):走 difficultyAttack 通道,召唤增援经 scaleFactors 继承 */
-  enemyMods?: { atk?: number },
+  /** 远征内事件状态(反馈④事件大项):乘数,只作用于我方;fireRes=加算(R5.1b 阴寒/湿透好处面) */
+  mods?: { atk?: number; def?: number; hp?: number; heal?: number; fireRes?: number },
+  /** 路况敌方修正(U27② 暴露攻击/R5.1b 阴寒减速):走 difficulty 通道,召唤增援经 scaleFactors 继承 */
+  enemyMods?: { atk?: number; spd?: number },
 ): BattleState {
   const enc = dungeon.encounters.find((e) => e.id === encounterId)
   if (!enc) throw new Error(`未知遭遇战: ${encounterId}`)
@@ -300,6 +300,7 @@ export function createBattle(
     elite: !!modifiers.elite,
   }
   if (enemyMods?.atk !== undefined) factors.difficultyAttack *= enemyMods.atk
+  if (enemyMods?.spd !== undefined) factors.difficultySpd = enemyMods.spd
   const combatants: Combatant[] = members.map(toCombatant)
   if (mods) {
     for (const c of combatants) {
@@ -310,6 +311,8 @@ export function createBattle(
         c.hp = c.maxHp
       }
       if (mods.heal !== undefined) c.healReceived = (c.healReceived ?? 0) + mods.heal - 1
+      // R5.1b 好处面:火抗加算(湿透;灼热地形受益)
+      if (mods.fireRes !== undefined) c.fireResist = Math.min(0.9, (c.fireResist ?? 0) + mods.fireRes)
     }
   }
   for (const gid of enc.enemyGroupIds) {

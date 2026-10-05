@@ -29,6 +29,8 @@ import {
 import type { Rng } from './rng'
 import { runMembers, runDungeon, runRng, syncRunParty } from './run-core'
 import { terrainRewardOf } from '../data/terrain-rewards'
+import { conditionDropMult, conditionExpMult } from './conditions'
+import { CONDITION_BY_ID } from '../data/conditions'
 
 export interface EncounterGuild {
   /** A2 事实账本:settlement 是唯一追加方之一(App 侧只经账本函数) */
@@ -121,6 +123,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   const encounterSeq = input.source === 'dungeon' ? input.run.battlesFought : input.run.floor
   const itemId = () => `i-${original.id}-${encounterSeq}-${++itemSeq}`
   const effects = baseEffects(guild.buildings)
+  let expMultCond = 1 // R5.1b:疲惫等经验倍率,须在 advanceRun 消退状态前捕获(dungeon 分支赋值)
   const place = input.source === 'dungeon' ? runDungeon(input.run).name : `黑苔高塔第 ${input.run.floor} 层`
 
   if (outcome.source === 'dungeon') {
@@ -140,9 +143,9 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: nodeById(r.map, r.nodeId)?.layer ?? encounterSeq } })
       }
     } else if (outcome.win) {
-      // R5/U33①:水域节点掉落率 ×1.5(地形回报;精英品质下限在 R5.1c 落地)
+      // R5/U33①:水域节点掉落率 ×1.5(地形回报)× 暴露 upside ×2(R5.1b;精英品质下限在 R5.1c 落地)
       const node = nodeById(r.map, r.nodeId)
-      const dropMult = terrainRewardOf(node?.terrain ?? 'road')?.dropMult ?? 1
+      const dropMult = (terrainRewardOf(node?.terrain ?? 'road')?.dropMult ?? 1) * conditionDropMult(r)
       const drop = rollWaveDrop(runDungeon(r).id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
         waveDropBonus(members.filter(m => common.battle.combatants.some(x => x.memberId === m.id && x.alive))), itemId, dropMult)
       if (drop) outcome.loot.items.push(drop)
@@ -152,7 +155,15 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     outcome.loot.gold = outcome.win
       ? Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) * (r.rareHunt && r.battlesFought === 1 ? r.rareHunt.rewardMult : 1)) : 0
     // 必须在推进索引前捕获遭遇奖励/委托；先推进再登记死亡保持副本旧顺序。
+    // R5.1b:经验/掉落倍率要在 advanceRun 消退状态前捕获;消退的状态写成可见提示。
+    const condsBeforeSettle = [...(r.conditions ?? [])]
+    expMultCond = conditionExpMult(r)
     advanceRun(r, guild.members)
+    for (const name of (r.conditions ?? []).length < condsBeforeSettle.length
+      ? condsBeforeSettle.filter((id) => !(r.conditions ?? []).includes(id)).map((id) => CONDITION_BY_ID[id]?.name ?? id)
+      : []) {
+      outcome.notices.push('路况消退:' + name + '。')
+    }
     outcome.deaths = markPermadeath({ ...r, members }, place)
     if (outcome.win) {
       // R5/U33①:林野节点熟练度收益 ×2(地形回报;精英 +2 在 R5.1c 落地)
@@ -258,7 +269,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         appendFact(guild.factLedger, day, { kind: 'tower-record', actors: [], refs: { floor: guild.towerBest } })
       }
     }
-  } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run) }, effects.expMult)
+  } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run) }, effects.expMult * expMultCond)
 
   // 用本场前后的变化记事，避免沿用整趟出征快照而重复登记同一次升级/升星。
   for (const m of members) {
