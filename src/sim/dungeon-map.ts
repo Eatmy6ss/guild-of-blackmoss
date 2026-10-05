@@ -5,6 +5,7 @@
 
 import { createRng, type Rng } from './rng'
 import type { DungeonDef } from './types'
+import { CONDITION_BY_ID } from '../data/conditions'
 
 /** 地形词表(事件分池草案 §1,九类) */
 export type TerrainId = 'water' | 'wild' | 'road' | 'camp' | 'under' | 'ruin' | 'grave' | 'sanctum' | 'lava'
@@ -60,15 +61,24 @@ export function nextOptions(map: DungeonMap, nodeId: string): MapNode[] {
   return opts
 }
 
-/** 挂机选路(U27①,逻辑住 sim 层不放 App):高熟练按已知信息选(血少休整/事件,血多精英),
- *  低熟练盲选。visible 由 UI 层按熟练度揭示过滤后传入;这里只做选择。 */
+/** 挂机选路(U27①,逻辑住 sim 层不放 App;R5.1f/U33⑧⑤ 修订):
+ *  - 读完整揭示档位(含迷途降档——挂机不再看穿迷途);
+ *  - 暗道与迷雾同规:档 3 才可见(迷途显形除外),挂机不偷看、不选不可见节点;
+ *  - 档位够(tier>0)时优先宝箱,其次能解除当前路况的地形;血少休整/事件,血多精英;
+ *  - 低档盲选(只在可见节点里随机)。 */
 export function autoPickNode(
   options: MapNode[],
-  opts: { knows: boolean; avgHp: number; rng: Rng },
+  opts: { tier: number; avgHp: number; rng: Rng; conditions?: string[]; lostReveals?: boolean },
 ): MapNode | null {
   if (options.length === 0) return null
-  if (opts.knows) {
-    const byKind = (k: MapNodeKind) => options.find((o) => o.kind === k)
+  const visible = options.filter((o) => !(o.kind === 'secret' && opts.tier < 3 && !opts.lostReveals))
+  const pool = visible.length > 0 ? visible : options
+  if (opts.tier > 0) {
+    const byKind = (k: MapNodeKind) => pool.find((o) => o.kind === k)
+    const treasure = byKind('treasure')
+    if (treasure) return treasure
+    const clearers = pool.filter((o) => (opts.conditions ?? []).some((id) => CONDITION_BY_ID[id]?.clearedBy?.includes(o.terrain)))
+    if (clearers.length > 0) return clearers[Math.floor(opts.rng() * clearers.length)]!
     if (opts.avgHp < 0.5) {
       const pick1 = byKind('rest') ?? byKind('event')
       if (pick1) return pick1
@@ -77,7 +87,7 @@ export function autoPickNode(
       if (pick1) return pick1
     }
   }
-  return options[Math.floor(opts.rng() * options.length)] ?? null
+  return pool[Math.floor(opts.rng() * pool.length)] ?? null
 }
 
 function weightedTerrain(dungeon: DungeonDef, rng: Rng): TerrainId {

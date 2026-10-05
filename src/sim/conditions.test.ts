@@ -272,3 +272,55 @@ describe('R5.1c 惊动真权重', () => {
     console.log(`  R5.1c 探针:基础率均值 ${avgBase.toFixed(3)},翻转率 ${rate.toFixed(3)}(应 ≈ ${(avgBase * 2).toFixed(3)}),eligible=${eligible}`)
   })
 })
+
+// R5.1f(U33⑧⑤):挂机选路吃迷途降档、不偷看暗道、档位够时认宝箱与解路况地形
+import { autoPickNode } from './dungeon-map'
+import type { MapNode } from './dungeon-map'
+import { revealTier } from './run'
+
+function node(id: string, kind: MapNode['kind'], terrain: MapNode['terrain'], hidden = false): MapNode {
+  return { id, layer: 1, terrain, kind, name: id, ...(hidden ? { hidden: true } : {}) }
+}
+
+describe('R5.1f 挂机选路', () => {
+  it('暗道在档 <3 时不被挂机选中(迷途显形除外);档 3 可选', () => {
+    const secret = node('s1', 'secret', 'road', true)
+    const battle = node('b1', 'battle', 'road')
+    // 盲选(档 0):rng 0.5 → 两选一,强制多次只允许 battle 被选中
+    let pickedSecret = false
+    for (let i = 0; i < 40; i++) {
+      const p = autoPickNode([secret, battle], { tier: 0, avgHp: 0.6, rng: () => i / 40 })
+      if (p?.kind === 'secret') pickedSecret = true
+    }
+    expect(pickedSecret, '档 0 挂机不得选中暗道').toBe(false)
+    // 迷途显形:暗道可被选中
+    const withLost = autoPickNode([secret, battle], { tier: 0, avgHp: 0.6, rng: () => 0.1, lostReveals: true })
+    expect(withLost?.kind).toBe('secret')
+    // 档 3:暗道可选
+    const t3 = autoPickNode([secret, battle], { tier: 3, avgHp: 0.6, rng: () => 0.1 })
+    expect(t3?.kind).toBe('secret')
+  })
+
+  it('迷途降档进档位:熟练 35+迷途(降 1)=档 0 → 盲选,不认宝箱', () => {
+    expect(revealTier(35, 0, 0)).toBe(1)
+    expect(revealTier(35, 0, 1)).toBe(0)
+    const treasure = node('t1', 'treasure', 'road')
+    const battle = node('b1', 'battle', 'road')
+    // 档 0:不认宝箱,盲选(rng 钉 0.9 → 命中后者 battle)
+    const blind = autoPickNode([treasure, battle], { tier: 0, avgHp: 0.6, rng: () => 0.9 })
+    expect(blind?.id).toBe('b1')
+    // 档 1:优先宝箱
+    const knows = autoPickNode([treasure, battle], { tier: 1, avgHp: 0.6, rng: () => 0.9 })
+    expect(knows?.id).toBe('t1')
+  })
+
+  it('档位够时优先能解除当前路况的地形(阴寒→圣所)', () => {
+    const sanctum = node('sn', 'battle', 'sanctum')
+    const water = node('wa', 'battle', 'water')
+    const pick = autoPickNode([water, sanctum], { tier: 1, avgHp: 0.6, rng: () => 0.9, conditions: ['chill'] })
+    expect(pick?.id).toBe('sn')
+    // 无路况时不优先(盲选 rng 0.1 → 命中 water)
+    const plain = autoPickNode([water, sanctum], { tier: 1, avgHp: 0.6, rng: () => 0.1 })
+    expect(plain?.id).toBe('wa')
+  })
+})

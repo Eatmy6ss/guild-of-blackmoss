@@ -68,7 +68,7 @@ import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, insureNextTowerFloor, towerRest, towerNext, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { revealTier, moveTo, mapOptions, currentNode, nextBossEncounter } from './sim/run'
 import { autoPickNode } from './sim/dungeon-map'
-import { restHealMult, terrainEntryReward } from './sim/conditions'
+import { restHealMult, terrainEntryReward, revealPenaltyLayers } from './sim/conditions'
 import { CONDITION_BY_ID } from './data/conditions'
 import { MapScreen } from './ui/screens/MapScreen'
 import { ResultScreen } from './ui/screens/ResultScreen'
@@ -827,12 +827,28 @@ export default function App() {
       }
       return
     }
-    // 挂机选路(U27①):逻辑住 sim 层——高熟练按已知信息选(血少休整/事件,血多精英),低熟练盲选
+    // Boss 连战纯挂机断链补口(R5.1f):autoMode 下站在 Boss 节点且还有下一场 → 直接连战
+    if (r.autoMode && targetId === undefined && r.nodeId) {
+      const curBoss = currentNode(r)
+      if (curBoss?.kind === 'boss' && nextBossEncounter(r)) {
+        const encB = runDungeon(r).encounters.find((e) => e.id === nextBossEncounter(r))
+        const manualBonusB = encB?.bossId && manual.includes(encB.bossId) ? MANUAL_BONUS : 0
+        startStep(r, int(runRng(r), 1, 100000) * SEED_BASE, manualBonusB, membersRef.current)
+        setRunning(true)
+        syncAll()
+        return
+      }
+    }
+    // 挂机选路(U27①;R5.1f/U33⑧⑤):读完整揭示档位(吃迷途降档),不偷看暗道,认宝箱与解路况地形
     if (!targetId && r.autoMode) {
       const m = dungeonMastery[runDungeon(r).id] ?? 0
       const alive = runMembers(r, membersRef.current).filter((x) => x.alive)
       const avgHp = alive.length ? alive.reduce((sum, x) => sum + x.hp / toCombatant(x).maxHp, 0) / alive.length : 1
-      const picked = autoPickNode(mapOptions(r), { knows: revealTier(m) > 0, avgHp, rng: runRng(r) })
+      const lostReveals = (r.conditions ?? []).some((id) => CONDITION_BY_ID[id]?.upside?.secretReveal)
+      const picked = autoPickNode(mapOptions(r), {
+        tier: revealTier(m, 0, revealPenaltyLayers(r)), avgHp, rng: runRng(r),
+        conditions: r.conditions ?? [], lostReveals,
+      })
       if (picked) targetId = picked.id
     }
     if (!targetId) return // 不选路不能前进:没有「继续深入」
