@@ -24,7 +24,7 @@ export function StatisticsPanel({ statistics, day, onClose, onBack }: {
   const columns = [statistics.expeditionBattles, statistics.towerFloors, statistics.expeditions]
   return <div className="screen-overlay fullpage" onKeyDown={(event) => {
     event.stopPropagation()
-    if (event.key === 'Escape') onClose()
+    // R5.2b:Esc 统一由 App 层单一监听处理(statistics → chronicle);此处只保留 Tab 焦点圈
     if (event.key === 'Tab') {
       const elements = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), textarea') ?? [])
       if (event.shiftKey && (document.activeElement === elements[0] || document.activeElement === panel.current)) {

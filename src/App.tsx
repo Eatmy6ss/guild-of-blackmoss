@@ -326,6 +326,8 @@ export default function App() {
   // R5.2/U33⑦:真 go()/back() 状态机——单一 screen 取代 screen('title'|'game')/hubScreen/memberSheetId 三套状态
   const go = (to: Screen) => setScreen(to)
   const back = () => setScreen((cur) => backTargetOf(cur))
+  const screenRef = useRef<Screen>('title')
+  screenRef.current = screen
   // F13(2026-09-25):内置确认弹窗——微信等内置浏览器不支持 window.confirm/prompt,破坏性操作改游戏内弹窗
   const [confirmAsk, setConfirmAsk] = useState<{ text: string; okLabel?: string; onOk: () => void } | null>(null)
   const [battleSpeed, setBattleSpeed] = useState<1 | 2 | 3>(() => { try { return parseBattleSpeed(localStorage.getItem('gg-speed')) } catch { return 1 } })
@@ -714,6 +716,9 @@ export default function App() {
   }
 
   const lastRetreatRunRef = useRef<string | null>(null)
+  // R5.2b:Esc 单一监听经 ref 转发 retreat/backToGuild(处理器定义在后,且需读最新渲染闭包)
+  const retreatRef = useRef<() => void>(() => {})
+  const backToGuildRef = useRef<() => void>(() => {})
   const retreat = () => {
     const r = runRef.current
     if (!r) return
@@ -987,6 +992,8 @@ export default function App() {
       }
     }
   }
+  retreatRef.current = retreat
+  backToGuildRef.current = backToGuild
 
   // R5.2:从标题屏进入时按断点路由(老 screen==='game' 的语义拆到具体屏)
   const continueScreen = (): Screen => towerRunRef.current
@@ -1507,11 +1514,24 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
-      if (runRef.current || towerRunRef.current) return
+      // R5.2b/U33⑦:Esc 只有一个监听(App 层),按屏特判
       if (e.key === 'Escape') {
+        const cur = screenRef.current
+        if (cur === 'map' && runRef.current?.phase === 'rest') {
+          // 地图 Esc=撤退确认(写明 R5.1e 的撤退代价);retreat 经 ref 调用(防首帧闭包)
+          const r = runRef.current
+          const g = Math.floor((r.earnedGold ?? 0) / 2)
+          const m = Math.floor((r.earnedMastery ?? 0) / 2)
+          setConfirmAsk({ text: `撤退回城?本趟金币 −${g}、${runDungeon(r).name}熟练度 −${m}(装备照拿,药水照退)。`, okLabel: '🏳 撤退回城', onOk: () => retreatRef.current?.() })
+          return
+        }
+        if (cur === 'result') { backToGuildRef.current?.(); return } // 结算屏 Esc=返回公会
+        if (cur === 'member') setMemberSheetId(null)
+        if (runRef.current || towerRunRef.current) return // 战斗/塔内 Esc 无效(防误触,与旧一致)
         back()
         return
       }
+      if (runRef.current || towerRunRef.current) return
       const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase() && dockUnlocked(it.key))
       if (hit) setScreen((cur) => (cur === hit.key ? 'hall' : hit.key))
     }

@@ -39,9 +39,7 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
     panel.current?.focus()
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    // R5.2b:Esc 统一由 App 层单一监听处理(按 backTargetOf 返回花名册),本面板不再自带监听
   }, [onClose])
 
   const canEquip = !!(inventory && onEquip)
