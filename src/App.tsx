@@ -82,7 +82,7 @@ import { ExpeditionBoard } from './ui/screens/ExpeditionBoard'
 import { TitleScreen } from './ui/screens/TitleScreen'
 import { attrsLine, personalityLine } from './ui/screens/member-lines'
 import { WarehouseScreen } from './ui/screens/WarehouseScreen'
-import { HUB_DOCK, backTargetOf, type HubScreen as UIScreen } from './ui/screens'
+import { HUB_DOCK, backTargetOf, type Screen } from './ui/screens'
 import { type InvSort } from './ui/inventory-sort'
 import { nextBattleSpeed, speedIntervalMs, parseBattleSpeed } from './ui/battle/speed'
 import { ECONOMY } from './data/economy'
@@ -322,7 +322,10 @@ export default function App() {
   const [manual, setManual] = useState<string[]>(() => saved?.manual ?? [])
   const [protectOn, setProtectOn] = useState(() => saved?.protectOn ?? true)
   const [candidates, setCandidates] = useState<Member[]>([])
-  const [screen, setScreen] = useState<'title' | 'game'>('title')
+  const [screen, setScreen] = useState<Screen>('title')
+  // R5.2/U33⑦:真 go()/back() 状态机——单一 screen 取代 screen('title'|'game')/hubScreen/memberSheetId 三套状态
+  const go = (to: Screen) => setScreen(to)
+  const back = () => setScreen((cur) => backTargetOf(cur))
   // F13(2026-09-25):内置确认弹窗——微信等内置浏览器不支持 window.confirm/prompt,破坏性操作改游戏内弹窗
   const [confirmAsk, setConfirmAsk] = useState<{ text: string; okLabel?: string; onOk: () => void } | null>(null)
   const [battleSpeed, setBattleSpeed] = useState<1 | 2 | 3>(() => { try { return parseBattleSpeed(localStorage.getItem('gg-speed')) } catch { return 1 } })
@@ -442,7 +445,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (screen !== 'game' || resumeHandledRef.current) return
+    if (screen === 'title' || resumeHandledRef.current) return
     resumeHandledRef.current = true
     const active = progressRef.current.activeRun
     if (!saved?.runState.activeRun || !active) return
@@ -573,7 +576,7 @@ export default function App() {
   }, [battle?.log.length])
 
   useEffect(() => {
-    if (screen !== 'game' || (!running && !towerRunning)) return
+    if (screen === 'title' || (!running && !towerRunning)) return
     const timer = setInterval(() => {
       // 高塔线:塔进行中由本循环推进(试玩 bug 修复——此前塔战斗没有任何 tick 驱动)
       const t = towerRunRef.current
@@ -666,6 +669,9 @@ export default function App() {
     applyOutcome(o)
     const r = o.run
     const endPhase = r.phase
+    // R5.2:结算后按阶段转场(rest→地图选路;victory/defeat/retreated→结算屏)
+    if (endPhase === 'rest') go('map')
+    else go('result')
     if (endPhase === 'retreated') applyRetreatDeduction(r) // R5.1e:战斗中撤离同样收撤退代价
     if (o.sound === 'victory') sfxVictory()
     if (o.sound === 'defeat') sfxDefeat()
@@ -727,6 +733,7 @@ export default function App() {
       r.autoMode = false
       setRunning(false)
       retreatRun(r, membersRef.current)
+      go('result') // R5.2:rest 相撤退也走结算屏(finished 的渲染已收进状态机)
       applyRetreatDeduction(r) // R5.1e:撤退代价(金币/熟练度减半)
       noteStatistics(expeditionStatistics(r))
       syncAll()
@@ -807,6 +814,7 @@ export default function App() {
     rendererRef.current?.setTheme(
       activeDungeon.id,
     )
+    go('map') // R5.2:出发即进地图屏(旧行为:run.phase==='rest' 直接渲染地图)
     setRunning(true)
     syncAll()
   }
@@ -822,6 +830,7 @@ export default function App() {
         const enc = runDungeon(r).encounters.find((e) => e.id === nextBossEncounter(r))
         const manualBonus = enc?.bossId && manual.includes(enc.bossId) ? MANUAL_BONUS : 0
         startStep(r, int(runRng(r), 1, 100000) * SEED_BASE, manualBonus, membersRef.current)
+        go('battle')
         setRunning(true)
         syncAll()
       }
@@ -834,6 +843,7 @@ export default function App() {
         const encB = runDungeon(r).encounters.find((e) => e.id === nextBossEncounter(r))
         const manualBonusB = encB?.bossId && manual.includes(encB.bossId) ? MANUAL_BONUS : 0
         startStep(r, int(runRng(r), 1, 100000) * SEED_BASE, manualBonusB, membersRef.current)
+        go('battle')
         setRunning(true)
         syncAll()
         return
@@ -877,6 +887,7 @@ export default function App() {
       const enc = runDungeon(r).encounters.find((e) => e.id === encId)
       const manualBonus = enc?.bossId && manual.includes(enc.bossId) ? MANUAL_BONUS : 0
       startStep(r, int(runRng(r), 1, 100000) * SEED_BASE, manualBonus, membersRef.current)
+      go('battle')
       setRunning(true)
       syncAll()
       return
@@ -951,6 +962,7 @@ export default function App() {
   continueDeepRef.current = chooseNode
 
   const backToGuild = () => {
+    go('hall')
     setResumeNotice('')
     const r = runRef.current
     if (r) noteStatistics(expeditionStatistics(r))
@@ -976,6 +988,10 @@ export default function App() {
     }
   }
 
+  // R5.2:从标题屏进入时按断点路由(老 screen==='game' 的语义拆到具体屏)
+  const continueScreen = (): Screen => towerRunRef.current
+    ? 'tower'
+    : runRef.current ? (runRef.current.phase === 'battle' ? 'battle' : 'map') : 'hall'
   const restartGuild = () => {
     // 破坏性操作加确认（D14：手滑清档太疼）;F13:确认弹窗内置化,入口处 setConfirmAsk
     clearGuildSave()
@@ -997,7 +1013,7 @@ export default function App() {
     setPotions({ ...ECONOMY.startingPotions })
     updateKingdom(newKingdomState())
     setRoyalNotice('')
-    goBack()
+    go('hall')
     setUnlockedHybrids([])
     setDungeonMastery({})
     guildRngRef.current = createStatefulRng(newRngSeed())
@@ -1246,7 +1262,7 @@ export default function App() {
   // F09(2026-09-25):守卫从 run.autoMode 改为 autoLoopRef——回城后 runRef 为 null,
   // 公会层事件的自动结算/翻页此前会失效,挂机连刷卡死在结果弹窗上
   useEffect(() => {
-    if (screen !== 'game' || !pendingEvent || eventResult) return
+    if (screen === 'title' || !pendingEvent || eventResult) return
     const r = runRef.current
     if (r ? !r.autoMode : !autoLoopRef.current) return
     if (r && r.phase !== 'rest') return
@@ -1258,7 +1274,7 @@ export default function App() {
   }, [pendingEvent, eventResult, screen])
 
   useEffect(() => {
-    if (screen !== 'game' || !eventResult) return
+    if (screen === 'title' || !eventResult) return
     if (!autoLoopRef.current) return
     const timer = setTimeout(() => dismissEventRef.current?.(), 2400)
     return () => clearTimeout(timer)
@@ -1315,6 +1331,7 @@ export default function App() {
     const t = startTower(expedition, int(guildRng, 1, 100000) * 9973, potions)
     towerRunRef.current = t
     setTowerRun({ ...t })
+    go('tower')
     setTowerRunning(true)
     lastBattleRef.current = null
     drainAndSync(t.battle!)
@@ -1349,6 +1366,7 @@ export default function App() {
     if (t) resetAfterRun(membersRef.current)
     towerRunRef.current = null
     setTowerRun(null)
+    go('hall')
     setTowerRunning(false)
     lastBattleRef.current = null
     rendererRef.current?.reset()
@@ -1474,34 +1492,28 @@ export default function App() {
   const battleOver = inBattle && battle!.status !== 'running'
   // 指挥有感:boss 意图实时推导——蓄力中「分散」脉冲,咏唱中亮「打断咏唱」按钮(决策窗口可见)
   const intents = (inBattle || inTowerBattle) && battle!.status === 'running' ? bossIntents(battle!) : null
-  // 屏幕栈状态:null = 大厅;远征/爬塔中快捷键不劫持(战斗界面是全屏态)。与 title/game 阶段状态相互独立
-  const [hubScreen, setHubScreen] = useState<UIScreen | null>(null)
   // U29 状态机:关闭功能屏=返回上一级(backTargetOf)——功能坞屏回大厅,统计回大事记
-  const goBack = () => setHubScreen((cur) => {
-    if (!cur) return null
-    const parent = backTargetOf(cur)
-    return parent === 'hall' ? null : (parent as UIScreen)
-  })
+  const goBack = back
   // 透明面板(宪法 v3.2 缺陷二):展开显示乘区逐层明细的成员
   const battleMapId = towerRun ? 'tower' : run ? runDungeon(run).id : activeDungeon.id
   const hasBoss = battle?.combatants.some(c => c.boss && c.alive)
   useEffect(() => { rendererRef.current?.setTheme(battleMapId) }, [battleMapId])
   useEffect(() => {
-    setMusicMood(hubScreen === 'memorial' || battle?.status === 'guild-wipe' ? 'mourning'
+    setMusicMood(screen === 'memorial' || battle?.status === 'guild-wipe' ? 'mourning'
       : (inBattle || inTowerBattle) && battle?.status === 'running' ? hasBoss ? 'boss' : 'battle'
       : towerRun || (run && ['rustmine', 'abyssaltar', 'dragonmaw'].includes(battleMapId)) ? 'cavern' : 'hub')
-  }, [hubScreen, battle?.status, hasBoss, inBattle, inTowerBattle, battleMapId, !!towerRun, !!run])
+  }, [screen, battle?.status, hasBoss, inBattle, inTowerBattle, battleMapId, !!towerRun, !!run])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
       if (runRef.current || towerRunRef.current) return
       if (e.key === 'Escape') {
-        goBack()
+        back()
         return
       }
       const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase() && dockUnlocked(it.key))
-      if (hit) setHubScreen((cur) => (cur === hit.key ? null : hit.key))
+      if (hit) setScreen((cur) => (cur === hit.key ? 'hall' : hit.key))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -1541,7 +1553,7 @@ export default function App() {
   }
   const travelRoyal = (q: CommissionDef) => {
     if (runRef.current || towerRunRef.current) return
-    if (q.objective.kind === 'building') setHubScreen('base')
+    if (q.objective.kind === 'building') go('base')
     else { setDungeonId(q.objective.dungeonId); goBack() }
   }
 
@@ -1553,9 +1565,9 @@ export default function App() {
     return (
       <div key={m.id} className="member-card">
         <div className="mc-head" role="button" tabIndex={0} aria-expanded={false}
-          style={{ cursor: 'pointer' }} title="点击打开人物档案(全部属性/装备明细/换装)" onClick={() => setMemberSheetId(m.id)}
+          style={{ cursor: 'pointer' }} title="点击打开人物档案(全部属性/装备明细/换装)" onClick={() => { setMemberSheetId(m.id); go('member') }}
           onKeyDown={event => {
-            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setMemberSheetId(m.id) }
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setMemberSheetId(m.id); go('member') }
           }}>
           <HeroPortrait member={m} />
           <span className="name">{m.name}</span>
@@ -1638,7 +1650,7 @@ export default function App() {
           {offlineNote && <div className="title-offline">{offlineNote}</div>}
           {resumeNotice && <p className="title-offline" role="status">{resumeNotice}</p>}
           <div className="title-actions">
-            <button onClick={() => { initAudio(); setScreen('game') }}>
+            <button onClick={() => { initAudio(); go(continueScreen()) }}>
               {saved ? '▶ 继续旅程' : '▶ 开始新公会'}
             </button>
             {saved && (
@@ -1650,7 +1662,7 @@ export default function App() {
                     initAudio()
                     clearGuildSave()
                     restartGuild()
-                    setScreen('game')
+                    go('hall')
                   },
                 })}
               >
@@ -1675,7 +1687,7 @@ export default function App() {
         </div>
       )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
-      {memberSheet && <MemberPanel member={memberSheet} members={members} onClose={() => setMemberSheetId(null)}
+      {screen === 'member' && memberSheet && <MemberPanel member={memberSheet} members={members} onClose={() => { setMemberSheetId(null); back() }}
               inventory={inventory} weaponTraining={weaponTraining} onEquip={(slot, itemId) => equip(memberSheet, slot, itemId)} />}
       {playtestEnding && (
         <div className="screen-overlay" style={{ zIndex: 110 }}>
@@ -1703,14 +1715,14 @@ export default function App() {
         <summary>{scarNotices[0]} <span>· 查看 {scarNotices.length} 项结算</span></summary>
         <div role="status">{scarNotices.map((notice, i) => <p className="hint" key={i}>{notice}</p>)}</div>
       </details>}
-      {screen === 'game' && resumeNotice && <p className="hint" role="status">{resumeNotice}</p>}
+      {screen !== 'title' && resumeNotice && <p className="hint" role="status">{resumeNotice}</p>}
       {screen === 'title' && <TitleScreen hasSave={!!saved} offlineNote={offlineNote} resumeNotice={resumeNotice}
         muted={muted} volume={volume} buildDate={__BUILD_DATE__}
-        onEnter={() => { initAudio(); setScreen('game') }}
+        onEnter={() => { initAudio(); go(continueScreen()) }}
         onRestart={() => setConfirmAsk({
           text: '重新开始将清空当前进度，确定？',
           okLabel: '✦ 清空并重新开始',
-          onOk: () => { initAudio(); clearGuildSave(); restartGuild(); setScreen('game') },
+          onOk: () => { initAudio(); clearGuildSave(); restartGuild(); go('hall') },
         })}
         onToggleMute={() => { initAudio(); setMuted(toggleMute()) }}
         onVolume={(v: number) => { initAudio(); setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }}
@@ -1745,8 +1757,8 @@ export default function App() {
               <button
                 key={it.key}
                 disabled={!!run || !!towerRun || locked}
-                className={`dock-btn${hubScreen === it.key ? ' open' : ''}`}
-                onClick={() => setHubScreen((cur) => (cur === it.key ? null : it.key))}
+                className={`dock-btn${screen === it.key ? ' open' : ''}`}
+                onClick={() => go(screen === it.key ? 'hall' : it.key)}
               >
                 <span className="dock-icon"><ArtCanvas paths={[DOCK_ART[it.key] ?? '/assets/icons/book.png']} label="" size={32} /></span>
                 <span className="dock-label">{locked ? `${it.label}·第${unlockDay}天` : it.label}</span>
@@ -1780,12 +1792,12 @@ export default function App() {
               </>
             )
           })()}
-          <button className="royal-hub-link" disabled={!!run || !!towerRun || !dockUnlocked('kingdom')} onClick={() => setHubScreen('kingdom')}>
+          <button className="royal-hub-link" disabled={!!run || !!towerRun || !dockUnlocked('kingdom')} onClick={() => go('kingdom')}>
             <span>♜ {kingdomRank(kingdom).name} · 信任 {kingdomTrust(kingdom)}</span>
             <span>{!dockUnlocked('kingdom') ? '第 4 天开放' : kingdom.active.some((r) => r.progress >= COMMISSIONS.find((q) => q.id === r.id)!.objective.target)
               ? '有委托可交付 →' : kingdom.active.length ? `在办委托 ${kingdom.active.length}/2 · 查看进度 →` : kingdom.completed.length === COMMISSIONS.length ? '本批委托已结案 · 回信档案 →' : '王国来函 · 查看委托 →'}</span>
           </button>
-          {hubScreen === 'kingdom' && !run && !towerRun && <KingdomPanel state={kingdom} context={royalContext} notice={royalNotice} playtestLock={(d) => !playtestAllows(d)}
+          {screen === 'kingdom' && !run && !towerRun && <KingdomPanel state={kingdom} context={royalContext} notice={royalNotice} playtestLock={(d) => !playtestAllows(d)}
             onClose={() => goBack()} onAccept={acceptRoyal} onClaim={claimRoyal} onTravel={travelRoyal}
             onAbandon={(id) => { if (runRef.current || towerRunRef.current) return; updateKingdom(abandonCommission(kingdomRef.current, id)); setRoyalNotice('委托已撤销，可重新接取。王国信任不变。') }} />}
           <div className="inv-panel tower-entry">
@@ -1811,7 +1823,7 @@ export default function App() {
           <div className="end-actions">
             <button onClick={() => setConfirmAsk({ text: '确定重开公会？所有英雄、装备与纪念堂记录将全部清空。', okLabel: '☠ 确认清空', onOk: () => restartGuild() })}>☠ 重开公会</button>
           </div>
-          {screen === 'game' && pendingEvent && (
+          {screen !== 'title' && pendingEvent && (
             <div className="screen-overlay event-overlay">
               <div className="screen-panel event-modal">
                 <div className="screen-head">
@@ -1844,17 +1856,17 @@ export default function App() {
                 </div>
               </div>
             )}
-            {hubScreen === 'tavern' && <TavernScreen gold={gold} blessing={blessing} members={members}
+            {screen === 'tavern' && <TavernScreen gold={gold} blessing={blessing} members={members}
               visitor={visitor} candidates={candidates} effectiveCooldown={effectiveCooldown} busy={!!run || !!towerRun}
               onFeast={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); for (const d of membersRef.current) { if (d.alive && d.trait === 'drinker') d.morale = Math.min(100, (d.morale ?? 60) + Math.round(baseEffects(buildings).feastBoost * 0.5)) } setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
               onWaitNight={() => setVisitor(rollVisitor(guildRng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))}
               onSign={signVisitor} onBounty={hireBounty} onTale={rollTale} onHire={hire} onBack={goBack} />}
-            {hubScreen === 'warehouse' && <WarehouseScreen inventory={inventory} potions={potions} gold={gold} kingdom={kingdom}
+            {screen === 'warehouse' && <WarehouseScreen inventory={inventory} potions={potions} gold={gold} kingdom={kingdom}
               pendingRelics={pendingRelics} starMarrow={starMarrow} blessing={blessing} busy={!!run || !!towerRun}
               invSort={invSort} onSortChange={setInvSort} onBuyPotion={buyPotion} onRedeemRelic={redeemRelic}
               onDismantle={dismantleT3} onSell={sellItem} onExchange={exchangeT3}
               lastDropCount={lastDrops.length} sellMult={baseEffects(buildings).sellMult} onBack={goBack} />}
-            {hubScreen === 'base' && <BaseScreen day={day} gold={gold} blessing={blessing} members={members}
+            {screen === 'base' && <BaseScreen day={day} gold={gold} blessing={blessing} members={members}
               busy={!!run || !!towerRun} trainingReady={trainingReady} healingNotice={healingNotice}
               healingMastery={healingMastery} buildings={buildings} unlockedHybrids={unlockedHybrids}
               weaponTraining={weaponTraining}
@@ -1907,11 +1919,11 @@ export default function App() {
               onAdvanceSpec={advanceSpec}
               onLearnAugment={learnAugment}
               onBack={goBack} />}
-            {hubScreen === 'chronicle' && <ChronicleScreen chronicle={chronicle} day={day} onOpenStatistics={() => setHubScreen('statistics')} onBack={goBack} />}
-            {hubScreen === 'memorial' && <MemorialScreen memorial={memorial} onBack={goBack} />}
-            {hubScreen === 'manual' && <ManualScreen manual={manual} eventsSeen={eventsSeen} protectOn={protectOn} onToggleProtect={() => setProtectOn((p) => !p)} onBack={goBack} />}
-            {hubScreen === 'roster' && <RosterScreen members={members} renderMemberCard={memberCard} onBack={goBack} />}
-            {hubScreen === 'statistics' && <StatisticsPanel statistics={statistics} day={day} onClose={() => goBack()} onBack={() => setHubScreen('chronicle')} />}
+            {screen === 'chronicle' && <ChronicleScreen chronicle={chronicle} day={day} onOpenStatistics={() => go('statistics')} onBack={goBack} />}
+            {screen === 'memorial' && <MemorialScreen memorial={memorial} onBack={goBack} />}
+            {screen === 'manual' && <ManualScreen manual={manual} eventsSeen={eventsSeen} protectOn={protectOn} onToggleProtect={() => setProtectOn((p) => !p)} onBack={goBack} />}
+            {screen === 'roster' && <RosterScreen members={members} renderMemberCard={memberCard} onBack={goBack} />}
+            {screen === 'statistics' && <StatisticsPanel statistics={statistics} day={day} onClose={() => back()} onBack={() => go('chronicle')} />}
         </div>
 
         <div className={`panel${inBattle || inTowerBattle ? ' battle-panel' : ''}`}>
@@ -1924,7 +1936,7 @@ export default function App() {
             onSelectDungeon={setDungeonId} onDepart={() => startExpeditionRef.current?.()} />}
 
 
-          {run && inBattle && (
+          {screen === 'battle' && run && inBattle && (
             <>
               <h2>
                 {encName(run, run.battle?.encounterId ?? '')}（第 {run.battlesFought} 场）
@@ -2149,7 +2161,7 @@ export default function App() {
             </>
           )}
 
-          {towerRun?.phase === 'battle' && battle && (
+          {screen === 'tower' && towerRun?.phase === 'battle' && battle && (
             <>
               <h2>🗼 黑苔高塔 · 第 {towerRun.floor} 层{towerFloorIsBoss(towerRun.floor) ? '（守塔者）' : ''}</h2>
               <div className="cmd-bar">
@@ -2248,7 +2260,7 @@ export default function App() {
             </>
           )}
 
-          {towerRun && towerRun.phase === 'rest' && (
+          {screen === 'tower' && towerRun && towerRun.phase === 'rest' && (
             <>
               <h2>🗼 第 {towerRun.floor} 层突破</h2>
               <div className="result-banner win">
@@ -2275,7 +2287,7 @@ export default function App() {
             </>
           )}
 
-          {towerRun && towerRun.phase === 'ended' && (
+          {screen === 'tower' && towerRun && towerRun.phase === 'ended' && (
             <>
               <h2>塔内征程结束</h2>
               <div className={`result-banner ${towerRun.result === 'defeated' ? 'wipe' : 'win'}`}>
@@ -2296,7 +2308,7 @@ export default function App() {
               return <div key={record.id}>{q.title} · {record.progress}/{q.objective.target}{record.progress >= q.objective.target ? ' · 已达成，返回公会交付' : ''}</div>
             })}
           </div>}
-          {run && run.kind === 'dungeon' && run.phase === 'rest' && (
+          {screen === 'map' && run && run.kind === 'dungeon' && run.phase === 'rest' && (
             <MapScreen
               run={run}
               mastery={dungeonMastery[runDungeon(run).id] ?? 0}
@@ -2307,7 +2319,7 @@ export default function App() {
             />
           )}
 
-          {finished && (
+          {screen === 'result' && finished && (
             <ResultScreen
               run={run!}
               dungeonName={runDungeon(run!).name}

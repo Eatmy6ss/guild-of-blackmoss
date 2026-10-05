@@ -442,6 +442,7 @@ function rngScope(scope: Record<string, unknown>) {
     storyCursorRef: { current: 0 }, expeditionStartFactRef: { current: 0 },
     weaponTraining: [] as string[], weaponTrainingRef: { current: [] as string[] }, setWeaponTraining: () => {},
     applyRetreatDeduction: () => {}, setDungeonMastery: () => {},
+    go: () => {}, back: () => {}, continueScreen: () => 'hall' as const, setScreen: () => {},
     hintsSeen: [] as string[], hintsSeenRef: { current: [] as string[] }, dismissHint: () => {},
     membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
     runMembers: (r: any, ms: Member[]) => r.memberIds ? resolveRunMembers(r, ms?.length ? ms : r.members ?? []) : r.members,
@@ -1488,12 +1489,12 @@ test('recovery: pending and paid automatic events wait on the title; restored re
   let scheduled=0, choices=0
   const scope:any={pendingEvent:GUILD_EVENTS[0],eventResult:null,runRef:{current:null},autoLoopRef:{current:true},
     resolveEventRef:{current:()=>choices++},setTimeout:()=>{scheduled++;return 1},clearTimeout:()=>{}}
-  const snippet="if (screen !== 'game' || !pendingEvent || eventResult) return"
+  const snippet="if (screen === 'title' || !pendingEvent || eventResult) return"
   callback(snippet,{...scope,screen:'title'})()
   callback(snippet,{...scope,screen:'game',eventResult:'已经到账'})()
   assert.equal(scheduled,0);assert.equal(choices,0)
   const cleanup=callback(snippet,{...scope,screen:'game'})()
   assert.equal(scheduled,1);assert.equal(typeof cleanup,'function')
-  callback("if (screen !== 'game' || !eventResult) return",{...scope,screen:'title',eventResult:'已经到账'})()
+  callback("if (screen === 'title' || !eventResult) return",{...scope,screen:'title',eventResult:'已经到账'})()
   assert.equal(scheduled,1)
 })
