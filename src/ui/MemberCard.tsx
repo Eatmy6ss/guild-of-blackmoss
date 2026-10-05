@@ -8,6 +8,21 @@ import { specOf, JOBS } from '../data/jobs'
 import { maxHpOf } from '../sim/gen'
 import { powerScore } from '../sim/combat'
 import { describeItem } from '../sim/loot'
+import { ITEM_BASES } from '../data/items'
+import { isFamilyProficient, WEAPON_FAMILIES } from '../data/weapon-families'
+import { skillFamilyBlocked, toCombatant } from '../sim/combat'
+
+/** 换上 family 后会失去的技能名列表(按当前专精技能组扫描) */
+function skillsLostBy(m: Member, family: import('../sim/types').WeaponFamily): string {
+  const spec = isHybrid(m.spec) ? HYBRIDS[m.spec!] : specOf(m.job, m.spec)
+  const famDef = WEAPON_FAMILIES[family]
+  void famDef
+  const c = { ...toCombatant(m), weaponFamily: family, weaponProficient: isFamilyProficient(m.job, family, m.weaponLearned), team: 'guild' as const }
+  const names = [...spec.skills, ...(spec.advancedSkills ?? [])]
+    .filter((sk) => skillFamilyBlocked(c, sk.weaponFamily))
+    .map((sk) => sk.name)
+  return names.join('、')
+}
 import { slotsOf } from '../sim/loot'
 import { attrsLine, personalityLine } from './screens/member-lines'
 import { moraleReadout } from '../sim/chronicle'
@@ -72,6 +87,16 @@ export function MemberCard(props: {
               ...(equipped ? [equipped] : []),
               ...inventory.filter((i) => slotsOf(i) === slot),
             ]
+            // R5.3e(U33⑥):下拉选项展示武器族与「换上后失去」;当前武器标熟练
+            const optLabel = (i: ItemInstance): string => {
+              const base = ITEM_BASES[i.baseId]
+              if (base?.slot !== 'weapon' || !base.family) return describeItem(i)
+              const prof = isFamilyProficient(m.job, base.family, m.weaponLearned)
+              const blocked = skillFamilyBlocked({ ...toCombatant(m), weaponFamily: base.family, weaponProficient: prof, team: 'guild' }, undefined)
+              void blocked
+              const loses = skillsLostBy(m, base.family)
+              return `${base.family === 'blade' ? '刃' : base.family === 'bow' ? '弓' : base.family === 'staff' ? '杖' : base.family === 'axe' ? '锤斧' : '长柄'}·${prof ? '✔熟练' : '⚠非熟练'} ${describeItem(i)}${loses ? `〔换上后失去:${loses}〕` : ''}`
+            }
             return (
               <label key={slot} className="gear-control">
                 <ArtCanvas paths={[itemIcon(equipped?.baseId ?? '', slot)]} label={SLOT_NAME[slot]} size={32} />
@@ -86,7 +111,7 @@ export function MemberCard(props: {
                 <option value="">{SLOT_NAME[slot]}·空</option>
                 {options.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {describeItem(i)}
+                    {optLabel(i)}
                   </option>
                 ))}
               </select>

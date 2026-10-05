@@ -344,6 +344,20 @@ async function phaseEnding() {
       await b.evalJs(`(()=>{const cards=[...document.querySelectorAll('.member-card')];const t=cards.find((c)=>c.textContent.includes(${JSON.stringify(poleMember.name)}));const btn=[...(t?.querySelectorAll('button')??[])].find((x)=>x.textContent.includes('替补'));btn?.click()})()`)
       await sleep(300)
       console.log(`  R3C 收尾:已把 ${poleMember.name} 替补下场`)
+      // R5.3e(U33⑥):装备下拉展示武器族+「换上后失去」(在名册成员卡上直接验)
+      {
+        const hasRoster3 = await b.evalJs(`!!document.querySelector('.member-card')`)
+        if (!hasRoster3) { await clickText(b, '花名册'); await sleep(400) }
+        const drop = await b.evalJs(`(()=>{
+          const cards=[...document.querySelectorAll('.member-card')]
+          const t=cards.find((c)=>c.textContent.includes(${JSON.stringify(homeMember.name)}))
+          const sel=t?.querySelector('.slot-select')
+          if(!sel) return null
+          const opts=[...sel.querySelectorAll('option')].map((o)=>o.textContent)
+          return { hasFamily: opts.some((o)=>o.includes('刃')&&o.includes('✔熟练')), hasLose: opts.some((o)=>o.includes('换上后失去')) }
+        })()`)
+        check('R3D', '装备下拉:武器族+熟练标记+「换上后失去」', drop && drop.hasFamily && drop.hasLose ? 'PASS' : 'FAIL', JSON.stringify(drop))
+      }
     }
     await pressEscape(b); await sleep(200)
     const t0 = Date.now()

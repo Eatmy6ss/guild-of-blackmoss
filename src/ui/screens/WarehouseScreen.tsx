@@ -96,6 +96,12 @@ export function WarehouseScreen(props: WarehouseScreenProps) {
           ) : (
             inventorySorted.map((i) => (
               <div key={i.id} className="inv-item">
+                {(() => {
+                  // R5.3e(U33⑥):武器行前缀武器族(装备前可见)
+                  const fam = ITEM_BASES[i.baseId].family
+                  const famName = fam === 'blade' ? '[刃]' : fam === 'bow' ? '[弓]' : fam === 'staff' ? '[杖]' : fam === 'axe' ? '[锤斧]' : fam === 'polearm' ? '[长柄]' : ''
+                  return famName
+                })()}
                 {describeItem(i)}
                 {ITEM_BASES[i.baseId].tier === 3 && (
                   <button className="sell-btn" onClick={() => props.onDismantle(i.id)}>

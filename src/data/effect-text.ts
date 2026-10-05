@@ -22,11 +22,15 @@ export const SKILL_EFFECT_DESC: Record<string, string> = {
 }
 
 /** 技能说明整句(名称+冷却+说明),面板与转职卡片共用 */
-export function skillLine(skill: { name: string; effect: string; cooldownTicks: number }): string {
+export function skillLine(skill: { name: string; effect: string; cooldownTicks: number }, weaponFamily?: import('../sim/types').WeaponFamily[] | 'universal'): string {
   const desc = SKILL_EFFECT_DESC[skill.effect] ?? '效果说明待补。'
   const sec = (skill.cooldownTicks / 10).toFixed(skill.cooldownTicks % 10 === 0 ? 0 : 1)
-  return `【${skill.name}】(冷却 ${sec} 秒)${desc}`
+  const famTag = !weaponFamily || weaponFamily === 'universal' ? ''
+    : `(需${weaponFamily.map((f) => WEAPON_FAMILY_NAMES[f]).join('/')})`
+  return `【${skill.name}】${famTag}(冷却 ${sec} 秒)${desc}`
 }
+
+const WEAPON_FAMILY_NAMES: Record<string, string> = { blade: '刃', bow: '弓', staff: '杖', axe: '锤斧', polearm: '长柄' }
 
 /** 传承威能(A13 后续:名称+说明单一来源;与 combat.ts 实装一一对应) */
 export const LEGACY_INFO: Record<string, { name: string; desc: string }> = {

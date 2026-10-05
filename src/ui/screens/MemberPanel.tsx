@@ -13,6 +13,7 @@ import { STAT_NAME, formatStat, describeItem } from '../../sim/loot'
 import { toCombatant } from '../../sim/combat'
 import { SIGNATURE_SKILLS } from '../../data/signature'
 import { skillLine, LEGACY_INFO } from '../../data/effect-text'
+import { skillFamilyBlocked } from '../../sim/combat'
 import { ECONOMY } from '../../data/economy'
 import { describeEquipmentSet } from '../../sim/equipment-sets'
 import { WEAPON_FAMILIES, isFamilyProficient } from '../../data/weapon-families'
@@ -158,8 +159,17 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
             })}
             <h3>技能</h3>
             <ul className="ms-list">
-              {spec.skills.map((sk) => <li key={sk.id}>{skillLine(sk)}</li>)}
-              {advanced && <li key={advanced.id}>{skillLine(advanced)}<span className="hint">(精进)</span></li>}
+              {spec.skills.map((sk) => {
+                // R5.3e(U33⑥):武器族标注+被封锁灰显(当前武器不满足族门槛)
+                const blocked = skillFamilyBlocked(c, sk.weaponFamily)
+                return (
+                  <li key={sk.id} style={blocked ? { opacity: 0.45 } : undefined}>
+                    {skillLine(sk, sk.weaponFamily)}
+                    {blocked && <span className="hint"> ⚠ {blocked}</span>}
+                  </li>
+                )
+              })}
+              {advanced && <li key={advanced.id} style={skillFamilyBlocked(c, advanced.weaponFamily) ? { opacity: 0.45 } : undefined}>{skillLine(advanced, advanced.weaponFamily)}<span className="hint">(精进)</span>{skillFamilyBlocked(c, advanced.weaponFamily) && <span className="hint"> ⚠ {skillFamilyBlocked(c, advanced.weaponFamily)}</span>}</li>}
             </ul>
             {signature && (
               <div className="ms-sig">

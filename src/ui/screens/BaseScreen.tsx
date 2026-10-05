@@ -154,7 +154,7 @@ export function BaseScreen(props: BaseScreenProps) {
                           <p className="hint">{sp.identity}</p>
                           <p className="hint">{SPEC_PASSIVE_DESC[sp.passive ?? ''] ?? ''}{sp.statMods?.critChance ? ` 暴击 +${Math.round(sp.statMods.critChance * 100)}%。` : ''}</p>
                           <ul className="ms-list">
-                            {sp.skills.map((sk) => <li key={sk.id}>{skillLine(sk)}</li>)}
+                            {sp.skills.map((sk) => <li key={sk.id}>{skillLine(sk, sk.weaponFamily)}</li>)}
                           </ul>
                           {SIGNATURE_SKILLS[sp.id] && (
                             <p className="hint">【招牌技】{SIGNATURE_SKILLS[sp.id].name}:{SIGNATURE_SKILLS[sp.id].desc}(冷却 {SIGNATURE_SKILLS[sp.id].cdTicks / 10} 秒)</p>
@@ -181,7 +181,7 @@ export function BaseScreen(props: BaseScreenProps) {
                           <div className="voc-card-body">
                             <p className="hint">{hy.identity}</p>
                             <ul className="ms-list">
-                              {hy.skills.map((sk) => <li key={sk.id}>{skillLine(sk)}</li>)}
+                              {hy.skills.map((sk) => <li key={sk.id}>{skillLine(sk, sk.weaponFamily)}</li>)}
                             </ul>
                             {!canSwitch || m.spec === hy.id || !canBond || (!unlocked && !canPay) ? (
                               <p className="hint">{!canBond ? `需默契 ≥ ${ECONOMY.hybridBondRequirement} 星` : !unlocked && !canPay ? `首次解锁 ${ECONOMY.vocation.hybridUnlockGold} 金 + ${ECONOMY.vocation.hybridUnlockBlessing} 祝福` : ''}</p>
@@ -200,7 +200,7 @@ export function BaseScreen(props: BaseScreenProps) {
                         const chosen = m.specAdvanced?.[specOf(m.job, m.spec).id] === sk.id
                         const any = !!m.specAdvanced?.[specOf(m.job, m.spec).id]
                         return (
-                          <button key={sk.id} disabled={any || busy || gold < ECONOMY.advancedCost.gold || blessing < ECONOMY.advancedCost.blessing} title={sk.name} onClick={() => props.onAdvanceSpec(m.id, sk.id)}>
+                          <button key={sk.id} disabled={any || busy || gold < ECONOMY.advancedCost.gold || blessing < ECONOMY.advancedCost.blessing} title={skillLine(sk, sk.weaponFamily)} onClick={() => props.onAdvanceSpec(m.id, sk.id)}>
                             {sk.name}{chosen ? ' ✓' : ''}
                           </button>
                         )
