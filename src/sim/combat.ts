@@ -439,6 +439,8 @@ function effectiveAttack(state: BattleState, c: Combatant): number {
 
 function effectiveDefense(state: BattleState, target: Combatant): number {
   let def = target.defense
+  // R5.3b(U33⑤)锤斧·破甲:被破甲者防御 ×0.8(3 秒)
+  if (target.armorBreakUntilTick !== undefined && state.tick < target.armorBreakUntilTick) def *= 0.8
   if (target.team === 'guild') {
     // 祝福阵型：治疗者存活时，全队防御 +10%
     if (aliveOf(state, 'guild').some((a) => a.role === 'healer')) def *= 1.1
@@ -493,6 +495,16 @@ export function applyHit(
   label: string,
   opts?: { crit?: boolean; ranged?: boolean },
 ): void {
+  // R5.3b(U33⑤)长柄·替身挡击:敌方普攻点名我方非长柄队员时,前排长柄队友替其挡下(每场一次)
+  if (attacker.team === 'enemy' && label === '攻击' && target.team === 'guild' && target.weaponFamily !== 'polearm' && attacker.range === 'melee') {
+    const guard = state.combatants.find((g) => g.team === 'guild' && g.alive && g.weaponFamily === 'polearm' && !g.guardOnceUsed && g.position === 'front' && g.id !== target.id)
+    if (guard) {
+      guard.guardOnceUsed = true
+      state.events.push({ tick: state.tick, type: 'guarded', attackerId: guard.id, targetId: target.id })
+      pushLog(state, 'guild', `🛡 ${guard.name} 挺械替 ${target.name} 挡下了这一击!`)
+      return applyHit(state, attacker, guard, amount, label, opts)
+    }
+  }
   // Mitigation must precede HP loss, shields, threat and interrupt accounting.
   if (target.traits?.includes('heavy-plate') && !target.plateUsed) {
     traitHint(state, 'heavy-plate')
@@ -503,6 +515,18 @@ export function applyHit(
   if (opts?.crit && target.traits?.includes('dragon-scale')) {
     traitHint(state, 'dragon-scale')
     amount = Math.max(1, Math.round(amount * 0.5))
+  }
+  // R5.3b(U33⑤)刃·暴击流血:暴击时附加 3 秒持续流血(总量 = 该次伤害 ×30%,与灼烧分开计)
+  if (opts?.crit && attacker.weaponFamily === 'blade' && target.alive && amount > 0) {
+    target.bleedUntilTick = state.tick + 30
+    target.bleedPerTick = Math.max(1, Math.round((amount * 0.3) / 3))
+    state.events.push({ tick: state.tick, type: 'bleed', attackerId: attacker.id, targetId: target.id })
+    pushLog(state, target.team === 'guild' ? 'enemy' : 'guild', `🩸 ${attacker.name} 的刀口让 ${target.name} 流血不止!`)
+  }
+  // R5.3b(U33⑤)锤斧·普攻破甲:命中后目标防御 ×0.8 持续 3 秒
+  if (label === '攻击' && attacker.weaponFamily === 'axe' && target.alive) {
+    target.armorBreakUntilTick = state.tick + 30
+    state.events.push({ tick: state.tick, type: 'armorbreak', targetId: target.id })
   }
   // 吸收盾(戒律/圣盾使):伤害先扣盾,余量才进血
   if (target.absorbShield && target.absorbShield > 0) {
@@ -774,6 +798,12 @@ function actWith(c: Combatant, state: BattleState): void {
     }
   }
   // R3/W4:普攻吃武器族伤害乘区(锤斧 ×1.15/长柄 ×0.92);技能不吃,族内技能另有门槛
+  // R5.3b(U33⑤)弓·独有用处:优先射击正在读条的后排;无读条者打残血(改写默认威胁/集火逻辑)
+  if (c.weaponFamily === 'bow') {
+    const bowPick = pickBowTarget(state, pool)
+    if (bowPick) dealDamage(state, c, bowPick, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
+    return
+  }
   if (target) dealDamage(state, c, target, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
 }
 
@@ -1042,6 +1072,18 @@ export function stepBattle(state: BattleState): void {
       }
     }
   }
+  // R5.3b(U33⑤)刃·流血:每 10 tick 流一次血,持续 30 tick
+  for (const c of state.combatants) {
+    if (!c.alive || !c.bleedUntilTick || state.tick >= c.bleedUntilTick) continue
+    if (state.tick % 10 === 0 && c.bleedPerTick) {
+      c.hp = Math.max(0, c.hp - c.bleedPerTick)
+      state.events.push({ tick: state.tick, type: 'bleed', targetId: c.id, amount: c.bleedPerTick })
+      if (c.hp === 0) {
+        c.alive = false
+        pushLog(state, 'system', `🩸 ${c.name} 失血倒下!`)
+      }
+    }
+  }
   // 战斗硬上限:900 tick 敌人狂暴(软压力);1200 tick 强制撤离(被束缚者留下)
   if (state.tick === TICK_SOFT_CAP) {
     for (const c of state.combatants) {
@@ -1228,6 +1270,15 @@ function hasActiveCast(state: BattleState, targetId?: string): boolean {
     if (rt?.until !== undefined && state.tick < rt.until) return true
   }
   return false
+}
+
+/** R5.3b(U33⑤)弓·独有用处:优先射击正在咏唱的后排;没有读条者时打残血。
+ *  单独导出供单测。pool 已是 allowedPool 过滤后的合法目标。 */
+export function pickBowTarget(state: BattleState, pool: Combatant[]): Combatant | null {
+  if (pool.length === 0) return null
+  const castingBack = pool.filter((f) => f.position === 'back' && hasActiveCast(state, f.id))
+  if (castingBack.length > 0) return castingBack[0]!
+  return pool.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
 }
 
 /** 玩家点名释放招牌技:校验通过则写入指令队列,由下一次 stepBattle 消费;返回是否受理 */

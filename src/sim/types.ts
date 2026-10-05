@@ -284,6 +284,13 @@ export interface Combatant {
   weaponProficient?: boolean
   /** R3:普攻伤害乘区(锤斧 ×1.15/长柄 ×0.92,族定义单源;技能不走此乘区) */
   weaponDmgMult?: number
+  /** R5.3b(U33⑤)刃·流血:到 tick 前每 10 tick 流血 bleedPerTick */
+  bleedUntilTick?: number
+  bleedPerTick?: number
+  /** R5.3b(U33⑤)锤斧·破甲:到 tick 前防御 ×0.8 */
+  armorBreakUntilTick?: number
+  /** R5.3b(U33⑤)长柄·替身挡击:每场一次,已消耗 */
+  guardOnceUsed?: boolean
   /** 受疗加成(忠诚性格/血精灵/受疗词条):治疗量 ×(1+healReceived) */
   healReceived?: number
   /** 火抗(0-0.75,装备聚合):灼热地形与环境火伤减免(版图二) */
@@ -501,6 +508,8 @@ export type BattleEventType =
   | 'zoned'
   | 'phase'
   | 'armorbreak'
+  | 'bleed'
+  | 'guarded'
   | 'reposition'
 
 export interface BattleEvent {
