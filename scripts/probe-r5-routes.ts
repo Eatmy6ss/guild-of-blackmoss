@@ -7,7 +7,7 @@ import { moveTo } from '../src/sim/run'
 import { triggerAfterElite } from '../src/sim/conditions'
 import { createRng } from '../src/sim/rng'
 
-const REWARDS_LIVE = false
+const REWARDS_LIVE = true
 
 // —— 金等价折算表(探针仪器,前后一致;HANDOFF 记录)——
 const ITEM_V = 120
