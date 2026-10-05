@@ -18,7 +18,7 @@ import { applyEnemyScaling as applyScaling, ELITE_ENEMY_MULT, towerEnemyScale, t
 import { scarPenalty, recordScarMechanic } from './scars'
 import { TRAIT_INFO } from '../data/traits'
 import { HYBRIDS, isHybrid } from '../data/vocations'
-import { isFamilyProficient, getGuildLearnedFamilies, WEAPON_FAMILIES, canCastJob } from '../data/weapon-families'
+import { isFamilyProficient, WEAPON_FAMILIES, canCastJob } from '../data/weapon-families'
 import { RACES } from '../data/races'
 import type { SpecDef } from './types'
 import { processBossMechanics } from './mechanics'
@@ -160,7 +160,7 @@ export function toCombatant(member: Member): Combatant {
   // R3 武器族(U31/W2):装备武器的族+熟练判定(职业表∪公会已学);非熟练=攻击降档
   const weaponBase = member.equipment.weapon ? ITEM_BASES[member.equipment.weapon.baseId] : undefined
   const weaponFamily = weaponBase?.family
-  const weaponProficient = isFamilyProficient(member.job, weaponFamily, getGuildLearnedFamilies())
+  const weaponProficient = isFamilyProficient(member.job, weaponFamily, member.weaponLearned)
   const weaponProfMult = weaponFamily && !weaponProficient ? 0.85 : 1 // 结构占位,C4 统调
   // R3/W4 攻击方式与站位:武器决定站位与攻击方式(redesign §5「武器>头部>职业」);
   // 数值倍率全部 C4 结构占位(锤斧 伤×1.15/间隔×1.25,长柄 伤×0.92)

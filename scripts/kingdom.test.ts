@@ -172,7 +172,12 @@ test('save migration/import/reload preserve assets and claimed receipts without 
   assert.equal(migrated.version, SAVE_VERSION)
   assert.deepEqual(migrated.kingdom, newKingdomState())
   assert.equal(migrated.gold, legacy.gold)
-  assert.deepEqual(migrated.members, legacy.members)
+  // R5.3d(U33⑥):v26 给在世成员合法补 weaponLearned——除该字段外逐字段相等
+  for (const am of migrated.members) {
+    const { weaponLearned: _wl, ...rest } = am
+    assert.deepEqual(rest, legacy.members.find((x) => x.id === am.id))
+    assert.deepEqual(am.weaponLearned, [])
+  }
   const claimed = claimCommission(prepared('crown-training'), 'crown-training', 'supplies', 3)!
   const awarded = { ...migrated, kingdom: claimed.state, gold: migrated.gold + claimed.reward.gold,
     blessing: migrated.blessing + claimed.reward.blessing, potions: { heal: 5, fury: 3 } }

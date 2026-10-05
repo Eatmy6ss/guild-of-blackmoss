@@ -21,8 +21,14 @@ interface BaseScreenProps {
   healingMastery: Record<string, number>
   buildings: Record<string, number>
   unlockedHybrids: string[]
-  /** R3/W2:训练场武器专修已学族(公会级) */
+  /** R5.3d:选中成员的已学族(按人) */
   weaponTraining: string[]
+  /** R5.3d:选中成员训练中,归队日(0=空闲) */
+  busyUntilDay: number
+  /** R5.3d:当前公会日 */
+  today: number
+  /** R5.3d:训练场建筑等级(2 起学程 1 天) */
+  trainingLevel: number
   trainSelId: string | null
   bondTotal: (m: Member) => number
   onBuyTraining: () => void
@@ -39,7 +45,7 @@ interface BaseScreenProps {
 }
 
 export function BaseScreen(props: BaseScreenProps) {
-  const { day, gold, blessing, members, busy, trainingReady, healingNotice, healingMastery, buildings, unlockedHybrids, weaponTraining, trainSelId, onBack } = props
+  const { day, gold, blessing, members, busy, trainingReady, healingNotice, healingMastery, buildings, unlockedHybrids, weaponTraining, busyUntilDay, today, trainingLevel, trainSelId, onBack } = props
   void busy
   return (
             <div className="screen-overlay fullpage">
@@ -55,16 +61,18 @@ export function BaseScreen(props: BaseScreenProps) {
             <button disabled={trainingReady || gold < 150 || busy} onClick={props.onBuyTraining}>{trainingReady ? '✓ 已备好训练资格' : '购买特权训练（150 金）'}</button>
           </div>
           <div className="potion-supply" role="group" aria-label="武器专修">
-            <span className="hint">⚔ 武器专修：学会一族（150 金，永久），全公会使用该族武器不再攻击降档、族内技能照常可用。施法铁律：杖圣器的法术只认施法者（牧师/法师/术士）天赋，学习不授法术。</span>
+            <span className="hint">{`⚔ 武器专修（按人）：100 金学会一族（永久），该成员使用该族武器不再攻击降档、族内技能照常可用。学程 ${trainingLevel >= 2 ? 1 : 2} 天（训练场 2 级起 1 天），期间不能出征。施法铁律：杖圣器的法术只认施法者（牧师/法师/术士）天赋，学习不授法术。`}</span>
             <div className="voc-btns">
               {FAMILY_IDS.map((f) => {
                 const def = WEAPON_FAMILIES[f]
                 const learned = weaponTraining.includes(f)
                 const born = Object.entries(JOB_FAMILIES).filter(([, fs]) => fs.includes(f)).map(([j]) => JOBS[j]?.name ?? j).join('/')
+                const travel = busyUntilDay > today
                 return (
-                  <button key={f} disabled={learned || busy || gold < 150} title={`${def.desc}（天生熟练：${born}）`}
+                  <button key={f} disabled={learned || busy || travel || gold < 100}
+                    title={`${def.desc}（天生熟练：${born}）${travel ? '；训练中' : ''}`}
                     onClick={() => props.onLearnFamily(f)}>
-                    {def.name}{learned ? ' ✓ 已学' : `（${born}）`}
+                    {def.name}{learned ? ' ✓ 已学' : travel ? ` ⏳ 第${busyUntilDay}天归队` : `（${born}）`}
                   </button>
                 )
               })}

@@ -1,13 +1,13 @@
 import type { DeadHero, Member } from '../sim/types'
 import { readItemFields, itemStateFromSave, resolveMembers, serializeGuildItems, assertItemOwnership, type StoredItemFields } from './item-registry'
 import { JOBS } from '../data/jobs'
+import { WEAPON_FAMILIES } from '../data/weapon-families'
 import { RACES } from '../data/races'
 import { isHybrid } from '../data/vocations'
 import { maxHpOf, type MemberGenerationState } from '../sim/gen'
 import type { ChronicleEntry } from '../sim/chronicle'
 import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kingdom'
 import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../sim/statistics'
-import { WEAPON_FAMILIES } from '../data/weapon-families'
 import { initialRunState, validateRunState, type RunUIState } from '../sim/run-state'
 import type { Visitor } from '../sim/tavern'
 
@@ -19,7 +19,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 25
+export const SAVE_VERSION = 26
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -94,8 +94,6 @@ export interface GuildSave extends StoredItemFields {
   potions: { heal: number; fury: number }
   /** v8:已解锁的混合职阶(公会级,训练场一次性解锁) */
   unlockedHybrids: string[]
-  /** v25:训练场武器专修已学族(R3/U31,公会级永久;熟练=职业表∪此表) */
-  weaponTraining: string[]
   /** v9:副本熟练度(逐段选路迷雾揭示) */
   dungeonMastery: Record<string, number>
   /** v10:延迟第二幕队列(巫师3式后果,dueDay 到期弹出) */
@@ -130,6 +128,21 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   },
   // R3/W2(U31):训练场武器专修——v24 补空已学族表(非法 id 由 migrate 收口再滤一遍)
   24: (d) => ({ ...d, weaponTraining: Array.isArray(d.weaponTraining) ? d.weaponTraining : [] }),
+  // R5.3d(U33⑥):按人学武器——v25 的公会级已学族发给每位在世成员,删除公会字段(非法族 id 滤除)
+  25: (d) => {
+    const guild = (Array.isArray(d.weaponTraining) ? d.weaponTraining : []).filter(
+      (f): f is string => typeof f === 'string' && f in WEAPON_FAMILIES,
+    )
+    const members = Array.isArray(d.members) ? d.members : []
+    d.members = members.map((m) => {
+      const alive = m && typeof m === 'object' && (m as { alive?: boolean }).alive !== false
+      return alive && !(m as { weaponLearned?: string[] }).weaponLearned
+        ? { ...m, weaponLearned: [...guild] }
+        : m
+    })
+    delete d.weaponTraining
+    return d
+  },
   // A2 事实账本(ROADMAP §3.3):v22 起记录,旧档为空账本(编年史不迁移)
   21: (d) => ({ ...d, factLedger: { nextId: 1, facts: [] } }),
   20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),
@@ -196,10 +209,6 @@ export function migrate(data: Record<string, unknown>): GuildSave {
   d.starMarrow = typeof d.starMarrow === 'number' ? d.starMarrow : 0
   d.pendingRelics = Array.isArray(d.pendingRelics) ? d.pendingRelics : []
   d.healingMastery = d.healingMastery && typeof d.healingMastery === 'object' ? d.healingMastery : {}
-  // R3/W2:武器专修已学族——只留合法族 id(数据表单源),畸形档安全回落
-  d.weaponTraining = (Array.isArray(d.weaponTraining) ? d.weaponTraining : []).filter(
-    (f): f is string => typeof f === 'string' && f in WEAPON_FAMILIES,
-  )
   d.kingdom = normalizeKingdom(d.kingdom)
   d.statistics = normalizeStatistics(d.statistics, typeof d.day === 'number' ? d.day : 1)
   const hunt = d.rareHuntNext as GuildSave['rareHuntNext']
@@ -241,7 +250,6 @@ function validate(d: GuildSave): boolean {
     typeof d.potions.heal === 'number' &&
     typeof d.potions.fury === 'number' &&
     Array.isArray(d.unlockedHybrids) &&
-    Array.isArray(d.weaponTraining) &&
     d.dungeonMastery !== undefined
   )
 }

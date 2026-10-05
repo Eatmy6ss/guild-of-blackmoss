@@ -1,8 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { JOBS } from '../data/jobs'
 import { HYBRIDS } from '../data/vocations'
 import { SIGNATURE_SKILLS } from '../data/signature'
-import { setGuildLearnedFamilies } from '../data/weapon-families'
 import { skillFamilyBlocked, toCombatant, useSignature } from './combat'
 import type { BattleState, Combatant, Member, SkillDef, WeaponFamily } from './types'
 
@@ -12,7 +11,7 @@ import type { BattleState, Combatant, Member, SkillDef, WeaponFamily } from './t
 
 const NEUTRAL: Member['attrs'] = { str: 10, agi: 10, int: 10, vit: 10, spr: 10, lck: 10 }
 
-function mkMember(job: Member['job'], spec: string | undefined, weaponBaseId?: string): Member {
+function mkMember(job: Member['job'], spec: string | undefined, weaponBaseId?: string, learned?: string[]): Member {
   return {
     id: 'm1', name: '测试', job, spec, level: 5,
     nature: { base: NEUTRAL, growth: NEUTRAL, caps: NEUTRAL },
@@ -21,10 +20,9 @@ function mkMember(job: Member['job'], spec: string | undefined, weaponBaseId?: s
     hp: 100, exp: 0, bonds: {},
     equipment: weaponBaseId ? { weapon: { id: 'i1', baseId: weaponBaseId, rolls: [] } } : {},
     alive: true,
+    weaponLearned: learned,
   }
 }
-
-afterEach(() => setGuildLearnedFamilies([]))
 
 describe('技能全量标注完整性(R3/W3)', () => {
   it('六职业全部专精:基础技+精进技逐条标注', () => {
@@ -102,8 +100,7 @@ describe('引擎门槛 skillFamilyBlocked(R3/W3)', () => {
   })
 
   it('学习后恢复:战士学弓弩 → 弓族武器熟练,族匹配技能放行', () => {
-    setGuildLearnedFamilies(['bow'])
-    expect(blockedOf(mkMember('warrior', undefined, 'wpn-t2-crossbow'), ['bow'])).toBeNull()
+    expect(blockedOf(mkMember('warrior', undefined, 'wpn-t2-crossbow', ['bow']), ['bow'])).toBeNull()
   })
 
   it('universal/未标注/敌方一律放行', () => {
@@ -132,21 +129,17 @@ describe('招牌技受理门槛(R3/W3)', () => {
   }
 
   it('游侠持弓:贯甲狙击受理;持杖(非熟练):拒', () => {
-    setGuildLearnedFamilies([])
     const archer = toCombatant(mkMember('ranger', 'ranger-hawk', 'wpn-t2-bow'))
     const ok = useSignature(minimalState(archer), archer.memberId!, 'e1')
     expect(ok).toBe(true)
-    setGuildLearnedFamilies([])
     const hexer = toCombatant(mkMember('ranger', 'ranger-hawk', 'wpn-t2-staff'))
     const no = useSignature(minimalState(hexer), hexer.memberId!, 'e1')
     expect(no).toBe(false)
   })
 
   it('施法铁律交互:牧师学刃持剑——治疗招牌(通用)可用,戒律沉默(需杖)拒;持杖放行', () => {
-    setGuildLearnedFamilies(['blade'])
     const holy = toCombatant(mkMember('priest', 'priest-holy', 'wpn-t1-sword'))
     expect(useSignature(minimalState(holy), holy.memberId!, holy.memberId)).toBe(true)
-    setGuildLearnedFamilies(['blade'])
     const disc = toCombatant(mkMember('priest', 'priest-discipline', 'wpn-t1-sword'))
     // 打断系:先确认读条目标在场时,族门槛才会是唯一拦截原因
     expect(useSignature(minimalState(disc, true), disc.memberId!, 'e1')).toBe(false)

@@ -17,7 +17,7 @@ import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } 
 import { TICK_MS, stepBattle, setFocus, useSignature } from './sim/combat'
 import { DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
-import { WEAPON_FAMILIES, setGuildLearnedFamilies } from './data/weapon-families'
+import { WEAPON_FAMILIES } from './data/weapon-families'
 import { MemberPanel } from './ui/screens/MemberPanel'
 import { renderWarReportCard, downloadWarReportCard } from './ui/war-report-card'
 import { type DungeonRun } from './sim/run'
@@ -233,11 +233,6 @@ export default function App() {
   const [trainingReady, setTrainingReady] = useState(() => saved?.trainingReady ?? false)
   const trainingReadyRef = useRef(trainingReady)
   trainingReadyRef.current = trainingReady
-  // R3/W2(U31):训练场武器专修(公会级永久)。战斗侧经 setGuildLearnedFamilies 单源注入。
-  const [weaponTraining, setWeaponTraining] = useState<string[]>(() => saved?.weaponTraining ?? [])
-  const weaponTrainingRef = useRef(weaponTraining)
-  weaponTrainingRef.current = weaponTraining
-  useEffect(() => { setGuildLearnedFamilies(weaponTraining) }, [weaponTraining])
   // K06 个人心愿层(U14):入职 50% 立愿;达成给士气+编年史,再 50% 立新愿
   const wishDungeonPool = () => Object.keys(dungeonMastery).map((id) => ({ id, name: DUNGEONS.find((d) => d.id === id)?.name ?? id }))
   const rollWishFor = (m: Member) => {
@@ -561,9 +556,9 @@ export default function App() {
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
       lastCombatSaveRef.current = now
     } else lastCombatSaveRef.current = 0
-    const ok = saveGuild({ trainingReady, weaponTraining, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
+    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
     setSaveFailed(!ok)
-  }, [trainingReady, weaponTraining, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, playMeta])
+  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, playMeta])
   useEffect(() => {
     const box = logBoxRef.current
     if (!box || !logPinnedRef.current) return
@@ -650,9 +645,9 @@ export default function App() {
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
       lastCombatSaveRef.current = now
     } else lastCombatSaveRef.current = 0
-    const ok = saveGuild({ trainingReady, weaponTraining, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
+    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
     setSaveFailed(!ok)
-  }, [trainingReady, weaponTraining, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, playMeta])
+  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, playMeta])
   useEffect(() => {
     const box = logBoxRef.current
     if (!box || !logPinnedRef.current) return
@@ -960,7 +955,7 @@ export default function App() {
       )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
       {screen === 'member' && memberSheet && <MemberPanel member={memberSheet} members={members} onClose={() => { setMemberSheetId(null); back() }}
-              inventory={inventory} weaponTraining={weaponTraining} onEquip={(slot, itemId) => equip(memberSheet, slot, itemId)} />}
+              inventory={inventory} onEquip={(slot, itemId) => equip(memberSheet, slot, itemId)} />}
       {playtestEnding && (
         <div className="screen-overlay" style={{ zIndex: 110 }}>
           <div className="screen-panel" style={{ width: 'min(460px, 92vw)' }}>
@@ -1033,7 +1028,9 @@ export default function App() {
             {screen === 'base' && <BaseScreen day={day} gold={gold} blessing={blessing} members={members}
               busy={!!run || !!towerRun} trainingReady={trainingReady} healingNotice={healingNotice}
               healingMastery={healingMastery} buildings={buildings} unlockedHybrids={unlockedHybrids}
-              weaponTraining={weaponTraining}
+              weaponTraining={(members.find((m) => m.id === trainSelId)?.weaponLearned ?? [])}
+              busyUntilDay={(members.find((m) => m.id === trainSelId)?.busyUntilDay ?? 0)}
+              today={day} trainingLevel={buildings.training ?? 0}
               trainSelId={trainSelId} bondTotal={bondTotalOf}
               onBuyTraining={() => {
                 if (trainingReadyRef.current || gold < 150 || runRef.current || towerRunRef.current) return
@@ -1044,14 +1041,15 @@ export default function App() {
                 sfxCoin()
               }}
               onLearnFamily={(f) => {
-                if (runRef.current || towerRunRef.current) return
-                if (weaponTrainingRef.current.includes(f) || gold < 150) return
-                const next = [...new Set([...weaponTrainingRef.current, f])]
-                weaponTrainingRef.current = next
-                setWeaponTraining(next)
-                setGuildLearnedFamilies(next)
-                setGold(g => g - 150)
-                logChronicle(chronicleRaw(day, `训练场完成${WEAPON_FAMILIES[f as keyof typeof WEAPON_FAMILIES]?.name ?? f}专修——全公会使用该族武器不再降档。`))
+                const m2 = membersRef.current.find((x) => x.id === trainSelId)
+                if (!m2?.alive || runRef.current || towerRunRef.current) return
+                if ((m2.weaponLearned ?? []).includes(f) || gold < 100) return
+                const days = (buildings.training ?? 0) >= 2 ? 1 : 2
+                setMembers((ms) => ms.map((x) => x.id === m2.id
+                  ? { ...x, weaponLearned: [...new Set([...(x.weaponLearned ?? []), f])], busyUntilDay: day + days }
+                  : x))
+                setGold((g) => g - 100)
+                logChronicle(chronicleRaw(day, `${m2.name} 开始${WEAPON_FAMILIES[f as keyof typeof WEAPON_FAMILIES]?.name ?? f}专修——第 ${day + days} 天归队。`))
                 sfxCoin()
               }}
               onHeal={(memberId, si, scar) => {

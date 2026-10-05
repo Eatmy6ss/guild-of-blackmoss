@@ -43,7 +43,7 @@ function save(members = roster()): GuildSave {
     kingdom: { active: [], completed: [] }, rareHuntNext: null, gold: 900, blessing: 4, starMarrow: 3,
     healingMastery: {}, memorial: [], manual: ['talma'], protectOn: false, recruitCooldown: 0,
     towerBest: 0, lastSeen: 1727656000000, chronicle: [], day: 8, buildings: {}, potions: { heal: 4, fury: 4 },
-    unlockedHybrids: [], weaponTraining: [], dungeonMastery: {}, pendingConsequences: [], eventsSeen: [], guildBuffs: [] }
+    unlockedHybrids: [], dungeonMastery: {}, pendingConsequences: [], eventsSeen: [], guildBuffs: [] }
 }
 
 function resolved(s: GuildSave) { return resolveMembers(s.members, itemStateFromSave(s)) }
@@ -273,7 +273,13 @@ test('真实 v20 注册表逐级升 v22：公会资产、UID/序号、公会随�
   data.version = 20; delete data.runState; delete data.visitor; delete data.generationState
   const before = JSON.stringify(data), upgraded = migrate(data)
   expect(upgraded.version).toBe(SAVE_VERSION)
-  for (const key of Object.keys(data).filter(k => k !== 'version')) expect((upgraded as any)[key]).toEqual(data[key])
+  for (const key of Object.keys(data).filter(k => k !== 'version' && k !== 'members')) expect((upgraded as any)[key]).toEqual(data[key])
+  // R5.3d:v26 给在世成员合法补 weaponLearned——除该字段外逐字段相等
+  for (const am of (upgraded as any).members) {
+    const dm = data.members.find((x: { id: string }) => x.id === am.id)
+    const { weaponLearned: _wl, ...rest } = am
+    expect(rest).toEqual(dm)
+  }
   expect(JSON.stringify(data)).toBe(before)
   expect(upgraded.runState).toEqual(initialRunState()); expect(upgraded.generationState).toBeNull()
   expect(refresh(upgraded)).toEqual(upgraded)

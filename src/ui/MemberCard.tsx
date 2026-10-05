@@ -45,7 +45,7 @@ export function MemberCard(props: {
           <span className="name">{m.name}</span>
           <span className="job">
             {RACES[m.race ?? 'human'].name}·{isHybrid(m.spec) ? HYBRIDS[m.spec!].name : specOf(m.job, m.spec).name}({JOBS[m.job].name}) Lv{m.level}
-            {onExpedition ? ' · ⚔远征队' : ''}
+            {onExpedition ? ' · ⚔远征队' : m.busyUntilDay && m.busyUntilDay > 0 ? ` · ⏳ 训练中` : ''}
           </span>
           <span className={`hp${c && !c.alive ? ' dead' : ''}`}>
             HP {hp}/{max}

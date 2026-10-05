@@ -12,10 +12,22 @@ const oldSave = () => ({ version: 18, members: [generateMember('guard', 5, 5)], 
 
 test('v18→v19 不丢资产/训练/稀有猎杀；相同旧档迁移到稳定序列，所有旧版本可逐级升级', () => {
   const data = oldSave(), before = structuredClone(data), a = migrate(data), b = migrate(data)
+  const dm = data.members[0] as unknown as Record<string, unknown>, bm = before.members[0] as unknown as Record<string, unknown>
+  console.log('新增成员键:', Object.keys(dm).filter(k => !(k in bm)))
+  console.log('变化成员键:', Object.keys(dm).filter(k => k in bm && JSON.stringify(dm[k]) !== JSON.stringify(bm[k])).map(k => k + ':' + JSON.stringify(bm[k]) + '→' + JSON.stringify(dm[k])))
+  console.log('新增顶层键:', Object.keys(data).filter(k => !(k in before)))
   expect(data).toEqual(before)
   expect(a).toEqual(b)
   expect(a.version).toBe(SAVE_VERSION)
-  for (const key of ['members', 'inventory', 'manual', 'gold', 'blessing', 'starMarrow', 'healingMastery', 'rareHuntNext', 'trainingReady'] as const) expect(a[key]).toEqual(data[key])
+  // R5.3d(U33⑥):members 不再严格相等——迁移合法地给每位在世成员补 weaponLearned;
+  // 资产不丢语义改为:除 weaponLearned 外逐字段相等。
+  for (const am of a.members) {
+    const dm = (data.members as unknown as Record<string, unknown>[]).find((x) => x.id === am.id)!
+    const { weaponLearned: _wl, ...amRest } = am
+    expect(amRest).toEqual(dm)
+    expect(am.weaponLearned).toEqual([])
+  }
+  for (const key of ['inventory', 'manual', 'gold', 'blessing', 'starMarrow', 'healingMastery', 'rareHuntNext', 'trainingReady'] as const) expect(a[key]).toEqual(data[key])
   for (let version = 1; version <= 19; version++) expect(migrate({ ...data, version }).version).toBe(SAVE_VERSION)
   for (const bad of [undefined, NaN, -1, 1.5, Infinity, 0x100000000]) {
     expect(migrate({ ...a, rngState: bad }).rngState).toBe(a.rngState)
