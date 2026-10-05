@@ -199,16 +199,30 @@ export function terrainEntryReward(
   return out
 }
 
-/** 精英战打完(惊动):挂状态 + 后续层精英权重翻倍的确定性落实(把未来层的战斗节点翻成精英)。
- *  写时克隆地图:settlement 对 run 是浅拷贝(common.map 与输入共享),原地改会穿透输入方(run-recovery 抓过)。 */
+/** 精英战打完(惊动):挂状态 + 后续层战斗节点按「真权重」翻成精英。
+ *  R5/U33②:翻转概率 = 地图基础精英率(elites/(elites+battles))× eliteWeightMult(惊动=2,经条件表消费,
+ *  不再是死代码);旧实现 50% 直翻过高估了惊动。写时克隆地图:settlement 对 run 是浅拷贝
+ *  (common.map 与输入共享),原地改会穿透输入方(run-recovery 抓过)。 */
 export function triggerAfterElite(run: DungeonRun): string | null {
   const cond = Object.values(CONDITION_BY_ID).find((c) => c.trigger === 'after-elite')
   if (!cond) return null
   const currentLayer = nodeById(run.map, run.nodeId)?.layer ?? 0
-  const weight = cond.map?.eliteWeight ?? 2
+  // 基础精英率 = 地图生成时的精英占比(全图非 Boss 节点;含已走层——它是一张图的属性,不随行走变化)
+  let elites = 0
+  let battles = 0
+  for (const layer of run.map.layers) {
+    for (const n of layer) {
+      if (n.kind === 'boss') continue
+      if (n.kind === 'elite') elites++
+      else if (n.kind === 'battle') battles++
+    }
+  }
+  const baseRate = elites + battles > 0 ? elites / (elites + battles) : 0
+  let chance = 0
   let flipped = 0
   let map = run.map
-  for (const layer of map.layers) {
+  addCondition(run, cond.id)
+  for (const layer of run.map.layers) {
     for (const n of layer) {
       if (n.layer <= currentLayer) continue
       if (n.kind !== 'battle' || !n.encounterId) continue
@@ -217,12 +231,13 @@ export function triggerAfterElite(run: DungeonRun): string | null {
         map = { ...run.map, layers: run.map.layers.map((l) => l.map((x) => ({ ...x }))) }
       }
       const target = map.layers[n.layer]!.find((x) => x.id === n.id)!
-      if (runRng(run)() < 1 / weight) {
+      chance = Math.min(0.9, baseRate * eliteWeightMult(run))
+      if (runRng(run)() < chance) {
         target.kind = 'elite'
         flipped++
       }
     }
   }
   if (flipped > 0) run.map = map
-  return addCondition(run, cond.id) || flipped > 0 ? cond.name : null
+  return flipped > 0 || run.conditions.includes(cond.id) ? cond.name : null
 }

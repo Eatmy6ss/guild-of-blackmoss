@@ -71,7 +71,8 @@ describe('R1.2 路况状态', () => {
       expect(run.conditions.includes('startled'), '惊动应挂上').toBe(true)
     }
     expect(totalAfter, '惊动后全图精英总数应上升').toBeGreaterThan(totalBefore)
-    expect(increased, `多数 seed 应出现新增精英(${increased}/200)`).toBeGreaterThan(100)
+    // R5/U33② 重标:翻转率有意从 50% 收敛到 基础率×2(约 0.16-0.19),过半不再触发是设计形态
+    expect(increased, `相当比例 seed 应出现新增精英(${increased}/200)`).toBeGreaterThan(60)
   })
 
   it('战斗乘区连乘:湿透+阴寒同时挂时 startStep 聚合 heal 0.9 与 atk 0.92;暴露走敌方通道', () => {
@@ -229,5 +230,45 @@ describe('R5.1b 路况双刃与按时消退', () => {
       ok = true
     }
     expect(ok).toBe(true)
+  })
+})
+
+// R5.1c 验收(U33②):惊动翻转率 = 基础精英率 ×2 ±5%(500 seeds 聚合)
+describe('R5.1c 惊动真权重', () => {
+  it('500 seeds 聚合:翻转率落在 基础率×2 ±5% 以内', () => {
+    let eligible = 0
+    let flipped = 0
+    let baseRateSum = 0
+    let maps = 0
+    for (let i = 0; i < 500; i++) {
+      const run = createRun(squad(), BLACKMOSS, 50000 + i * 7)
+      const eliteNode = run.map.layers.flat().find((n) => n.kind === 'elite')
+      if (!eliteNode) continue
+      run.nodeId = eliteNode.id
+      run.path = [eliteNode.id]
+      const currentLayer = eliteNode.layer
+      let elites = 0
+      let battles = 0
+      for (const layer of run.map.layers) {
+        for (const n of layer) {
+          if (n.kind === 'boss') continue
+          if (n.kind === 'elite') elites++
+          else if (n.kind === 'battle' && n.encounterId) battles++
+        }
+      }
+      const total = elites + battles
+      if (total === 0) continue
+      baseRateSum += elites / total
+      maps++
+      eligible += run.map.layers.flat().filter((n) => n.layer > currentLayer && n.kind === 'battle' && n.encounterId).length
+      const futureElitesBefore = run.map.layers.flat().filter((n) => n.layer > currentLayer && n.kind === 'elite').length
+      triggerAfterElite(run)
+      flipped += run.map.layers.flat().filter((n) => n.layer > currentLayer && n.kind === 'elite').length - futureElitesBefore
+    }
+    const avgBase = baseRateSum / maps
+    const rate = flipped / eligible
+    expect(rate).toBeGreaterThan(avgBase * 2 - 0.05)
+    expect(rate).toBeLessThan(avgBase * 2 + 0.05)
+    console.log(`  R5.1c 探针:基础率均值 ${avgBase.toFixed(3)},翻转率 ${rate.toFixed(3)}(应 ≈ ${(avgBase * 2).toFixed(3)}),eligible=${eligible}`)
   })
 })

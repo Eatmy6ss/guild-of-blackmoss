@@ -219,3 +219,43 @@ describe('统一遭遇结算', () => {
     expect(next.guild.members[0].level).toBe(6)
   })
 })
+
+// R5.1c 精英回报(U33②):金币 ×2/经验 ×2/熟练 +2/掉落品质下限绿
+describe('R5.1c 精英回报', () => {
+  function eliteFixture(seed: number) {
+    const g = guild()
+    const r = createRun(g.members, BLACKMOSS, seed)
+    const eliteNode = r.map.layers.flat().find(n => n.kind === 'elite')!
+    r.nodeId = eliteNode.id; r.path = [eliteNode.id]
+    startStep(r, seed)
+    r.battle!.status = 'guild-win'
+    return { g, r }
+  }
+
+  it('精英战:金币 60(30×2)、熟练 +2、经验 54(18×3 人)', () => {
+    for (let seed = 101; seed < 140; seed += 7) {
+      const { g, r } = eliteFixture(seed)
+      const o = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!
+      if (!o.win) continue
+      expect(o.loot.gold).toBe(ECONOMY.battleGold.wave * 2)
+      expect(o.consequences.mastery?.gain).toBe(2)
+      // 夹具全人类(经验被动 +5%):round(18×1.05)=19/人
+      expect(o.consequences.growth.experience.every(x => x.amount === 19)).toBe(true)
+      expect(o.exp).toBe(19 * 3)
+      return
+    }
+    throw new Error('40 个 seed 内没跑到必胜精英局')
+  })
+
+  it('普通战不受精英回报影响:金币 30、熟练 +1、经验 27(9×3 人)', () => {
+    const g = guild(), r = createRun(g.members, BLACKMOSS, 9)
+    const node = r.map.layers[0].find(n => n.kind === 'battle') ?? r.map.layers[0][0]!
+    r.nodeId = node.id; r.path = [node.id]
+    startStep(r, 9)
+    r.battle!.status = 'guild-win'
+    const o = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!
+    expect(o.loot.gold).toBe(ECONOMY.battleGold.wave)
+    expect(o.consequences.mastery?.gain).toBe(1)
+    expect(o.exp).toBe(9 * 3)
+  })
+})

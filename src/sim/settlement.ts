@@ -124,11 +124,16 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   const itemId = () => `i-${original.id}-${encounterSeq}-${++itemSeq}`
   const effects = baseEffects(guild.buildings)
   let expMultCond = 1 // R5.1b:疲惫等经验倍率,须在 advanceRun 消退状态前捕获(dungeon 分支赋值)
+  let dungeonElite = false // R5.1c:精英节点经验 ×2(settleGrowth 消费)
   const place = input.source === 'dungeon' ? runDungeon(input.run).name : `黑苔高塔第 ${input.run.floor} 层`
 
   if (outcome.source === 'dungeon') {
     const r = outcome.run
     const enc = runDungeon(r).encounters.find(e => e.id === r.battle?.encounterId)
+    // R5/U33②:精英属性在节点 kind 上(遭遇本体是普通 wave);掉落翻倍判定同理改读节点
+    const nodeKind = nodeById(r.map, r.nodeId)?.kind
+    const isEliteNode = nodeKind === 'elite'
+    dungeonElite = isEliteNode
     if (outcome.win && enc?.kind === 'boss' && enc.bossId) {
       const boss = runDungeon(r).bosses[enc.bossId]
       const pity = !guild.manual.includes(enc.bossId)
@@ -143,17 +148,19 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: nodeById(r.map, r.nodeId)?.layer ?? encounterSeq } })
       }
     } else if (outcome.win) {
-      // R5/U33①:水域节点掉落率 ×1.5(地形回报)× 暴露 upside ×2(R5.1b;精英品质下限在 R5.1c 落地)
+      // R5/U33①:水域节点掉落率 ×1.5(地形回报)× 暴露 upside ×2(R5.1b);精英品质下限绿(U33②)
       const node = nodeById(r.map, r.nodeId)
       const dropMult = (terrainRewardOf(node?.terrain ?? 'road')?.dropMult ?? 1) * conditionDropMult(r)
-      const drop = rollWaveDrop(runDungeon(r).id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
+      const drop = rollWaveDrop(runDungeon(r).id, rng, isEliteNode,
         waveDropBonus(members.filter(m => common.battle.combatants.some(x => x.memberId === m.id && x.alive))), itemId, dropMult)
       if (drop) outcome.loot.items.push(drop)
     }
     guild.kingdom = settleKingdomBattle(guild.kingdom, r)
     c.kingdom = guild.kingdom
     outcome.loot.gold = outcome.win
-      ? Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) * (r.rareHunt && r.battlesFought === 1 ? r.rareHunt.rewardMult : 1)) : 0
+      ? Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) *
+          (isEliteNode ? 2 : 1) * // R5/U33②:精英金币 ×2
+          (r.rareHunt && r.battlesFought === 1 ? r.rareHunt.rewardMult : 1)) : 0
     // 必须在推进索引前捕获遭遇奖励/委托；先推进再登记死亡保持副本旧顺序。
     // R5.1b:经验/掉落倍率要在 advanceRun 消退状态前捕获;消退的状态写成可见提示。
     const condsBeforeSettle = [...(r.conditions ?? [])]
@@ -166,10 +173,10 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     }
     outcome.deaths = markPermadeath({ ...r, members }, place)
     if (outcome.win) {
-      // R5/U33①:林野节点熟练度收益 ×2(地形回报;精英 +2 在 R5.1c 落地)
+      // R5/U33①②:林野节点熟练度 ×2(地形回报);精英节点 +2、Boss +2(U33②)
       const node = nodeById(r.map, r.nodeId)
       const masteryMult = terrainRewardOf(node?.terrain ?? 'road')?.masteryMult ?? 1
-      const gain = Math.round((enc?.kind === 'boss' ? 2 : 1) * masteryMult)
+      const gain = Math.round((enc?.kind === 'boss' || isEliteNode ? 2 : 1) * masteryMult)
       guild.dungeonMastery[runDungeon(r).id] = (guild.dungeonMastery[runDungeon(r).id] ?? 0) + gain
       c.mastery = { dungeonId: runDungeon(r).id, gain }
     }
@@ -269,7 +276,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         appendFact(guild.factLedger, day, { kind: 'tower-record', actors: [], refs: { floor: guild.towerBest } })
       }
     }
-  } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run) }, effects.expMult * expMultCond)
+  } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run), elite: dungeonElite }, effects.expMult * expMultCond)
 
   // 用本场前后的变化记事，避免沿用整趟出征快照而重复登记同一次升级/升星。
   for (const m of members) {

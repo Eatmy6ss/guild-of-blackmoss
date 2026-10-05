@@ -233,10 +233,10 @@ export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false
     .filter((b) => b && b.tier === tier)
   if (signPool.length > 0 && rng() < 0.5) {
     const base = signPool[Math.floor(rng() * signPool.length)]
-    return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05, id: itemId?.() })
+    return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05, minQuality: elite ? 'green' : undefined, id: itemId?.() })
   }
   const pool = Object.values(ITEM_BASES).filter((b) => b.tier === tier)
   if (pool.length === 0) return null
   const base = pool[Math.floor(rng() * pool.length)]
-  return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05, id: itemId?.() })
+  return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05, minQuality: elite ? 'green' : undefined, id: itemId?.() })
 }

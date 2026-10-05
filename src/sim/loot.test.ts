@@ -161,3 +161,14 @@ describe('词条预算', () => {
     expect(migrated).toEqual(before)
   })
 })
+
+// R5.1c(U33②):精英掉落品质下限绿
+describe('R5.1c 精英品质下限', () => {
+  it('精英必不掉白装(rng 钉死通过掉率判定)', () => {
+    for (let i = 0; i < 20; i++) {
+      const item = rollWaveDrop('blackmoss', () => 0.1, true, 0, () => `t-${i}`)
+      expect(item).not.toBeNull()
+      expect(item!.quality).not.toBe('white')
+    }
+  })
+})

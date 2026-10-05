@@ -259,6 +259,8 @@ interface GrowthRun {
   phase: string
   dungeon?: DungeonDef
   trainingExpMultiplier?: number
+  /** R5.1c(U33②):精英节点胜场经验 ×2(节点的遭遇本体是普通 wave,精英属性在节点上) */
+  elite?: boolean
 }
 
 /** 塔层传入原有经验和共同经历边界；两种来源共享参战、种族经验和默契发放。 */
@@ -269,8 +271,8 @@ export function settleGrowth(run: GrowthRun, expMult = 1, floorReward?: { exp: n
   if (b.status === 'guild-win') {
     const enc = run.dungeon?.encounters.find((e) => e.id === b.encounterId)
     // V1 难度二轮收紧(2026-09-26):威胁升档但不降收益;经验只收紧为波9/Boss50。
-    // 一轮约11波×9+50=149, 对 xpNeeded 750→1200 约为5-8遍升一级。
-    const exp = floorReward?.exp ?? (enc?.kind === 'boss' ? 50 : 9)
+    // R5/U33②:精英经验 ×2 = 18(C4 占位;精英属性在节点 kind,由结算层传入 elite)。
+    const exp = floorReward?.exp ?? (enc?.kind === 'boss' ? 50 : run.elite ? 18 : 9)
     const expected = floorReward ? undefined : run.dungeon?.expectedLevel
     const over = expected !== undefined
       ? Math.max(0, run.members.reduce((s, m) => s + m.level, 0) / Math.max(1, run.members.length) - expected)
