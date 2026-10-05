@@ -222,9 +222,10 @@ export function dungeonItemTier(dungeonId: string): number {
 
 /** 杂兵小概率掉装备(反馈②:8%→12%,阵亡损耗与装备获取对齐)——白/绿为主
  *  特化加权:50% 先抽本图招牌池,刷对应副本有专属目标
- *  F10 修复(2026-09-25):精英节点兑现「掉落翻倍」承诺——概率 ×2(24%),品质略优 */
-export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false, scavBonus = 0, itemId?: () => string): ItemInstance | null {
-  if (rng() >= (elite ? 0.24 : 0.12) + scavBonus) return null
+ *  F10 修复(2026-09-25):精英节点兑现「掉落翻倍」承诺——概率 ×2(24%),品质略优
+ *  R5/U33①:chanceMult=地形回报的掉落率倍率(水域 ×1.5;暴露 upside ×2 在 R5.1b 接入) */
+export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false, scavBonus = 0, itemId?: () => string, chanceMult = 1): ItemInstance | null {
+  if (rng() >= (elite ? 0.24 : 0.12) * chanceMult + scavBonus) return null
   const tier = dungeonItemTier(dungeonId)
   const signIds = DUNGEON_SIGNS[dungeonId] ?? []
   const signPool = signIds

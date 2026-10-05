@@ -1,10 +1,15 @@
 // 路况状态机(U27②,redesign R1.2):纯函数,状态挂在 DungeonRun.conditions(id 集合,不叠层只刷新)。
 // 触发率 = chance × 熟练度修正(0-34 档 ×1 / 60-79 档 ×0.75 / 80+ 档 ×0.5;R1.3 定档)。
+// R5/U33①:危险地形在掷路况的同时当场给回报(terrainEntryReward),中性地形无回报。
 
 import type { DungeonRun } from './run'
 import type { MapNode } from './dungeon-map'
+import type { Member, ItemInstance } from './types'
 import { runRng } from './run-core'
 import { CONDITION_BY_ID, type RouteCondition } from '../data/conditions'
+import { terrainRewardOf } from '../data/terrain-rewards'
+import { maxHpOf } from './gen'
+import { rollWaveDrop } from './loot'
 import { nodeById } from './dungeon-map'
 
 /** 熟练度 → 触发率修正(与 R1.3 的四档表对齐;中两档 35-59 仍 ×1) */
@@ -78,19 +83,28 @@ export function conditionBattleMods(run: Pick<DungeonRun, 'conditions'>): {
   return { mods, enemyMods }
 }
 
-/** 走上节点(R1.2):先按地形解除,再掷地形触发器与连战计数。返回本次新挂上的状态名(供界面提示)。 */
+/** 走上节点(R1.2):先按地形解除,再掷地形触发器与连战计数。返回本次新挂上的状态名(供界面提示)。
+ *  R5/U33⑧:Boss 节点不掷路况(只保留解除);R5.1b:挂上湿透的当刻扣药(只扣一次,由触发分支内联)。 */
 export function enterNodeConditions(run: DungeonRun, node: MapNode, mastery: number): string[] {
   const gained: string[] = []
   // 1) 解除:走到 clearedBy 地形
   for (const c of activeConditions(run)) {
     if (c.clearedBy?.includes(node.terrain)) removeCondition(run, c.id)
   }
+  if (node.kind === 'boss') return gained // U33⑧:Boss 节点不掷路况
   // 2) 地形触发器
   const mod = conditionChanceMod(mastery)
   for (const c of Object.values(CONDITION_BY_ID)) {
     if (c.trigger !== 'terrain' || !c.from?.includes(node.terrain)) continue
     if (runRng(run)() < c.chance * mod) {
-      if (addCondition(run, c.id)) gained.push(c.name)
+      if (addCondition(run, c.id)) {
+        gained.push(c.name)
+        // 挂上当刻的立即生效效果(湿透泡坏药水):只扣一次(U33⑧ bug①)
+        const loss = c.map?.potionLoss ?? 0
+        if (loss > 0 && run.potions.heal > 0) {
+          run.potions = { ...run.potions, heal: Math.max(0, run.potions.heal - loss) }
+        }
+      }
     }
   }
   // 3) 连战计数(疲惫):路径尾部连续战斗节点数
@@ -107,14 +121,51 @@ export function enterNodeConditions(run: DungeonRun, node: MapNode, mastery: num
       if (addCondition(run, c.id)) gained.push(c.name)
     }
   }
-  // 4) 立即生效的 map 效果:泡坏药水(湿透)
-  for (const c of activeConditions(run)) {
-    const loss = c.map?.potionLoss ?? 0
-    if (loss > 0 && run.potions.heal > 0) {
-      run.potions = { ...run.potions, heal: Math.max(0, run.potions.heal - loss) }
+  return gained
+}
+
+/** 走上节点的地形回报(R5/U33①):危险地形当场给好处;中性地形无回报。
+ *  治疗直接写 roster(与 retreatRun 同模式);祝福/物品由调用方入账(App 层持有公会状态)。
+ *  水域的非战斗节点 25% 捞装备;战斗节点的掉落/熟练度倍率由 settlement 按 terrainRewardOf 消费。 */
+export interface TerrainEntryResult {
+  blessing: number
+  healedNames: string[]
+  item: ItemInstance | null
+  notes: string[]
+}
+
+export function terrainEntryReward(
+  run: DungeonRun,
+  node: MapNode,
+  roster: Member[],
+  itemId?: () => string,
+  rng?: () => number,
+): TerrainEntryResult {
+  const out: TerrainEntryResult = { blessing: 0, healedNames: [], item: null, notes: [] }
+  const reward = terrainRewardOf(node.terrain)
+  if (!reward) return out
+  const rand = rng ?? runRng(run)
+  if (reward.blessing) {
+    out.blessing = reward.blessing
+    out.notes.push(`英灵祝福 +${reward.blessing}(祭奠亡者)`)
+  }
+  if (reward.healPct) {
+    for (const m of roster) {
+      if (!m.alive) continue
+      const max = maxHpOf(m)
+      const before = m.hp
+      m.hp = Math.min(max, m.hp + Math.round(max * reward.healPct))
+      if (m.hp > before) out.healedNames.push(`${m.name} +${m.hp - before}`)
+    }
+    out.notes.push(`全体回复 ${Math.round(reward.healPct * 100)}% 生命${out.healedNames.length ? '(' + out.healedNames.join('、') + ')' : '(无人需要回复)'}`)
+  }
+  if (reward.lootChance && node.kind !== 'battle' && node.kind !== 'elite' && node.kind !== 'boss') {
+    if (rand() < reward.lootChance) {
+      out.item = rollWaveDrop(run.dungeonId, rand, false, 0, itemId)
+      if (out.item) out.notes.push('水里捞到 1 件装备')
     }
   }
-  return gained
+  return out
 }
 
 /** 精英战打完(惊动):挂状态 + 后续层精英权重翻倍的确定性落实(把未来层的战斗节点翻成精英)。

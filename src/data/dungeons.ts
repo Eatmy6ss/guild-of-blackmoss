@@ -162,6 +162,7 @@ export const RUSTMINE: DungeonDef = {
     under: { weight: 4, names: ['主矿脉', '深层矿脉', '通风巷道', '蛛网巷道', '穴蝠巢'], encounters: ['enc-miners', 'enc-deepvein', 'enc-spiders', 'enc-batmix', 'enc-bats'] },
     ruin: { weight: 2, names: ['坍塌货仓'], encounters: ['enc-spiders', 'enc-bats'] },
     camp: { weight: 2, names: ['矿车休息站'], encounters: [] },
+    water: { weight: 2, names: ['暗河涌水', '冷却水洼'], encounters: [] },
   },
   enemyGroups: {
     miners: [
@@ -264,6 +265,7 @@ export const ASHFIELD: DungeonDef = {
     grave: { weight: 4, names: ['白骨大道', '葬仪行列', '墓骑巡境'], encounters: ['enc-skeletons', 'enc-funeral', 'enc-knights'] },
     ruin: { weight: 2, names: ['军械库残堆'], encounters: ['enc-bonemix'] },
     water: { weight: 2, names: ['河滩绕行'], encounters: ['enc-wraiths'] },
+    sanctum: { weight: 1, names: ['残破礼拜堂', '焦黑圣龛'], encounters: [] },
     camp: { weight: 2, names: ['旧军营垒'], encounters: [] },
   },
   enemyGroups: {

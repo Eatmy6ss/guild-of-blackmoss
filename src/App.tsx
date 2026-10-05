@@ -68,7 +68,7 @@ import { BLACKMOSS, DUNGEONS } from './data/dungeons'
 import { startTower, insureNextTowerFloor, towerRest, towerNext, towerFloorIsBoss, type TowerRun } from './sim/tower'
 import { revealTier, moveTo, mapOptions, currentNode, nextBossEncounter } from './sim/run'
 import { autoPickNode } from './sim/dungeon-map'
-import { restHealMult } from './sim/conditions'
+import { restHealMult, terrainEntryReward } from './sim/conditions'
 import { CONDITION_BY_ID } from './data/conditions'
 import { MapScreen } from './ui/screens/MapScreen'
 import { ResultScreen } from './ui/screens/ResultScreen'
@@ -831,7 +831,16 @@ export default function App() {
     for (const id of (r.conditions ?? []).filter((c) => !condsBefore.includes(c))) {
       logChronicle(chronicleRaw(day, '路况:' + (CONDITION_BY_ID[id]?.name ?? id) + '——' + (CONDITION_BY_ID[id]?.desc ?? '')))
     }
+    // R5/U33①:地形回报(进入节点当场;与路况风险并列显示在悬停框,结果条写明)
+    const entry = terrainEntryReward(r, node, membersRef.current)
+    if (entry.blessing) setBlessing((b) => b + entry.blessing)
+    if (entry.item) receiveItems([entry.item], true)
+    let entryText = entry.notes.length ? `【地形】${node.name}:${entry.notes.join(';')}` : ''
+    if (entry.blessing || entry.item) {
+      logChronicle(chronicleRaw(day, `${runDungeon(r).name}的${node.name}:${entry.notes.join(';')}。`))
+    }
     if (node.kind === 'battle' || node.kind === 'elite' || node.kind === 'boss') {
+      if (entryText) changeProgress({ lastNodeResult: entryText })
       applyRestMorale(runMembers(r, membersRef.current).filter((x) => x.alive))
       const encId = node.kind === 'boss' ? nextBossEncounter(r) : node.encounterId
       const enc = runDungeon(r).encounters.find((e) => e.id === encId)
@@ -869,7 +878,7 @@ export default function App() {
         setEventResult(null)
       } else {
         // 池空兜底(不应发生):也必须有可见后果,不能静默
-        changeProgress({ lastNodeResult: `❓ ${node.name}:这里没什么动静——也许来早了。` })
+        changeProgress({ lastNodeResult: entryText || `❓ ${node.name}:这里没什么动静——也许来早了。` })
       }
       setRun({ ...r })
       return
@@ -885,7 +894,7 @@ export default function App() {
         if (mem.hp > before) healed.push(`${mem.name} +${mem.hp - before}`)
       }
       // 结算反馈红线:休整后果必须在同一界面可见
-      changeProgress({ lastNodeResult: `⛺ ${node.name}:原地休整,回复 ${Math.round(REST_HEAL_PCT * healMult * 100)}% 生命${healMult < 1 ? '(疲惫:回复减半)' : ''}${healed.length ? ' —— ' + healed.join('、') : '(无人需要回复)'}` })
+      changeProgress({ lastNodeResult: `${entryText ? entryText + '\n' : ''}⛺ ${node.name}:原地休整,回复 ${Math.round(REST_HEAL_PCT * healMult * 100)}% 生命${healMult < 1 ? '(疲惫:回复减半)' : ''}${healed.length ? ' —— ' + healed.join('、') : '(无人需要回复)'}` })
       setRun({ ...r })
       if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
       return
@@ -900,7 +909,7 @@ export default function App() {
       const item = rollDrop(baseId, runRng(r), { qualityBias: 0.3 })
       receiveItems([item], true)
       // 结算反馈红线:收获了什么必须当场可见
-      changeProgress({ lastNodeResult: `🎁 ${node.name}:获得 ${gold2} 金与 ${describeItem(item)}(已入仓库)` })
+      changeProgress({ lastNodeResult: `${entryText ? entryText + '\n' : ''}🎁 ${node.name}:获得 ${gold2} 金与 ${describeItem(item)}(已入仓库)` })
       logChronicle(chronicleRaw(day, runDungeon(r).name + '的' + node.name + '开出了好东西。'))
       setRun({ ...r })
       if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)

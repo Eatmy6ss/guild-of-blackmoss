@@ -28,6 +28,7 @@ import {
 } from './chronicle'
 import type { Rng } from './rng'
 import { runMembers, runDungeon, runRng, syncRunParty } from './run-core'
+import { terrainRewardOf } from '../data/terrain-rewards'
 
 export interface EncounterGuild {
   /** A2 事实账本:settlement 是唯一追加方之一(App 侧只经账本函数) */
@@ -139,8 +140,11 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: nodeById(r.map, r.nodeId)?.layer ?? encounterSeq } })
       }
     } else if (outcome.win) {
+      // R5/U33①:水域节点掉落率 ×1.5(地形回报;精英品质下限在 R5.1c 落地)
+      const node = nodeById(r.map, r.nodeId)
+      const dropMult = terrainRewardOf(node?.terrain ?? 'road')?.dropMult ?? 1
       const drop = rollWaveDrop(runDungeon(r).id, rng, common.battle.combatants.some(x => x.team === 'enemy' && x.elite),
-        waveDropBonus(members.filter(m => common.battle.combatants.some(x => x.memberId === m.id && x.alive))), itemId)
+        waveDropBonus(members.filter(m => common.battle.combatants.some(x => x.memberId === m.id && x.alive))), itemId, dropMult)
       if (drop) outcome.loot.items.push(drop)
     }
     guild.kingdom = settleKingdomBattle(guild.kingdom, r)
@@ -151,7 +155,10 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     advanceRun(r, guild.members)
     outcome.deaths = markPermadeath({ ...r, members }, place)
     if (outcome.win) {
-      const gain = enc?.kind === 'boss' ? 2 : 1
+      // R5/U33①:林野节点熟练度收益 ×2(地形回报;精英 +2 在 R5.1c 落地)
+      const node = nodeById(r.map, r.nodeId)
+      const masteryMult = terrainRewardOf(node?.terrain ?? 'road')?.masteryMult ?? 1
+      const gain = Math.round((enc?.kind === 'boss' ? 2 : 1) * masteryMult)
       guild.dungeonMastery[runDungeon(r).id] = (guild.dungeonMastery[runDungeon(r).id] ?? 0) + gain
       c.mastery = { dungeonId: runDungeon(r).id, gain }
     }

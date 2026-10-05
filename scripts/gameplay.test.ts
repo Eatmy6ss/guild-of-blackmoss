@@ -16,6 +16,7 @@ import { runAutoAI } from '../src/sim/ai'
 import { settleGrowth, moveTo, mapOptions, currentNode, nextBossEncounter, REST_HEAL_PCT } from '../src/sim/run'
 import { consequenceFiresIn, rollGuildEvent } from '../src/sim/guild-events'
 import { CONDITION_BY_ID } from '../src/data/conditions'
+import { terrainEntryReward } from '../src/sim/conditions'
 import { runRng, int } from '../src/sim/run-core'
 import { towerEnemyScale, insureNextTowerFloor } from '../src/sim/tower'
 import { redeemCost, sellValue } from '../src/sim/tavern'
@@ -1427,7 +1428,7 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
       run.rng = () => values.shift() ?? 0.4
       const open = handler('chooseNode', {
         runRef: { current: run }, dungeonMastery: {}, moveTo, mapOptions, currentNode, nextBossEncounter, dungeonItemTier,
-        CONDITION_BY_ID, REST_HEAL_PCT, describeItem,
+        CONDITION_BY_ID, REST_HEAL_PCT, describeItem, terrainEntryReward,
         GUILD_EVENTS, pendingConsequences: [], consequenceFiresIn, rollGuildEvent,
         ITEM_BASES, rollDrop, Math: { random: () => values.shift() ?? 0.4, floor: Math.floor },
         gainGold: (n: number, source: string) => { assert.equal(source, 'event'); gold += n },

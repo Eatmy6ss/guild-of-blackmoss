@@ -7,6 +7,7 @@ import { runDungeon } from '../../sim/run-core'
 import { describeItem } from '../../sim/loot'
 import { activeConditions, restHealMult } from '../../sim/conditions'
 import { ROUTE_CONDITIONS } from '../../data/conditions'
+import { terrainRewardOf } from '../../data/terrain-rewards'
 import type { ItemInstance } from '../../sim/types'
 
 // 副本地图界面(U29 拍板形态):图形化节点图——分层节点+连线,走过的路径点亮,暗道显示为「?」;
@@ -101,6 +102,8 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
   const hoveredRisks = hovered && tier >= 2
     ? ROUTE_CONDITIONS.filter((c) => c.trigger === 'terrain' && c.from?.includes(hovered.terrain) && !activeConditions(run).some((a) => a.id === c.id))
     : []
+  // R5/U33①:回报与风险并列显示,遵守揭示档位(档 0 只看到地形,档 2 起看到具体数字)
+  const hoveredReward = hovered && tier >= 2 ? terrainRewardOf(hovered.terrain) : undefined
 
   return (
     <>
@@ -209,6 +212,7 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
                 <div className="dg-intel" role="tooltip">
                   <b>{describe(hovered).title}</b>
                   <p>{describe(hovered).sub}</p>
+                  {hoveredReward && <p className="dg-risk">这里能给:{hoveredReward.desc}</p>}
                   {hoveredRisks.length > 0 && <p className="dg-risk">走这里可能:{hoveredRisks.map((c) => c.name).join('、')}</p>}
                   {fullMask(hovered) && <p className="hint" style={{ opacity: 0.7 }}>{tier === 0 ? `熟练度 ${MASTERY.KIND} 后记得路名` : '迷途散去前,下一层看不见'}</p>}
                 </div>
