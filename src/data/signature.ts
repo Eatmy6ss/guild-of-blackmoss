@@ -76,9 +76,9 @@ export const SIGNATURE_SKILLS: Record<string, SignatureSkill> = {
   'priest-holy': {
     id: 'sig-holy-mend',
     specId: 'priest-holy',
+    weaponFamily: ['staff', 'blade'],
     name: '圣疗',
     cdTicks: 90,
-    weaponFamily: 'universal',
     effect: 'heal-target-cleanse',
     targeting: 'ally',
     desc: '把圣光送到你点名的人身上:大额治疗,并一并清除其身上的束缚与灼烧。',

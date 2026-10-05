@@ -31,8 +31,8 @@ export const JOBS: Record<string, JobDef> = {
           { id: 'guard-taunt', weaponFamily: 'universal', name: '威吓', effect: 'taunt', target: 'enemy', cooldownTicks: 60 },
         ],
         advancedSkills: [
-          { id: 'guard-wall-slam', weaponFamily: [ 'blade', 'axe' ], name: '盾墙猛击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
-          { id: 'guard-shieldbreak', weaponFamily: [ 'blade', 'axe' ], name: '破甲盾击', effect: 'armor-break', target: 'enemy', cooldownTicks: 95 },
+          { id: 'guard-wall-slam', weaponFamily: ['blade', 'axe', 'polearm'], name: '盾墙猛击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 70 },
+          { id: 'guard-shieldbreak', weaponFamily: ['blade', 'axe', 'polearm'], name: '破甲盾击', effect: 'armor-break', target: 'enemy', cooldownTicks: 95 },
         ],
       }),
       'guard-thorns': spec({
@@ -71,12 +71,12 @@ export const JOBS: Record<string, JobDef> = {
         name: '圣光祭司',
         identity: '光落在伤口上——最经典的治疗,圣光术吞吐量最大。',
         skills: [
-          { id: 'priest-heal', weaponFamily: 'universal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 15 },
+          { id: 'priest-heal', weaponFamily: ['staff', 'blade'], name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 15 },
         ],
         advancedSkills: [
-          { id: 'holy-nova', weaponFamily: 'universal', name: '神圣新星', effect: 'group-heal', target: 'ally', cooldownTicks: 150 },
+          { id: 'holy-nova', weaponFamily: ['staff', 'blade'], name: '神圣新星', effect: 'group-heal', target: 'ally', cooldownTicks: 150 },
           { id: 'holy-smite', weaponFamily: [ 'staff' ], name: '惩击', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 90 },
-          { id: 'holy-channel', weaponFamily: 'universal', name: '虔信祷告', effect: 'channel-heal', target: 'ally', cooldownTicks: 170 },
+          { id: 'holy-channel', weaponFamily: ['staff', 'blade'], name: '虔信祷告', effect: 'channel-heal', target: 'ally', cooldownTicks: 170 },
         ],
       }),
       'priest-discipline': spec({
@@ -84,8 +84,8 @@ export const JOBS: Record<string, JobDef> = {
         name: '戒律牧师',
         identity: '先立盾,后颂诗——预防性的真言盾,让伤害根本落不到肉上。',
         skills: [
-          { id: 'priest-heal', weaponFamily: 'universal', name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 24 },
-          { id: 'priest-shield', weaponFamily: 'universal', name: '真言盾', effect: 'shield-ally', target: 'ally', cooldownTicks: 50 },
+          { id: 'priest-heal', weaponFamily: ['staff', 'blade'], name: '圣光术', effect: 'heal-lowest', target: 'ally', cooldownTicks: 24 },
+          { id: 'priest-shield', weaponFamily: ['staff', 'blade'], name: '真言盾', effect: 'shield-ally', target: 'ally', cooldownTicks: 50 },
         ],
         advancedSkills: [
           { id: 'disc-burst', weaponFamily: [ 'staff' ], name: '苦修', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 95 },
@@ -153,11 +153,11 @@ export const JOBS: Record<string, JobDef> = {
         identity: '每一下都劈在甲缝上——大开大合的重剑路数。',
         statMods: { attack: 1.5, speed: -1 },
         skills: [
-          { id: 'warrior-cleave', weaponFamily: [ 'blade', 'axe' ], name: '重型劈砍', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 65 },
+          { id: 'warrior-cleave', weaponFamily: ['blade', 'axe'], name: '重型劈砍', effect: 'heavy-strike', target: 'enemy', cooldownTicks: 65 },
         ],
         advancedSkills: [
-          { id: 'wpn-break', weaponFamily: [ 'blade', 'axe' ], name: '破甲斩', effect: 'curse-mark', target: 'enemy', cooldownTicks: 110 },
-          { id: 'wpn-combo', weaponFamily: [ 'blade', 'axe' ], name: '连环三斩', effect: 'combo-strike', target: 'enemy', cooldownTicks: 60 },
+          { id: 'wpn-break', weaponFamily: ['blade', 'axe'], name: '破甲斩', effect: 'curse-mark', target: 'enemy', cooldownTicks: 110 },
+          { id: 'wpn-combo', weaponFamily: ['blade', 'axe'], name: '连环三斩', effect: 'combo-strike', target: 'enemy', cooldownTicks: 60 },
         ],
       }),
       'warrior-vanguard': spec({
@@ -166,7 +166,7 @@ export const JOBS: Record<string, JobDef> = {
         identity: '第一个冲进去,最后一个撤出来——也负责把阵型撕开口子。',
         statMods: { maxHp: 8 },
         skills: [
-          { id: 'warrior-charge', weaponFamily: [ 'blade', 'axe' ], name: '冲锋号令', effect: 'charge-strike', target: 'enemy', cooldownTicks: 70 },
+          { id: 'warrior-charge', weaponFamily: ['blade', 'axe'], name: '冲锋号令', effect: 'charge-strike', target: 'enemy', cooldownTicks: 70 },
         ],
         passive: 'counter',
         advancedSkills: [

@@ -296,11 +296,19 @@ async function phaseEnding() {
     return m.name
   }
   {
-    const home = save.members.find((x) => x.job && HOME_WEAPON[x.job])
-    if (home) homeMember = { name: inject(home, HOME_WEAPON[home.job]), job: home.job }
-    const pole = save.members.find((x) => x.job && x.job !== 'guard')
+    // R5.3a 后武器族绑定生效:dev-save 随机 T2 武器会让持弓牧师整场放不出治疗(设计后果)。
+    // 先给全员换本命族线装,保证 ending 用正常满配队;R3B 记录第一个被换装者。
+    for (const m of save.members) {
+      const home = m.job && HOME_WEAPON[m.job]
+      if (!home) continue
+      const first = homeMember === null
+      inject(m, home)
+      if (first) homeMember = { name: m.name, job: m.job }
+    }
+    // R5.3a 后牧师拿长柄放不出治疗,会让 ending 团灭——注入目标避开守卫(长柄熟练)与牧师(治疗需杖/刃)
+    const pole = save.members.find((x) => x.job && x.job !== 'guard' && x.job !== 'priest')
     if (pole) poleMember = { name: inject(pole, 'wpn-t2-tidebreak'), job: pole.job }
-    console.log(`  R3 注入:本命族=${homeMember ? homeMember.name + '(' + homeMember.job + ')' : '无'} 长柄=${poleMember ? poleMember.name + '(' + poleMember.job + ')' : '无'}`)
+    console.log(`  R3 注入:全员本命族线装;长柄(断言后替补)=${poleMember ? poleMember.name + '(' + poleMember.job + ')' : '无'}`)
   }
   const b = await openBrowser('ending')
   try {
@@ -330,10 +338,16 @@ async function phaseEnding() {
     if (poleMember) {
       const prof = await openProfile(poleMember.name)
       check('R3C', '长柄注入后档案页示「非熟练·长柄」', !!prof && prof.includes('非熟练') && prof.includes('长柄') ? 'PASS' : 'FAIL', (prof ?? '元素缺失').slice(0, 60))
+      // 断言完成后把残装成员换下(替补):非熟练长柄会让 ending 团灭,断言目的只在 UI 提示
+      const hasRoster2 = await b.evalJs(`!!document.querySelector('.member-card')`)
+      if (!hasRoster2) { await clickText(b, '花名册'); await sleep(400) }
+      await b.evalJs(`(()=>{const cards=[...document.querySelectorAll('.member-card')];const t=cards.find((c)=>c.textContent.includes(${JSON.stringify(poleMember.name)}));const btn=[...(t?.querySelectorAll('button')??[])].find((x)=>x.textContent.includes('替补'));btn?.click()})()`)
+      await sleep(300)
+      console.log(`  R3C 收尾:已把 ${poleMember.name} 替补下场`)
     }
     await pressEscape(b); await sleep(200)
     const t0 = Date.now()
-    const r = await drive(b, { prio: ['荆棘要塞'], timeoutMs: 150_000 })
+    const r = await drive(b, { prio: ['荆棘要塞'], timeoutMs: 240_000 })
     await b.shot('ending')
     check('END', '通关荆棘要塞后出现「试玩版到此结束」', r.ending ? 'PASS' : 'FAIL', `${Math.round((Date.now() - t0) / 1000)}s,${r.returns} 次回城`)
     if (!r.ending) return

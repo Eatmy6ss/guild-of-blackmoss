@@ -57,7 +57,7 @@ describe('技能全量标注完整性(R3/W3)', () => {
     }
   })
 
-  it('标注语义抽查:瞄准射击需弓、火球术需杖、嘲讽/治疗通用(草案裁量点)', () => {
+  it('标注语义抽查:瞄准射击需弓、火球术需杖、嘲讽通用/牧师治疗需杖或刃(R5.3a 修订)', () => {
     const find = (id: string): SkillDef | undefined => {
       for (const j of Object.values(JOBS)) for (const sp of Object.values(j.specs)) {
         const hit = [...sp.skills, ...(sp.advancedSkills ?? [])].find((s) => s.id === id)
@@ -68,7 +68,16 @@ describe('技能全量标注完整性(R3/W3)', () => {
     expect(find('ranger-aimed')?.weaponFamily).toEqual(['bow'])
     expect(find('mage-fireball')?.weaponFamily).toEqual(['staff'])
     expect(find('guard-taunt')?.weaponFamily).toBe('universal')
-    expect(find('priest-heal')?.weaponFamily).toBe('universal')
+    // R5.3a(U33⑤):牧师治疗类不再是通用——需杖或刃
+    expect(find('priest-heal')?.weaponFamily).toEqual(['staff', 'blade'])
+    expect(find('holy-nova')?.weaponFamily).toEqual(['staff', 'blade'])
+    expect(find('priest-shield')?.weaponFamily).toEqual(['staff', 'blade'])
+    expect(find('holy-channel')?.weaponFamily).toEqual(['staff', 'blade'])
+    // R5.3a:守卫本职技能认长柄(数据 bug 修正)
+    expect(find('guard-wall-slam')?.weaponFamily).toEqual(['blade', 'axe', 'polearm'])
+    expect(find('guard-shieldbreak')?.weaponFamily).toEqual(['blade', 'axe', 'polearm'])
+    // 战士系不认长柄(战士天生不熟练长柄)
+    expect(find('warrior-cleave')?.weaponFamily).toEqual(['blade', 'axe'])
   })
 })
 
