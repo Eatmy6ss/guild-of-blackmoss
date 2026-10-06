@@ -441,6 +441,7 @@ function rngScope(scope: Record<string, unknown>) {
     combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, playtestAllows, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
     appendBio: () => {}, // U4.1 生平(U34):App/controllers 个人叙事写入点,默认空实现(垫片第 10 次扩容)
     ageFaints: () => [], scarStatName: (s: string) => s, FAINT_DAYS: 4, setScarNotices: () => {}, // R4.2(U32):出发虚痕消退
+    intel: {}, setIntel: () => {}, // R4.3(U30):出发消费酒馆情报
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
     lastRetreatRunRef: { current: null }, goBack: () => {},
     __PLAYTEST__: false, playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {}, setPlaytestEnding: () => {},

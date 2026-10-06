@@ -88,6 +88,9 @@ export interface ControllerDeps {
   setPotions: SetFn<{ heal: number; fury: number }>
   setLastDrops: SetFn<ItemInstance[]>
   setScarNotices: (v: string[] | ((q: string[]) => string[])) => void
+  /** R4.3(U30):酒馆情报(副本→真假)与清除 */
+  intel: Record<string, boolean> | undefined
+  setIntel: (f: (q: Record<string, boolean>) => Record<string, boolean>) => void
   setMemorial: SetFn<DeadHero[]>
   setManual: Set<string[]>
   setCandidates: Set<Member[]>
@@ -179,6 +182,7 @@ export function createAppControllers(deps: ControllerDeps) {
     sfxDefeat, syncAll, setPendingEvent, setEventResult, setDay, SEED_BASE,
     MANUAL_BONUS, receiveItems, gainGold, ROSTER_CAP, setUnlockedHybrids, newRoster,
     setStarMarrow, setHealingNotice, healingBusyRef, setChronicle, setEventImpacts, setOfflineNote,
+    intel, setIntel,
     setDungeonId, setSaveTransfer, setTowerRunning, eventResolvingRef, eventCursorRef, sfxCoin,
     blessing, kingdomRef, expeditionIds,
   } = deps
@@ -431,6 +435,17 @@ export function createAppControllers(deps: ControllerDeps) {
       setTrainingReady(false)
       logChronicle(chronicleRaw(day, '特权训练生效：本次远征所有胜场经验 +25%。'))
     }
+    // R4.3(U30):酒馆情报消费——真=本趟揭示档 +1;假=当场揭穿(购买时已 roll 定真假,这里只兑现)
+    const intelVerdict = intel?.[activeDungeon.id]
+    if (intelVerdict !== undefined) {
+      setIntel((q: Record<string, boolean>) => { const n = { ...q }; delete n[activeDungeon.id]; return n })
+      if (intelVerdict) {
+        runRef.current.intelBonus = 1
+        setScarNotices((q: string[]) => [...(q ?? []), `情报贩子的消息是真的——${activeDungeon.name} 的面貌提前浮现了一层。`])
+      } else {
+        setScarNotices((q: string[]) => [...(q ?? []), `情报是假的——「${activeDungeon.name}」根本不是他说的那样,而他已经不见了。`])
+      }
+    }
     if (rareHuntNext) {
       setRareHuntNext(null)
     }
@@ -484,7 +499,7 @@ export function createAppControllers(deps: ControllerDeps) {
       const avgHp = alive.length ? alive.reduce((sum, x) => sum + x.hp / toCombatant(x).maxHp, 0) / alive.length : 1
       const lostReveals = (r.conditions ?? []).some((id) => CONDITION_BY_ID[id]?.upside?.secretReveal)
       const picked = autoPickNode(mapOptions(r), {
-        tier: revealTier(m, 0, revealPenaltyLayers(r)), avgHp, rng: runRng(r),
+        tier: revealTier(m, r.intelBonus ?? 0, revealPenaltyLayers(r)), avgHp, rng: runRng(r),
         conditions: r.conditions ?? [], lostReveals,
       })
       if (picked) targetId = picked.id

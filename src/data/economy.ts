@@ -31,6 +31,8 @@ export const ECONOMY = {
   /** R4.2b 设施各管玩法(C4 占位):铁匠铺重铸一条词条的费用;祠堂遗物传承费=赎回费×rate */
   recastCost: 100,
   inheritRelicRate: 0.6,
+  /** R4.3(U30)酒馆情报单价(C4 占位) */
+  intelCost: 40,
   // 职阶切换(宪法 v3):解锁容易(基础专精间轻消耗),混合职阶另花一次性解锁;回练过的专精不打折
   vocation: { switchGold: 120, switchBlessing: 2, hybridUnlockGold: 200, hybridUnlockBlessing: 5 },
   /** 混合职阶的默契门槛:成员默契星总和(共同远征积累) */

@@ -20,7 +20,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 27
+export const SAVE_VERSION = 28
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -74,6 +74,8 @@ export interface GuildSave extends StoredItemFields {
   starMarrow: number
   /** v15: 疗养熟练度(维度→尝试次数,DESIGN 14.2) */
   healingMastery: Record<string, number>
+  /** v28(R4.3/U30):酒馆情报(副本 id→真假)。真=下次进该副本揭示档 +1;假=出发时揭穿 */
+  intel?: Record<string, boolean>
   version: number
   memorial: DeadHero[]
   manual: string[]
@@ -147,6 +149,8 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   // R4.2(U32① 疗养所稳定制):Scar 增可选字段 faint/faintSince,老档无需数据变更——
   // 占位迁移防止 while 循环落进默认步骤(默认步骤会重置金币/祝福/招募冷却)
   26: (d) => d,
+  // R4.3(U30)酒馆情报:intel 可选字段(副本→真假),老档缺省=无待用情报;占位防默认步骤
+  27: (d) => d,
   // A2 事实账本(ROADMAP §3.3):v22 起记录,旧档为空账本(编年史不迁移)
   21: (d) => ({ ...d, factLedger: { nextId: 1, facts: [] } }),
   20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),
@@ -213,6 +217,9 @@ export function migrate(data: Record<string, unknown>): GuildSave {
   d.starMarrow = typeof d.starMarrow === 'number' ? d.starMarrow : 0
   d.pendingRelics = Array.isArray(d.pendingRelics) ? d.pendingRelics : []
   d.healingMastery = d.healingMastery && typeof d.healingMastery === 'object' ? d.healingMastery : {}
+  d.intel = d.intel && typeof d.intel === 'object' && !Array.isArray(d.intel)
+    ? Object.fromEntries(Object.entries(d.intel as Record<string, unknown>).filter(([k, v]) => typeof k === 'string' && k.length > 0 && typeof v === 'boolean'))
+    : undefined
   d.kingdom = normalizeKingdom(d.kingdom)
   d.statistics = normalizeStatistics(d.statistics, typeof d.day === 'number' ? d.day : 1)
   const hunt = d.rareHuntNext as GuildSave['rareHuntNext']

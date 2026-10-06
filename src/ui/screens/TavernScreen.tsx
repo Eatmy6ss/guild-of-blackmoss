@@ -1,4 +1,5 @@
 // tavern 屏(U29 R2-5 自 App.tsx 迁出;行为零变——招募处理器留 App,props 下传)
+import { useState } from 'react'
 import { HeroPortrait } from '../art/ArtCanvas'
 import { JOBS, specOf } from '../../data/jobs'
 import { HYBRIDS, isHybrid } from '../../data/vocations'
@@ -26,6 +27,12 @@ interface TavernScreenProps {
   onTale: () => void
   onHire: (m: Member) => void
   onBack: () => void
+  /** R4.3(U30):情报贩子——副本选项/待用情报/购买 */
+  dungeonOptions: { id: string; name: string }[]
+  intelPending: Record<string, boolean>
+  intelCost: number
+  intelNotice: string | null
+  onBuyIntel: (dungeonId: string) => void
 }
 
 const ROSTER_CAP = 6
@@ -111,6 +118,8 @@ export function TavernScreen(props: TavernScreenProps) {
               🎲 酒馆传闻：{ECONOMY.taleCost.gold} 金 + {ECONOMY.taleCost.blessing} 祝福，三选一（品质更高）
             </button>
           </div>
+          {/* R4.3(U30):情报贩子——真假掺卖,出发进对应副本才兑现 */}
+          <IntelVendor {...props} />
           {candidates.length > 0 && (
             <div>
               <h2>来应征的冒险者（选一位入职）</h2>
@@ -140,5 +149,25 @@ export function TavernScreen(props: TavernScreenProps) {
           )}
               </div>
             </div>
+  )
+}
+
+// R4.3(U30):情报贩子区——真假掺卖(75% 真,C4 占位),话术不泄露真伪
+function IntelVendor(props: TavernScreenProps) {
+  const { dungeonOptions, intelPending, intelCost, intelNotice, onBuyIntel, gold, busy } = props
+  const [sel, setSel] = useState(dungeonOptions[0]?.id ?? '')
+  const pendingName = dungeonOptions.find((d) => intelPending[d.id])?.name
+  return (
+    <div className="potion-supply">
+      <span className="hint">🕵 情报贩子——花 {intelCost} 金买一份副本情报。他不说真话也不说假话:出发进该副本才见分晓(真=迷雾提前揭开一层;假=路上见真章)。</span>
+      <div className="tavern-row">
+        <select aria-label="情报副本" value={sel} onChange={(e) => setSel(e.target.value)}>
+          {dungeonOptions.map((d) => <option key={d.id} value={d.id}>{d.name}{intelPending[d.id] !== undefined ? '(已购·未验证)' : ''}</option>)}
+        </select>
+        <button disabled={busy || !sel || gold < intelCost} onClick={() => onBuyIntel(sel)}>🕵 买情报（{intelCost} 金）</button>
+      </div>
+      {pendingName && <p className="hint">袖中还有一份关于「{pendingName}」的情报,还没验证过。</p>}
+      {intelNotice && <p className="hint" role="status">{intelNotice}</p>}
+    </div>
   )
 }
