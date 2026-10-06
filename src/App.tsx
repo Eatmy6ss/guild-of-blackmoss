@@ -1066,17 +1066,22 @@ export default function App() {
             />
           )}
 
+          {/* U33 自测反馈②:结算=独立弹层(石框鎏金 overlay,压过事件弹层),不再整页替换 */}
           {screen === 'result' && finished && (
-            <ResultScreen
-              run={run!}
-              dungeonName={runDungeon(run!).name}
-              members={membersRef.current}
-              snapshot={growthSnapshotRef.current}
-              drops={lastDrops}
-              story={progress.notices.find((n) => n.startsWith('📖')) ?? null}
-              onBack={backToGuild}
-              onAgain={() => { backToGuild(); window.setTimeout(() => startExpeditionRef.current?.(), 120) }}
-            />
+            <div className="screen-overlay result-overlay">
+              <div className="screen-panel result-modal">
+                <ResultScreen
+                  run={run!}
+                  dungeonName={runDungeon(run!).name}
+                  members={membersRef.current}
+                  snapshot={growthSnapshotRef.current}
+                  drops={lastDrops}
+                  story={progress.notices.find((n) => n.startsWith('📖')) ?? null}
+                  onBack={backToGuild}
+                  onAgain={() => { backToGuild(); window.setTimeout(() => startExpeditionRef.current?.(), 120) }}
+                />
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -564,6 +564,9 @@ button.primary:hover:not(:disabled) {
 
 /* 大事事件弹层:羊皮纸卷轴(样张 event-card)——书记官现场誊录 */
 .event-overlay { z-index: 95; align-items: center; }
+/* 结算弹层(U33 自测反馈②):石框鎏金 overlay,居中;margin:auto 兼容超高内容滚动 */
+.result-overlay { z-index: 96; }
+.result-overlay .screen-panel { margin: auto; width: min(900px, 96vw); max-height: 92vh; overflow-y: auto; }
 .event-modal {
   width: min(560px, 92vw);
   position: relative;
