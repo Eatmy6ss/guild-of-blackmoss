@@ -204,6 +204,18 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
                 {bonds.map((x) => <li key={x.other!.id}>{x.other!.name}:{x.v}</li>)}
               </ul>
             ) : <p className="hint">还没有并肩作战的记忆。</p>}
+            <h3>生平{member.bio?.length ? <span className="hint">(倒序)</span> : ''}</h3>
+            {member.bio?.length ? (
+              <ul className="ms-list bio-list">
+                {[...member.bio].reverse().map((b, i) => (
+                  <li key={i} className="bio-entry">
+                    {b.permanent && <span className="bio-flag" title="永久铭刻">⚑</span>}
+                    <span className="bio-day">D{b.day}</span>
+                    <span className="bio-text">{b.text}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="hint">还没有值得记下的经历。</p>}
           </div>
         </div>
       </section>

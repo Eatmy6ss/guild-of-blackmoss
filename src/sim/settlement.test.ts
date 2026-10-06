@@ -53,6 +53,8 @@ function fixture(source: 'dungeon' | 'tower', status = 'retreated' as 'guild-win
   run.battle!.status = status
   const victim = run.battle!.combatants.find(c => c.memberId === g.members[0].id)!
   victim.alive = false; victim.hp = 0
+  // R4.1 生平:受难者生前有传记 → 快照必须随 DeadHero 带进纪念堂(U34)
+  g.members[0].bio = [{ day: 1, kind: 'joined', text: '经由酒馆传闻加入了公会。', permanent: true }]
   return source === 'dungeon' ? { source, run: run as ReturnType<typeof createRun>, guild: g }
     : { source, run: run as ReturnType<typeof startTower>, guild: g }
 }
@@ -71,6 +73,9 @@ describe('统一遭遇结算', () => {
       expect(victim.hp).toBe(0)
       expect(victim.equipment.weapon).toBeUndefined()
       expect(o.deaths[0].legacy).toBeDefined()
+      // R4.1 生平(U34):阵亡快照带出生前传记;陨落条目落在结算克隆上(纪念堂碑文另示死因)
+      expect(o.deaths[0].bio?.some(b => b.kind === 'joined')).toBe(true)
+      expect(victim.bio?.some(b => b.kind === 'fall')).toBe(true)
       expect(o.consequences.relics).toHaveLength(1)
       expect(o.consequences.deathShock).toHaveLength(2)
       expect(witness.morale).toBeLessThan(60)
@@ -183,7 +188,9 @@ describe('统一遭遇结算', () => {
           expect(o.run.phase).toBe(old.phase)
           expect(o.run.path).toEqual(old.path)
           expect(o.run.potions).toEqual(old.potions)
-          expect(o.guild.members.filter(m => o.run.memberIds.includes(m.id))).toEqual(old.members)
+          // U34:bio 是新增叙事层,旧链对照剥离 bio 后逐字段一致
+          expect(o.guild.members.filter(m => o.run.memberIds.includes(m.id)).map(({ bio: _b, ...rest }) => rest))
+            .toEqual(old.members.map(({ bio: _b2, ...rest }) => rest))
           expect(o.loot.gold).toBe(status === 'guild-win' ? ECONOMY.battleGold.wave * 2 : 0)
           expect(o.loot.clearGold).toBe(0) // 中途(非 Boss 末场)永不清关
           expect(o.guild.recruitCooldown).toBe(1)
@@ -203,7 +210,7 @@ describe('统一遭遇结算', () => {
     }
   })
 
-  it('升级/默契升星各留一次故事，下一个胜場不会重复登记旧升级', () => {
+  it('升级/默契升星写进当事人生平各一次且不重复登记;大事记不再记(U34)', () => {
     const g = guild(), r = createRun(g.members, BLACKMOSS, 9)
     const node = r.map.layers[0].find(n => n.kind === 'battle') ?? r.map.layers[0][0]!
     r.nodeId = node.id; r.path = [node.id]
@@ -211,11 +218,14 @@ describe('统一遭遇结算', () => {
     g.members[0].exp = xpNeeded(5) - 1
     r.battle!.status = 'guild-win'
     const first = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!
-    expect(first.consequences.chronicle.filter(x => x.text.includes('成长到了'))).toHaveLength(1)
+    const bioLevelUps = (guild: typeof g) => guild.members.flatMap(m => m.bio ?? []).filter(b => b.kind === 'level-up')
+    expect(bioLevelUps(first.guild)).toHaveLength(1)
+    // 大事记回归里程碑:升级不再进编年史
+    expect(first.consequences.chronicle.filter(x => x.text.includes('成长到了'))).toHaveLength(0)
     first.guild.chronicle = [...g.chronicle, ...first.consequences.chronicle]
     startStep(first.run, 10, 0, first.guild.members); first.run.battle!.status = 'guild-win'
     const next = settleEncounter({ source: 'dungeon', run: first.run, guild: first.guild }, () => 0.99)!
-    expect(next.consequences.chronicle.filter(x => x.text.includes('成长到了'))).toEqual([])
+    expect(bioLevelUps(next.guild)).toHaveLength(bioLevelUps(first.guild).length) // 不重复登记旧升级(总量不增)
     expect(next.guild.members[0].level).toBe(6)
   })
 })

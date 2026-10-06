@@ -8,6 +8,7 @@ import { maxHpOf, type MemberGenerationState } from '../sim/gen'
 import type { ChronicleEntry } from '../sim/chronicle'
 import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kingdom'
 import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../sim/statistics'
+import { sanitizeBio } from '../sim/bio'
 import { initialRunState, validateRunState, type RunUIState } from '../sim/run-state'
 import type { Visitor } from '../sim/tavern'
 
@@ -273,6 +274,10 @@ export function sanitizeMembers(members: Member[]): Member[] {
     }
     // Legacy preview saves used -1 as full health; resolve before hub events use HP.
     if (out.alive && out.hp === -1) out.hp = maxHpOf(out)
+    // R4.1 生平:bio 消毒(可选字段,老档 undefined 合法;非法条目逐条丢弃)
+    // 不给无 bio 的成员引入新键——迁移对照测试要求老档对象逐字节不变
+    const cleanBio = sanitizeBio(out.bio)
+    if (cleanBio) out.bio = cleanBio
     return out
   })
 }

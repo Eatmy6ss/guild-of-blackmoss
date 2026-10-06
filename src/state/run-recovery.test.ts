@@ -173,7 +173,8 @@ test('副本实战：暂停指令、选路与各场奖励跨刷新保持逐字�
     if (r.kind !== 'dungeon') throw new Error('dungeon')
     expect(settleEncounter({ source: 'dungeon', run: r, guild: { ...resumed, members: resolved(resumed) } })).toBeNull()
     expect(resumed.gold).toBeGreaterThan(900)
-    expect(resumed.chronicle.length).toBeGreaterThan(1)
+    // U34:大事记回归里程碑后单趟编年史条数大减;此处只断言终局结算仍有落账(不重复领奖语义)
+    expect(resumed.chronicle.length).toBeGreaterThan(0)
   }
 })
 

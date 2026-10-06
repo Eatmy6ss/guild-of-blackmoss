@@ -37,6 +37,10 @@ export function MemorialScreen({ memorial, onBack }: MemorialScreenProps) {
                   <div className="hint" style={{ fontSize: 12 }}>
                     {qLabel} 光环 +{pct}%{h.legacy?.deeds?.length ? ` · ${h.legacy.deeds.join(' · ')}` : ''}
                   </div>
+                  {/* R4.1 生平(U34):阵亡快照的永久条目摘录;老档无 bio 不渲染 */}
+                  {h.bio?.filter((b) => b.permanent).slice(-3).map((b, i) => (
+                    <div key={i} className="hint memorial-bio" style={{ fontSize: 12 }}>⚑ D{b.day} {b.text}</div>
+                  ))}
                 </div>
               )
             })

@@ -14,6 +14,7 @@ import { RACES } from './data/races'
 import { guildRankOf } from './sim/rank'
 import { applyFeast } from './sim/morale'
 import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } from './sim/chronicle'
+import { appendBio } from './sim/bio'
 import { TICK_MS, stepBattle, setFocus, useSignature } from './sim/combat'
 import { DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
@@ -241,15 +242,24 @@ export default function App() {
   // K09 人物特性(U16):招募时机 55% 立特性;checkWishes 循环里为朴素成员补立
   const rollTraitFor = (m: Member) => {
     if (!assignTrait(m, guildRng)) return false
-    logChronicle(chronicleRaw(day, m.name + ' 显露出特性：' + TRAIT_LABELS[m.trait!] + '。'))
+    // R4.1 生平(U34 Q2):特性显现=个人事件,只进当事人生平(永久),大事记不再记
+    appendBio(m, { day, kind: 'trait', text: m.name + ' 显露出特性：' + TRAIT_LABELS[m.trait!] + '。', permanent: true })
     return true
   }
   const checkWishes = () => {
-    const { changed, stories } = settleWishes(membersRef.current, {
+    const { changed, progress, traits } = settleWishes(membersRef.current, {
       dungeons: wishDungeonPool(), towerBest,
       dungeonCleared: id => manual.includes(DUNGEON_FINAL_BOSS[id] ?? ''),
     }, guildRng)
-    for (const text of stories) logChronicle(chronicleRaw(day, text))
+    // R4.1 生平(U34 Q2):心愿达成/特性显现写进当事人生平,大事记不再记
+    for (const w of progress) {
+      const m = membersRef.current.find((x) => x.id === w.memberId)
+      if (m) appendBio(m, { day, kind: 'wish', text: `了却心愿:「${w.text}」。士气昂扬。`, permanent: true })
+    }
+    for (const t of traits) {
+      const m = membersRef.current.find((x) => x.id === t.memberId)
+      if (m) appendBio(m, { day, kind: 'trait', text: t.text, permanent: true })
+    }
     if (changed) setMembers([...membersRef.current])
     return changed
   }
@@ -622,6 +632,7 @@ export default function App() {
     // Reserve the recruit before a second click can replay this render's visitor.
     membersRef.current = [...membersRef.current, visitor.member]
     rollWishFor(visitor.member); rollTraitFor(visitor.member)
+    appendBio(visitor.member, { day, kind: 'joined', text: '经由上门投奔加入了公会。', permanent: true })
     updateItemOwnership(registerMemberItems(itemOwnershipRef.current, visitor.member))
     logChronicle(chronicleRecruit(day, visitor.member, '上门投奔'))
     setVisitor(null)
@@ -632,6 +643,7 @@ export default function App() {
     setGold((g) => g - ECONOMY.bountyCost)
     const m = bountyCandidate(guildRng, membersRef.current, job)
     rollWishFor(m); rollTraitFor(m)
+    appendBio(m, { day, kind: 'joined', text: '经由定向悬赏加入了公会。', permanent: true })
     updateItemOwnership(registerMemberItems(itemOwnershipRef.current, m), [...membersRef.current, m])
     logChronicle(chronicleRecruit(day, m, '定向悬赏'))
     setRecruitCooldown(cooldownNeeded(aliveCount()))
@@ -652,6 +664,7 @@ export default function App() {
     // 入职保留之,不再重 roll(否则玩家看中的专精在入职瞬间被替换)
     const recruited = m.spec ? m : { ...m, spec: rollSpec(m.job, guildRng) }
     rollWishFor(recruited); rollTraitFor(recruited)
+    appendBio(recruited, { day, kind: 'joined', text: '经由酒馆传闻加入了公会。', permanent: true })
     updateItemOwnership(registerMemberItems(itemOwnershipRef.current, recruited), [...membersRef.current, recruited])
     logChronicle(chronicleRecruit(day, recruited, '酒馆传闻'))
     setCandidates([])
@@ -956,11 +969,14 @@ export default function App() {
                 if (!m2?.alive || runRef.current || towerRunRef.current) return
                 if ((m2.weaponLearned ?? []).includes(f) || gold < 100) return
                 const days = (buildings.training ?? 0) >= 2 ? 1 : 2
-                setMembers((ms) => ms.map((x) => x.id === m2.id
-                  ? { ...x, weaponLearned: [...new Set([...(x.weaponLearned ?? []), f])], busyUntilDay: day + days }
-                  : x))
+                setMembers((ms) => ms.map((x) => {
+                  if (x.id !== m2.id) return x
+                  const nx = { ...x, weaponLearned: [...new Set([...(x.weaponLearned ?? []), f])], busyUntilDay: day + days }
+                  // R4.1 生平(U34):专修开训写进当事人生平(普通条目),大事记不再记
+                  appendBio(nx, { day, kind: 'training', text: `开始${WEAPON_FAMILIES[f as keyof typeof WEAPON_FAMILIES]?.name ?? f}专修——第 ${day + days} 天归队。` })
+                  return nx
+                }))
                 setGold((g) => g - 100)
-                logChronicle(chronicleRaw(day, `${m2.name} 开始${WEAPON_FAMILIES[f as keyof typeof WEAPON_FAMILIES]?.name ?? f}专修——第 ${day + days} 天归队。`))
                 sfxCoin()
               }}
               onHeal={(memberId, si, scar) => {
@@ -1039,7 +1055,7 @@ export default function App() {
           {screen === 'tower' && towerRun && towerRun.phase === 'rest' && (
             <TowerRestScreen
               towerRun={towerRun} gold={gold} setGold={setGold} towerRunRef={towerRunRef}
-              setTowerRun={setTowerRun} logChronicle={logChronicle} chronicleRaw={chronicleRaw} day={day}
+              setTowerRun={setTowerRun} day={day}
               towerNextFloor={towerNextFloor} leaveTower={leaveTower}
             />
           )}

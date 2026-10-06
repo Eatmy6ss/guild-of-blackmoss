@@ -310,6 +310,15 @@ async function phaseEnding() {
     if (pole) poleMember = { name: inject(pole, 'wpn-t2-tidebreak'), job: pole.job }
     console.log(`  R3 注入:全员本命族线装;长柄(断言后替补)=${poleMember ? poleMember.name + '(' + poleMember.job + ')' : '无'}`)
   }
+  // R4.1 生平(U34):给队长注入两条传记(渲染验证;写入路径由 vitest/gameplay 回归覆盖)
+  const bioCap = homeMember && save.members.find((m) => m.name === homeMember.name)
+  if (bioCap) {
+    bioCap.bio = [
+      { day: 1, kind: 'joined', text: '经由酒馆传闻加入了公会。', permanent: true },
+      { day: 9, kind: 'level-up', text: '成长到了 Lv9,在靶场上待到深夜。' },
+    ]
+    console.log(`  R4.1 注入:${bioCap.name} 传记 2 条`)
+  }
   const b = await openBrowser('ending')
   try {
     await b.send('Page.navigate', { url: pathToFileURL(HTML).href }); await sleep(2500)
@@ -328,15 +337,18 @@ async function phaseEnding() {
       await b.evalJs(`(()=>{const cards=[...document.querySelectorAll('.member-card')];const t=cards.find((c)=>c.textContent.includes(${JSON.stringify(name)}));t?.querySelector('.mc-head')?.click()})()`)
       await sleep(400)
       const text = await b.evalJs(`document.querySelector('[data-testid="weapon-proficiency"]')?.textContent ?? null`)
+      // R4.1(U34):同一趟顺带读生平栏(条数/永久徽标/倒序首条)
+      const bio = await b.evalJs(`(()=>{const l=document.querySelector('.bio-list');if(!l)return null;return {n:l.children.length,flag:l.textContent.includes('⚑'),first:l.textContent.includes('D9')}})()`)
       await pressEscape(b); await sleep(250)
-      return text
+      return { text, bio }
     }
     if (homeMember) {
-      const prof = await openProfile(homeMember.name)
+      const { text: prof, bio } = await openProfile(homeMember.name)
       check('R3B', '本命族武器档案页示「✔ 熟练」', !!prof && prof.includes('熟练') && !prof.includes('非熟练') ? 'PASS' : 'FAIL', (prof ?? '元素缺失').slice(0, 60))
+      check('R4A', '档案页生平栏:条目渲染+⚑永久徽标+倒序(D9 在 D1 前)', bio && bio.n >= 2 && bio.flag && bio.first ? 'PASS' : 'FAIL', JSON.stringify(bio))
     }
     if (poleMember) {
-      const prof = await openProfile(poleMember.name)
+      const { text: prof } = await openProfile(poleMember.name)
       check('R3C', '长柄注入后档案页示「非熟练·长柄」', !!prof && prof.includes('非熟练') && prof.includes('长柄') ? 'PASS' : 'FAIL', (prof ?? '元素缺失').slice(0, 60))
       // 断言完成后把残装成员换下(替补):非熟练长柄会让 ending 团灭,断言目的只在 UI 提示
       const hasRoster2 = await b.evalJs(`!!document.querySelector('.member-card')`)

@@ -2,6 +2,21 @@
 
 > **待 grill 材料(2026-10-06)**:[r4-bio-plan-2026-10-06.md](r4-bio-plan-2026-10-06.md) =R4.1 生平施工方案草案(读码事实+B1–B4 工单拆解+4 道待拍板题 Q1 流水去留/Q2 里程碑清单/Q3 容量/Q4 默契写法,均带推荐)。**材料非拍板**,制作人自测 R5 后逐题过,拍板即升格施工依据开工。
 
+## ✅ 工单完成:R5 自测反馈两件热修+R4.1 生平 B1–B4 全部交付(认领人 zcode/本机,2026-10-06;交 Codex 复审,继续 R4.2 设施)
+
+**自测反馈处置**(制作人 10-06 实测三条):
+- ①「倍速出 bug 了吗,怎么这么快」→ **真 bug**:40fec9d(R5.2d)把 App.tsx 六个 effect(tick/塔 watcher/存档/滚动/结算 watcher/补编队)整段贴重 89 行,双 setInterval=stepBattle 每 tick 两次=**全部战斗 2 倍速**;幂等补丁删后段+标记断言,倍速档位语义(1/2/3)不受影响。
+- ②「结算页应该单独弹出」→ 结算屏改**独立弹层**(复用 screen-overlay 石框鎏金,z-96 压事件弹层,margin:auto 居中+超高滚动;gameres/MHW/明日方舟风格卡面 v2 不变)。
+- ③R5 过段 → R4 开工。
+
+**R4.1 生平(U34,拍板见 DECISIONS)**:
+- *B1 数据层*:sim/bio.ts(BioEntry/appendBio 唯一入口/普通 LRU40+permanent 不占额度/sanitizeBio 逐条消毒+永久类强制 permanent);Member.bio?/DeadHero.bio? 可选字段**零迁移**;markPermandeath 阵亡快照带出生前传记(纪念堂读);save.ts 消毒只在有 bio 时落键(老档逐字节不变,v14→v16 迁移对照不破)。
+- *B2 写入点接线(按 U34)*:结算侧=首杀/陨落/创伤/心愿/特性(永久)+升级(普通)+默契 1★/3★ 双方各记;公会侧=三类招募入职+训练开修+特性显现;**说书人故事经 factIds→actors 反查当事人各记一条**(公会大事记同时保留 📖);**节点流水六处摘除**(路况掷出/节点地形/宝箱/挂机结束/事件结果/塔投保);每场胜利不再进大事记(chronicleBattleVictory 退役)。
+- *B3 呈现*:档案页「生平」栏(倒序+⚑永久徽标+D 天数);纪念堂碑文下永久条目摘录(至多 3 条,老档不渲染);CSS .bio-list/.memorial-bio。
+- *B4 门禁*:bio.test 3 项(LRU/永久不挤/sanitize);settlement I9 扩展(死亡快照+fall 条目);升级/默契测试改 U34 口径;**render SSR 探针 bio-render.test.ts 3 项**(档案页倒序+⚑/无生平占位/纪念堂摘录+老档);gameplay 垫片第 10 次扩容(rngScope 默认 appendBio 空实现+settlementUi 挂真函数+visitor 测试计 1 次);宝箱 handler 测试改断结果条+编年史=0;e2e R4A(ending 段注入 2 条传记→档案页 bio-list/⚑/D9)+R3B 顺读 bio。
+
+**验证**:Vitest 217(214+3 SSR)/玩法回归 EXIT=0/smoke 47/构建/e2e 全段——以提交钩子为准。**遗留**:①塔层结算小结(R2 遗留)未带 bio;②initialRoster(newRoster)没有 joined 条目(只有招募写入;开局成员生平从首战开始积累——设计取舍,制作人若要「全员开局有入职条」再补);③说书人多人故事目前每人都记全文一条(未按人截断)。
+
 > **待 grill 材料(2026-10-05)**:[stoneshard-reference-grill-2026-10-05.md](stoneshard-reference-grill-2026-10-05.md) =创伤线两条引入(建议 U32:①治疗=稳定而非治愈,挂 S2/S3 实装前置;②压制=交易而非消音,挂 S2 酒馆压制)。**已 grill**(2026-10-05):条目一采纳 A,随 R4 疗养所实装;条目二暂不定,等 S2。见 DECISIONS **U32**。
 
 ## ✅ 工单完成:R5 修补轮 R5.1–R5.3 全部交付(认领人 zcode/本机,2026-10-05;交制作人自测+Codex 复审)

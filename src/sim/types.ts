@@ -203,6 +203,8 @@ export interface Member {
   /** M1 P2 灵魂层:士气(0-100,低士气拒绝出击);grudges=被遗弃的信任裂痕(负关系偏移) */
   morale?: number
   grudges?: number
+  /** R4.1 生平(U34):个人传记时间线;可选=老档无字段,零迁移 */
+  bio?: import('./bio').BioEntry[]
 }
 
 // ===== 战斗实体（战斗内的临时投影，战斗结束即弃）=====
@@ -489,6 +491,8 @@ export interface DeadHero {
   death?: DeathCause
   /** K02 纪念品质(U11):生平成就生成的品质记录;老档无此字段 = 凡逝 */
   legacy?: import('./memorial').LegacyRecord
+  /** R4.1 生平(U34):阵亡瞬间的传记快照(markPermadeath 带出,纪念堂读);老档无此字段 */
+  bio?: import('./bio').BioEntry[]
 }
 
 /** 结构化战斗事件：演出层（Pixi）消费这个，不解析文本日志 */

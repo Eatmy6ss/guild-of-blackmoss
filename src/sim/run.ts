@@ -244,6 +244,8 @@ export function markPermadeath(
         level: m.level,
         cause: renderDeathCause(death),
         death,
+        // R4.1 生平:阵亡瞬间的传记快照(纪念堂读;此后成员自身的 bio 不再增长)
+        bio: m.bio ? [...m.bio] : undefined,
       })
     }
   }

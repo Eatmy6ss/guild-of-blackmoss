@@ -2,6 +2,7 @@ import { runMembers as resolveRunMembers, runDungeon as resolveRunDungeon, runRn
 import { initialRunState, checkpointRunState, runReducer } from '../src/sim/run-state'
 import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER } from '../src/sim/fact-ledger'
 import { tellExpedition } from '../src/sim/storyteller'
+import { appendBio } from '../src/sim/bio'
 import { memberGenerationState, restoreMemberGeneration } from '../src/sim/gen'
 import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor, beginBattle } from './run-test-compat'
 import assert from 'node:assert/strict'
@@ -172,7 +173,7 @@ test('cautious auto captain can respond to regular-enemy telegraphs and heal cas
 test('free visitor signing is synchronous and idempotent before React renders again', () => {
   const initial = squad().slice(0, 2)
   const visitor = { member: squad()[0], story: 'test visitor' }
-  let roster = [...initial], logs = 0, wishes = 0
+  let roster = [...initial], logs = 0, wishes = 0, bioCount = 0
   const membersRef = { current: roster }
   const scope: Record<string, any> = {
     visitor, membersRef, runRef: { current: null }, towerRunRef: { current: null },
@@ -184,6 +185,7 @@ test('free visitor signing is synchronous and idempotent before React renders ag
     },
     day: 1, chronicleRecruit: () => 'recruited',
     logChronicle: () => { logs++ }, setVisitor: () => {},
+    appendBio: (_m: Member, _e: unknown) => { bioCount++ }, // U34:signVisitor 写当事人生平
   }
   scope.itemOwnershipRef = {current:createGuildItems(initial)}
   scope.setItemOwnership = () => {}
@@ -196,6 +198,7 @@ test('free visitor signing is synchronous and idempotent before React renders ag
   assert.equal(membersRef.current.length, 3)
   assert.equal(logs, 1)
   assert.equal(wishes, 1)
+  assert.equal(bioCount, 1) // U34:入职写当事人生平,只写一次(幂等)
 })
 
 test('free visitor cannot bypass roster capacity or recruit during a run or tower', () => {
@@ -436,6 +439,7 @@ function rngScope(scope: Record<string, unknown>) {
   return { initialRunState, checkpointRunState, memberGenerationState, restoreMemberGeneration,
     progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
     combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, playtestAllows, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
+    appendBio: () => {}, // U4.1 生平(U34):App/controllers 个人叙事写入点,默认空实现(垫片第 10 次扩容)
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
     lastRetreatRunRef: { current: null }, goBack: () => {},
     __PLAYTEST__: false, playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {}, setPlaytestEnding: () => {},
@@ -471,6 +475,7 @@ function settlementUi(members: Member[]) {
     markExpeditionStart: () => {}, markTold: () => {}, story: null, setPlaytestEnding: () => {},
     playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {},
     lastRetreatRunRef: { current: null }, goBack: () => {}, dismissHint: () => {},
+    appendBio, // U34:applyOutcome 说书人块写当事人生平(真函数,bio 落在成员克隆上)
   }
   for (const key of ['Members', 'Manual', 'DungeonMastery', 'TowerBest', 'RecruitCooldown', 'Inventory', 'LastDrops', 'PendingRelics', 'Memorial', 'Gold', 'StarMarrow', 'Blessing', 'Statistics', 'Chronicle', 'ScarNotices']) {
     scope['set' + key] = (v: any) => {
@@ -1430,7 +1435,7 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
         ?? (() => { const n = run.map.layers[0][0]!; n.kind = 'treasure'; n.encounterId = undefined; return n })()
       assert(node, dungeon.id)
       let inventory: unknown[] = [], visible: unknown[] = []
-      let gold = 0, chronicleCount = 0, updates = 0
+      let gold = 0, chronicleCount = 0, updates = 0, nodeResult: string | undefined
       const values = [0, (index + 0.5) / pool.length]
       run.rng = () => values.shift() ?? 0.4
       const open = handler('chooseNode', {
@@ -1444,6 +1449,7 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
         receiveItems: (items: unknown[], showDrops: boolean) => { inventory.push(...items); if(showDrops) visible.push(...items) },
         day: 1, chronicleRaw: (_day: number, text: string) => text,
         logChronicle: () => { chronicleCount++ }, setRun: () => { updates++ },
+        changeProgress: (p: { lastNodeResult?: string | null }) => { if (p.lastNodeResult !== undefined) nodeResult = p.lastNodeResult },
         applyRestMorale: () => {}, manual: [], startStep: () => {},
         seedRef: { current: 1 }, SEED_BASE: 7, setRunning: () => {}, syncAll: () => {},
       })
@@ -1451,8 +1457,9 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
       assert.equal((inventory[0] as { baseId: string }).baseId, pool[index].id)
       assert.equal(gold, 60)
       assert.deepEqual(visible, inventory)
-      // R1.2:路况通知可能并入编年史(落到可触发地形时),宝箱本身恒 1 条
-      assert(chronicleCount >= 1, '宝箱编年史至少一条')
+      // U34(Q1 拍板):宝箱流水不进大事记,收获走结果条(lastNodeResult)当场可见
+      assert.equal(chronicleCount, 0, '宝箱流水不进大事记(U34)')
+      assert(nodeResult && nodeResult.includes('获得'), '宝箱结果条可见')
       assert.equal(updates, 1)
       open(node.id)
       assert.equal(inventory.length, 1)

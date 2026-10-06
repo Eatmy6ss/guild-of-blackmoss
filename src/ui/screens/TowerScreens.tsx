@@ -2,7 +2,6 @@ import type { BattleState, Stance } from '../../sim/types'
 import type { TowerRun } from '../../sim/tower'
 import { STANCE_NAME, setStance, setFocus, useHealPotion, useFuryPotion, orderRetreat, stepBattle } from '../../sim/combat'
 import { towerFloorIsBoss, insureNextTowerFloor } from '../../sim/tower'
-type ChronicleRaw = (day: number, text: string, seq?: number) => import('../../sim/chronicle').ChronicleEntry
 
 // R5.2c(U33⑦):高塔三屏(战斗/休整投保/终局)自 App.tsx 迁出——行为零变,处理器留 App。
 
@@ -122,8 +121,6 @@ export function TowerRestScreen(props: {
   setGold: (f: (g: number) => number) => void
   towerRunRef: { current: TowerRun | null }
   setTowerRun: (t: TowerRun) => void
-  logChronicle: (e: import('../../sim/chronicle').ChronicleEntry) => void
-  chronicleRaw: ChronicleRaw
   day: number
   towerNextFloor: () => void
   leaveTower: () => void
@@ -136,7 +133,7 @@ export function TowerRestScreen(props: {
     if (!premium) return
     props.setGold((g) => g - premium)
     props.setTowerRun({ ...t })
-    props.logChronicle(props.chronicleRaw(props.day, '为第 ' + (t.floor + 1) + ' 层投了保(保费 ' + premium + ' 金)——下一层若有人倒下,装备免费归还。'))
+    // R4.1(U34 Q1):投保流水不再进大事记(按钮态「已投保」即状态本身)
   }
   return (
     <>

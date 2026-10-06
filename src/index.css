@@ -1005,3 +1005,9 @@ button.primary:hover:not(:disabled) {
 .rs-again:hover { box-shadow: 0 0 14px rgba(216, 162, 74, 0.4); }
 .rs-back { min-width: 140px; }
 .rs-defeat .rs-stamp { background: radial-gradient(ellipse 520px 180px at 50% 0%, rgba(122, 74, 74, 0.14) 0%, rgba(122, 74, 74, 0) 70%); }
+
+/* R4.1 生平(U34):档案页传记时间线 + 纪念堂摘录 */
+.bio-list .bio-entry { display: flex; gap: 7px; align-items: baseline; }
+.bio-entry .bio-flag { color: var(--gold, #d8a24a); flex: 0 0 auto; }
+.bio-entry .bio-day { color: var(--ink-dim, #9a8a70); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.memorial-bio { border-left: 2px solid var(--c-3, #4a3d2a); padding-left: 8px; margin-top: 3px; }

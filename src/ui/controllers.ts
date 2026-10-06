@@ -6,6 +6,7 @@ import { ITEM_BASES } from '../data/items'
 import { ECONOMY } from '../data/economy'
 import { applyRestMorale, refusesToMarch, applyMoraleDelta } from '../sim/morale'
 import { chronicleRefusal, chronicleBuilding, seedChronicle } from '../sim/chronicle'
+import { appendBio } from '../sim/bio'
 import { stepBattle, orderRetreat, toCombatant } from '../sim/combat'
 import { appendFact, latestEventChoice, markExpeditionStart, markTold } from '../sim/fact-ledger'
 import { tellExpedition } from '../sim/storyteller'
@@ -219,7 +220,21 @@ export function createAppControllers(deps: ControllerDeps) {
       setRun({ ...o.run })
       // A11:试玩版通关版图一 → 「试玩版到此结束」画面
       if (__PLAYTEST__ && o.run.phase === 'victory' && o.run.dungeonId === 'thornhold') setPlaytestEnding(true)
-      if (story) logChronicle(chronicleRaw(day, '📖 ' + story.text))
+      if (story) {
+        logChronicle(chronicleRaw(day, '📖 ' + story.text))
+        // R4.1 生平(U34):说书人的故事同时写进当事人 bio——factIds 反查账本 actors(多人各记一条)
+        const actorIds = new Set<string>()
+        for (const fid of story.factIds) {
+          const f = factLedgerRef.current.facts.find((x) => x.id === fid)
+          for (const a of f?.actors ?? []) actorIds.add(a)
+        }
+        let bioTouched = false
+        for (const aid of actorIds) {
+          const m = membersRef.current.find((x) => x.id === aid)
+          if (m) { appendBio(m, { day, kind: 'story', text: story.text }); bioTouched = true }
+        }
+        if (bioTouched) setMembers([...membersRef.current])
+      }
     } else {
       towerRunRef.current = o.run
       setTowerRun({ ...o.run })
@@ -288,11 +303,10 @@ export function createAppControllers(deps: ControllerDeps) {
       } else if (endPhase === 'defeat') {
         autoLoopRef.current = false
         r.autoMode = false
-        logChronicle(chronicleRaw(day, '挂机连刷结束:队伍全灭于' + runDungeon(r).name + '。'))
+        // R4.1(U34 Q1):挂机结束不再进大事记(结果屏/横幅已示)
       } else if (endPhase === 'retreated') {
         autoLoopRef.current = false
         r.autoMode = false
-        logChronicle(chronicleRaw(day, '挂机连刷结束:撤退保护把队伍带回了公会。'))
       }
     }
   }
@@ -472,10 +486,7 @@ export function createAppControllers(deps: ControllerDeps) {
     const condsBefore = [...(r.conditions ?? [])]
     const node = moveTo(r, targetId, dungeonMastery[runDungeon(r).id] ?? 0)
     if (!node) return
-    // 结算可见性(红线):新挂的路况当场提示一条,状态条在地图常驻;按时消退的状态写「消退」
-    for (const id of (r.conditions ?? []).filter((c) => !condsBefore.includes(c))) {
-      logChronicle(chronicleRaw(day, '路况:' + (CONDITION_BY_ID[id]?.name ?? id) + '——' + (CONDITION_BY_ID[id]?.desc ?? '')))
-    }
+    // 结算可见性(红线):新挂的路况当场提示;状态条在地图常驻。R4.1(U34 Q1):路况流水不再进大事记
     const expiredNames = condsBefore.filter((c) => !(r.conditions ?? []).includes(c)).map((id) => CONDITION_BY_ID[id]?.name ?? id)
     // R5/U33①:地形回报(进入节点当场;与路况风险并列显示在悬停框,结果条写明)
     const entry = terrainEntryReward(r, node, membersRef.current)
@@ -483,9 +494,6 @@ export function createAppControllers(deps: ControllerDeps) {
     if (entry.item) receiveItems([entry.item], true)
     const notes = [...expiredNames.map((n) => n + '消退了'), ...entry.notes]
     let entryText = notes.length ? `【地形】${node.name}:${notes.join(';')}` : ''
-    if (entry.blessing || entry.item || expiredNames.length) {
-      logChronicle(chronicleRaw(day, `${runDungeon(r).name}的${node.name}:${notes.join(';')}。`))
-    }
     if (node.kind === 'battle' || node.kind === 'elite' || node.kind === 'boss') {
       if (entryText) changeProgress({ lastNodeResult: entryText })
       applyRestMorale(runMembers(r, membersRef.current).filter((x) => x.alive))
@@ -557,9 +565,8 @@ export function createAppControllers(deps: ControllerDeps) {
       const baseId = bases[Math.floor(runRng(r)() * bases.length)]
       const item = rollDrop(baseId, runRng(r), { qualityBias: 0.3 })
       receiveItems([item], true)
-      // 结算反馈红线:收获了什么必须当场可见
+      // 结算反馈红线:收获了什么必须当场可见(结果条);R4.1(U34 Q1):宝箱流水不再进大事记
       changeProgress({ lastNodeResult: `${entryText ? entryText + '\n' : ''}🎁 ${node.name}:获得 ${gold2} 金与 ${describeItem(item)}(已入仓库)` })
-      logChronicle(chronicleRaw(day, runDungeon(r).name + '的' + node.name + '开出了好东西。'))
       setRun({ ...r })
       if (r.autoMode) window.setTimeout(() => continueDeepRef.current?.(), 700)
       return
@@ -928,7 +935,7 @@ export function createAppControllers(deps: ControllerDeps) {
       setPendingConsequences((q) => [...(q ?? []), { eventId: fx.delayed!.eventId, dueDay: day + fx.delayed!.dueDays }])
       chip('这件事,还没有完……', 'hook')
     }
-    logChronicle(chronicleRaw(day, ev.title + ':' + outcome.text))
+    // R4.1(U34 Q1):事件结果流水不再进大事记(弹层+影响明细 chips 已可视化)
     setEventResult(outcome.text)
     setEventImpacts(impacts)
     setMembers([...membersRef.current])

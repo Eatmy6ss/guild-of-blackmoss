@@ -68,6 +68,8 @@ export interface WishContext {
 export function settleWishes(members: Member[], ctx: WishContext, rng: Rng) {
   const progress: { memberId: string; text: string }[] = []
   const stories: string[] = []
+  // R4.1 生平(U34):特性/心愿的结构化返回,调用方写进当事人生平(公会大事记不再记,Q2 拍板)
+  const traits: { memberId: string; text: string }[] = []
   let changed = false
   const rollFor = (m: Member) => {
     m.wish = rollWish(rng, { slots: ['weapon', 'armor'], dungeons: ctx.dungeons, towerBest: ctx.towerBest, level: m.level }) ?? undefined
@@ -75,7 +77,9 @@ export function settleWishes(members: Member[], ctx: WishContext, rng: Rng) {
   const traitFor = (m: Member) => {
     if (!assignTrait(m, rng)) return
     changed = true
-    stories.push(m.name + ' 显露出特性：' + TRAIT_LABELS[m.trait!] + '。')
+    const text = m.name + ' 显露出特性：' + TRAIT_LABELS[m.trait!] + '。'
+    stories.push(text)
+    traits.push({ memberId: m.id, text })
   }
   for (const m of members) {
     if (!m.alive) continue
@@ -93,5 +97,5 @@ export function settleWishes(members: Member[], ctx: WishContext, rng: Rng) {
     traitFor(m)
     changed = true
   }
-  return { changed, progress, stories }
+  return { changed, progress, stories, traits }
 }

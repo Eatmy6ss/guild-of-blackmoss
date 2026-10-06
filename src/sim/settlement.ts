@@ -23,9 +23,10 @@ import { bondStars } from './gen'
 import { settleKingdomBattle, type KingdomState } from './kingdom'
 import { expeditionStatistics, type StatisticsAction } from './statistics'
 import {
-  chronicleRaw, chronicleHeroFall, chronicleFirstKill, chronicleBattleVictory, chronicleWipeRebuild,
-  chronicleLevelUp, chronicleBondStar, chronicleTowerRecord, type ChronicleEntry,
+  chronicleRaw, chronicleHeroFall, chronicleFirstKill, chronicleWipeRebuild,
+  chronicleTowerRecord, type ChronicleEntry,
 } from './chronicle'
+import { appendBio } from './bio'
 import type { Rng } from './rng'
 import { runMembers, runDungeon, runRng, syncRunParty } from './run-core'
 import { terrainRewardOf } from '../data/terrain-rewards'
@@ -142,9 +143,11 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         entryGate ? { pity, qualityBias: 0.12, minQuality: 'green', itemId } : { pity, itemId }))
       if (pity) {
         guild.manual.push(enc.bossId)
-        c.chronicle.push(chronicleFirstKill(day, boss.name, members.find(m => m.alive) ?? members[0], ++seq))
-        moments.push('公会首杀:' + boss.name)
         const killer = members.find(m => m.alive) ?? members[0]
+        c.chronicle.push(chronicleFirstKill(day, boss.name, killer, ++seq))
+        // R4.1 生平:首杀同时写进当事人生平(永久条目,U34)
+        appendBio(killer, { day, kind: 'first-kill', text: `亲手斩下了${boss.name}的首级——公会的旗上多了一道疤。`, permanent: true })
+        moments.push('公会首杀:' + boss.name)
         appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: nodeById(r.map, r.nodeId)?.layer ?? encounterSeq } })
       }
     } else if (outcome.win) {
@@ -196,6 +199,9 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   const dead = outcome.deaths
   for (const d of dead) {
     if (d.death) appendFact(guild.factLedger, day, { kind: 'death', actors: [d.id], names: { [d.id]: d.name }, cause: d.death, refs: { dungeonId: d.death.where.id, floor: d.death.where.floor, encounter: encounterSeq } })
+    // R4.1 生平:陨落写进当事人生平(永久条目;纪念堂快照取自 markPermadeath,碑文另示死因)
+    const fallen = members.find(x => x.id === d.id)
+    if (fallen) appendBio(fallen, { day, kind: 'fall', text: `陨落于${place}。酒馆里那晚没有人说话。`, permanent: true })
   }
   const scars = settleScars({ ...outcome.run, members }, dead.length > 0, input.source === 'tower' ? input.run.floor : 0, rng)
   c.scars = scars.map(({ member, scar }) => ({ memberId: member.id, scar }))
@@ -204,9 +210,9 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     appendFact(guild.factLedger, day, { kind: 'scar', actors: [member.id], names: { [member.id]: member.name }, refs: { dungeonId: input.source === 'dungeon' ? input.run.dungeonId : 'tower', floor: input.source === 'tower' ? input.run.floor : undefined, nearDeath, scarNth } })
   }
   for (const { member, scar } of scars) {
-    const text = member.name + ' 新增创伤：' + scarStatName(scar.stat) + ' -' + scar.value + '（' + scar.text + '），可回基地疗养。'
-    outcome.notices.push(text)
-    c.chronicle.push(chronicleRaw(day, text, ++seq))
+    outcome.notices.push(member.name + ' 新增创伤：' + scarStatName(scar.stat) + ' -' + scar.value + '（' + scar.text + '），可回基地疗养。')
+    // R4.1 生平(U34 Q2):创伤=个人事件,只进当事人生平(永久),公会大事记不再记
+    appendBio(member, { day, kind: 'scar', text: `${scarStatName(scar.stat)} 留下创伤（-${scar.value}:${scar.text}）。`, permanent: true })
   }
   let insuredRelics = 0
   for (const d of dead) {
@@ -245,7 +251,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   if (common.battle.status === 'guild-wipe') c.chronicle.push(chronicleWipeRebuild(day, ++seq))
   if (outcome.win) {
     applyVictory(alive)
-    c.chronicle.push(chronicleBattleVictory(day, place, alive, ++seq))
+    // R4.1 生平(U34 Q2):每场胜利不再进大事记(一趟 5-15 条的刷屏源;趟级叙事由说书人与里程碑承载)
     if (members.some(m => m.alive && Object.values(m.equipment).some(e => e && ITEM_BASES[e.baseId]?.legacy === 'triumph'))) applyMoraleDelta(alive, 2)
     // 保持原心愿检测时点：读取本次结算前已展示的首杀/塔纪录与探索池。
     const wishes = settleWishes(guild.members, {
@@ -256,9 +262,15 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     c.wishes = wishes.progress
     for (const w of wishes.progress) {
       const wm = guild.members.find(m => m.id === w.memberId)
-      appendFact(guild.factLedger, day, { kind: 'wish-done', actors: [w.memberId], names: wm ? { [wm.id]: wm.name } : undefined, refs: {} })
+      if (wm) {
+        appendFact(guild.factLedger, day, { kind: 'wish-done', actors: [w.memberId], names: wm ? { [wm.id]: wm.name } : undefined, refs: {} })
+        appendBio(wm, { day, kind: 'wish', text: `了却心愿:「${w.text}」。士气昂扬。`, permanent: true })
+      }
     }
-    for (const text of wishes.stories) c.chronicle.push(chronicleRaw(day, text, ++seq))
+    for (const t of wishes.traits) {
+      const tm = guild.members.find(m => m.id === t.memberId)
+      if (tm) appendBio(tm, { day, kind: 'trait', text: t.text, permanent: true })
+    }
   }
   outcome.deaths = dead.map(d => ({ ...d, legacy: computeLegacy(d, {
     bossKills: input.guild.manual.length, towerBest: input.guild.towerBest,
@@ -285,7 +297,8 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   for (const m of members) {
     const before = input.guild.members.find(x => x.id === m.id)
     if (before && m.level > before.level) {
-      c.chronicle.push(chronicleLevelUp(day, m, m.level, ++seq))
+      // R4.1 生平(U34 Q2):升级只进当事人生平,公会大事记不再记
+      appendBio(m, { day, kind: 'level-up', text: `成长到了 Lv${m.level},在靶场上待到深夜。` })
       moments.push(m.name + ' Lv' + before.level + '→' + m.level)
     }
   }
@@ -295,7 +308,11 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
       const before = input.guild.members.find(x => x.id === a.id)?.bonds[b.id] ?? 0
       const stars = bondStars(a.bonds[b.id] ?? 0)
       if (stars > bondStars(before)) {
-        c.chronicle.push(chronicleBondStar(day, a, b, stars, ++seq))
+        // R4.1 生平(U34 Q4):1★/3★ 时双方生平各记一条(2★ 不写),与说书人口径对齐;大事记不再记
+        if (stars === 1 || stars === 3) {
+          appendBio(a, { day, kind: 'bond', text: `与 ${b.name} 的默契升到了 ${'★'.repeat(stars)}——生死之交又深了一分。` })
+          appendBio(b, { day, kind: 'bond', text: `与 ${a.name} 的默契升到了 ${'★'.repeat(stars)}——生死之交又深了一分。` })
+        }
         moments.push(a.name + ' × ' + b.name + ' 默契 ' + stars + '★')
         appendFact(guild.factLedger, day, { kind: 'bond-star', actors: [a.id, b.id], names: { [a.id]: a.name, [b.id]: b.name }, refs: { stars } })
       }
