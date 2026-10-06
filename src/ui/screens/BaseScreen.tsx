@@ -6,7 +6,7 @@ import { SIGNATURE_SKILLS } from '../../data/signature'
 import { JOBS, specOf } from '../../data/jobs'
 import { HYBRIDS, isHybrid } from '../../data/vocations'
 import { RACES } from '../../data/races'
-import { scarStatName, healingTerms } from '../../sim/scars'
+import { scarStatName, healingTerms, FAINT_DAYS } from '../../sim/scars'
 import { WEAPON_FAMILIES, FAMILY_IDS, JOB_FAMILIES } from '../../data/weapon-families'
 import type { Member } from '../../sim/types'
 
@@ -81,14 +81,20 @@ export function BaseScreen(props: BaseScreenProps) {
           {healingNotice && <p className="hint" role="status">{healingNotice}</p>}
           {members.some((m) => m.alive && m.scars?.length) && (
             <div className="potion-supply">
-              <span className="hint">🏥 疗养所——轻度：60 金 + 1 祝福，基础成功率 85%；重度：120 金 + 3 祝福，基础成功率 65%。每次治疗同维度熟练度 +5%，最多 +25%（成功率最高 100%）；轻度治疗失败后有 15% 概率恶化。当前熟练度：{Object.entries(healingMastery).map(([k, v]) => scarStatName(k as 'str') + ' + ' + Math.min(v * 5, 25) + '%').join(' · ') || '无'}</span>
+              <span className="hint">🏥 疗养所(U32 稳定制)——治疗成功降一档:重度(120 金 + 3 祝福,成功率 65%)→轻度(60 金 + 1 祝福,85%)→虚痕(不减属性,静养 4 天自愈);轻度失败 15% 恶化,重度失败无效。每次治疗同维度熟练度 +5%,最多 +25%。当前熟练度:{Object.entries(healingMastery).map(([k, v]) => scarStatName(k as 'str') + ' + ' + Math.min(v * 5, 25) + '%').join(' · ') || '无'}</span>
               {members.filter((m) => m.alive && m.scars?.length).flatMap((m) =>
                 (m.scars ?? []).map((sc, si) => (
                   <div key={m.id + '-' + si} className="tavern-row">
-                    <span className="hint">{m.name}:{scarStatName(sc.stat)} -{sc.value}({sc.text})</span>
-                    <button disabled={busy || gold < healingTerms(sc).gold || blessing < healingTerms(sc).blessing} onClick={() => props.onHeal(m.id, si, sc)}>
-                      🏥 治疗（{healingTerms(sc).gold} 金 + {healingTerms(sc).blessing} 祝福，成功率 {Math.round(healingTerms(sc, healingMastery[sc.stat] ?? 0).rate * 100)}%）
-                    </button>
+                    {sc.faint ? (
+                      <span className="hint">{m.name}:{scarStatName(sc.stat)}虚痕(静养中——不减属性,第 {(sc.faintSince ?? 0) + FAINT_DAYS} 天消退)</span>
+                    ) : (
+                      <>
+                        <span className="hint">{m.name}:{scarStatName(sc.stat)} -{sc.value}({sc.text})</span>
+                        <button disabled={busy || gold < healingTerms(sc).gold || blessing < healingTerms(sc).blessing} onClick={() => props.onHeal(m.id, si, sc)}>
+                          🏥 治疗（{healingTerms(sc).gold} 金 + {healingTerms(sc).blessing} 祝福，成功率 {Math.round(healingTerms(sc, healingMastery[sc.stat] ?? 0).rate * 100)}%）
+                        </button>
+                      </>
+                    )}
                   </div>
                 ))
               )}

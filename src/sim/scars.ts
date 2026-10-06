@@ -2,6 +2,8 @@
 // 疗养所分档收费，轻/重失败率为 15%/35%；轻伤治疗失败后有 15% 概率恶化。
 // 公会级疗养熟练度:同维度每治疗一次成功率 +5%(上限 +25%)——治得多了就会了。
 // 红线(DESIGN 14.3):普通掉血零风险；每人上限 3 条；具体整合口径见 R02。
+// R4.2(U32① 稳定制):治疗=稳定而非治愈——成功降一档(重度→轻度→虚痕);
+// 虚痕不减属性,静养 FAINT_DAYS 个公会日后自动消退(出发结算日推进)。
 
 import type { Member, Combatant, BattleState } from './types'
 import { createRng, type Rng } from './rng'
@@ -9,12 +11,16 @@ import { createRng, type Rng } from './rng'
 /** 创伤影响的六维 */
 export type ScarStat = 'str' | 'agi' | 'int' | 'vit' | 'spr' | 'lck'
 
-/** 一条创伤:某维度 -value(1=轻度 2=重度) */
+/** 一条创伤:某维度 -value(1=轻度 2=重度);faint=虚痕(降档终点,不减属性) */
 export interface Scar {
   stat: ScarStat
   value: 1 | 2
   /** 展示文案(生成时定稿) */
   text: string
+  /** U32:虚痕标记——不减属性,静养至 faintSince+FAINT_DAYS 消退 */
+  faint?: boolean
+  /** 转为虚痕的公会日(消退计日起点) */
+  faintSince?: number
 }
 
 /** 疗养熟练度(公会级):维度 → 治疗尝试次数 */
@@ -28,6 +34,8 @@ export const HEALING_MASTERY_CAP = 0.25
 export const HEAL_BASE_RATE = 0.85
 /** 治疗失败的恶化概率:轻度升为重度 */
 export const WORSEN_CHANCE = 0.15
+/** U32(C4 占位):虚痕静养消退所需公会日 */
+export const FAINT_DAYS = 4
 
 const STAT_NAME: Record<ScarStat, string> = {
   str: '力量', agi: '敏捷', int: '智力', vit: '体质', spr: '精神', lck: '幸运',
@@ -112,16 +120,23 @@ export function healingTerms(scar: Scar, mastery = 0) {
   return { gold: scar.value === 2 ? 120 : 60, blessing: scar.value === 2 ? 3 : 1, rate: healRate(mastery, scar.value) }
 }
 
-/** 疗养判定结果 */
+/** 疗养判定结果:success=起效(降档/转虚痕);worsen=轻度恶化;fail=无效 */
 export type HealResult = 'success' | 'worsen' | 'fail'
 
-/** 尝试治疗:成功移除;失败按概率恶化(轻度→重度);均累计熟练度 */
-export function attemptHeal(m: Member, scarIndex: number, mastery: number, rng: () => number): { result: HealResult; scar: Scar; masteryGain: number } | null {
+/** 尝试治疗(U32 稳定制):成功降一档(重度→轻度→虚痕);轻度失败按概率恶化;均累计熟练度 */
+export function attemptHeal(m: Member, scarIndex: number, mastery: number, rng: () => number, day = 0): { result: HealResult; scar: Scar; masteryGain: number } | null {
   const scar = m.scars?.[scarIndex]
-  if (!m.alive || !scar) return null
+  if (!m.alive || !scar || scar.faint) return null
   const success = rng() < healingTerms(scar, mastery).rate
   if (success) {
-    m.scars!.splice(scarIndex, 1)
+    if (scar.value === 2) {
+      scar.value = 1
+      m.scars![scarIndex] = scar
+    } else {
+      scar.faint = true
+      scar.faintSince = day
+      m.scars![scarIndex] = scar
+    }
     return { result: 'success', scar, masteryGain: 1 }
   }
   if (scar.value === 1 && rng() < WORSEN_CHANCE) {
@@ -132,11 +147,25 @@ export function attemptHeal(m: Member, scarIndex: number, mastery: number, rng: 
   return { result: 'fail', scar, masteryGain: 1 }
 }
 
-/** 成员创伤的属性总减益(战斗/面板聚合用) */
+/** 成员创伤的属性总减益(战斗/面板聚合用)——虚痕不减属性(U32) */
 export function scarPenalty(m: Member): Partial<Record<ScarStat, number>> {
   const out: Partial<Record<ScarStat, number>> = {}
   for (const sc of m.scars ?? []) {
+    if (sc.faint) continue
     out[sc.stat] = (out[sc.stat] ?? 0) - sc.value
+  }
+  return out
+}
+
+/** U32:虚痕到期消退(出发日推进时调用)——移除并返回消退记录,通知/传记由调用方写 */
+export function ageFaints(members: Member[], day: number): { member: Member; stat: ScarStat; text: string }[] {
+  const out: { member: Member; stat: ScarStat; text: string }[] = []
+  for (const m of members) {
+    if (!m.alive || !m.scars?.some((s) => s.faint)) continue
+    const expired = m.scars.filter((s) => s.faint && day >= (s.faintSince ?? 0) + FAINT_DAYS)
+    if (!expired.length) continue
+    m.scars = m.scars.filter((s) => !expired.includes(s))
+    for (const s of expired) out.push({ member: m, stat: s.stat, text: s.text })
   }
   return out
 }

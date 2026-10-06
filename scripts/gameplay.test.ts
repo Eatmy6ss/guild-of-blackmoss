@@ -440,6 +440,7 @@ function rngScope(scope: Record<string, unknown>) {
     progress: defaultProgress, progressRef: { current: defaultProgress }, screen: 'game', visitor: null, publishProgress: () => {}, changeProgress: () => {}, setResumeNotice: () => {}, pendingEvent: null,
     combatSaveDue, lastCombatSaveRef: { current: 0 }, setSaveFailed: () => {}, day: 1, playtestAllows, logChronicle: () => {}, chronicleRaw: () => ({ text: '' }),
     appendBio: () => {}, // U4.1 生平(U34):App/controllers 个人叙事写入点,默认空实现(垫片第 10 次扩容)
+    ageFaints: () => [], scarStatName: (s: string) => s, FAINT_DAYS: 4, setScarNotices: () => {}, // R4.2(U32):出发虚痕消退
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
     lastRetreatRunRef: { current: null }, goBack: () => {},
     __PLAYTEST__: false, playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {}, setPlaytestEnding: () => {},
@@ -1145,9 +1146,12 @@ test('healing: severity pricing, success/failure/worsening and mastery caps', ()
   assert(toCombatant(m).attack < before)
   const failed=attemptHeal(m,0,0,()=>0.7)!
   assert.equal(failed.result,'fail'); assert.equal(failed.masteryGain,1); assert.equal(m.scars.length,1)
-  const healed=attemptHeal(m,0,0,()=>0.6)!
-  assert.equal(healed.result,'success'); assert.equal(m.scars.length,0); assert(toCombatant(m).attack>before)
-  assert.equal(attemptHeal(m,0,0,()=>0),null)
+  const healed=attemptHeal(m,0,0,()=>0.6,20)!
+  assert.equal(healed.result,'success'); assert.equal(m.scars.length,1); assert.equal(m.scars[0].value,1) // U32:重度降为轻度
+  const faint=attemptHeal(m,0,0,()=>0,21)!
+  assert.equal(faint.result,'success'); assert.equal(m.scars[0].faint,true) // U32:轻度转为虚痕
+  assert(toCombatant(m).attack>before) // 虚痕不减属性
+  assert.equal(attemptHeal(m,0,0,()=>0,22),null) // 虚痕不在疗养范围
 })
 
 test('actual healing callback: guarded spending, feedback, no duplicate or stale-index treatment', () => {
@@ -1166,9 +1170,15 @@ test('actual healing callback: guarded spending, feedback, no duplicate or stale
   heal({runRef:{current:{}}}); assert.equal(state.gold,300)
   heal(); heal()
   assert.equal(state.gold,180); assert.equal(state.blessing,2); assert.equal(state.healingMastery.str,6)
-  assert.equal(m.scars.length,1); assert.equal(m.scars[0].stat,'agi'); assert.match(state.notice,/已治愈/)
-  healingBusyRef.current=false; heal(); assert.equal(state.gold,180)
-  assert.deepEqual(stats.healing,{attempts:1,gold:120,blessing:3})
+  // U32 稳定制:重度治疗成功=降为轻度(不再移除);busy 守卫挡住第二次
+  assert.equal(m.scars.length,2); assert.equal(m.scars[0].stat,'str'); assert.equal(m.scars[0].value,1)
+  assert.match(state.notice,/创伤减轻/)
+  // U32 稳定制:降档后同一伤疤可以继续疗养(轻度→虚痕是合法重治,非陈旧索引)
+  healingBusyRef.current=false; heal()
+  assert.equal(state.gold,120); assert.equal(state.blessing,1); assert.equal(state.healingMastery.str,7)
+  assert.equal(m.scars[0].faint,true)
+  healingBusyRef.current=false; heal(); assert.equal(state.gold,120) // 虚痕不在疗养范围(!r 早退,不扣费)
+  assert.deepEqual(stats.healing,{attempts:2,gold:180,blessing:4})
 })
 
 test('v16 -> v17 starts fresh statistics without inventing old activity; export/reload preserves totals', () => {

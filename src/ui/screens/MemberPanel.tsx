@@ -9,6 +9,7 @@ import { HYBRIDS, isHybrid } from '../../data/vocations'
 import { RACES } from '../../data/races'
 import { ITEM_BASES } from '../../data/items'
 import { AFFIXES } from '../../data/affixes'
+import { scarStatName, FAINT_DAYS } from '../../sim/scars'
 import { STAT_NAME, formatStat, describeItem } from '../../sim/loot'
 import { toCombatant } from '../../sim/combat'
 import { SIGNATURE_SKILLS } from '../../data/signature'
@@ -193,7 +194,11 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
             <h3>创伤</h3>
             {member.scars?.length ? (
               <ul className="ms-list">
-                {member.scars.map((sc, i) => <li key={i}>{sc.text}</li>)}
+                {member.scars.map((sc, i) => (
+                  <li key={i}>{sc.faint
+                    ? `${scarStatName(sc.stat)}虚痕(静养中——不减属性,第 ${(sc.faintSince ?? 0) + FAINT_DAYS} 天消退)`
+                    : sc.text}</li>
+                ))}
               </ul>
             ) : <p className="hint">无创伤。</p>}
             <h3>心愿</h3>

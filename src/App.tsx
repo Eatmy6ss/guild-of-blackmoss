@@ -60,7 +60,7 @@ import { baseEffects } from './data/base'
 import { rollVisitor, bountyCandidate, taleCandidates, cooldownNeeded, offlineGain } from './sim/tavern'
 import { rollWish, settleWishes } from './sim/wish'
 import { assignTrait, TRAIT_LABELS } from './sim/member-traits'
-import { attemptHeal, healingTerms, scarStatName, type HealingMastery } from './sim/scars'
+import { attemptHeal, healingTerms, scarStatName, FAINT_DAYS, type HealingMastery } from './sim/scars'
 import { DUNGEON_FINAL_BOSS } from './data/regions'
 import { rollGuildEvent } from './sim/guild-events'
 import { rollDrop } from './sim/loot'
@@ -207,7 +207,7 @@ export default function App() {
   const setEventResult = (v: string | null) => changeProgress({ eventResult: v })
   const setEventImpacts = (v: RunUIState['eventImpacts']) => changeProgress({ eventImpacts: v })
   const scarNotices = progress.notices
-  const setScarNotices = (v: string[]) => changeProgress({ notices: v })
+  const setScarNotices = (v: string[] | ((q: string[]) => string[])) => changeProgress({ notices: typeof v === 'function' ? v(progressRef.current.notices) : v })
   const dungeonId = progress.dungeonId
   const setDungeonId = (v: string) => changeProgress({ dungeonId: v })
   const expeditionIds = progress.expeditionIds
@@ -989,7 +989,7 @@ export default function App() {
                 const mastery = healingMastery[cur.stat] ?? 0
                 const cost = healingTerms(cur, mastery)
                 if (gold < cost.gold || blessing < cost.blessing) return
-                const r = attemptHeal(m2, si, mastery, guildRng)
+                const r = attemptHeal(m2, si, mastery, guildRng, day)
                 if (!r) return
                 healingBusyRef.current = true
                 setHealingMastery((q) => ({ ...q, [cur.stat]: (q[cur.stat] ?? 0) + r.masteryGain }))
@@ -997,10 +997,18 @@ export default function App() {
                 setGold((g) => g - cost.gold)
                 noteStatistics({ type: 'healing', gold: cost.gold, blessing: cost.blessing })
                 setMembers([...membersRef.current])
-                const outcome = r.result === 'success' ? '已治愈，属性恢复。' : r.result === 'worsen' ? '治疗失败，创伤恶化为重度。' : '治疗未起效，创伤保留。'
+                // U32 稳定制:成功=降一档(重度→轻度→虚痕);失败口径不变
+                const outcome = r.result === 'success'
+                  ? (r.scar.faint ? `转为虚痕——静养 ${FAINT_DAYS} 天后自愈。` : '创伤减轻：重度降为轻度。')
+                  : r.result === 'worsen' ? '治疗失败，创伤恶化为重度。' : '治疗未起效，创伤保留。'
                 const notice = m2.name + ' 的' + scarStatName(cur.stat) + '创伤：' + outcome + ' 消耗 ' + cost.gold + ' 金、' + cost.blessing + ' 祝福；该维度疗养经验 +' + r.masteryGain + '。'
+                if (r.result === 'success') {
+                  appendBio(m2, { day, kind: 'heal', text: r.scar.faint
+                    ? `${scarStatName(cur.stat)}创伤转为虚痕——身体记得教训,但不再疼。`
+                    : `重度${scarStatName(cur.stat)}创伤减轻为轻度。` })
+                }
+                // U34:疗养=个人事件,结果在疗养区可见(setHealingNotice)+当事人生平;大事记不记
                 setHealingNotice(notice)
-                logChronicle(chronicleRaw(day, notice))
               }}
               onUpgrade={upgradeBuilding}
               onSelectMember={setTrainSelId}

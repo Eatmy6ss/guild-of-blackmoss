@@ -20,7 +20,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 26
+export const SAVE_VERSION = 27
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -144,6 +144,9 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
     delete d.weaponTraining
     return d
   },
+  // R4.2(U32① 疗养所稳定制):Scar 增可选字段 faint/faintSince,老档无需数据变更——
+  // 占位迁移防止 while 循环落进默认步骤(默认步骤会重置金币/祝福/招募冷却)
+  26: (d) => d,
   // A2 事实账本(ROADMAP §3.3):v22 起记录,旧档为空账本(编年史不迁移)
   21: (d) => ({ ...d, factLedger: { nextId: 1, facts: [] } }),
   20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),

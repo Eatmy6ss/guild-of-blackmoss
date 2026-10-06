@@ -6,7 +6,7 @@ import type { Member } from './types'
 
 export type BioKind =
   | 'joined' | 'level-up' | 'training' | 'first-kill' | 'scar'
-  | 'wish' | 'bond' | 'story' | 'trait' | 'fall'
+  | 'wish' | 'bond' | 'story' | 'trait' | 'fall' | 'heal'
 
 export interface BioEntry {
   day: number
@@ -19,7 +19,7 @@ export interface BioEntry {
 export const BIO_PERMANENT: readonly BioKind[] = ['joined', 'first-kill', 'scar', 'wish', 'trait', 'fall']
 export const BIO_CAP = 40
 
-const BIO_KINDS: readonly BioKind[] = ['joined', 'level-up', 'training', 'first-kill', 'scar', 'wish', 'bond', 'story', 'trait', 'fall']
+const BIO_KINDS: readonly BioKind[] = ['joined', 'level-up', 'training', 'first-kill', 'scar', 'wish', 'bond', 'story', 'trait', 'fall', 'heal']
 
 /** 唯一追加入口(账本纪律:调用方不裸写 bio 数组)。原地改写传入成员——结算侧已在克隆上操作。 */
 export function appendBio(member: Pick<Member, 'bio'>, entry: BioEntry): void {

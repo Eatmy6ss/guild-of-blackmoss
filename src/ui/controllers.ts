@@ -7,6 +7,7 @@ import { ECONOMY } from '../data/economy'
 import { applyRestMorale, refusesToMarch, applyMoraleDelta } from '../sim/morale'
 import { chronicleRefusal, chronicleBuilding, seedChronicle } from '../sim/chronicle'
 import { appendBio } from '../sim/bio'
+import { ageFaints, scarStatName } from '../sim/scars'
 import { stepBattle, orderRetreat, toCombatant } from '../sim/combat'
 import { appendFact, latestEventChoice, markExpeditionStart, markTold } from '../sim/fact-ledger'
 import { tellExpedition } from '../sim/storyteller'
@@ -86,7 +87,7 @@ export interface ControllerDeps {
   setBlessing: SetFn<number>
   setPotions: SetFn<{ heal: number; fury: number }>
   setLastDrops: SetFn<ItemInstance[]>
-  setScarNotices: (v: string[]) => void
+  setScarNotices: (v: string[] | ((q: string[]) => string[])) => void
   setMemorial: SetFn<DeadHero[]>
   setManual: Set<string[]>
   setCandidates: Set<Member[]>
@@ -397,6 +398,13 @@ export function createAppControllers(deps: ControllerDeps) {
       setPendingConsequences((q: PendingConsequenceX[]) => { const at = q.findIndex((c: PendingConsequenceX) => c.eventId === due.eventId && c.dueDay === due.dueDay); return q.filter((_: PendingConsequenceX, i: number) => i !== at) })
     }
     setDay((d) => d + 1)
+    // U32 稳定制:出发日推进——虚痕到期消退(可见通知+当事人生平;早退分支前也要跑)
+    const faded = ageFaints(membersRef.current, (day ?? 0) + 1)
+    for (const f of faded) {
+      setScarNotices((q: string[]) => [...(q ?? []), `${f.member.name} 的${scarStatName(f.stat)}虚痕消退了——身体记得教训,但不再疼。`])
+      appendBio(f.member, { day: (day ?? 0) + 1, kind: 'heal', text: `${scarStatName(f.stat)}的虚痕消退了。` })
+    }
+    if (faded.length) setMembers([...membersRef.current])
     // 事件二期:过期的公会层状态自然消退
     setGuildBuffs((q: StoredGuildBuffX[]) => q.filter((g: StoredGuildBuffX) => g.endDay > (day ?? 0) + 1))
     if (expedition.length < activeDungeon.size) return
