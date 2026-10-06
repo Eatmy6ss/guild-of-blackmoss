@@ -14,6 +14,7 @@ import { guildRankOf } from './sim/rank'
 import { applyFeast } from './sim/morale'
 import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import { appendBio } from './sim/bio'
+import { INTEL_TIERS, INTEL_STOCK_CAP, intelDungeonFull, rollIntel, type IntelEntry, type IntelKind } from './sim/intel'
 import { TICK_MS, stepBattle, setFocus, useSignature } from './sim/combat'
 import { DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
@@ -227,8 +228,9 @@ export default function App() {
   const pendingRelics = relicItems(itemOwnership)
   // S1 创伤一期:疗养熟练度(维度→尝试次数)
   const [healingMastery, setHealingMastery] = useState<HealingMastery>(() => saved?.healingMastery ?? {})
-  // R4.3(U30):酒馆情报——副本 id→真假;真=下次进该副本揭示档+1,假=出发时揭穿
-  const [intel, setIntel] = useState<Record<string, boolean>>(() => saved?.intel ?? {})
+  // U36:情报条目化(买时见文本/验证后见真伪)+货源限制
+  const [intelEntries, setIntelEntries] = useState<IntelEntry[]>(() => saved?.intelEntries ?? [])
+  const [intelStock, setIntelStock] = useState(() => saved?.intelStock ?? INTEL_STOCK_CAP)
   const [intelNotice, setIntelNotice] = useState<string | null>(null)
   const [healingNotice, setHealingNotice] = useState('')
   const healingBusyRef = useRef(false)
@@ -290,15 +292,17 @@ export default function App() {
     sfxCoin()
   }
 
-  // R4.3(U30)酒馆情报:40 金买一份副本情报;真假购买时 roll 定(C4 占位 75% 真),
-  // 出发进对应副本才兑现——真=揭示档 +1,假=当场揭穿。真假话术一致,事后才知道。
-  const buyIntel = (dungeonId: string) => {
-    if (runRef.current || towerRunRef.current || gold < ECONOMY.intelCost) return
-    const real = guildRng() < 0.75
-    setIntel((q) => ({ ...q, [dungeonId]: real }))
-    setGold((g) => g - ECONOMY.intelCost)
-    const name = DUNGEONS.find((d) => d.id === dungeonId)?.name ?? dungeonId
-    setIntelNotice(`他压低声音,讲了些「${name}」的事——哪层有水,哪层闹鬼,说得有鼻子有眼。`)
+  // U36 酒馆情报:选副本+类型+档位;买完立刻告知获得了什么(文本入记录);货源-1
+  const buyIntel = (dungeonId: string, kind: IntelKind, tierId: string) => {
+    if (runRef.current || towerRunRef.current || intelStock <= 0) return
+    const tier = INTEL_TIERS.find((t) => t.id === tierId)
+    if (!tier || gold < tier.gold) return
+    if (intelDungeonFull(intelEntries, dungeonId)) return
+    const entry = rollIntel(dungeonId, kind, tier, day, (intelEntries[intelEntries.length - 1]?.id ?? 0) + 1, guildRng)
+    setIntelEntries((q) => [...q, entry])
+    setIntelStock((n) => n - 1)
+    setGold((g) => g - tier.gold)
+    setIntelNotice(entry.text)
     sfxCoin()
   }
 
@@ -552,7 +556,7 @@ export default function App() {
     setTowerBest, setHealingMastery, setBuildings, setProtectOn, setEventsSeen, setPendingConsequences,
     setGuildBuffs, setRareHuntNext, setRun, setTowerRun, setRunning, setMembers,
     setGold, setBlessing, setPotions, setLastDrops, setScarNotices, setMemorial,
-    intel, setIntel,
+    intelEntries, intelStock, setIntelEntries, setIntelStock,
     setManual, setCandidates, setVisitor, setStatistics, setRoyalNotice, setResumeNotice,
     setPlayMeta, setDungeonMastery, setTrainingReady, setConfirmAsk, changeProgress, updateItemOwnership,
     updateKingdom, noteStatistics, logChronicle, day, gold, manual,
@@ -624,9 +628,9 @@ export default function App() {
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
       lastCombatSaveRef.current = now
     } else lastCombatSaveRef.current = 0
-    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, intel, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
+    const ok = saveGuild({ trainingReady, rngState: guildRngRef.current.state(), rareHuntNext, statistics, starMarrow, ...serializeGuildItems(itemOwnershipRef.current, members), healingMastery, kingdom, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions: run?.potions ?? towerRun?.potions ?? potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, runState: checkpointRunState(progress, membersRef.current), visitor, generationState: memberGenerationState(), factLedger, hintsSeen, intelEntries, intelStock, playMeta: { ...playMeta, startedAt: playMeta.startedAt ?? Date.now() } })
     setSaveFailed(!ok)
-  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, intel, playMeta])
+  }, [trainingReady, rareHuntNext, statistics, starMarrow, itemOwnership, healingMastery, kingdom, members, memorial, manual, protectOn, gold, blessing, recruitCooldown, towerBest, chronicle, day, buildings, potions, unlockedHybrids, dungeonMastery, pendingConsequences, eventsSeen, guildBuffs, run, towerRun, progress, visitor, pendingEvent, eventResult, factLedger, hintsSeen, intelEntries, intelStock, playMeta])
   useEffect(() => {
     const box = logBoxRef.current
     if (!box || !logPinnedRef.current) return
@@ -1002,7 +1006,7 @@ export default function App() {
               onFeast={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); for (const d of membersRef.current) { if (d.alive && d.trait === 'drinker') d.morale = Math.min(100, (d.morale ?? 60) + Math.round(baseEffects(buildings).feastBoost * 0.5)) } setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
               onWaitNight={() => setVisitor(rollVisitor(guildRng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))}
               onSign={signVisitor} onBounty={hireBounty} onTale={rollTale} onHire={hire} onBack={goBack}
-              dungeonOptions={DUNGEONS.map((d) => ({ id: d.id, name: d.name }))} intelPending={intel} intelCost={ECONOMY.intelCost} intelNotice={intelNotice} onBuyIntel={buyIntel} />}
+              intelEntries={intelEntries} intelStock={intelStock} intelNotice={intelNotice} onBuyIntel={buyIntel} />}
             {screen === 'warehouse' && <WarehouseScreen inventory={inventory} potions={potions} gold={gold} kingdom={kingdom}
               pendingRelics={pendingRelics} starMarrow={starMarrow} blessing={blessing} busy={!!run || !!towerRun}
               invSort={invSort} onSortChange={setInvSort} onBuyPotion={buyPotion} onRedeemRelic={redeemRelic}
@@ -1126,6 +1130,7 @@ export default function App() {
               run={run}
               mastery={dungeonMastery[runDungeon(run).id] ?? 0}
               revealBonus={run.intelBonus ?? 0}
+              intelEntries={intelEntries}
               drops={lastDrops}
               notice={progress.lastNodeResult}
               onChoose={(id) => continueDeepRef.current?.(id)}

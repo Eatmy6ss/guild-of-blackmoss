@@ -331,6 +331,14 @@ async function phaseEnding() {
     // U35 新增:花名册直开档案+右下略缩图+六维雷达
     const v2 = await b.evalJs(`(()=>({tabs:document.querySelectorAll('.roster-tab').length,side:!!document.querySelector('.roster-side .member-card'),hex:!!document.querySelector('.hexstat svg'),closeBtn:!!document.querySelector('.roster-detail .mini-btn')}))()`)
     check('R4B', '花名册v2:切换条+右下略缩图+六维雷达+嵌入无关闭钮', v2 && v2.tabs >= 3 && v2.side && v2.hex && !v2.closeBtn ? 'PASS' : 'FAIL', JSON.stringify(v2))
+    await pressEscape(b); await sleep(300)
+    // U36 R4C:情报 v2——买官署密报(恒真),买完立刻看到文本+入清单
+    await clickText(b, '酒馆'); await sleep(500)
+    await b.evalJs(`(()=>{const sels=[...document.querySelectorAll('.potion-supply select')];const tier=sels.find(x=>x.getAttribute('aria-label')==='情报档位');if(tier){tier.value='royal';tier.dispatchEvent(new Event('change',{bubbles:true}))}})()`)
+    await b.evalJs(`[...document.querySelectorAll('.potion-supply button')].find(x=>x.textContent.includes('买情报'))?.click()`); await sleep(500)
+    const intel = await b.evalJs(`(()=>({fresh:document.querySelector('.intel-fresh')?.textContent??null,items:[...document.querySelectorAll('.intel-list .intel-item')].map(li=>li.textContent),stock:document.querySelector('.potion-supply .hint')?.textContent.includes('货架上有')}))()`)
+    check('R4C', '情报v2:官署密报买完即见文本+入清单(未验证)', intel && intel.fresh && intel.fresh.length > 8 && intel.items.length === 1 && intel.items[0].includes('未验证') ? 'PASS' : 'FAIL', JSON.stringify(intel).slice(0, 120))
+    await pressEscape(b); await sleep(300)
     const openProfile = async (name) => {
       // 自导航:名册不在场才点「花名册」——功能坞按钮是开关式,名册开着时再点=关闭
       const hasRoster = await b.evalJs(`!!document.querySelector('.member-card')`)

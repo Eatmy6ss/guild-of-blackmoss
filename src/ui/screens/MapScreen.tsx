@@ -19,6 +19,8 @@ interface MapScreenProps {
   mastery: number
   /** R4 酒馆情报的临时提档预留(每点 +1 档);R1 只接线不入口 */
   revealBonus?: number
+  /** U36:该副本的已获情报清单(假情报照常显示,验证后才标真伪) */
+  intelEntries?: import('../../sim/intel').IntelEntry[]
   drops: ItemInstance[]
   /** 最近一次节点选择的可见后果(休整/宝箱/挂机代选事件),选下一条路时刷新 */
   notice?: string | null
@@ -46,11 +48,12 @@ const KIND_ICON: Record<MapNode['kind'], string> = {
   boss: '👑',
 }
 
-export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoose, onRetreat }: MapScreenProps) {
+export function MapScreen({ run, mastery, revealBonus = 0, intelEntries = [], drops, notice, onChoose, onRetreat }: MapScreenProps) {
   const dungeon = runDungeon(run)
   const cur = currentNode(run)
   // R1.3 四档:0 只知名与地形 / 1 相邻层类型 / 2 前两层类型+内容+路况 / 3 全图类型+暗道
   const tier = revealTier(mastery, revealBonus, revealPenaltyLayers(run))
+  const intel = intelEntries.filter((e) => e.dungeonId === run.dungeonId)
   const curLayer = cur?.layer ?? -1
   const kindVisible = (n: MapNode): boolean =>
     tier >= 3 || (tier === 2 ? n.layer <= curLayer + 2 : tier === 1 && n.layer === curLayer + 1)
@@ -119,6 +122,18 @@ export function MapScreen({ run, mastery, revealBonus = 0, drops, notice, onChoo
   return (
     <>
       <h2>{dungeon.name} · 地图（{layerLabel}）</h2>
+      {/* U36:已获情报清单——真假混着看,走过一趟才验证 */}
+      {intel.length > 0 && (
+        <ul className="intel-list" aria-label="已获情报">
+          {intel.map((e) => (
+            <li key={e.id} className="intel-item">
+              <span className="intel-kind">{e.kind === 'boss' ? '👑' : '🗡'}</span>
+              <span className="intel-text">{e.text}</span>
+              <span className="intel-flag">{e.verified === undefined ? '未验证' : e.real ? '✓ 属实' : '✗ 假货'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {run.battle && run.phase === 'rest' && (
         <>
           <div className="result-banner win">

@@ -9,6 +9,7 @@ import type { ChronicleEntry } from '../sim/chronicle'
 import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kingdom'
 import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../sim/statistics'
 import { sanitizeBio } from '../sim/bio'
+import { sanitizeIntelEntries } from '../sim/intel'
 import { initialRunState, validateRunState, type RunUIState } from '../sim/run-state'
 import type { Visitor } from '../sim/tavern'
 
@@ -20,7 +21,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 28
+export const SAVE_VERSION = 29
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -74,8 +75,10 @@ export interface GuildSave extends StoredItemFields {
   starMarrow: number
   /** v15: 疗养熟练度(维度→尝试次数,DESIGN 14.2) */
   healingMastery: Record<string, number>
-  /** v28(R4.3/U30):酒馆情报(副本 id→真假)。真=下次进该副本揭示档 +1;假=出发时揭穿 */
-  intel?: Record<string, boolean>
+  /** v29(U36):情报条目(条目化记录,买时见文本,验证后见真伪) */
+  intelEntries?: import('../sim/intel').IntelEntry[]
+  /** v29(U36):情报贩子货源(每出发日+1,上限 INTEL_STOCK_CAP) */
+  intelStock?: number
   version: number
   memorial: DeadHero[]
   manual: string[]
@@ -151,6 +154,8 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   26: (d) => d,
   // R4.3(U30)酒馆情报:intel 可选字段(副本→真假),老档缺省=无待用情报;占位防默认步骤
   27: (d) => d,
+  // U36 情报条目化:v28 的 intel 布尔表作废(真伪/文本不再隐藏),换 intelEntries+intelStock
+  28: (d) => { delete (d as Record<string, unknown>).intel; return d },
   // A2 事实账本(ROADMAP §3.3):v22 起记录,旧档为空账本(编年史不迁移)
   21: (d) => ({ ...d, factLedger: { nextId: 1, facts: [] } }),
   20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),
@@ -217,9 +222,9 @@ export function migrate(data: Record<string, unknown>): GuildSave {
   d.starMarrow = typeof d.starMarrow === 'number' ? d.starMarrow : 0
   d.pendingRelics = Array.isArray(d.pendingRelics) ? d.pendingRelics : []
   d.healingMastery = d.healingMastery && typeof d.healingMastery === 'object' ? d.healingMastery : {}
-  d.intel = d.intel && typeof d.intel === 'object' && !Array.isArray(d.intel)
-    ? Object.fromEntries(Object.entries(d.intel as Record<string, unknown>).filter(([k, v]) => typeof k === 'string' && k.length > 0 && typeof v === 'boolean'))
-    : undefined
+  d.intelEntries = sanitizeIntelEntries(d.intelEntries)
+  if (typeof d.intelStock === 'number' && Number.isFinite(d.intelStock)) d.intelStock = Math.max(0, Math.min(9, Math.floor(d.intelStock)))
+  else delete d.intelStock // 不注入缺省键:逐字节往返对照要求老档对象不变(App 侧取缺省)
   d.kingdom = normalizeKingdom(d.kingdom)
   d.statistics = normalizeStatistics(d.statistics, typeof d.day === 'number' ? d.day : 1)
   const hunt = d.rareHuntNext as GuildSave['rareHuntNext']

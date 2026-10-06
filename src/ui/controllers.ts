@@ -9,6 +9,7 @@ import { applyRestMorale, refusesToMarch, applyMoraleDelta } from '../sim/morale
 import { chronicleRefusal, chronicleBuilding, seedChronicle } from '../sim/chronicle'
 import { appendBio } from '../sim/bio'
 import { ageFaints, scarStatName } from '../sim/scars'
+import { INTEL_STOCK_CAP, consumeIntelReveal, verifyIntelFor } from '../sim/intel'
 import { stepBattle, orderRetreat, toCombatant } from '../sim/combat'
 import { appendFact, latestEventChoice, markExpeditionStart, markTold } from '../sim/fact-ledger'
 import { tellExpedition } from '../sim/storyteller'
@@ -89,9 +90,11 @@ export interface ControllerDeps {
   setPotions: SetFn<{ heal: number; fury: number }>
   setLastDrops: SetFn<ItemInstance[]>
   setScarNotices: (v: string[] | ((q: string[]) => string[])) => void
-  /** R4.3(U30):酒馆情报(副本→真假)与清除 */
-  intel: Record<string, boolean> | undefined
-  setIntel: (f: (q: Record<string, boolean>) => Record<string, boolean>) => void
+  /** U36:情报条目/货源(条目化记录) */
+  intelEntries: import('../sim/intel').IntelEntry[]
+  intelStock: number
+  setIntelEntries: (f: (q: import('../sim/intel').IntelEntry[]) => import('../sim/intel').IntelEntry[]) => void
+  setIntelStock: (f: (n: number) => number) => void
   setMemorial: SetFn<DeadHero[]>
   setManual: Set<string[]>
   setCandidates: Set<Member[]>
@@ -183,7 +186,7 @@ export function createAppControllers(deps: ControllerDeps) {
     sfxDefeat, syncAll, setPendingEvent, setEventResult, setDay, SEED_BASE,
     MANUAL_BONUS, receiveItems, gainGold, ROSTER_CAP, setUnlockedHybrids, newRoster,
     setStarMarrow, setHealingNotice, healingBusyRef, setChronicle, setEventImpacts, setOfflineNote,
-    intel, setIntel,
+    intelEntries, setIntelEntries, setIntelStock,
     setDungeonId, setSaveTransfer, setTowerRunning, eventResolvingRef, eventCursorRef, sfxCoin,
     blessing, kingdomRef, expeditionIds,
   } = deps
@@ -224,6 +227,12 @@ export function createAppControllers(deps: ControllerDeps) {
     if (o.source === 'dungeon') {
       runRef.current = o.run
       setRun({ ...o.run })
+      // U36:该副本走过一趟 → 未验证情报全部验证(真/假),可见通知
+      const v = verifyIntelFor(intelEntries, o.run.dungeonId)
+      if (v.notes.length) {
+        setIntelEntries(() => v.entries)
+        for (const note of v.notes) setScarNotices((q: string[]) => [...(q ?? []), note])
+      }
       // A11:试玩版通关版图一 → 「试玩版到此结束」画面
       if (__PLAYTEST__ && o.run.phase === 'victory' && o.run.dungeonId === 'thornhold') setPlaytestEnding(true)
       if (story) {
@@ -436,16 +445,13 @@ export function createAppControllers(deps: ControllerDeps) {
       setTrainingReady(false)
       logChronicle(chronicleRaw(day, '特权训练生效：本次远征所有胜场经验 +25%。'))
     }
-    // R4.3(U30):酒馆情报消费——真=本趟揭示档 +1;假=当场揭穿(购买时已 roll 定真假,这里只兑现)
-    const intelVerdict = intel?.[activeDungeon.id]
-    if (intelVerdict !== undefined) {
-      setIntel((q: Record<string, boolean>) => { const n = { ...q }; delete n[activeDungeon.id]; return n })
-      if (intelVerdict) {
-        runRef.current.intelBonus = 1
-        setScarNotices((q: string[]) => [...(q ?? []), `情报贩子的消息是真的——${activeDungeon.name} 的面貌提前浮现了一层。`])
-      } else {
-        setScarNotices((q: string[]) => [...(q ?? []), `情报是假的——「${activeDungeon.name}」根本不是他说的那样,而他已经不见了。`])
-      }
+    // U36 情报:出发日货源 +1(cap 3);该副本有未消耗真情报 → 本趟揭示档 +1(消耗一条)
+    setIntelStock((n: number) => Math.min(INTEL_STOCK_CAP, n + 1))
+    const intelUse = consumeIntelReveal(intelEntries, activeDungeon.id, (day ?? 0) + 1)
+    if (intelUse.bonus > 0) {
+      setIntelEntries(() => intelUse.entries)
+      runRef.current.intelBonus = intelUse.bonus
+      setScarNotices((q: string[]) => [...(q ?? []), `一份真情报派上了用场——${activeDungeon.name} 的面貌提前浮现了一层。`])
     }
     if (rareHuntNext) {
       setRareHuntNext(null)
