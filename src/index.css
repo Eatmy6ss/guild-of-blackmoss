@@ -1011,3 +1011,27 @@ button.primary:hover:not(:disabled) {
 .bio-entry .bio-flag { color: var(--gold, #d8a24a); flex: 0 0 auto; }
 .bio-entry .bio-day { color: var(--ink-dim, #9a8a70); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 .memorial-bio { border-left: 2px solid var(--c-3, #4a3d2a); padding-left: 8px; margin-top: 3px; }
+
+/* R4 自测反馈①:倍速三段选择器+非 1× 醒目提示(防「误触后不知道自己开了加速」) */
+.speed-pick { display: inline-flex; gap: 2px; border: 1px solid var(--c-3, #4a3d2a); }
+.speed-opt { padding: 2px 8px; font-size: 12px; border: none; background: transparent; color: var(--ink-dim, #9a8a70); }
+.speed-opt.active { background: var(--gold, #d8a24a); color: #1b150d; font-weight: bold; }
+.speed-live { color: var(--gold, #d8a24a); font-size: 12px; font-weight: bold; animation: speed-pulse 1.6s ease-in-out infinite; }
+@keyframes speed-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+/* U35 花名册改版:切换条+档案主区+右下略缩图/六维雷达 */
+.roster-v2 { width: min(1280px, 98vw); max-height: 94vh; }
+.roster-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.roster-tab { padding: 4px 12px; font-size: 13px; }
+.roster-tab.active { border-color: var(--gold, #d8a24a); color: var(--gold, #d8a24a); background: var(--c-26, rgba(216, 162, 74, 0.12)); }
+.roster-main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+.roster-detail .member-sheet { border: none; outline: none; box-shadow: none; padding: 0; }
+.roster-side { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 0; }
+.roster-side .member-card { margin: 0; }
+.hexstat { margin: 0; display: grid; place-items: center; border: 1px solid var(--c-3, #4a3d2a); background: var(--c-26, rgba(0,0,0,0.2)); padding: 6px 0; }
+.hexstat-grid { fill: none; stroke: var(--c-3, #4a3d2a); stroke-width: 1; }
+.hexstat-spoke { stroke: var(--c-3, #4a3d2a); stroke-width: 1; }
+.hexstat-fill { fill: rgba(216, 162, 74, 0.22); stroke: var(--gold, #d8a24a); stroke-width: 1.5; }
+.hexstat-label { fill: var(--ink-dim, #9a8a70); font-size: 11px; }
+.hexstat-num { fill: var(--ink, #e8d5b0); font-weight: bold; }
+@media (max-width: 980px) { .roster-main { grid-template-columns: 1fr; } .roster-side { position: static; } }

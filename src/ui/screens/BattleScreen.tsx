@@ -4,7 +4,6 @@ import { BattleHints } from '../battle/BattleHints'
 import { BATTLE_HINTS } from '../../data/tutorial'
 import { SignatureBar } from '../battle/SignatureBar'
 import { SIGNATURE_SKILLS } from '../../data/signature'
-import { nextBattleSpeed } from '../battle/speed'
 import type { DungeonRun } from '../../sim/run'
 
 // R5.2c(U33⑦):战场区(指挥台/节奏条/招牌技栏/战报/日志)自 App.tsx 迁出——行为零变,处理器留 App。
@@ -167,14 +166,20 @@ export function BattleScreen(props: {
         <button onClick={props.finishBattle} disabled={battleOver || running}>
           ⏭ 跑到结束
         </button>
-        <button
-          className="speed-btn"
-          disabled={battleOver}
-          title="实时推进速度"
-          onClick={() => { const next = nextBattleSpeed(battleSpeed); props.setBattleSpeed(next); try { localStorage.setItem('gg-speed', String(next)) } catch { /* 会话级回落 */ } }}
-        >
-          ⏩ {battleSpeed}×
-        </button>
+        <span className="speed-pick" role="group" aria-label="实时推进速度">
+          {([1, 2, 3] as const).map((s) => (
+            <button
+              key={s}
+              className={`speed-opt${battleSpeed === s ? ' active' : ''}`}
+              disabled={battleOver}
+              title={`实时推进速度 ${s}×(当前档位${s === 1 ? ',正常速度' : `,战斗加快 ${s} 倍`})`}
+              onClick={() => { props.setBattleSpeed(s); try { localStorage.setItem('gg-speed', String(s)) } catch { /* 会话级回落 */ } }}
+            >
+              {s}×
+            </button>
+          ))}
+        </span>
+        {battleSpeed !== 1 && <span className="speed-live" role="status">⏩ {battleSpeed}× 加速中</span>}
         <span className="tick-info">tick {battle.tick ?? 0}</span>
       </div>
       {(inBattle || inTowerBattle) && battle.status === 'running' && !battleOver && (

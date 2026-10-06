@@ -7,7 +7,6 @@ import { JOBS, specOf } from '../../data/jobs'
 import { HYBRIDS, isHybrid } from '../../data/vocations'
 import { RACES } from '../../data/races'
 import { scarStatName, healingTerms, FAINT_DAYS } from '../../sim/scars'
-import { WEAPON_FAMILIES, FAMILY_IDS, JOB_FAMILIES } from '../../data/weapon-families'
 import { describeItem } from '../../sim/loot'
 import { AFFIXES } from '../../data/affixes'
 import type { ItemInstance, Member } from '../../sim/types'
@@ -32,19 +31,9 @@ interface BaseScreenProps {
   onRecast: (uid: string, rollIndex: number) => void
   /** R4.2b:遗物传承(祠堂 Lv1 起,遗物+继承者) */
   onInherit: (uid: string, memberId: string) => void
-  /** R5.3d:选中成员的已学族(按人) */
-  weaponTraining: string[]
-  /** R5.3d:选中成员训练中,归队日(0=空闲) */
-  busyUntilDay: number
-  /** R5.3d:当前公会日 */
-  today: number
-  /** R5.3d:训练场建筑等级(2 起学程 1 天) */
-  trainingLevel: number
   trainSelId: string | null
   bondTotal: (m: Member) => number
   onBuyTraining: () => void
-  /** R3/W2:学习武器族(150 金结构占位,C4 统调;永久,公会级) */
-  onLearnFamily: (family: string) => void
   /** scar 传渲染时捕获的对象:App 侧校验 scars[si]===scar,防陈旧索引误治(测试:stale-index treatment) */
   onHeal: (memberId: string, scarIndex: number, scar: import('../../sim/scars').Scar) => void
   onUpgrade: (buildingId: string) => void
@@ -56,7 +45,7 @@ interface BaseScreenProps {
 }
 
 export function BaseScreen(props: BaseScreenProps) {
-  const { day, gold, blessing, members, busy, trainingReady, healingNotice, healingMastery, buildings, unlockedHybrids, weaponTraining, busyUntilDay, today, trainingLevel, trainSelId, inventory, pendingRelics, onBack } = props
+  const { day, gold, blessing, members, busy, trainingReady, healingNotice, healingMastery, buildings, unlockedHybrids, trainSelId, inventory, pendingRelics, onBack } = props
   void busy
   // R4.2b:铁匠铺重铸/祠堂传承的本地选择态(纯 UI,扣费与校验在 App 处理器)
   const [recastUid, setRecastUid] = useState('')
@@ -75,24 +64,6 @@ export function BaseScreen(props: BaseScreenProps) {
           <div className="potion-supply">
             <span>特权训练：150 金，下次远征所有胜场经验 +25%；资格可保存，出征使用一次。</span>
             <button disabled={trainingReady || gold < 150 || busy} onClick={props.onBuyTraining}>{trainingReady ? '✓ 已备好训练资格' : '购买特权训练（150 金）'}</button>
-          </div>
-          <div className="potion-supply" role="group" aria-label="武器专修">
-            <span className="hint">{`⚔ 武器专修（按人）：100 金学会一族（永久），该成员使用该族武器不再攻击降档、族内技能照常可用。学程 ${trainingLevel >= 2 ? 1 : 2} 天（训练场 2 级起 1 天），期间不能出征。施法铁律：杖圣器的法术只认施法者（牧师/法师/术士）天赋，学习不授法术。`}</span>
-            <div className="voc-btns">
-              {FAMILY_IDS.map((f) => {
-                const def = WEAPON_FAMILIES[f]
-                const learned = weaponTraining.includes(f)
-                const born = Object.entries(JOB_FAMILIES).filter(([, fs]) => fs.includes(f)).map(([j]) => JOBS[j]?.name ?? j).join('/')
-                const travel = busyUntilDay > today
-                return (
-                  <button key={f} disabled={learned || busy || travel || gold < 100}
-                    title={`${def.desc}（天生熟练：${born}）${travel ? '；训练中' : ''}`}
-                    onClick={() => props.onLearnFamily(f)}>
-                    {def.name}{learned ? ' ✓ 已学' : travel ? ` ⏳ 第${busyUntilDay}天归队` : `（${born}）`}
-                  </button>
-                )
-              })}
-            </div>
           </div>
           {healingNotice && <p className="hint" role="status">{healingNotice}</p>}
           {members.some((m) => m.alive && m.scars?.length) && (

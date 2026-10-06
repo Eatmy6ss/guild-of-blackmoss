@@ -10,6 +10,7 @@ import { RACES } from '../../data/races'
 import { ITEM_BASES } from '../../data/items'
 import { AFFIXES } from '../../data/affixes'
 import { scarStatName, FAINT_DAYS } from '../../sim/scars'
+import { WEAPON_FAMILIES, FAMILY_IDS, JOB_FAMILIES, isFamilyProficient } from '../../data/weapon-families'
 import { STAT_NAME, formatStat, describeItem } from '../../sim/loot'
 import { toCombatant } from '../../sim/combat'
 import { SIGNATURE_SKILLS } from '../../data/signature'
@@ -17,7 +18,6 @@ import { skillLine, LEGACY_INFO } from '../../data/effect-text'
 import { skillFamilyBlocked } from '../../sim/combat'
 import { ECONOMY } from '../../data/economy'
 import { describeEquipmentSet } from '../../sim/equipment-sets'
-import { WEAPON_FAMILIES, isFamilyProficient } from '../../data/weapon-families'
 
 interface Props {
   member: Member
@@ -28,6 +28,17 @@ interface Props {
   /** R3/W2:公会已学武器族(可选;缺省=按职业表判定) */
   weaponTraining?: string[]
   onEquip?: (slot: 'weapon' | 'armor' | 'trinket', itemId: string) => void
+  /** U35 花名册改版:嵌入模式(作为花名册主区渲染,隐藏关闭按钮) */
+  embedded?: boolean
+  /** U35:武器专修(按人学族)迁入档案页;可选=不渲染该区 */
+  familyTraining?: {
+    gold: number
+    busy: boolean
+    busyUntilDay: number
+    today: number
+    trainingLevel: number
+    onLearn: (family: string) => void
+  }
 }
 
 const SLOTS: (keyof Member['equipment'])[] = ['weapon', 'armor', 'trinket']
@@ -36,7 +47,7 @@ const ATTR_NAMES: Record<string, string> = { str: '力量', agi: '敏捷', int: 
 
 const QUALITY_TAG: Record<string, string> = { purple: '【史诗】', green: '【精良】', white: '' }
 
-export function MemberPanel({ member, members, onClose, inventory, weaponTraining, onEquip }: Props) {
+export function MemberPanel({ member, members, onClose, inventory, weaponTraining, onEquip, embedded, familyTraining }: Props) {
   const [equipSort, setEquipSort] = useState<'rarity-desc' | 'name'>('rarity-desc')
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -91,7 +102,7 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
             </p>
             <p className="ms-identity">{spec.identity}</p>
           </div>
-          <button className="mini-btn" onClick={onClose}>✕ 关闭(Esc)</button>
+          {!embedded && <button className="mini-btn" onClick={onClose}>✕ 关闭(Esc)</button>}
         </div>
 
         <div className="ms-columns">
@@ -191,6 +202,27 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
                 })}
               </ul>
             ) : <p className="hint">尚未在训练场领悟。</p>}
+            {familyTraining && (
+              <>
+                <h3>武器专修</h3>
+                <div className="voc-btns" role="group" aria-label="武器专修">
+                  {FAMILY_IDS.map((f) => {
+                    const def = WEAPON_FAMILIES[f]
+                    const learned = isFamilyProficient(member.job, f, weaponTraining)
+                    const born = Object.entries(JOB_FAMILIES).filter(([, fs]) => fs.includes(f)).map(([j]) => JOBS[j]?.name ?? j).join('/')
+                    const travel = familyTraining.busyUntilDay > familyTraining.today
+                    return (
+                      <button key={f} disabled={learned || familyTraining.busy || travel || familyTraining.gold < 100}
+                        title={`${def.desc}(天生熟练:${born})${travel ? ';训练中' : ''}`}
+                        onClick={() => familyTraining.onLearn(f)}>
+                        {def.name}{learned ? ' ✓' : travel ? ` ⏳ 第${familyTraining.busyUntilDay}天归队` : `(${born})`}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="hint">100 金学会一族(永久):该成员使用该族武器不再攻击降档、族内技能照常可用。学程 {familyTraining.trainingLevel >= 2 ? 1 : 2} 天(训练场 2 级起 1 天),期间不能出征。施法铁律:杖圣器的法术只认施法者(牧师/法师/术士)天赋,学习不授法术。</p>
+              </>
+            )}
             <h3>创伤</h3>
             {member.scars?.length ? (
               <ul className="ms-list">

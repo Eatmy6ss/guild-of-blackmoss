@@ -1,4 +1,3 @@
-import { MemberCard } from './ui/MemberCard'
 import { BattleIntel } from './ui/art/BattleIntel'
 import { CreditsDialog } from './ui/art/Credits'
 import { KingdomPanel } from './ui/screens/KingdomPanel'
@@ -303,6 +302,23 @@ export default function App() {
     sfxCoin()
   }
 
+  // U35:武器专修迁入花名册档案页(按人学族;处理器显式收 memberId)
+  const learnFamily = (memberId: string, f: string) => {
+    const m2 = membersRef.current.find((x) => x.id === memberId)
+    if (!m2?.alive || runRef.current || towerRunRef.current) return
+    if ((m2.weaponLearned ?? []).includes(f) || gold < 100) return
+    const days = (buildings.training ?? 0) >= 2 ? 1 : 2
+    setMembers((ms) => ms.map((x) => {
+      if (x.id !== m2.id) return x
+      const nx = { ...x, weaponLearned: [...new Set([...(x.weaponLearned ?? []), f])], busyUntilDay: day + days }
+      // R4.1 生平(U34):专修开训写进当事人生平(普通条目),大事记不再记
+      appendBio(nx, { day, kind: 'training', text: `开始${WEAPON_FAMILIES[f as keyof typeof WEAPON_FAMILIES]?.name ?? f}专修——第 ${day + days} 天归队。` })
+      return nx
+    }))
+    setGold((g) => g - 100)
+    sfxCoin()
+  }
+
   const kingdomRef = useRef(kingdom)
   const [royalNotice, setRoyalNotice] = useState('')
   const [saveTransfer, setSaveTransfer] = useState<{ mode: 'import' | 'export'; code: string } | null>(null)
@@ -438,6 +454,7 @@ export default function App() {
   }, [])
 
   const drainAndSync = (state: BattleState) => {
+    if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__gb = state
     rendererRef.current?.setMembers(membersRef.current)
     if (state !== lastBattleRef.current) {
       lastBattleRef.current = state
@@ -996,9 +1013,6 @@ export default function App() {
               healingMastery={healingMastery} buildings={buildings} unlockedHybrids={unlockedHybrids}
               inventory={inventory} pendingRelics={pendingRelics}
               onRecast={recast} onInherit={inheritRelic}
-              weaponTraining={(members.find((m) => m.id === trainSelId)?.weaponLearned ?? [])}
-              busyUntilDay={(members.find((m) => m.id === trainSelId)?.busyUntilDay ?? 0)}
-              today={day} trainingLevel={buildings.training ?? 0}
               trainSelId={trainSelId} bondTotal={bondTotalOf}
               onBuyTraining={() => {
                 if (trainingReadyRef.current || gold < 150 || runRef.current || towerRunRef.current) return
@@ -1006,21 +1020,6 @@ export default function App() {
                 setTrainingReady(true)
                 setGold(g => g - 150)
                 logChronicle(chronicleRaw(day, '花费 150 金完成特权训练，下次远征经验 +25%。'))
-                sfxCoin()
-              }}
-              onLearnFamily={(f) => {
-                const m2 = membersRef.current.find((x) => x.id === trainSelId)
-                if (!m2?.alive || runRef.current || towerRunRef.current) return
-                if ((m2.weaponLearned ?? []).includes(f) || gold < 100) return
-                const days = (buildings.training ?? 0) >= 2 ? 1 : 2
-                setMembers((ms) => ms.map((x) => {
-                  if (x.id !== m2.id) return x
-                  const nx = { ...x, weaponLearned: [...new Set([...(x.weaponLearned ?? []), f])], busyUntilDay: day + days }
-                  // R4.1 生平(U34):专修开训写进当事人生平(普通条目),大事记不再记
-                  appendBio(nx, { day, kind: 'training', text: `开始${WEAPON_FAMILIES[f as keyof typeof WEAPON_FAMILIES]?.name ?? f}专修——第 ${day + days} 天归队。` })
-                  return nx
-                }))
-                setGold((g) => g - 100)
                 sfxCoin()
               }}
               onHeal={(memberId, si, scar) => {
@@ -1063,12 +1062,11 @@ export default function App() {
             {screen === 'chronicle' && <ChronicleScreen chronicle={chronicle} day={day} onOpenStatistics={() => go('statistics')} onBack={goBack} />}
             {screen === 'memorial' && <MemorialScreen memorial={memorial} onBack={goBack} />}
             {screen === 'manual' && <ManualScreen manual={manual} eventsSeen={eventsSeen} protectOn={protectOn} onToggleProtect={() => setProtectOn((p) => !p)} onBack={goBack} />}
-            {screen === 'roster' && <RosterScreen members={members} renderMemberCard={(m) => (
-              <MemberCard member={m} battle={battle} run={run} expedition={expedition}
-                onOpen={(id) => { setMemberSheetId(id); go('member') }}
-                onEnter={enterExpedition} onLeave={leaveExpedition}
-                inventory={inventory} expeditionIds={expeditionIds} onEquip={equip} />
-            )} onBack={goBack} />}
+            {screen === 'roster' && <RosterScreen members={members} battle={battle} run={run} expedition={expedition}
+              inventory={inventory} expeditionIds={expeditionIds}
+              onEquip={equip} onEnter={enterExpedition} onLeave={leaveExpedition}
+              gold={gold} busy={!!run || !!towerRun} today={day} trainingLevel={buildings.training ?? 0}
+              onLearnFamily={learnFamily} onBack={goBack} />}
             {screen === 'statistics' && <StatisticsPanel statistics={statistics} day={day} onClose={() => back()} onBack={() => go('chronicle')} />}
         </HallScreen>
 

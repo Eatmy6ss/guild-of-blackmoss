@@ -323,18 +323,20 @@ async function phaseEnding() {
   try {
     await b.send('Page.navigate', { url: pathToFileURL(HTML).href }); await sleep(2500)
     await importSave(b, encode(save))
-    // R3A:基地·武器专修区渲染五族
-    await clickText(b, '基地'); await sleep(600)
-    const fam = await b.evalJs(`(()=>{const g=document.querySelector('[aria-label="武器专修"]');if(!g)return null;return [...g.querySelectorAll('button')].map(x=>x.textContent.trim()).join('|')})()`)
-    check('R3A', '训练场·武器专修区渲染五族', fam && fam.split('|').length === 5 ? 'PASS' : 'FAIL', fam ?? '未找到 aria-label=武器专修')
-    await pressEscape(b); await sleep(300)
     // R3B/R3C:花名册开档案——本命族成员 ✔ 熟练;长柄成员 ⚠ 非熟练·长柄
-    await clickText(b, '花名册'); await sleep(500)
+    await clickText(b, '花名册'); await sleep(600)
+    // R3A(U35):武器专修迁入花名册档案页——切换条旁五族按钮渲染
+    const fam = await b.evalJs(`(()=>{const g=document.querySelector('[aria-label="武器专修"]');if(!g)return null;return [...g.querySelectorAll('button')].map(x=>x.textContent.trim()).join('|')})()`)
+    check('R3A', '花名册·武器专修区渲染五族(U35 迁入)', fam && fam.split('|').length === 5 ? 'PASS' : 'FAIL', fam ?? '未找到 aria-label=武器专修')
+    // U35 新增:花名册直开档案+右下略缩图+六维雷达
+    const v2 = await b.evalJs(`(()=>({tabs:document.querySelectorAll('.roster-tab').length,side:!!document.querySelector('.roster-side .member-card'),hex:!!document.querySelector('.hexstat svg'),closeBtn:!!document.querySelector('.roster-detail .mini-btn')}))()`)
+    check('R4B', '花名册v2:切换条+右下略缩图+六维雷达+嵌入无关闭钮', v2 && v2.tabs >= 3 && v2.side && v2.hex && !v2.closeBtn ? 'PASS' : 'FAIL', JSON.stringify(v2))
     const openProfile = async (name) => {
       // 自导航:名册不在场才点「花名册」——功能坞按钮是开关式,名册开着时再点=关闭
       const hasRoster = await b.evalJs(`!!document.querySelector('.member-card')`)
       if (!hasRoster) { await clickText(b, '花名册'); await sleep(400) }
-      await b.evalJs(`(()=>{const cards=[...document.querySelectorAll('.member-card')];const t=cards.find((c)=>c.textContent.includes(${JSON.stringify(name)}));t?.querySelector('.mc-head')?.click()})()`)
+      // U35:花名册 v2 右栏只显示当前选中者的卡——切人走顶部切换条
+      await b.evalJs(`[...document.querySelectorAll('.roster-tab')].find(t=>t.textContent.includes(${JSON.stringify(name)}))?.click()`)
       await sleep(400)
       const text = await b.evalJs(`document.querySelector('[data-testid="weapon-proficiency"]')?.textContent ?? null`)
       // R4.1(U34):同一趟顺带读生平栏(条数/永久徽标/倒序首条)
@@ -360,6 +362,7 @@ async function phaseEnding() {
       {
         const hasRoster3 = await b.evalJs(`!!document.querySelector('.member-card')`)
         if (!hasRoster3) { await clickText(b, '花名册'); await sleep(400) }
+        await b.evalJs(`[...document.querySelectorAll('.roster-tab')].find(t=>t.textContent.includes(${JSON.stringify(homeMember.name)}))?.click()`); await sleep(400)
         const drop = await b.evalJs(`(()=>{
           const cards=[...document.querySelectorAll('.member-card')]
           const t=cards.find((c)=>c.textContent.includes(${JSON.stringify(homeMember.name)}))
