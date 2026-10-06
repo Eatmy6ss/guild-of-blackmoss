@@ -551,7 +551,7 @@ export default function App() {
   })
   const { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent,
     startExpedition, chooseNode, backToGuild, restartGuild, dismantleT3, exchangeT3, sellItem,
-    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion } = ctl
+    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood } = ctl
   applyRetreatDeductionRef.current = applyRetreatDeduction
   startExpeditionRef.current = startExpedition
   continueDeepRef.current = chooseNode
@@ -974,7 +974,7 @@ export default function App() {
           exportPlaytestReport={exportPlaytestReport} makeWarReportCard={makeWarReportCard} dismissHint={dismissHint}
         >
           {screen === 'kingdom' && !run && !towerRun && <KingdomPanel state={kingdom} context={royalContext} notice={royalNotice} playtestLock={(d) => !playtestAllows(d)}
-            onClose={() => goBack()} onAccept={acceptRoyal} onClaim={claimRoyal} onTravel={travelRoyal}
+            onClose={() => goBack()} onAccept={acceptRoyal} onClaim={claimRoyal} onTravel={travelRoyal} gold={gold} onBuyGood={buyRoyalGood}
             onAbandon={(id) => { if (runRef.current || towerRunRef.current) return; updateKingdom(abandonCommission(kingdomRef.current, id)); setRoyalNotice('委托已撤销，可重新接取。王国信任不变。') }} />}
           {screen !== 'title' && pendingEvent && (
             <EventModal event={pendingEvent} result={eventResult} impacts={eventImpacts}

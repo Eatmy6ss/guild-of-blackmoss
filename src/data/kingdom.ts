@@ -105,3 +105,26 @@ export const COMMISSIONS: CommissionDef[] = [
     reply: '来信被列为王室急件。莉娅送来驭火者坠：“更深处的事还需要准备。今天，先让带信回来的人歇一晚。”本批王国委托至此结案。',
   },
 ]
+
+// ===== R4.4 王国货架(U33⑩/redesign §6):信任档位解锁可购商品,替代纯折扣的消费口 =====
+export interface RoyalGood {
+  id: string
+  name: string
+  desc: string
+  /** 信任门槛:kingdomTrust ≥ threshold 才可购 */
+  threshold: number
+  gold: number
+  heal?: number
+  fury?: number
+  marrow?: number
+  item?: Omit<ItemInstance, 'id'>
+}
+
+export const ROYAL_SHELF: RoyalGood[] = [
+  { id: 'shelf-supply', name: '官契补给', desc: '治疗药×2、爆发药×1——按官契价结算,比市价便宜', threshold: 0, gold: 55, heal: 2, fury: 1 },
+  { id: 'shelf-marrow', name: '王家库房·星髓', desc: '王室从没收品里拆出的星髓 ×1', threshold: 20, gold: 150, marrow: 1 },
+  { id: 'shelf-sword', name: '誓约制式·折颈巨剑', desc: 'T2 制式巨剑,带官印词条(锋利/致命)', threshold: 50, gold: 280,
+    item: { baseId: 'wpn-t2-greatsword', quality: 'green', rolls: [{ affixId: 'aff-atk', value: 7 }, { affixId: 'aff-keen', value: 0.1 }] } },
+  { id: 'shelf-plate', name: '誓约制式·泽地重铠', desc: 'T2 制式重铠,带官印词条(坚韧/御守)', threshold: 100, gold: 320,
+    item: { baseId: 'arm-t2-plate', quality: 'green', rolls: [{ affixId: 'aff-hp', value: 30 }, { affixId: 'aff-guard', value: 5 }] } },
+]

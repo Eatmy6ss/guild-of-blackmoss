@@ -1,4 +1,4 @@
-import { COMMISSIONS, COMMISSION_LIMIT, KINGDOM_RANKS, type CommissionDef } from '../data/kingdom'
+import { COMMISSIONS, COMMISSION_LIMIT, KINGDOM_RANKS, ROYAL_SHELF, type CommissionDef, type RoyalGood } from '../data/kingdom'
 import { ECONOMY } from '../data/economy'
 import { dungeonLock } from '../data/regions'
 import type { ItemInstance } from './types'
@@ -129,4 +129,12 @@ export function claimCommission(state: KingdomState, id: string, choice: RoyalRe
     reward: commissionReward(q, choice),
     commission: q,
   }
+}
+
+/** R4.4 王国货架:信任门槛判定(购买不消耗信任,只认档位) */
+export function royalGoodLock(good: RoyalGood, state: KingdomState): string | null {
+  if (!ROYAL_SHELF.includes(good)) return '下架商品'
+  const trust = kingdomTrust(state)
+  if (trust < good.threshold) return `信任不足:需 ${good.threshold}(现在 ${trust})`
+  return null
 }

@@ -1,5 +1,6 @@
 import { newStatistics, recordStatistics, expeditionStatistics } from '../sim/statistics'
-import { advanceCommissions, newKingdomState, kingdomTrust, royalPotionCost } from '../sim/kingdom'
+import { advanceCommissions, newKingdomState, kingdomTrust, royalPotionCost, royalGoodLock } from '../sim/kingdom'
+import type { RoyalGood } from '../data/kingdom'
 import type { BattleState, Member, Slot } from '../sim/types'
 import { maxHpOf, bondStars, grantExp } from '../sim/gen'
 import { ITEM_BASES } from '../data/items'
@@ -833,6 +834,18 @@ export function createAppControllers(deps: ControllerDeps) {
     sfxCoin()
   }
 
+  // R4.4 王国货架:信任档位解锁商品;购买不消耗信任(只认档位);公会大事记一条(U34 兑换类)
+  const buyRoyalGood = (good: RoyalGood) => {
+    if (runRef.current || towerRunRef.current || gold < good.gold) return
+    if (royalGoodLock(good, kingdomRef.current)) return
+    setGold((g) => g - good.gold)
+    if (good.heal || good.fury) setPotions((p: { heal: number; fury: number }) => ({ heal: p.heal + (good.heal ?? 0), fury: p.fury + (good.fury ?? 0) }))
+    if (good.marrow) setStarMarrow((m: number) => m + good.marrow!)
+    if (good.item) receiveItems([{ ...good.item, id: `shelf-${good.id}` }])
+    logChronicle(chronicleRaw(day, `凭王国的信任从官署货架购得「${good.name}」。`))
+    sfxCoin()
+  }
+
   const resolveEvent = (choiceIdx: number) => {
     const ev = pendingEvent
     if (!ev || eventResult || eventResolvingRef.current) return
@@ -994,5 +1007,5 @@ export function createAppControllers(deps: ControllerDeps) {
 
   return { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent,
     startExpedition, chooseNode, backToGuild, restartGuild, dismantleT3, exchangeT3, sellItem,
-    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion }
+    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood }
 }
