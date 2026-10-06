@@ -240,3 +240,18 @@ export function rollWaveDrop(dungeonId: string, rng: () => number, elite = false
   const base = pool[Math.floor(rng() * pool.length)]
   return rollDrop(base.id, rng, { qualityBias: elite ? 0.05 : -0.05, minQuality: elite ? 'green' : undefined, id: itemId?.() })
 }
+
+/** R4.2b 铁匠铺·重铸(redesign §6 设施各管玩法):按原词条重掷数值——词条方向不变,
+ *  数值按该装备 tier×品质口径重新起落;数值没变=白打,返回 null(调用方不扣费)。C4 占位费用在 ECONOMY.recastCost。 */
+export function recastRoll(item: ItemInstance, rollIndex: number, rng: () => number): ItemInstance | null {
+  const roll = item.rolls[rollIndex]
+  if (!roll) return null
+  const aff = AFFIXES[roll.affixId]
+  if (!aff) return null
+  const base = ITEM_BASES[item.baseId]
+  const qualityScale = item.quality === 'purple' ? 1.25 : item.quality === 'green' ? 1.08 : 0.9
+  const value = round2(affixValue(aff, TIER_SCALE[base?.tier ?? 1] ?? 1, rng) * qualityScale)
+  if (value === roll.value) return null
+  const rolls = item.rolls.map((r, i) => (i === rollIndex ? { ...r, value } : r))
+  return { ...item, rolls }
+}

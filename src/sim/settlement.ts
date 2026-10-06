@@ -19,7 +19,7 @@ import { settleScars, scarStatName, type Scar } from './scars'
 import { computeLegacy } from './memorial'
 import { redeemCost } from './tavern'
 import { settleWishes } from './wish'
-import { bondStars } from './gen'
+import { bondStars, grantExp } from './gen'
 import { settleKingdomBattle, type KingdomState } from './kingdom'
 import { expeditionStatistics, type StatisticsAction } from './statistics'
 import {
@@ -293,6 +293,25 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     }
   } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run), elite: dungeonElite }, effects.expMult * expMultCond)
 
+  // R4.2b 训练场替补追赶(redesign §6 设施各管玩法):训练场 2 级起,未出征的存活成员
+  // 按出征人均实发经验 ×0.5(C4 占位)跟着操练——替补也有成长线
+  if (input.source === 'dungeon' && (guild.buildings.training ?? 0) >= 2 && c.growth.experience.length > 0) {
+    const participantIds = new Set(outcome.run.memberIds)
+    const per = c.growth.experience.reduce((s, x) => s + x.amount, 0) / c.growth.experience.length
+    const share = Math.round(per * 0.5)
+    if (share > 0) {
+      const reserves = guild.members.filter(m => m.alive && !participantIds.has(m.id))
+      if (reserves.length) {
+        for (const m of reserves) {
+          const fromLevel = m.level
+          grantExp(m, share)
+          c.growth.experience.push({ memberId: m.id, amount: share, fromLevel, toLevel: m.level })
+        }
+        outcome.notices.push(`替补 ${reserves.map(m => m.name).join('、')} 在训练场跟操了一轮(+${share} 经验)。`)
+      }
+    }
+  }
+
   // 用本场前后的变化记事，避免沿用整趟出征快照而重复登记同一次升级/升星。
   for (const m of members) {
     const before = input.guild.members.find(x => x.id === m.id)
@@ -331,7 +350,9 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   if (outcome.loot.gold + outcome.loot.clearGold) outcome.notices.unshift('本场金币 +' + (outcome.loot.gold + outcome.loot.clearGold) + '，已入账。')
   if (outcome.blessing) outcome.notices.push('英灵祝福 +' + outcome.blessing + '。')
   if (c.morale.length) outcome.notices.push('士气：' + c.morale.map(({ memberId, delta }) => guild.members.find(m => m.id === memberId)!.name + ' ' + (delta > 0 ? '+' : '') + Math.round(delta * 10) / 10).join('、') + '。')
-  if (c.growth.experience.length) outcome.notices.push('参战幸存者获得经验；' + c.growth.experience.map(x => members.find(m => m.id === x.memberId)!.name + ' +' + x.amount).join('、') + '。')
+  if (c.growth.experience.length) outcome.notices.push('参战幸存者获得经验；' + c.growth.experience
+    .filter(x => members.some(m => m.id === x.memberId)) // R4.2b:替补条目不在参战名册,由「替补跟操」通知单独示出
+    .map(x => members.find(m => m.id === x.memberId)!.name + ' +' + x.amount).join('、') + '。')
   if (c.growth.bonds.length) outcome.notices.push('共同经历：' + c.growth.bonds.length + ' 对幸存队友默契 +' + c.growth.bonds[0].amount + '。')
   if (outcome.loot.items.length) outcome.notices.push('装备已入仓库：' + outcome.loot.items.map(item => ITEM_BASES[item.baseId].name).join('、') + '。')
   for (const record of guild.kingdom.active) {

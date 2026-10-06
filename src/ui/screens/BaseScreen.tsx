@@ -8,7 +8,10 @@ import { HYBRIDS, isHybrid } from '../../data/vocations'
 import { RACES } from '../../data/races'
 import { scarStatName, healingTerms, FAINT_DAYS } from '../../sim/scars'
 import { WEAPON_FAMILIES, FAMILY_IDS, JOB_FAMILIES } from '../../data/weapon-families'
-import type { Member } from '../../sim/types'
+import { describeItem } from '../../sim/loot'
+import { AFFIXES } from '../../data/affixes'
+import type { ItemInstance, Member } from '../../sim/types'
+import { useState } from 'react'
 
 interface BaseScreenProps {
   day: number
@@ -21,6 +24,14 @@ interface BaseScreenProps {
   healingMastery: Record<string, number>
   buildings: Record<string, number>
   unlockedHybrids: string[]
+  /** R4.2b:仓库(铁匠铺重铸选件用) */
+  inventory: ItemInstance[]
+  /** R4.2b:待赎遗物(祠堂传承用) */
+  pendingRelics: { item: ItemInstance; hero: string; redeem: number }[]
+  /** R4.2b:重铸(铁匠铺 Lv1 起,装备+词条序号) */
+  onRecast: (uid: string, rollIndex: number) => void
+  /** R4.2b:遗物传承(祠堂 Lv1 起,遗物+继承者) */
+  onInherit: (uid: string, memberId: string) => void
   /** R5.3d:选中成员的已学族(按人) */
   weaponTraining: string[]
   /** R5.3d:选中成员训练中,归队日(0=空闲) */
@@ -45,8 +56,13 @@ interface BaseScreenProps {
 }
 
 export function BaseScreen(props: BaseScreenProps) {
-  const { day, gold, blessing, members, busy, trainingReady, healingNotice, healingMastery, buildings, unlockedHybrids, weaponTraining, busyUntilDay, today, trainingLevel, trainSelId, onBack } = props
+  const { day, gold, blessing, members, busy, trainingReady, healingNotice, healingMastery, buildings, unlockedHybrids, weaponTraining, busyUntilDay, today, trainingLevel, trainSelId, inventory, pendingRelics, onBack } = props
   void busy
+  // R4.2b:铁匠铺重铸/祠堂传承的本地选择态(纯 UI,扣费与校验在 App 处理器)
+  const [recastUid, setRecastUid] = useState('')
+  const [recastRollIdx, setRecastRollIdx] = useState(0)
+  const [inheritSel, setInheritSel] = useState<Record<string, string>>({})
+  const recastItem = inventory.find((i) => i.id === recastUid)
   return (
             <div className="screen-overlay fullpage">
               <div className="screen-panel">
@@ -99,6 +115,53 @@ export function BaseScreen(props: BaseScreenProps) {
                 ))
               )}
             </div>
+          )}
+          {/* R4.2b 铁匠铺·重铸(设施各管玩法,redesign §6):Lv1 起,重掷一条词条数值 */}
+          {(buildings.smithy ?? 0) >= 1 ? (
+            <div className="potion-supply">
+              <span className="hint">⚒ 铁匠铺·重铸——花 {ECONOMY.recastCost} 金把一件装备的一条词条数值重新锻造(词条方向不变,数值按品级口径重新起落;数值没变不收费)。</span>
+              <div className="tavern-row">
+                <select aria-label="重铸装备" value={recastUid} onChange={(e) => { setRecastUid(e.target.value); setRecastRollIdx(0) }}>
+                  <option value="">选择装备…</option>
+                  {inventory.map((i) => <option key={i.id} value={i.id}>{describeItem(i)}</option>)}
+                </select>
+              </div>
+              {recastItem && (
+                <div className="tavern-row">
+                  <select aria-label="重铸词条" value={recastRollIdx} onChange={(e) => setRecastRollIdx(Number(e.target.value))}>
+                    {recastItem.rolls.map((r, i) => <option key={i} value={i}>{AFFIXES[r.affixId]?.name ?? r.affixId}(现值 {r.value})</option>)}
+                  </select>
+                  <button disabled={busy || gold < ECONOMY.recastCost} onClick={() => props.onRecast(recastUid, recastRollIdx)}>
+                    ⚒ 重铸（{ECONOMY.recastCost} 金）
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="hint">⚒ 铁匠铺升级到 1 级后解锁「重铸」:把一件装备的词条数值重新锻造。</p>
+          )}
+          {/* R4.2b 祠堂·遗物传承(设施各管玩法):Lv1 起,后辈以六成赎回费接走英灵遗物 */}
+          {(buildings.shrine ?? 0) >= 1 ? (
+            <div className="potion-supply">
+              <span className="hint">🕯 祠堂·遗物传承——英灵的遗物由后辈接走(费用=赎回费的六成,入库后自行穿戴),继承者士气 +5。</span>
+              {pendingRelics.length ? pendingRelics.map((r) => {
+                const cost = Math.ceil(r.redeem * ECONOMY.inheritRelicRate)
+                const heir = inheritSel[r.item.id] ?? members.find((m) => m.alive)?.id ?? ''
+                return (
+                  <div key={r.item.id} className="tavern-row">
+                    <span className="hint">{r.hero} 的遗物:{describeItem(r.item)}</span>
+                    <select aria-label={'传承给谁:' + describeItem(r.item)} value={heir} onChange={(e) => setInheritSel((q) => ({ ...q, [r.item.id]: e.target.value }))}>
+                      {members.filter((m) => m.alive).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                    <button disabled={busy || !heir || gold < cost} onClick={() => props.onInherit(r.item.id, heir)}>
+                      🕯 传承（{cost} 金）
+                    </button>
+                  </div>
+                )
+              }) : <p className="hint">没有等待传承的遗物。</p>}
+            </div>
+          ) : (
+            <p className="hint">🕯 祠堂升级到 1 级后解锁「遗物传承」:让后辈以更轻的代价接走英灵的遗物。</p>
           )}
           <div className="base-grid">
             {BUILDINGS.map((def) => {

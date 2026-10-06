@@ -28,7 +28,7 @@ import { describeItem } from './sim/loot'
 import { settleEncounter, type EncounterGuild } from './sim/settlement'
 import { createStatefulRng, newRngSeed, int, type Rng } from './sim/rng'
 import { loadGuildSave, saveGuild, clearGuildSave, exportSave, saveLoadNotice, saveFailNotice, combatSaveDue, type GuildSave, type PendingConsequence, type StoredGuildBuff } from './state/save'
-import { createGuildItems, itemStateFromSave, resolveMembers, inventoryItems, relicItems, serializeGuildItems, addInventoryItems, registerMemberItems, type GuildItems } from './state/item-registry'
+import { createGuildItems, itemStateFromSave, resolveMembers, inventoryItems, relicItems, serializeGuildItems, addInventoryItems, registerMemberItems, recastRegisteredItem, inheritRegisteredRelic, type GuildItems } from './state/item-registry'
 import { runDungeon, runRng } from './sim/run-core'
 import { runReducer, initialRunState, checkpointRunState, pendingRunEvent, type RunUIState } from './sim/run-state'
 import { BattleRenderer } from './ui/battle/BattleRenderer'
@@ -263,6 +263,31 @@ export default function App() {
     if (changed) setMembers([...membersRef.current])
     return changed
   }
+  // R4.2b 铁匠铺·重铸(设施各管玩法):100 金重掷一条词条数值;白打不扣费
+  const recast = (uid: string, rollIndex: number) => {
+    if (runRef.current || towerRunRef.current || gold < ECONOMY.recastCost) return
+    const r = recastRegisteredItem(itemOwnershipRef.current, uid, rollIndex, guildRng)
+    if (!r) return
+    updateItemOwnership(r.state)
+    setGold((g) => g - ECONOMY.recastCost)
+    sfxCoin()
+  }
+  // R4.2b 祠堂·遗物传承:六成赎回费让继承者接走遗物,士气 +5;公会大事留一条(U34 清单)
+  const inheritRelic = (uid: string, memberId: string) => {
+    if (runRef.current || towerRunRef.current) return
+    const r = inheritRegisteredRelic(itemOwnershipRef.current, uid, gold, ECONOMY.inheritRelicRate)
+    if (!r) return
+    updateItemOwnership(r.state, membersRef.current)
+    setGold((g) => g - r.cost)
+    const heir = membersRef.current.find((x) => x.id === memberId)
+    if (heir) {
+      heir.morale = Math.min(100, (heir.morale ?? 60) + 5)
+      setMembers([...membersRef.current])
+    }
+    logChronicle(chronicleRaw(day, `在祠堂为 ${r.relic.hero} 的遗物行了传承礼——${heir?.name ?? '后人'} 接过了它。`))
+    sfxCoin()
+  }
+
   const kingdomRef = useRef(kingdom)
   const [royalNotice, setRoyalNotice] = useState('')
   const [saveTransfer, setSaveTransfer] = useState<{ mode: 'import' | 'export'; code: string } | null>(null)
@@ -952,6 +977,8 @@ export default function App() {
             {screen === 'base' && <BaseScreen day={day} gold={gold} blessing={blessing} members={members}
               busy={!!run || !!towerRun} trainingReady={trainingReady} healingNotice={healingNotice}
               healingMastery={healingMastery} buildings={buildings} unlockedHybrids={unlockedHybrids}
+              inventory={inventory} pendingRelics={pendingRelics}
+              onRecast={recast} onInherit={inheritRelic}
               weaponTraining={(members.find((m) => m.id === trainSelId)?.weaponLearned ?? [])}
               busyUntilDay={(members.find((m) => m.id === trainSelId)?.busyUntilDay ?? 0)}
               today={day} trainingLevel={buildings.training ?? 0}

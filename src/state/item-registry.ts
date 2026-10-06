@@ -1,5 +1,6 @@
 import { ITEM_BASES } from '../data/items'
 import type { ItemInstance, Member, Slot } from '../sim/types'
+import { recastRoll } from '../sim/loot'
 
 export type ItemUid = string
 export type EquipmentRefs = Partial<Record<Slot, ItemUid>>
@@ -206,6 +207,31 @@ export function redeemRegisteredRelic(state: GuildItems, uid: string, gold: numb
   next.inventory.push(uid)
   assertItemOwnership(next)
   return { state: next, relic }
+}
+
+/** R4.2b 铁匠铺·重铸:注册表内装备按原词条重掷数值(方向不变);白打(数值没变)返回 null 不扣费 */
+export function recastRegisteredItem(state: GuildItems, uid: string, rollIndex: number, rng: () => number): { state: GuildItems; item: ItemInstance } | null {
+  const registered = state.items[uid]
+  if (!registered) return null
+  const nextItem = recastRoll(registered, rollIndex, rng)
+  if (!nextItem) return null
+  const next = copyState(state)
+  next.items[uid] = { ...registered, rolls: nextItem.rolls }
+  assertItemOwnership(next)
+  return { state: next, item: next.items[uid]! }
+}
+
+/** R4.2b 祠堂·遗物传承:待赎遗物以折扣价(赎回费×rate,C4 占位)由后辈接走——入仓库,不走全额赎回 */
+export function inheritRegisteredRelic(state: GuildItems, uid: string, gold: number, rate = 0.6): { state: GuildItems; relic: StoredRelic; cost: number } | null {
+  const relic = state.pendingRelics.find(r => r.uid === uid)
+  if (!relic) return null
+  const cost = Math.ceil(relic.redeem * rate)
+  if (gold < cost) return null
+  const next = copyState(state)
+  next.pendingRelics = next.pendingRelics.filter(r => r.uid !== uid)
+  next.inventory.push(uid)
+  assertItemOwnership(next)
+  return { state: next, relic, cost }
 }
 
 export function registerMemberItems(state: GuildItems, member: Member): GuildItems {
