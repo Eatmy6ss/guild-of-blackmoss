@@ -38,14 +38,14 @@ npm run test:gameplay # 保险、重开、套装、训练与人物效果回归
 npm run verify     # Vitest、管理员类型检查、历史冒烟/两组回归、游戏类型检查与生产构建
 ```
 
-验证入口已恢复并纳入玩法与王国委托回归。当前开发接续入口见 [HANDOFF](docs/development/HANDOFF.md)，委托数值与验证范围见 [K01说明](docs/development/kingdom-commissions.md)，本轮修复及验证边界见 [R01说明](docs/development/gameplay-repairs-2026-09-25.md)。
+验证入口已恢复并纳入玩法与王国委托回归。**协作者/AI 入口:先读 [AGENTS.md](AGENTS.md) → [文档地图+术语表](docs/development/README.md) → [HANDOFF 状态卡](docs/development/HANDOFF.md)**(历史在 HANDOFF-archive,一次文档清理见 tag `archive-docs-2026-10-07`)。
 
-新增自动化用例放在 `src/**/*.test.ts`，从 `vitest` 显式导入 `test` / `expect`，默认在 Node 环境运行。Vitest 共用 Vite 配置，但只收集源码测试；`scripts/` 中的历史检查沿用原入口，不迁移。新入口在没有找到测试或遗留 `.only` 时会失败，避免漏跑；`npm run verify` 先执行新增测试，再执行完整历史验证。接入说明见 [#0.7a](docs/development/vitest-setup-2026-09-27.md)。
+新增自动化用例放在 `src/**/*.test.ts`，从 `vitest` 显式导入 `test` / `expect`，默认在 Node 环境运行。Vitest 共用 Vite 配置，但只收集源码测试；`scripts/` 中的历史检查沿用原入口，不迁移。新入口在没有找到测试或遗留 `.only` 时会失败，避免漏跑；`npm run verify` 先执行新增测试，再执行完整历史验证。测试基础设施为 #0.7a(Vitest 收集 src/**/*.test.ts,配置见 vitest.config.ts)。
 
 - 满配试玩档:`node scripts/dev-save.mjs [等级 1-15]` 生成导入码(docs/dev-save.txt)
 - 单文件分发版:`npm run build:playtest`(内嵌素材后约 13MB)→ dist-playtest/index.html
 
-管理员实验室是独立本机工具，不在正式游戏菜单和生产包内。支持直接选副本遭遇、配置 1–6 人队伍、等级装备与技能冷却、暂停单步和同条件重战；只保存自己的测试配置，不读写正式存档或发放奖励。启动和测试口径见 [管理员测试指南](docs/development/admin-test-lab-2026-09-27.md)。
+管理员实验室是独立本机工具(`src/testing/admin-lab`,7 项自检),不在正式游戏菜单和生产包内;支持选副本遭遇、配置队伍/等级/装备/冷却、暂停单步;只保存自己的测试配置,不读写正式存档。
 
 ## 技术栈
 

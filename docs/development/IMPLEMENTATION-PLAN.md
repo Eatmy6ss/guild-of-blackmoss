@@ -341,7 +341,7 @@ export function stepCastWindow(ctx: MechanicCtx, opts: {
 
 ### #0.7a 引入 Vitest（✅ 已完成——PR#3 随 #0.1 接入 Vitest 并配 8 项测试，本任务剩余=零）
 
-**2026-09-27 状态**：用户明确 M1 尚未试玩并授权先做技术准备，本项已提前完成本地接入。新测试通过后从 package.json 串接原 verify，scripts/ 保持原样。见 [接入记录](vitest-setup-2026-09-27.md)。M1 未通过，未据此批准后续玩法改版。
+**2026-09-27 状态**：用户明确 M1 尚未试玩并授权先做技术准备，本项已提前完成本地接入。新测试通过后从 package.json 串接原 verify，scripts/ 保持原样。(接入记录已归档:tag archive-docs-2026-10-07)。M1 未通过，未据此批准后续玩法改版。
 
 **现状**：`package.json` 无测试框架；`scripts/` 约 17.3k 行手写 `.ts`/`.mjs`（`smoke.mjs` 10.7k 行疑为签入的构建产物）。
 
