@@ -329,7 +329,10 @@ export function createAppControllers(deps: ControllerDeps) {
 
 
   const equip = (m: Member, slot: Slot, itemId: string) => {
-    if (runRef.current || towerRunRef.current || !membersRef.current.find(x => x.id === m.id)?.alive) return
+    // B3-4 营地换装(U22):远征 rest 相/塔段间允许换装——战斗进行中仍禁止
+    const resting = runRef.current?.phase === 'rest' || towerRunRef.current?.phase === 'rest'
+    if ((runRef.current || towerRunRef.current) && !resting) return
+    if (!membersRef.current.find(x => x.id === m.id)?.alive) return
     const next = equipRegisteredItem(itemOwnershipRef.current, m.id, slot, itemId)
     if (next === itemOwnershipRef.current) return
     updateItemOwnership(next)
@@ -862,6 +865,8 @@ export function createAppControllers(deps: ControllerDeps) {
     logChronicle(chronicleRaw(day, `凭王国的信任从官署货架购得「${good.name}」。`))
     sfxCoin()
   }
+
+  // B3-4 营地换装(U22 简化实现):rest 相解锁换装——equip 守卫放行 rest(见 equip)
 
   // #2.5 锁定保护(批量分解兜底;锁定状态随物品存档,可选字段零迁移)
   const toggleLock = (uid: string) => {

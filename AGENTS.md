@@ -25,4 +25,5 @@
    - **代码更新**:工单粒度小步提交,每步完整 `npm run verify`(看 log 末行 EXIT=);认领板先挂名;门禁漂移只重标记录不调数值(C4);E2E 单相重验必须 `--phase=build,<相> --build`。
    - **文档更新**:HANDOFF 状态卡+登记即时更新;**不为一次性方案/报告新开 docs 文件**(写进当轮工单登记,确需长文先问制作人);新协作者/新工单先更新认领板;压缩记号进术语表(docs/development/README.md)。
    - **交付闭环**:每轮=施工→verify→提交→推送 main→试玩包重部署(build:playtest+inline+gh-pages)→记忆更新;全部完成后给制作人汇报(做了什么/怎么验收/下一步)。
-   - **外部 AI 入口不变**:AGENTS → docs/development/README(地图+术语表) → HANDOFF 认领板;给新协作者的提示词固定为「读 docs/development/HANDOFF.md 的认领板,领你的工单」。
+   - **实时状态牌(HANDOFF 顶部,最高优先)**:每次**开工、切换单、收尾**都必须刷新——写明「正在更新什么/下一步将更新什么/涉及哪些文件/给远程协作者的撞车提示(等 rebase 还是先动线上,由其自行决定)」。远程协作者开工前必读此牌;本地推完单立即推 main 并刷新。
+   - **外部 AI 入口不变**:AGENTS → docs/development/README(地图+术语表) → HANDOFF 实时状态牌+认领板;给新协作者的提示词固定为「读 docs/development/HANDOFF.md 的状态牌和认领板」。

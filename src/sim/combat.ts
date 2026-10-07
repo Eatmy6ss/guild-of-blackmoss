@@ -12,6 +12,7 @@ import type {
 import { JOBS, specOf } from '../data/jobs'
 import { ITEM_BASES } from '../data/items'
 import { AFFIXES } from '../data/affixes'
+import { MONSTER_AFFIXES } from './monster-affix'
 import { SIGNATURE_SKILLS } from '../data/signature'
 import { equipmentSetBonus } from './equipment-sets'
 import { formatStat, formatPercent, STAT_NAME } from './loot'
@@ -677,6 +678,11 @@ export function applyHit(
     target.alive = false
     state.events.push({ tick: state.tick, type: 'death', targetId: target.id })
     pushLog(state, 'system', `☠ ${target.name} 倒下了`)
+    // B3-4 死因写入词缀:被带词缀敌人击杀 → 词缀名记入死者(DeathCause.affixes 消费)
+    const killedAffix = target.team === 'guild' && attacker.team === 'enemy'
+      ? (Object.values(MONSTER_AFFIXES).map((d) => d.name).find((n) => attacker.name.includes(n)) ?? undefined)
+      : undefined
+    if (killedAffix) (target as { deathAffixes?: string[] }).deathAffixes = [killedAffix]
     // #3.3 亡语钩子(U22):词缀怪死亡瞬间执行其已登记 kind 的效果(此处 ground-zone=腐蚀之地)
     const deathwargMech = target.bossMechanics?.find((m) => Boolean((m.params as Record<string, unknown> | undefined)?.onDeath))
     if (deathwargMech && target.team === 'enemy') {

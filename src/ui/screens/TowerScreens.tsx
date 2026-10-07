@@ -2,6 +2,8 @@ import type { BattleState, Stance } from '../../sim/types'
 import type { TowerRun } from '../../sim/tower'
 import { STANCE_NAME, setStance, setFocus, useHealPotion, useFuryPotion, orderRetreat, stepBattle } from '../../sim/combat'
 import { towerFloorIsBoss, insureNextTowerFloor } from '../../sim/tower'
+import { TOWER_RULES } from '../../sim/tower-rule'
+import { MONSTER_AFFIXES } from '../../sim/monster-affix'
 
 // R5.2c(U33⑦):高塔三屏(战斗/休整投保/终局)自 App.tsx 迁出——行为零变,处理器留 App。
 
@@ -129,11 +131,22 @@ export function TowerRestScreen(props: {
     props.setTowerRun({ ...t })
     // R4.1(U34 Q1):投保流水不再进大事记(按钮态「已投保」即状态本身)
   }
+  // B3-4 侦查分级:当前段规则+已遇词缀情报(熟练/情报封锁定级 U22)
+  const segment = Math.floor((towerRun.floor - 1) / 3)
+  const rules = towerRun.ruleHistory?.[segment] ?? []
+  const affixesSeen = Object.entries(towerRun.monsterAffixes ?? {}).flatMap(([floor, ids]) => ids.map((id) => ({ floor: Number(floor), id })))
+  const intel = affixesSeen.length
+    ? `已侦获词缀:${[...new Set(affixesSeen.map((a) => a.id))].map((id) => MONSTER_AFFIXES[id as keyof typeof MONSTER_AFFIXES]?.name ?? id).join('/')}(第 ${affixesSeen.map((a) => a.floor).join(',')} 层)`
+    : '尚无词缀情报——遇到带词缀的敌人后才会记录'
   return (
     <>
       <h2>🗼 第 {towerRun.floor} 层突破</h2>
       <div className="result-banner win">
-        幸存者回复 20% 生命。第 9 层起撤退保护失效——量力而行。
+        幸存者回复 {rules.includes('no-camp') ? 0 : 20}% 生命(第 9 层起撤退保护失效——量力而行)
+      </div>
+      <div className="potion-supply" data-testid="tower-intel">
+        <span className="hint">🔭 本段(第 {segment * 3 + 1}–{segment * 3 + 3} 层)规则:{rules.length ? rules.map((r) => TOWER_RULES[r as keyof typeof TOWER_RULES].name).join('、') : '常规'}{rules.includes('no-camp') ? '——本段休整不回血!' : ''}</span>
+        <span className="hint">🕵 {intel}</span>
       </div>
       <div className="end-actions">
         <button onClick={insure}

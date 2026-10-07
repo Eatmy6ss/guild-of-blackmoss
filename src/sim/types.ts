@@ -264,6 +264,10 @@ export interface Combatant {
   killHealPct?: number
   lowHpAtkMult?: number
   hitReflect?: number
+  /** B3-3 怪物词缀名(施加时写;死亡进 DeathCause.affixes) */
+  affixTag?: string
+  /** B3-4 死因词缀:被词缀敌击杀时写入(死亡块),markPermadeath 消费 */
+  deathAffixes?: string[]
   cooldownLeft: number
   alive: boolean
   memberId?: string

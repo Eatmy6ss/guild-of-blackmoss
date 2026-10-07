@@ -219,7 +219,7 @@ export function renderDeathCause(dc: DeathCause): string {
   const place = dc.where.source === 'tower'
     ? `黑苔高塔第 ${dc.where.floor ?? '?'} 层`
     : DUNGEONS.find((d) => d.id === dc.where.id)?.name ?? dc.where.id
-  return `陨落于${place}`
+  return `陨落于${place}` + (dc.affixes?.length ? `(死于${dc.affixes.join('/')}词缀之手)` : '')
 }
 
 export function markPermadeath(
@@ -239,13 +239,15 @@ export function markPermadeath(
     if (m && m.alive) {
       m.alive = false
       m.hp = 0
+      // B3-4 死因写入词缀(U22 编年史第 1 步):被词缀敌击杀 → affixes 填充+碑文可见
+      const withAffix = { ...death, affixes: c.deathAffixes }
       dead.push({
         id: m.id,
         name: m.name,
         job: m.job,
         level: m.level,
-        cause: renderDeathCause(death),
-        death,
+        cause: renderDeathCause(withAffix),
+        death: withAffix,
         // R4.1 生平:阵亡瞬间的传记快照(纪念堂读;此后成员自身的 bio 不再增长)
         bio: m.bio ? [...m.bio] : undefined,
       })
