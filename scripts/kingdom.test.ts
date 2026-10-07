@@ -10,7 +10,7 @@ import { ECONOMY } from '../src/data/economy'
 import { generateMember } from '../src/sim/gen'
 import { createRun, advanceRun, beginBattle, startStep } from './run-test-compat'
 import { itemStats } from '../src/sim/loot'
-import { acceptCommission, abandonCommission, advanceCommissions, settleKingdomBattle, claimCommission, commissionLock, commissionReward, kingdomRank, kingdomTrust, newKingdomState, normalizeKingdom, royalPotionCost, type KingdomState } from '../src/sim/kingdom'
+import { acceptCommission, abandonCommission, advanceCommissions, settleKingdomBattle, claimCommission, commissionLock, commissionReward, kingdomRank, kingdomTrust, newKingdomState, normalizeKingdom, royalPotionCost, sweepExpiredCommissions, COMMISSION_DUE_DAYS, type KingdomState } from '../src/sim/kingdom'
 import { migrate, exportSave, importSave, saveGuild, loadGuildSave, SAVE_VERSION } from '../src/state/save'
 
 const context = { manual: [], buildings: {}, day: 1 }
@@ -208,4 +208,21 @@ test('damaged commission fields recover safely: unique receipts, clamped progres
   assert.equal(kingdomTrust(repaired), 10)
   assert.deepEqual(repaired.active.map((r) => r.progress), [1, 0])
   assert.equal(claimCommission(repaired, 'crown-road', 'coin', 3), null)
+})
+
+
+test('#4.6 天收口:委托期限——接取后 6 天内有效,第 7 天起过期作废', () => {
+  const state: KingdomState = { active: [{ id: 'crown-road', progress: 1, acceptedDay: 3 }], completed: [] }
+  // 最后一天(第 9 天=3+6)仍在办
+  const inTime = sweepExpiredCommissions(state, 3 + COMMISSION_DUE_DAYS)
+  assert.equal(inTime.expired.length, 0)
+  assert.equal(inTime.state.active.length, 1)
+  // 过期日(第 10 天)作废:进度清零、从在办移除、原状态不被修改
+  const swept = sweepExpiredCommissions(state, 3 + COMMISSION_DUE_DAYS + 1)
+  assert.equal(swept.expired.length, 1)
+  assert.equal(swept.expired[0]!.id, 'crown-road')
+  assert.equal(swept.state.active.length, 0)
+  assert.equal(state.active.length, 1) // 输入不可修改
+  // 未接取委托不受影响
+  assert.equal(sweepExpiredCommissions({ active: [], completed: [] }, 99).expired.length, 0)
 })

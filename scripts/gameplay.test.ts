@@ -452,6 +452,7 @@ function rngScope(scope: Record<string, unknown>) {
     restStamina: () => {}, setMembers: (() => {}) as never, // #4.1 精力天数恢复(垫片第 11 次扩容)
     rationCost: () => 0, maintenanceCost: () => 0, plannedLayers: () => 6, // #4.2 补给成本(垫片第 12 次扩容;0 值=零影响)
     rosterCap: 6, staminaRestMult: 1, baseEffects, // #4.4 宿舍派生值(垫片第 13 次扩容;App 常量改 baseEffects 派生)
+    advanceGuildDay: () => {}, // #4.6 天收口(垫片第 14 次扩容;公会日推进单一入口)
     gold: 999999, setGold: () => {}, buildings: {}, // startExpedition 口粮守卫读 deps.gold/setGold——默认恒走「足额」分支且不记账,不扰动旧断言;settleBattleEnd 读 buildings.smithy(默认 0 级)
     consumeIntelReveal: (entries: unknown[]) => ({ entries, bonus: 0 }), verifyIntelFor: (entries: unknown[]) => ({ entries, notes: [] }), INTEL_STOCK_CAP: 3,
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
@@ -1072,7 +1073,8 @@ test('pre-departure run buffs persist and apply to exactly the next expedition, 
   }
   const firstFight = (dayNum: number) => {
     runRef.current = null
-    handler('startExpedition',{...scope,day:dayNum,guildBuffs:JSON.parse(JSON.stringify(stored))})()
+    // #4.6:buff 过期消退搬进 advanceGuildDay(公会日推进单一入口)——测试自带同义 stub
+    handler('startExpedition',{...scope,day:dayNum,guildBuffs:JSON.parse(JSON.stringify(stored)),advanceGuildDay:()=>{buffs=buffs.filter((g:any)=>g.endDay>dayNum+1)}})()
     const active = runRef.current
     beginBattle(active, 7, 0, expedition)
     return active.battle!.combatants[0].attack

@@ -42,6 +42,19 @@ export function normalizeKingdom(raw: unknown): KingdomState {
   return { active, completed }
 }
 
+/** #4.6 天收口:委托期限(C4 占位)——接取后 N 天内须结案,过期作废(进度清零,信任不扣) */
+export const COMMISSION_DUE_DAYS = 6
+
+/** 过期委托 sweep(公会日推进时调用):返回新状态与过期清单;无过期时原样返回 */
+export function sweepExpiredCommissions(state: KingdomState, today: number): { state: KingdomState; expired: CommissionRecord[] } {
+  const expired = state.active.filter((c) => c.acceptedDay + COMMISSION_DUE_DAYS < today)
+  if (expired.length === 0) return { state, expired: [] }
+  return {
+    state: { ...state, active: state.active.filter((c) => !expired.some((e) => e.id === c.id)) },
+    expired,
+  }
+}
+
 export function kingdomTrust(state: KingdomState): number {
   return state.completed.reduce((sum, r) => sum + (definition(r.id)?.trust ?? 0), 0)
 }

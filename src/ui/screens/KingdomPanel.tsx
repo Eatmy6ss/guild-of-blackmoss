@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { COMMISSIONS, COMMISSION_LIMIT, KINGDOM_NAME, KINGDOM_RANKS, ROYAL_SHELF, type CommissionDef, type RoyalGood } from '../../data/kingdom'
-import { commissionLock, commissionReward, kingdomRank, kingdomTrust, royalGoodLock, royalPotionCost, type KingdomContext, type KingdomState, type RoyalRewardChoice } from '../../sim/kingdom'
+import { commissionLock, commissionReward, kingdomRank, kingdomTrust, royalGoodLock, royalPotionCost, COMMISSION_DUE_DAYS, type KingdomContext, type KingdomState, type RoyalRewardChoice } from '../../sim/kingdom'
 import { describeItem } from '../../sim/loot'
 
 interface Props {
@@ -41,10 +41,10 @@ export function KingdomPanel({ state, context, notice, onClose, onAccept, onAban
     const r = commissionReward(q, choice)
     return `${r.gold}金${r.heal ? ` · 治疗药×${r.heal} · 祝福×${r.blessing}` : ` · 爆发药×${r.fury}`}`
   }
-  const card = (q: CommissionDef, progress?: number) => {
+  const card = (q: CommissionDef, progress?: number, dueIn?: number) => {
     const ready = progress !== undefined && progress >= q.objective.target
     return <article className={`royal-card${ready ? ' ready' : ''}`} key={q.id}>
-      <div className="royal-card-top"><span>{q.chapter}</span><span>{ready ? '可交付' : progress !== undefined ? '执行中' : '可接取'}</span></div>
+      <div className="royal-card-top"><span>{q.chapter}</span><span>{ready ? '可交付' : progress !== undefined ? `执行中 · 剩 ${dueIn ?? 0} 天` : '可接取'}</span></div>
       <h3>{q.title}</h3>
       <p className="royal-issuer">{q.issuer}</p>
       <p className="royal-letter">{q.letter}</p>
@@ -94,7 +94,7 @@ export function KingdomPanel({ state, context, notice, onClose, onAccept, onAban
         <span>{nextRank ? `再获 ${nextRank.threshold - trust} 信任 → ${nextRank.name}（补给优惠 ${Math.round(nextRank.discount * 100)}%）` : '已获最高关系称号 · 灰冠誓约者'}</span>
       </div>
       <div className="royal-rules"><span>在办 {state.active.length}/{COMMISSION_LIMIT} · 已结案 {done.size}/{COMMISSIONS.length}</span><span>补给优惠 {Math.round(rank.discount * 100)}% · 治疗药 {royalPotionCost('heal', state)}金 / 爆发药 {royalPotionCost('fury', state)}金</span></div>
-      <p className="royal-help">接取后开始记录战绩；回到公会交付，每份仅领一次。没有期限，撤退不抹去已获战绩。战斗委托不追溯旧战绩，建设委托认可已有建筑。远征结束才存档，途中刷新会回到出征前。</p>
+      <p className="royal-help">接取后开始记录战绩，接取后 6 天内须交付（每过一日倒计时，过期官契作废、进度清零）；交付前撤退不抹去已获战绩。战斗委托不追溯旧战绩，建设委托认可已有建筑。远征结束才存档，途中刷新会回到出征前。</p>
       {notice && <p className="royal-notice" role="status">{notice}</p>}
       <h3 className="royal-section-title">官署货架 · 信任换物资</h3>
       <div className="royal-grid">{ROYAL_SHELF.map((good) => {
@@ -112,7 +112,7 @@ export function KingdomPanel({ state, context, notice, onClose, onAccept, onAban
         </article>
       })}</div>
       <h3 className="royal-section-title">在办委托</h3>
-      {state.active.length ? <div className="royal-grid">{state.active.map((r) => card(COMMISSIONS.find((q) => q.id === r.id)!, r.progress))}</div> : <p className="royal-empty">桌上还没有签过的官契。从下方接下一份，公会的故事便会与王国相连。</p>}
+      {state.active.length ? <div className="royal-grid">{state.active.map((r) => card(COMMISSIONS.find((q) => q.id === r.id)!, r.progress, Math.max(0, r.acceptedDay + COMMISSION_DUE_DAYS - context.day)))}</div> : <p className="royal-empty">桌上还没有签过的官契。从下方接下一份，公会的故事便会与王国相连。</p>}
       <h3 className="royal-section-title">官署来函</h3>
       {available.length ? <div className="royal-grid">{available.map((q) => card(q))}</div> : <p className="royal-empty">{done.size === COMMISSIONS.length ? '本批来函全部结案。回信已收入下方档案，补给优惠将继续保留。' : '暂时没有新的可接来函。完成在办委托，或查看后续来函的条件。'}</p>}
       {locked.length > 0 && <details className="royal-archive"><summary>后续来函 · {locked.length}份</summary>{locked.map((q) => <div className="royal-locked" key={q.id}><b>{q.title}</b><p>{commissionLock(q, state, context)}</p></div>)}</details>}

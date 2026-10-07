@@ -1,5 +1,5 @@
 import { newStatistics, recordStatistics, expeditionStatistics } from '../sim/statistics'
-import { advanceCommissions, newKingdomState, kingdomTrust, royalPotionCost, royalGoodLock } from '../sim/kingdom'
+import { advanceCommissions, newKingdomState, kingdomTrust, royalPotionCost, royalGoodLock, sweepExpiredCommissions } from '../sim/kingdom'
 import { dismantleBulk, upgradeRegisteredRoll, refineRegisteredQuality } from '../state/item-registry'
 import type { RoyalGood } from '../data/kingdom'
 import type { BattleState, Member, Slot } from '../sim/types'
@@ -37,6 +37,7 @@ import { autoPickNode } from '../sim/dungeon-map'
 import { restHealMult, terrainEntryReward, revealPenaltyLayers } from '../sim/conditions'
 import { CONDITION_BY_ID } from '../data/conditions'
 import { BUILDINGS, baseEffects } from '../data/base'
+import { COMMISSIONS } from '../data/kingdom'
 import { rollVisitor, sellValue } from '../sim/tavern'
 import { memorialAura } from '../sim/memorial'
 import { rollGuildEvent, consequenceFiresIn, consequenceOf } from '../sim/guild-events'
@@ -421,6 +422,32 @@ export function createAppControllers(deps: ControllerDeps) {
   }
 
 
+  // #4.6 天收口:公会日推进单一入口——出征/建设共享同一日历池(天数+1/精力恢复(宿舍加成)/虚痕消退/公会 buff 过期/委托期限 sweep)
+  const advanceGuildDay = () => {
+    const nextDay = (day ?? 0) + 1
+    setDay((d) => d + 1)
+    // #4.1 精力:天数恢复(全体存活,唯一恢复途径);#4.4 宿舍每级 +15% 恢复量
+    restStamina(membersRef.current, 1, baseEffects(buildings).staminaRestMult)
+    setMembers([...membersRef.current])
+    // U32 稳定制:出发日推进——虚痕到期消退(可见通知+当事人生平)
+    const faded = ageFaints(membersRef.current, nextDay)
+    for (const f of faded) {
+      setScarNotices((q: string[]) => [...(q ?? []), `${f.member.name} 的${scarStatName(f.stat)}虚痕消退了——身体记得教训,但不再疼。`])
+      appendBio(f.member, { day: nextDay, kind: 'heal', text: `${scarStatName(f.stat)}的虚痕消退了。` })
+    }
+    if (faded.length) setMembers([...membersRef.current])
+    // 事件二期:过期的公会层状态自然消退
+    setGuildBuffs((q: StoredGuildBuffX[]) => q.filter((g: StoredGuildBuffX) => g.endDay > nextDay))
+    // #4.6:委托期限 sweep——过期作废(进度清零,信任不扣;酬金落空本身就是代价)
+    const swept = sweepExpiredCommissions(kingdomRef.current, nextDay)
+    for (const c of swept.expired) {
+      const def = COMMISSIONS.find((x) => x.id === c.id)
+      setScarNotices((q: string[]) => [...(q ?? []), `王国委托「${def?.title ?? c.id}」过了期限,官署撤回了官契——酬金落空。`])
+      logChronicle(chronicleRaw(day, `王国委托「${def?.title ?? c.id}」过期作废。`))
+    }
+    if (swept.expired.length > 0) updateKingdom(swept.state)
+  }
+
   const startExpedition = () => {
     if (runRef.current || towerRunRef.current || pendingEvent || expedition.length < activeDungeon.size) return
     if (!playtestAllows(activeDungeon.id)) return // B6:试玩版版图一守卫
@@ -447,19 +474,7 @@ export function createAppControllers(deps: ControllerDeps) {
       }
       setPendingConsequences((q: PendingConsequenceX[]) => { const at = q.findIndex((c: PendingConsequenceX) => c.eventId === due.eventId && c.dueDay === due.dueDay); return q.filter((_: PendingConsequenceX, i: number) => i !== at) })
     }
-    setDay((d) => d + 1)
-    // #4.1 精力:天数恢复(全体存活,唯一恢复途径);#4.4 宿舍每级 +15% 恢复量
-    restStamina(membersRef.current, 1, baseEffects(buildings).staminaRestMult)
-    setMembers([...membersRef.current])
-    // U32 稳定制:出发日推进——虚痕到期消退(可见通知+当事人生平;早退分支前也要跑)
-    const faded = ageFaints(membersRef.current, (day ?? 0) + 1)
-    for (const f of faded) {
-      setScarNotices((q: string[]) => [...(q ?? []), `${f.member.name} 的${scarStatName(f.stat)}虚痕消退了——身体记得教训,但不再疼。`])
-      appendBio(f.member, { day: (day ?? 0) + 1, kind: 'heal', text: `${scarStatName(f.stat)}的虚痕消退了。` })
-    }
-    if (faded.length) setMembers([...membersRef.current])
-    // 事件二期:过期的公会层状态自然消退
-    setGuildBuffs((q: StoredGuildBuffX[]) => q.filter((g: StoredGuildBuffX) => g.endDay > (day ?? 0) + 1))
+    advanceGuildDay() // #4.6 天收口:公会日推进单一入口
     if (expedition.length < activeDungeon.size) return
     // #4.2 出征补给:口粮(人数×预计行程层)。不足不拦出征(防软锁)——扣到 0+全员饿肚子士气 −8(C4)。
     const ration = rationCost(expedition.length, plannedLayers(activeDungeon))
@@ -899,6 +914,9 @@ export function createAppControllers(deps: ControllerDeps) {
     updateKingdom(advanceCommissions(kingdomRef.current, { kind: 'building', buildingId: id, level: lv + 1 }))
     logChronicle(chronicleBuilding(day, def.name, lv + 1))
     sfxCoin()
+    // #4.6 天收口:建设占用一天(与出征共享同一日历池;休息日照常恢复精力)
+    advanceGuildDay()
+    setScarNotices((q: string[]) => [...(q ?? []), `${def.name}的施工占用了一天——公会歇业一日,队员们歇了口气。`])
   }
 
   // 药水经济:仓库金币补货(远征中不卖货)

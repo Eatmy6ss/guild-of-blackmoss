@@ -544,6 +544,9 @@ export default function App() {
   }
   const enterExpedition = (id: string) => {
     if (runRef.current || towerRunRef.current) return
+    // #4.6 天收口:训练/疗养占用中未归队,不能编入(busyUntilDay 与 day 同一公会日历)
+    const busyTarget = members.find((m) => m.id === id)
+    if (busyTarget?.busyUntilDay && busyTarget.busyUntilDay > day) return
     setExpeditionIds((ids) => {
       const aliveIds = members.filter((m) => m.alive).map((m) => m.id)
       const kept = ids.filter((x) => x !== id && aliveIds.includes(x))
@@ -1040,12 +1043,16 @@ export default function App() {
                 setBlessing((b) => b - cost.blessing)
                 setGold((g) => g - cost.gold)
                 noteStatistics({ type: 'healing', gold: cost.gold, blessing: cost.blessing })
+                // #4.6 天收口:疗养占用天数(重度 2 天/轻度 1 天,C4)——期间不能编入远征(与训练同用 busyUntilDay)
+                const restDays = cur.value === 2 ? 2 : 1
+                const busyUntil = day + restDays
+                m2.busyUntilDay = (m2.busyUntilDay ?? 0) > busyUntil ? m2.busyUntilDay : busyUntil
                 setMembers([...membersRef.current])
                 // U32 稳定制:成功=降一档(重度→轻度→虚痕);失败口径不变
                 const outcome = r.result === 'success'
                   ? (r.scar.faint ? `转为虚痕——静养 ${FAINT_DAYS} 天后自愈。` : '创伤减轻：重度降为轻度。')
                   : r.result === 'worsen' ? '治疗失败，创伤恶化为重度。' : '治疗未起效，创伤保留。'
-                const notice = m2.name + ' 的' + scarStatName(cur.stat) + '创伤：' + outcome + ' 消耗 ' + cost.gold + ' 金、' + cost.blessing + ' 祝福；该维度疗养经验 +' + r.masteryGain + '。'
+                const notice = m2.name + ' 的' + scarStatName(cur.stat) + '创伤：' + outcome + ' 消耗 ' + cost.gold + ' 金、' + cost.blessing + ' 祝福；该维度疗养经验 +' + r.masteryGain + '；疗养占用 ' + restDays + ' 天（第 ' + (day + restDays) + ' 天归队）。'
                 if (r.result === 'success') {
                   appendBio(m2, { day, kind: 'heal', text: r.scar.faint
                     ? `${scarStatName(cur.stat)}创伤转为虚痕——身体记得教训,但不再疼。`
