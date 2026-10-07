@@ -35,7 +35,7 @@ import { BattleRenderer } from './ui/battle/BattleRenderer'
 import { initAudio, setMusicMood, toggleMute, isMuted, setVolume, getVolume, sfxVictory, sfxDefeat, sfxCoin, sfxCmd } from './ui/audio'
 import { bossIntents } from './sim/mechanics'
 import { BLACKMOSS, DUNGEONS } from './data/dungeons'
-import { towerRest, towerNext, type TowerRun } from './sim/tower'
+import type { TowerRun } from './sim/tower'
 import { ChronicleScreen } from './ui/screens/ChronicleScreen'
 import { MemorialScreen } from './ui/screens/MemorialScreen'
 import { ManualScreen } from './ui/screens/ManualScreen'
@@ -497,9 +497,10 @@ export default function App() {
       rendererRef.current?.setMembers(membersRef.current)
       rendererRef.current?.setBattle(active.battle, [])
     }
-    if (active.autoMode && !pendingEvent) {
-      if (active.phase === 'rest') window.setTimeout(() => active.kind === 'dungeon' ? continueDeepRef.current?.() : towerNextFloor(), 750)
-      else if (active.kind === 'dungeon' && active.phase === 'victory') {
+    // #3.1 塔禁挂机(A4):塔不再有 autoMode 自动深入;远征挂机链照旧
+    if (active.kind === 'dungeon' && active.autoMode && !pendingEvent) {
+      if (active.phase === 'rest') window.setTimeout(() => continueDeepRef.current?.(), 750)
+      else if (active.phase === 'victory') {
         backToGuild()
         window.setTimeout(() => { if (autoLoopRef.current) startExpeditionRef.current?.() }, 150)
       }
@@ -604,18 +605,7 @@ export default function App() {
     applyOutcome(o)
     const t = o.run
     setTowerRunning(false)
-    if (t.phase === 'rest' && t.autoMode) {
-      window.setTimeout(() => {
-        const t2 = towerRunRef.current
-        if (!t2 || t2.phase !== 'rest') return
-        towerRest(t2, baseEffects(buildings).towerRestHealPct, membersRef.current)
-        towerNext(t2, int(runRng(t2), 1, 100000) * 9973, membersRef.current)
-        setTowerRun({ ...t2 })
-        setTowerRunning(true)
-        lastBattleRef.current = null
-        drainAndSync(t2.battle!)
-      }, 500)
-    }
+    // #3.1 塔禁挂机:rest 停在休整界面,等玩家手动深入
     drainAndSync(t.battle!)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [towerRun?.battle?.status])

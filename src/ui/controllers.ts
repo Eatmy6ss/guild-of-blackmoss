@@ -28,7 +28,7 @@ import { GUILD_EVENTS } from '../data/guild-events'
 import { pickOutcome } from '../sim/guild-events'
 import type { GuildEventDef } from '../data/guild-events'
 import { sfxVisitor } from '../ui/audio'
-import { startTower, towerRest, towerNext } from '../sim/tower'
+import { startTower, towerRest, towerNext, claimPendingLoot } from '../sim/tower'
 import { revealTier, moveTo, mapOptions, currentNode, nextBossEncounter } from '../sim/run'
 import { autoPickNode } from '../sim/dungeon-map'
 import { restHealMult, terrainEntryReward, revealPenaltyLayers } from '../sim/conditions'
@@ -780,6 +780,16 @@ export function createAppControllers(deps: ControllerDeps) {
     const t = towerRunRef.current
     // 药水经济:离开高塔,未用完的药水退回公会库存(settleTowerFloor 已逐层回写)
     if (t) setPotions({ ...t.potions })
+    // #3.1 下塔才结算:主动离开/撤退=全额;团灭只保 20%(C4 占位,「损失大部分」)
+    if (t) {
+      const claim = claimPendingLoot(t, t.result === 'defeated' ? 0.2 : 1)
+      if (claim.gold) gainGold(claim.gold, 'tower')
+      if (claim.exp) {
+        // 经验按塔结算口径发给出征队员(settleGrowth 的 exp 部分在爬塔时已延迟到这里)
+        for (const m of runMembers(t, membersRef.current)) if (m.alive) grantExp(m, Math.round(claim.exp / Math.max(1, runMembers(t, membersRef.current).filter((x) => x.alive).length)))
+      }
+      if (claim.drops.length) receiveItems(claim.drops, true)
+    }
     if (t) resetAfterRun(membersRef.current)
     towerRunRef.current = null
     setTowerRun(null)

@@ -28,12 +28,6 @@ export function TowerBattleScreen(props: {
     <>
       <h2>🗼 黑苔高塔 · 第 {towerRun.floor} 层{towerFloorIsBoss(towerRun.floor) ? '（守塔者）' : ''}</h2>
       <div className="cmd-bar">
-        <button
-          className={battle.commands.autoMode ? 'active' : ''}
-          onClick={() => props.cmdTower((b) => { b.commands.autoMode = !b.commands.autoMode; if (props.towerRunRef.current) props.towerRunRef.current.autoMode = b.commands.autoMode }, true)}
-        >
-          🤖 挂机{battle.commands.autoMode ? '中（自动深入）' : ''}
-        </button>
         <span className="cmd-label">│</span>
         <span className="cmd-label">阵型</span>
         {(Object.keys(STANCE_NAME) as Stance[]).map((st) => (
@@ -43,7 +37,7 @@ export function TowerBattleScreen(props: {
               (battle.commands.stance === st ? 'active' : '') +
               (intents?.telegraphing && st === 'spread' ? ' urgent' : '')
             }
-            disabled={battle.commands.autoMode}
+            disabled={false}
             onClick={() => {
               props.sfxCmd()
               props.cmdTower((b) => setStance(b, st))
@@ -58,7 +52,7 @@ export function TowerBattleScreen(props: {
             props.sfxCmd()
             props.cmdTower((b) => useHealPotion(b))
           }}
-          disabled={battle.commands.autoMode || battle.commands.healStock <= 0 || battle.commands.healCd > 0}
+          disabled={false || battle.commands.healStock <= 0 || battle.commands.healCd > 0}
         >
           💊 治疗药×{battle.commands.healStock}
         </button>
@@ -67,11 +61,11 @@ export function TowerBattleScreen(props: {
             props.sfxCmd()
             props.cmdTower((b) => useFuryPotion(b))
           }}
-          disabled={battle.commands.autoMode || battle.commands.furyStock <= 0 || battle.commands.furyCd > 0}
+          disabled={false || battle.commands.furyStock <= 0 || battle.commands.furyCd > 0}
         >
           ⚡ 爆发药×{battle.commands.furyStock}
         </button>
-        {intents?.casting && intents.casterId && !battle.commands.autoMode && (
+        {intents?.casting && intents.casterId && !false && (
           <button
             className="urgent"
             onClick={() => {

@@ -1,6 +1,7 @@
 import { createRun, startStep, startTower, startTowerFloor } from '../../scripts/run-test-compat'
 import { expect, test } from 'vitest'
-import { BLACKMOSS, DUNGEONS, RUSTMINE } from '../data/dungeons'
+import { DUNGEONS } from '../data/dungeons'
+import { towerEncounterRaw } from './tower'
 import { createBattle, enemyToCombatant } from './combat'
 import { scaleEnemy, type DifficultyModifiers } from './difficulty'
 import { processBossMechanics } from './mechanics'
@@ -90,22 +91,14 @@ test('增援使用开战时的难度快照，外部修饰或地图配置修改�
 test('高塔预缩放的首领和增援只应用一次楼层成长，不混入来源副本倍率', () => {
   let summons = 0
   const definitions = DUNGEONS.flatMap(d => [...Object.values(d.bosses), ...Object.values(d.enemyGroups).flat()])
-  const towerCases = [
-    { floor: 1, raw: BLACKMOSS.enemyGroups.frogs },
-    { floor: 2, raw: BLACKMOSS.enemyGroups.wolves },
-    { floor: 3, raw: [BLACKMOSS.bosses.grush] },
-    { floor: 4, raw: BLACKMOSS.enemyGroups.leeches },
-    { floor: 6, raw: [BLACKMOSS.bosses.talma] },
-    { floor: 9, raw: [RUSTMINE.bosses.delveanchor] },
-    { floor: 12, raw: [BLACKMOSS.bosses.grush] },
-    { floor: 18, raw: [RUSTMINE.bosses.delveanchor] },
-    { floor: 30, raw: [BLACKMOSS.bosses.grush] },
-  ]
-  for (const { floor, raw: initial } of towerCases) {
+  const towerCases = [1, 2, 3, 4, 6, 9, 12, 18, 30]
+  for (const floor of towerCases) {
     const run = startTower([], 29)
     run.floor = floor
     startTowerFloor(run, 29)
     const battle = run.battle!
+    const enc = towerEncounterRaw(floor)
+    const initial = enc.kind === 'boss' ? [enc.entry.boss] : enc.group
     expect(battle.combatants).toHaveLength(initial.length)
     for (const [index, enemy] of battle.combatants.entries()) {
       const raw = initial[index]

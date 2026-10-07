@@ -4,7 +4,7 @@ import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalize
 import { tellExpedition } from '../src/sim/storyteller'
 import { appendBio } from '../src/sim/bio'
 import { memberGenerationState, restoreMemberGeneration } from '../src/sim/gen'
-import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor, beginBattle } from './run-test-compat'
+import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor, beginBattle, towerEncounterRaw } from './run-test-compat'
 import assert from 'node:assert/strict'
 import './mechanics.test'
 import { test } from 'node:test'
@@ -315,33 +315,37 @@ test('legacy preview full-health sentinel is resolved on import and load without
   }
 })
 
-test('tower rotates three wave groups independently of three bosses across two cycles', () => {
+test('tower rotations follow towerEncounterRaw(单一来源):早期固定池,9 层起全版图', () => {
   const run = startTower(squad(), 301, { heal: 0, fury: 0 })
-  const waves = ['frogs', 'wolves', 'leeches']
-  const bosses = [BLACKMOSS.bosses.grush, BLACKMOSS.bosses.talma, RUSTMINE.bosses.delveanchor]
-  let wave = 0
   for (let floor = 1; floor <= 18; floor++) {
     if (floor > 1) towerNext(run, 301)
+    const raw = towerEncounterRaw(floor)
+    const expected = raw.kind === 'boss' ? [raw.entry.boss] : raw.group
     const enemies = run.battle!.combatants.filter(c => c.team === 'enemy')
-    const expected = floor % 3 === 0
-      ? [bosses[(floor / 3 - 1) % 3]]
-      : BLACKMOSS.enemyGroups[waves[wave++ % 3]]
     assert.deepEqual(enemies.map(c => c.name), expected.map(c => c.name), `floor ${floor}`)
     enemies.forEach((c, i) => {
       assert.equal(c.maxHp, Math.round(expected[i].maxHp * towerEnemyScale(floor)))
       assert.equal(c.attack, Math.round(expected[i].attack * towerEnemyScale(floor)))
     })
   }
+  // #3.1:9 层起内容池扩到全版图(杂兵组/boss 池都多于早期)
+  const deepWaves = new Set([...Object.values(BLACKMOSS.enemyGroups).flat().map(e => e.name),
+    ...DUNGEONS.filter(d => !['blackmoss', 'rustmine'].includes(d.id)).flatMap(d => Object.values(d.enemyGroups).flat().map(e => e.name))])
+  const floor10 = towerEncounterRaw(10)
+  assert.equal(floor10.kind, 'wave')
+  if (floor10.kind === 'wave') assert(floor10.group.every(e => deepWaves.has(e.name)), '深层杂兵应来自全版图池')
 })
 
 test('tower summons real scaled adds once without mutating source dungeon definitions', () => {
   const before = JSON.stringify([BLACKMOSS, RUSTMINE])
-  const entries = [
-    { floor: 3, group: BLACKMOSS.enemyGroups['frogs-frail'] },
-    { floor: 6, group: BLACKMOSS.enemyGroups['wolves-frail'] },
-    { floor: 9, group: RUSTMINE.enemyGroups['bats-frail'] },
-    { floor: 12, group: BLACKMOSS.enemyGroups['frogs-frail'] },
-  ]
+  // #3.1:轮换走 towerEncounterRaw 单一来源(12 层起轮到版图二 boss,召唤组随 boss 走)
+  const entries = [3, 6, 9, 12].map((floor) => {
+    const raw = towerEncounterRaw(floor)
+    assert.equal(raw.kind, 'boss')
+    if (raw.kind !== 'boss') throw new Error('boss floor')
+    const summon = raw.entry.boss.mechanics.find((m) => m.kind === 'summon')!
+    return { floor, group: raw.entry.groups[String(summon.params.groupId)] }
+  })
   for (const { floor, group } of entries) {
     const run = startTower(squad(), 302, { heal: 0, fury: 0 })
     run.floor = floor

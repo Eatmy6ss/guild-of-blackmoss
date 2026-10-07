@@ -279,11 +279,14 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   outcome.blessing = dead.length * effects.blessingPerDeath
 
   if (outcome.source === 'tower') {
+    // #3.1 下塔才结算:reward 只用于小结/通知,pendingLoot 由 leaveTower 兑现——这里不再入账
+    // 写时克隆(R1 浅拷贝契约):settleTowerFloor 会累计 pendingLoot/pendingDrops,浅拷贝共享引用会打穿输入
+    outcome.run.pendingLoot = { ...outcome.run.pendingLoot }
+    outcome.run.pendingDrops = [...(outcome.run.pendingDrops ?? [])]
     const reward = settleTowerFloor(outcome.run, rng, itemId, guild.members)
-    outcome.loot.gold = reward.gold
-    outcome.loot.items.push(...reward.drops)
-    c.growth = settleGrowth({ ...outcome.run, members }, 1, { exp: reward.exp, bonds: true })
-    if (reward.cleared && !outcome.run.autoMode) {
+    void reward
+    c.growth = settleGrowth({ ...outcome.run, members }, 1, { exp: 0, bonds: true })
+    if (reward.cleared) { // #3.1 塔禁挂机:纪录恒认手动(手动=唯一玩法)
       guild.towerBest = Math.max(guild.towerBest, outcome.run.floor)
       if (guild.towerBest > input.guild.towerBest) {
         c.chronicle.push(chronicleTowerRecord(day, guild.towerBest, ++seq))

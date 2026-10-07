@@ -1,6 +1,6 @@
 import { rollDrop, createLootRng } from './loot'
 import { ITEM_BASES } from '../data/items'
-import { BLACKMOSS, RUSTMINE } from '../data/dungeons'
+import { BLACKMOSS, RUSTMINE, DUNGEONS } from '../data/dungeons'
 import type { BossDef, DungeonDef, EnemyDef, ItemInstance, Member } from './types'
 import { createBattle, POTION_STOCK } from './combat'
 import type { BattleState } from './types'
@@ -10,11 +10,11 @@ import { createRunCore, runMembers, syncRunParty, type RunCore } from './run-cor
 import { markPermadeath } from './run'
 export { towerEnemyScale } from './difficulty'
 
-// 黑苔高塔(M1 P1,宪法 Q4/Q5/Q6 定稿):
-//   无限递增(敌人强度随层数线性上涨)、记录最高层;
-//   分层残酷——1–4 层保护可用,5–8 层药水减半,9 层起保护失效(真死真损失);
-//   挂机不禁止:队长 AI 的上限天然压胜率(打不过深层 boss)。
-// 奖励逐层立即入账(金币/掉落),团灭只损失英雄——塔的残酷在保护失效,不在惩罚复杂度。
+// 黑苔高塔(批次 3/U38 改造:主菜赌局化):
+//   无限递增、记录最高层;分层残酷——1–4 层保护可用,5–8 层药水减半,9 层起保护失效;
+//   **下塔才结算**(#3.1):金币/掉落累计进 pendingLoot,离开时兑现,团灭损失大部分(U38:C4 占位只保 20%);
+//   **禁挂机**(A4/#3.1):autoMode 已删除,塔只能手动爬(塔纪录本就只认手动)。
+//   内容池全版图(#3.1):低层版图一怪组,深层解锁版图二;全部经 difficulty.scaleEnemy,不在本文件写缩放。
 
 export const TOWER = {
   /** 每层强度倍率(相对第 1 层):1 + 0.15 × (层-1) */
@@ -56,8 +56,8 @@ export interface TowerRun extends RunCore {
   goldEarned: number
   /** 携带药水(药水经济):进塔时从公会库存带出,逐层延续,离开时退回剩余 */
   potions: { heal: number; fury: number }
-  /** 挂机连刷(试玩反馈):跨层延续,rest 自动深入下一层 */
-  autoMode?: boolean
+  /** #3.1 下塔才结算:装备掉落暂存(金币/经验/星髓走 RunCore.pendingLoot);离开时兑现 */
+  pendingDrops?: ItemInstance[]
   /** 遗物安葬 2.0:本层已投保(阵亡装备免赎回费) */
   insuredFloor?: boolean
   /** 休整时购买的下一层保障，进入指定层时生效 */
@@ -79,22 +79,38 @@ function towerFloorScale<T extends EnemyDef>(def: T, floor: number): T {
   return { ...scaleEnemy(def, towerEnemyScale(floor)), defense: def.defense, difficultyScaled: true }
 }
 
-const BOSS_ROTATION: { boss: BossDef; groups: DungeonDef['enemyGroups'] }[] = [
-  { boss: BLACKMOSS.bosses.grush, groups: BLACKMOSS.enemyGroups },
-  { boss: BLACKMOSS.bosses.talma, groups: BLACKMOSS.enemyGroups },
-  { boss: RUSTMINE.bosses.delveanchor, groups: RUSTMINE.enemyGroups },
+// #3.1 全版图内容池:随层数解锁(低层版图一,深层版图二;全部走 scaleEnemy)
+const D = { BLACKMOSS, RUSTMINE } as const
+void D
+const BOSS_ROTATION: { boss: BossDef; groups: DungeonDef['enemyGroups']; fromFloor: number }[] = [
+  { boss: BLACKMOSS.bosses.grush, groups: BLACKMOSS.enemyGroups, fromFloor: 1 },
+  { boss: BLACKMOSS.bosses.talma, groups: BLACKMOSS.enemyGroups, fromFloor: 3 },
+  { boss: RUSTMINE.bosses.delveanchor, groups: RUSTMINE.enemyGroups, fromFloor: 6 },
+  ...Object.values(DUNGEONS)
+    .filter((d) => !['blackmoss', 'rustmine'].includes(d.id))
+    .flatMap((d) => Object.values(d.bosses).map((boss) => ({ boss, groups: d.enemyGroups, fromFloor: boss.mechanics.length >= 2 ? 9 : 6 }))),
 ]
+
+/** #3.1 单一来源:某一层用哪组 raw 定义(boss 或杂兵组)——startTowerFloor 与测试共用,不再各写轮换 */
+export function towerEncounterRaw(floor: number): { kind: 'boss'; entry: (typeof BOSS_ROTATION)[number] } | { kind: 'wave'; group: EnemyDef[] } {
+  if (towerFloorIsBoss(floor)) {
+    const bossPool = BOSS_ROTATION.filter((e) => e.fromFloor <= floor)
+    return { kind: 'boss', entry: bossPool[(Math.floor(floor / TOWER.bossEvery) - 1) % bossPool.length]! }
+  }
+  const waveIndex = floor - 1 - Math.floor(floor / TOWER.bossEvery)
+  const pool = floorPool(floor)
+  return { kind: 'wave', group: pool[waveIndex % pool.length]! }
+}
 
 /** 生成某一层的战斗(复用 createBattle:威胁/站位/机制全继承) */
 export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = []): void {
   const floor = run.floor
-  const isBoss = towerFloorIsBoss(floor)
-  // 普通层独立计数,避免第三组永远被每三层一次的 Boss 占用。
-  const waveIndex = floor - 1 - Math.floor(floor / TOWER.bossEvery)
-  const pool: EnemyDef[] = isBoss
-    ? []
-    : FLOOR_POOL[waveIndex % FLOOR_POOL.length].map((e) => towerFloorScale(e, floor))
-  const entry = BOSS_ROTATION[(Math.floor(floor / TOWER.bossEvery) - 1) % BOSS_ROTATION.length]
+  const enc = towerEncounterRaw(floor)
+  const isBoss = enc.kind === 'boss'
+  const entry = enc.kind === 'boss' ? enc.entry : BOSS_ROTATION[0]! // wave 层不消费 entry(类型收窄垫片)
+  const pool: EnemyDef[] = enc.kind === 'wave'
+    ? enc.group.map((e) => towerFloorScale(e, floor))
+    : []
   const enemyGroups: DungeonDef['enemyGroups'] = { tower: pool }
   if (isBoss) {
     for (const mechanic of entry.boss.mechanics) {
@@ -135,16 +151,24 @@ export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = 
     alloc,
     { towerFloor: floor },
   )
-  run.battle.commands.autoMode = !!run.autoMode
   run.phase = 'battle'
 }
 
-const FLOOR_POOL: EnemyDef[][] = [
-  // 跳过 Boss 层:1/5/10… 蛙人,2/7/11… 狼,4/8/13… 水蛭。
+// #3.1 杂兵池:低层版图一组,9 层起混入版图二组(纯数据;缩放统一走 towerFloorScale)
+const FLOOR_POOL_EARLY: EnemyDef[][] = [
   BLACKMOSS.enemyGroups.frogs,
   BLACKMOSS.enemyGroups.wolves,
   BLACKMOSS.enemyGroups.leeches,
 ]
+const FLOOR_POOL_DEEP: EnemyDef[][] = [
+  ...FLOOR_POOL_EARLY,
+  ...Object.values(DUNGEONS)
+    .filter((d) => !['blackmoss', 'rustmine'].includes(d.id))
+    .flatMap((d) => Object.values(d.enemyGroups).filter((g) => g.length > 0)),
+]
+function floorPool(floor: number): EnemyDef[][] {
+  return floor >= 9 ? FLOOR_POOL_DEEP : FLOOR_POOL_EARLY
+}
 
 export function startTower(members: Member[], seed: number, potions = { heal: POTION_STOCK, fury: POTION_STOCK }): TowerRun {
   const run: TowerRun = {
@@ -154,6 +178,7 @@ export function startTower(members: Member[], seed: number, potions = { heal: PO
     phase: 'battle',
     battle: null,
     goldEarned: 0,
+    pendingDrops: [],
     potions,
   }
   startTowerFloor(run, seed, members)
@@ -197,6 +222,10 @@ export function settleTowerFloor(run: TowerRun, rng?: Rng, itemId?: () => string
         drops.push(rollDrop(base.id, lootRng, { qualityBias: isBoss ? 0.15 : 0, id: itemId?.() }))
       }
     }
+    // #3.1 下塔才结算:金币/掉落进 pending(返回值仅供小结/通知,不再立即入账)
+    run.pendingLoot.gold += gold
+    run.pendingLoot.exp += exp
+    run.pendingDrops = [...(run.pendingDrops ?? []), ...drops]
     return { gold, cleared: true, exp, drops }
   }
   run.phase = 'ended'
@@ -221,6 +250,19 @@ export function towerNext(run: TowerRun, seed: number, roster: Member[] = []): v
   run.insuredFloor = run.insuredNextFloor === run.floor
   delete run.insuredNextFloor
   startTowerFloor(run, seed, roster)
+}
+
+/**
+ * #3.1 下塔兑现:领取累计战利品。mult=1 正常离开;团灭 0.2(C4 占位,「损失大部分」)。
+ */
+export function claimPendingLoot(run: TowerRun, mult = 1): { gold: number; exp: number; drops: ItemInstance[] } {
+  const gold = Math.round(run.pendingLoot.gold * mult)
+  const exp = Math.round(run.pendingLoot.exp * mult)
+  const drops = mult >= 1 ? (run.pendingDrops ?? []) : (run.pendingDrops ?? []).slice(0, Math.floor((run.pendingDrops ?? []).length * mult))
+  run.pendingLoot.gold = 0
+  run.pendingLoot.exp = 0
+  run.pendingDrops = []
+  return { gold, exp, drops }
 }
 
 /** 兼容旧脚本入口；阵亡判定只有 run.markPermadeath 一份。 */

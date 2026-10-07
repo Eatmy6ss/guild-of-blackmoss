@@ -38,6 +38,7 @@ export const createRun = (...args: Parameters<typeof dungeon.createRun>) => {
   return view(run, args[0])
 }
 export const startTower = (...args: Parameters<typeof tower.startTower>) => view(tower.startTower(...args), args[0])
+export const towerEncounterRaw = tower.towerEncounterRaw
 export const startStep = (run: dungeon.DungeonRun, seed: number, bonus = 0, members?: Member[]) => withDefinition(definitions.get(run), () => dungeon.startStep(run, seed, bonus, roster(run, members)))
 /** R1.1:createRun 不再自动开战——沿地图前进直到开出第一场战斗(测试/门禁通用前处理)。 */
 export const beginBattle = (run: dungeon.DungeonRun, seed: number, bonus = 0, members?: Member[]) => {

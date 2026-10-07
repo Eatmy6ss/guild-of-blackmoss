@@ -213,10 +213,12 @@ test('高塔实战：已到账金币、保险、携带药水、Boss 掉落跨三
   const r = resumed.runState.activeRun!
   if (r.kind !== 'tower') throw new Error('tower')
   expect(r.goldEarned).toBe(113)
-  expect(resumed.gold).toBe(900 + 113 - 80 - 120)
-  expect(resumed.runState.dropIds.length).toBeGreaterThanOrEqual(1)
+  // #3.1 下塔才结算:爬塔期间金币/掉落进 pending,不入公会账(leaveTower 兑现)
+  expect(resumed.gold).toBe(900 - 80 - 120)
+  expect(r.pendingLoot.gold).toBe(113)
+  expect((r.pendingDrops ?? []).length).toBeGreaterThanOrEqual(1)
   expect(settleEncounter({ source: 'tower', run: r, guild: { ...resumed, members: resolved(resumed) } })).toBeNull()
-  expect(refresh(resumed).runState).toEqual(plain.runState)
+  equalBytes(resumed, plain) // toEqual 无路径,equalBytes 给出分叉字段
 })
 
 test('召唤宠物、Boss 增援与临终呼援的单位编号不依赖模块生命周期，断点后战报完全一致', () => {

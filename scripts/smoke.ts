@@ -2417,23 +2417,25 @@ const towerFailures: string[] = []
     }
     console.log(`㉝ autoMode 跨战斗:首场 ✓ 第二场延续 = ${run.battle.commands.autoMode}`)
   }
-  // 33b:tower.autoMode 传入后跨层延续
+  // 33b(#3.1 反向断言):塔禁挂机——autoMode 已删除,层间不自动深入,战利品进 pending
   {
     const squad = JOBS.map((job, j) => generateMember(job, 5, 984000 + j))
     seedMemberSeq(squad)
     const t = startTower(squad, 20260922, { heal: 4, fury: 4 })
-    t.autoMode = true
-    startTowerFloor(t, 20260922)
-    if (!t.battle!.commands.autoMode) fail33.push('㉝ 塔 autoMode 未置位')
+    if ('autoMode' in t) fail33.push('㉝ 塔 autoMode 应已删除(#3.1 禁挂机)')
+    if (t.battle!.commands.autoMode) fail33.push('㉝ 塔战斗不应以挂机开局')
     runToEnd33(t.battle!)
+    const floor1 = t.floor
     settleTowerFloor(t)
+    if (t.pendingLoot.gold <= 0) fail33.push('㉝ 塔胜层金币应进 pendingLoot(下塔才结算)')
+    if (t.phase !== 'rest') fail33.push('㉝ 胜层后应停在休整(等玩家手动深入,不自动)')
     t.floor = 2
     startTowerFloor(t, 77)
-    if (!t.battle!.commands.autoMode) fail33.push('㉝ 塔 2 层 autoMode 未延续')
-    console.log(`㉝ 塔跨层:autoMode 延续 = ${t.battle!.commands.autoMode}`)
+    if (t.battle!.commands.autoMode) fail33.push('㉝ 新层不应继承挂机')
+    console.log(`㉝ 塔禁挂机+pending 结算:1→${floor1} 层 pending 金币 ${t.pendingLoot.gold},rest 手动,新层无 autoMode`)
   }
   if (fail33.length > 0) { console.log('✗ 挂机连刷未通过:', fail33); process.exit(1) }
-  console.log('✓ 挂机连刷通过:autoMode 跨战斗/跨层延续,自动推进数据链成立')
+  console.log('✓ 挂机连刷通过:远征 autoMode 延续成立;塔按 #3.1 禁挂机+下塔结算')
 }
 
 // ============================================================

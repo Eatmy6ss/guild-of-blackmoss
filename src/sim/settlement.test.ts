@@ -5,7 +5,7 @@ import { ECONOMY } from '../data/economy'
 import { ITEM_BASES } from '../data/items'
 import { baseEffects } from '../data/base'
 import { markPermadeath, settleGrowth, bossSequence } from './run'
-import { towerGold, towerExp, towerItemTier } from './tower'
+import { towerGold, towerItemTier } from './tower'
 import { generateMember, xpNeeded } from './gen'
 import { createRng } from './rng'
 import { newKingdomState } from './kingdom'
@@ -126,22 +126,25 @@ describe('统一遭遇结算', () => {
 
   it('塔胜场沿用原金币/种族经验/掉落阶级，并补胜利士气和双方默契；挂机不刷新纪录', () => {
     for (const floor of [1, 3, 6, 12]) {
-      for (const auto of [false, true]) {
+      {
         const g = guild(), t = startTower(g.members, 123)
-        t.floor = floor; t.autoMode = auto; startTowerFloor(t, 123)
+        t.floor = floor; startTowerFloor(t, 123)
         t.battle!.status = 'guild-win'
         const o = settleEncounter({ source: 'tower', run: t, guild: g }, () => 0.05)!
-        expect(o.loot.gold).toBe(towerGold(floor))
+        // #3.1 下塔才结算:outcome 不再入账(金币进 pendingLoot,掉落进 pendingDrops)
+        expect(o.loot.gold).toBe(0)
+        expect(o.loot.items).toHaveLength(0)
+        expect(o.run.pendingLoot.gold).toBe(towerGold(floor))
         expect(o.run.goldEarned).toBe(towerGold(floor))
         expect(o.run.phase).toBe('rest')
-        expect(o.loot.items).toHaveLength(1)
-        expect(ITEM_BASES[o.loot.items[0].baseId].tier).toBe(towerItemTier(floor))
-        expect(o.guild.members[0].exp).toBe(Math.round(towerExp(floor) * 1.05))
+        expect(o.run.pendingDrops).toHaveLength(1)
+        expect(ITEM_BASES[o.run.pendingDrops![0].baseId].tier).toBe(towerItemTier(floor))
+        expect(o.guild.members[0].exp).toBe(0) // #3.1:经验也进 pending,下塔兑现
         expect(o.guild.members[0].morale).toBe(66)
         expect(o.guild.members[0].bonds[g.members[1].id]).toBe(1)
         expect(o.guild.members[1].bonds[g.members[0].id]).toBe(1)
         expect(o.guild.members[3]).toEqual(g.members[3])
-        expect(o.guild.towerBest).toBe(auto ? 0 : floor)
+        expect(o.guild.towerBest).toBe(floor)
       }
     }
   })
