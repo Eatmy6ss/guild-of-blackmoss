@@ -30,16 +30,19 @@ describe('R1.2 路况状态', () => {
       if (r.conditions.includes('soaked')) {
         triggered = true
         expect(r.potions.heal, '湿透应泡坏 1 瓶治疗药').toBe(2)
-        // 下一场战斗受疗乘区 0.9:与无状态基线差 −0.1(成员自带种族/性格受疗,取差值)
+        // 下一场战斗受疗乘区 0.9(#2.7:词缀走独立乘区 healTakenMod,不再写 healReceived)
         r.nodeId = water.id
         startStep(r, seed, 0, members)
-        const soakedHeal = r.battle!.combatants.find((c) => c.memberId === members[0].id)!.healReceived ?? 0
+        const soakedMod = r.battle!.combatants.find((c) => c.memberId === members[0].id)!.healTakenMod ?? 1
+        expect(soakedMod).toBeCloseTo(0.9, 5)
+        // 受疗词条字段不被词缀污染(玩家堆的受疗保留)
+        const soakedReceived = r.battle!.combatants.find((c) => c.memberId === members[0].id)!.healReceived ?? 0
         r.conditions = []
         r.battle = null
         r.phase = 'rest'
         startStep(r, seed, 0, members)
         const baseHeal = r.battle!.combatants.find((c) => c.memberId === members[0].id)!.healReceived ?? 0
-        expect(soakedHeal - baseHeal).toBeCloseTo(-0.1, 5)
+        expect(soakedReceived).toBe(baseHeal)
         // 走营地解除
         const camp = r.map.layers.flat().find((n) => n.terrain === 'camp')!
         expect(camp, 'blackmoss 应有营地地形').toBeTruthy()

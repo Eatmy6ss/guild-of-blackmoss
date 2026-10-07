@@ -321,7 +321,8 @@ export function createBattle(
         c.maxHp = Math.max(1, Math.round(c.maxHp * mods.hp))
         c.hp = c.maxHp
       }
-      if (mods.heal !== undefined) c.healReceived = (c.healReceived ?? 0) + mods.heal - 1
+      // #2.7:治疗减半等词缀走独立乘区 healTakenMod(不再覆盖玩家堆的受疗词条)
+      if (mods.heal !== undefined) c.healTakenMod = (c.healTakenMod ?? 1) * mods.heal
       // R5.1b 好处面:火抗加算(湿透;灼热地形受益)
       if (mods.fireRes !== undefined) c.fireResist = Math.min(0.9, (c.fireResist ?? 0) + mods.fireRes)
     }
@@ -847,7 +848,7 @@ function useSkill(
       const target = hurt.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
       // 治疗吞吐须覆盖 boss 基础压力:D15 加压轮后 3.0 倍;节奏改版(血池×1.5/战斗拉长)后
       // 牧师基础攻击 7.0 配 4.5 倍 ≈ 31/s,恢复 D15 校准的绝对吞吐,否则长战斗必崩盘
-      const amount = Math.round(c.attack * 4.5 * (1 + (c.healPower ?? 0)) * (1 + (target.healReceived ?? 0)))
+      const amount = computeHeal(c, target, Math.round(c.attack * 4.5), 'skill')
       target.hp = Math.min(target.maxHp, target.hp + amount)
       // 治疗仇恨：0.4× 转化为威胁(节奏改版④:战斗拉长后 1:1 会让牧师威胁反超坦克,
       // 远程转火治疗——打折扣保住坦克仇恨线;坦克倒下后累积仍会居首,兜底逻辑不变)
@@ -1499,6 +1500,16 @@ export function executeSignature(state: BattleState, cmd: { memberId: string; sk
   )
 }
 
+/** #2.7 治疗三路径的统一量口:治疗输出 = 基量 × (1+治疗强度[技能路径才有]) × (1+受疗) × healTakenMod。
+ *  kind: 'skill'=技能治疗(吃 healPower)/'potion'=药水(两条属性都不吃)/'tick'= DOT 类无主治疗。 */
+export function computeHeal(source: Combatant | null, target: Combatant, base: number, kind: 'skill' | 'potion' | 'tick' = 'skill'): number {
+  const power = source && kind === 'skill' ? (source.healPower ?? 0) : 0
+  // 药水路径声明不吃任何治疗属性(#2.7 禁止留成隐含行为):kind==='potion' 时受疗也不计
+  const received = kind === 'potion' ? 0 : (target.healReceived ?? 0)
+  const taken = target.healTakenMod ?? 1
+  return Math.max(1, Math.round(base * (1 + power) * (1 + received) * taken))
+}
+
 export function useHealPotion(state: BattleState): boolean {
   const cmd = state.commands
   if (state.status !== 'running' || cmd.healStock <= 0 || cmd.healCd > 0) return false
@@ -1507,7 +1518,7 @@ export function useHealPotion(state: BattleState): boolean {
   cmd.healStock--
   cmd.healCd = POTION_CD_TICKS
   for (const m of members) {
-    const amount = Math.round(m.maxHp * HEAL_PCT * (1 + (m.healReceived ?? 0)))
+    const amount = computeHeal(null, m, Math.round(m.maxHp * HEAL_PCT), 'potion')
     m.hp = Math.min(m.maxHp, m.hp + amount)
     state.events.push({
       tick: state.tick,

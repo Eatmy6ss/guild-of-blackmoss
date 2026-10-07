@@ -249,6 +249,8 @@ export interface Combatant {
   healPower?: number
   threatMult?: number
   cdReduction?: number
+  /** #2.7:远征/塔词缀的"受到治疗"独立乘区(不再覆盖玩家堆的受疗词条) */
+  healTakenMod?: number
   cooldownLeft: number
   alive: boolean
   memberId?: string

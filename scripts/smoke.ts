@@ -1117,7 +1117,8 @@ const towerFailures: string[] = []
     const g2 = b2.combatants.filter((c) => c.team === 'guild')
     const hpOk = g2.every((c, i) => c.maxHp === Math.round(g1[i].maxHp * 1.2))
     const atkOk = g2.every((c, i) => c.attack <= g1[i].attack)
-    const healOk = g2.every((c, i) => Math.abs((c.healReceived ?? 0) - (g1[i].healReceived ?? 0) - 0.15) < 1e-9)
+    // #2.7:mods.heal 走独立乘区 healTakenMod(不再写 healReceived)
+    const healOk = g2.every((c, i) => Math.abs((c.healTakenMod ?? 1) - (g1[i].healTakenMod ?? 1) * 1.15) < 1e-9)
     if (!hpOk || !atkOk || !healOk) fail16.push(`⑯ 远征状态未生效:hp=${hpOk} atk=${atkOk} heal=${healOk}`)
     console.log(`⑯ 远征状态接线:hp×1.2=${hpOk},atk×0.9=${atkOk},heal+15%=${healOk}`)
   }
