@@ -16,8 +16,8 @@
 
 ## ⚡ 实时状态牌(2026-10-07 新规:每次开工/推进/收尾都必须刷新此牌——防止撞车)
 
-> **⏳ 正在更新(本机 zcode,2026-10-07 深夜)**:**B3-4 开工**——死因写入词缀(combat 死亡块/markPermadeath/renderDeathCause)+塔侦查分级 UI(TowerRestScreen)+营地换装(RunCore.spares/ExpeditionBoard/TowerRestScreen/MapScreen)。**涉及文件:src/sim/combat.ts、src/sim/run.ts、src/sim/types.ts、src/ui/screens/{TowerScreens,MapScreen,ExpeditionBoard}.tsx、src/ui/controllers.ts。**
-> **📦 已交付并推送**:B3-1/B3-2/B3-3(HEAD ac805e6 含状态牌)。
+> **⏳ 正在更新(本机 zcode)**:批次 3 只剩 **B3-5**(保险扩展+收手界面戏剧化,TowerRestScreen 改造+insureNextTowerFloor 扩展)。**B3-1~B3-4 已全部交付推送**(B3-4=f92a631:死因写入词缀/塔侦查 UI/营地换装 rest 相解锁)。
+> **🔜 B3-5 精确待办**:①insureNextTowerFloor 扩展「团灭保住部分 pendingLoot」(现仅阵亡装备免赎回);②收手界面=TowerRestScreen 加累计 pendingLoot 展示(金币/经验/掉落清单)+下段规则预告(ruleHistory 分段)+「带着 X 金收手」按钮文案;③改完跑 verify+推+重部署试玩包 → **M2 交制作人试玩**。
 > **⚠ 给所有远程协作者(含 shldo)**:上述文件即将变更——如果你正基于旧 main 改这些区域,**请先决定**:①等本机推完再 rebase;②或改用你自己的分支避免冲突。撞车前本节会持续更新;本机每单交付后立即推 main 并刷新此牌。
 > **✅ 空闲标记**:批次 3 全部交付后,此牌会改写为「空闲,可安全并行」。
 
