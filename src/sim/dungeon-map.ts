@@ -88,7 +88,9 @@ export function autoPickNode(
   if (options.length === 0) return null
   const visible = options.filter((o) => !(o.kind === 'secret' && opts.tier < 3 && !opts.lostReveals))
   const pool = visible.length > 0 ? visible : options
-  if (opts.tier > 0) {
+  // 迷途把眼前选项完全蒙住，即使原本熟练也不能让挂机偷读宝箱/休整类型。
+  const blinded = (opts.conditions ?? []).some(id => (CONDITION_BY_ID[id]?.map?.revealPenalty ?? 0) > 0)
+  if (opts.tier > 0 && !blinded) {
     const byKind = (k: MapNodeKind) => pool.find((o) => o.kind === k)
     const treasure = byKind('treasure')
     if (treasure) return treasure

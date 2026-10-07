@@ -225,32 +225,37 @@ async function phaseFresh() {
     const exportBeforeEnding = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&(x.textContent.includes('导出试玩记录')||x.title?.includes('导出试玩记录')))`)
     check('S1', '结束画面之前也能导出试玩记录(流失玩家能回传)', exportBeforeEnding ? 'PASS' : 'FAIL', exportBeforeEnding ? '' : '大厅无导出入口')
 
-    // U27①/R1.3 断言:新档(熟练度 0)的地图——不选路不能前进;U33③④ 修订:相邻层见地形、更远层全盲、暗道零渲染
+    // 2026-10-07 修订:低熟练度当前可选/后续路线均未知，已知路线靠熟练度与情报逐步揭示。
     {
       await clickText(b, '黑苔沼泽'); await sleep(300)
       const depart = await clickText(b, '出发'); await sleep(800)
       if (depart) {
+        // Windows 无头窗口可能没有焦点，先模拟前台页，才能触发真实 focus 事件与 React 提示。
+        await b.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+        await b.evalJs(`document.querySelector('.dungeon-graph .dg-node.available')?.focus()`); await sleep(150)
         const probe = await b.evalJs(`(()=>{
           const body=document.body.innerText
-          const cells=[...document.querySelectorAll('.dungeon-graph .dg-node')].map(x=>({t:x.textContent.trim(), n:x.querySelector('.dg-name')?.textContent.trim() ?? ''}))
+          const cells=[...document.querySelectorAll('.dungeon-graph .dg-node')].map(x=>({t:x.textContent.trim(), n:x.querySelector('.dg-name')?.textContent.trim() ?? '',title:x.title,boss:x.classList.contains('boss')}))
           const icons=[...document.querySelectorAll('.dungeon-graph .dg-node:not(.walked):not(.current) .dg-icon')].map(x=>x.textContent.trim())
           const TERRAINS=['水域','林野','道路','营地','地下','废墟','墓地','圣所','熔岩']
           const leak=cells.filter(c=>/精英|宝箱|暗道|休整|事件/.test(c.t)).map(c=>c.t)
             .concat(icons.filter(ic=>/⚔|☠|🎁|⛺|🕳|👑/.test(ic)))
           const terrainShown=cells.filter(c=>TERRAINS.includes(c.n)).length
           const masked=cells.filter(c=>c.n==='未知岔路').length
-          const allKnown=cells.every(c=>TERRAINS.includes(c.n)||c.n==='未知岔路')
+          const allMasked=cells.every(c=>c.n==='未知岔路'&&c.title.startsWith('未知岔路')&&!c.boss)
           const flavor=cells.filter(c=>/洼地|猎场|栈道|棚屋|林地/.test(c.n)).map(c=>c.n)
-          return { inMap: cells.length>0, hasDeep: body.includes('继续深入'), terrainShown, masked, allKnown, leak, flavor } })()`)
+          const tooltip=document.querySelector('.dg-intel')?.textContent??''
+          return { inMap: cells.length>0, hasDeep: body.includes('继续深入'), terrainShown, masked, allMasked, leak, flavor,tooltip, focused: document.hasFocus(), active: document.activeElement?.className } })()`)
         check('M1', '地图:不选路不能前进(无「继续深入」)', probe.inMap && !probe.hasDeep ? 'PASS' : 'FAIL', `节点数=${probe.terrainShown + probe.masked}`)
-        check('M2', 'U33③④ 迷雾起点:相邻层见地形、更远层全盲、类型/风味名零泄露、暗道零渲染',
-          probe.inMap && probe.leak.length === 0 && probe.allKnown && probe.terrainShown > 0 && probe.masked > 0 && probe.flavor.length === 0 ? 'PASS' : 'FAIL',
-          `地形名 ${probe.terrainShown} / 全盲 ${probe.masked}${probe.leak.length ? ';泄露:' + probe.leak.join('|') : ''}${probe.flavor.length ? ';风味名:' + probe.flavor.join('|') : ''}`)
+        check('M2', '陌生地图:当前可选与后续全为问号，名称/样式/焦点提示不泄露遭遇',
+          probe.inMap && probe.leak.length === 0 && probe.allMasked && probe.terrainShown === 0 && probe.masked > 0 && probe.flavor.length === 0 && probe.tooltip.startsWith('未知岔路') && !/这里能给|走这里可能/.test(probe.tooltip) ? 'PASS' : 'FAIL',
+          JSON.stringify(probe))
+        await b.shot('fog-entry')
         await clickText(b, '🏳 撤退回城'); await sleep(500)
         await clickText(b, '返回公会'); await sleep(300)
       } else {
         check('M1', '地图:不选路不能前进(无「继续深入」)', 'SKIP', '出发不可点(编制/锁定)')
-        check('M2', 'U33③④ 迷雾起点断言', 'SKIP', '同上')
+        check('M2', '陌生地图全盲断言', 'SKIP', '同上')
       }
     }
 
@@ -287,6 +292,7 @@ async function phaseEnding() {
   console.log('\n▶ ending:Lv12 满编档打荆棘要塞 → 结束画面 → 导出')
   const save = await devSave(12)
   save.manual = [...REGION1_BOSSES]; save.day = 12
+  save.dungeonMastery = { ...save.dungeonMastery, blackmoss: 0 }
   // R3/W5:①给一名成员注入其本命族线装(档案应示「✔ 熟练」);②给一名非守卫成员注入长柄
   // (对非守卫族不熟练,档案应示「⚠ 非熟练·长柄」),并以长柄站位打完整场 Boss 战。
   // 断言放本段而非 fresh:新档功能坞渐进解锁(A10),点不开基地/花名册。
@@ -339,11 +345,28 @@ async function phaseEnding() {
     await pressEscape(b); await sleep(300)
     // U36 R4C:情报 v2——买官署密报(恒真),买完立刻看到文本+入清单
     await clickText(b, '酒馆'); await sleep(500)
+    await b.evalJs(`(()=>{const d=document.querySelector('[aria-label="情报副本"]');d.value='blackmoss';d.dispatchEvent(new Event('change',{bubbles:true}))})()`)
     await b.evalJs(`(()=>{const sels=[...document.querySelectorAll('.potion-supply select')];const tier=sels.find(x=>x.getAttribute('aria-label')==='情报档位');if(tier){tier.value='royal';tier.dispatchEvent(new Event('change',{bubbles:true}))}})()`)
     await b.evalJs(`[...document.querySelectorAll('.potion-supply button')].find(x=>x.textContent.includes('买情报'))?.click()`); await sleep(500)
     const intel = await b.evalJs(`(()=>({fresh:document.querySelector('.intel-fresh')?.textContent??null,items:[...document.querySelectorAll('.intel-list .intel-item')].map(li=>li.textContent),stock:document.querySelector('.potion-supply .hint')?.textContent.includes('货架上有')}))()`)
     check('R4C', '情报v2:官署密报买完即见文本+入清单(未验证)', intel && intel.fresh && intel.fresh.length > 8 && intel.items.length === 1 && intel.items[0].includes('未验证') ? 'PASS' : 'FAIL', JSON.stringify(intel).slice(0, 120))
     await pressEscape(b); await sleep(300)
+    // 真正购买、出发、刷新：零熟练度也能凭情报看清部分路线，不能全图透视。
+    await clickText(b, '黑苔沼泽'); await sleep(200)
+    await clickText(b, '出发'); await sleep(600)
+    const scoutProbe = `(()=>{const names=[...document.querySelectorAll('.dg-name')].map(x=>x.textContent);return {known:names.filter(n=>n!=='未知岔路').length,masked:names.filter(n=>n==='未知岔路').length,hint:document.querySelector('.route-choice>.hint')?.textContent??'',intel:document.querySelector('.intel-list')?.textContent??''}})()`
+    const scout = await b.evalJs(scoutProbe)
+    check('M3', '情报侦察:零熟练度提前看清部分路线，并保留怪物资料',
+      scout.known > 0 && scout.masked > 0 && scout.hint.includes('熟练度 0') && scout.hint.includes('本趟提前揭示一档') && scout.intel.includes('未验证') ? 'PASS' : 'FAIL', JSON.stringify(scout).slice(0, 200))
+    await b.shot('scouted-map')
+    await b.send('Page.reload'); await sleep(1500)
+    await clickText(b, '继续旅程'); await sleep(500)
+    const resumed = await b.evalJs(scoutProbe)
+    check('M4', '刷新后情报揭示与未知路线保持，永久熟练度不变',
+      scout.known > 0 && JSON.stringify(resumed) === JSON.stringify(scout) ? 'PASS' : 'FAIL', JSON.stringify(resumed).slice(0, 200))
+    // 此样本只检查地图；恢复原终局夹具再继续既有武器/通关检查。
+    await b.send('Page.reload'); await sleep(1200)
+    await importSave(b, encode(save))
     const openProfile = async (name) => {
       // 自导航:名册不在场才点「花名册」——功能坞按钮是开关式,名册开着时再点=关闭
       const hasRoster = await b.evalJs(`!!document.querySelector('.member-card')`)

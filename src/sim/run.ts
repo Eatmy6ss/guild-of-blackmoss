@@ -347,14 +347,14 @@ export function resetAfterRun(members: Member[]): void {
 // ===== 熟练度迷雾(宪法 v3.3 修正案;R1.3 扩为四档+暗道)=====
 
 /** 熟练度阈值(R1.3 四档,redesign §3 表):
- *  0-34 相邻一层只知名与地形;35-59 相邻层类型+前两层地形;
+ *  0-34 未探索节点全盲;35-59 相邻层类型+前两层地形;
  *  60-79 前两层类型+节点内容+路况提示(触发率 ×0.75);80+ 全图类型+暗道可见(触发率 ×0.5)。
  *  直捣 boss 已随固定路线删除(R1.1),其职能由暗道接替。 */
 export const MASTERY = { KIND: 35, FULL: 60, MASTER: 80 } as const
 
 export type RevealTier = 0 | 1 | 2 | 3
 
-/** 揭示档位:revealBonus=R4 酒馆情报的临时提档预留(每点 +1 档);penalty=迷途的临时降档 */
+/** 揭示档位:revealBonus=酒馆情报的本趟临时侦察(每点 +1 档);penalty=迷途的临时降档 */
 export function revealTier(mastery: number, revealBonus = 0, revealPenalty = 0): RevealTier {
   const base = mastery >= MASTERY.MASTER ? 3 : mastery >= MASTERY.FULL ? 2 : mastery >= MASTERY.KIND ? 1 : 0
   return Math.max(0, Math.min(3, base + revealBonus - revealPenalty)) as RevealTier

@@ -182,7 +182,7 @@ function IntelVendor(props: TavernScreenProps) {
           🕵 买情报({tier.gold} 金){intelStock <= 0 ? ' · 货空了' : full ? ' · 情报已齐' : ''}
         </button>
       </div>
-      <p className="hint">{tier.desc}。同一副本最多留 {INTEL_PER_DUNGEON} 条;走一趟就能验证真伪。</p>
+      <p className="hint">{tier.desc}。消息会记录怪物或首领的线索；一份未用过的可靠情报可让本趟地图提前揭示一档，看清部分原本未知的路线，不增加永久熟练度。同一副本最多留 {INTEL_PER_DUNGEON} 条。</p>
       {intelNotice && <p className="intel-fresh" role="status">📢 {intelNotice}</p>}
       {known.length > 0 && (
         <ul className="intel-list">
