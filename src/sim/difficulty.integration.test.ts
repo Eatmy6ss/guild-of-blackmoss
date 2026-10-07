@@ -2,6 +2,7 @@ import { createRun, startStep, startTower, startTowerFloor } from '../../scripts
 import { expect, test } from 'vitest'
 import { DUNGEONS } from '../data/dungeons'
 import { towerEncounterRaw } from './tower'
+import { MONSTER_AFFIXES } from './monster-affix'
 import { createBattle, enemyToCombatant } from './combat'
 import { scaleEnemy, type DifficultyModifiers } from './difficulty'
 import { processBossMechanics } from './mechanics'
@@ -102,7 +103,8 @@ test('高塔预缩放的首领和增援只应用一次楼层成长，不混入�
     expect(battle.combatants).toHaveLength(initial.length)
     for (const [index, enemy] of battle.combatants.entries()) {
       const raw = initial[index]
-      expect(enemy.name).toBe(raw.name)
+      // #3.3:词缀怪名字带后缀(·血怒等),本测试只验缩放——剥掉词缀后缀比对
+      expect(enemy.name.replace(new RegExp(`(·(?:${Object.values(MONSTER_AFFIXES).map((d) => d.name).join('|')}))+$`), '')).toBe(raw.name)
       expect(enemy.maxHp).toBe(Math.round(raw.maxHp * towerEnemyScale(floor)))
       expect(enemy.attack, `${floor}/${enemy.name}/${raw.id}`).toBe(Math.round(raw.attack * towerEnemyScale(floor)))
     }

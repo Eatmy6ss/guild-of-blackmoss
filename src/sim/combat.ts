@@ -677,6 +677,20 @@ export function applyHit(
     target.alive = false
     state.events.push({ tick: state.tick, type: 'death', targetId: target.id })
     pushLog(state, 'system', `☠ ${target.name} 倒下了`)
+    // #3.3 亡语钩子(U22):词缀怪死亡瞬间执行其已登记 kind 的效果(此处 ground-zone=腐蚀之地)
+    const deathwargMech = target.bossMechanics?.find((m) => Boolean((m.params as Record<string, unknown> | undefined)?.onDeath))
+    if (deathwargMech && target.team === 'enemy') {
+      const dps = typeof deathwargMech.params.dps === 'number' ? deathwargMech.params.dps : 6
+      for (const g of aliveOf(state, 'guild')) {
+        g.hp = Math.max(0, g.hp - dps)
+        if (g.hp <= 0 && g.alive) {
+          g.alive = false
+          state.events.push({ tick: state.tick, type: 'death', targetId: g.id })
+          pushLog(state, 'system', `☠ ${g.name} 倒下了`)
+        }
+      }
+      pushLog(state, 'guild', `☠ ${target.name} 的【${deathwargMech.name}】爆发——地面腐蚀,全队受到 ${dps} 点伤害!(触发提示:亡语)`)
+    }
     // 装备 2.0 传承威能·饮血:己方击杀敌人时,持有者回复 2% 最大生命
     if (target.team === 'enemy' && attacker.team === 'guild') {
       for (const g of aliveOf(state, 'guild')) {

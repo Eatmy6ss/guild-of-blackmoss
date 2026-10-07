@@ -3,6 +3,7 @@ import { initialRunState, checkpointRunState, runReducer } from '../src/sim/run-
 import { appendFact, latestEventChoice, markExpeditionStart, markTold, normalizeLedger, pruneFacts, factsByItem, factsByMember, factById, EMPTY_LEDGER } from '../src/sim/fact-ledger'
 import { tellExpedition } from '../src/sim/storyteller'
 import { appendBio } from '../src/sim/bio'
+import { MONSTER_AFFIXES } from '../src/sim/monster-affix'
 import { memberGenerationState, restoreMemberGeneration } from '../src/sim/gen'
 import { createRun, startStep, advanceRun, retreatRun, startTower, startTowerFloor, towerNext, settleTowerFloor, beginBattle, towerEncounterRaw } from './run-test-compat'
 import assert from 'node:assert/strict'
@@ -322,7 +323,8 @@ test('tower rotations follow towerEncounterRaw(单一来源):早期固定池,9 �
     const raw = towerEncounterRaw(floor)
     const expected = raw.kind === 'boss' ? [raw.entry.boss] : raw.group
     const enemies = run.battle!.combatants.filter(c => c.team === 'enemy')
-    assert.deepEqual(enemies.map(c => c.name), expected.map(c => c.name), `floor ${floor}`)
+    const stripAffix = (n: string) => n.replace(new RegExp(`(·(?:${Object.values(MONSTER_AFFIXES).map((d) => d.name).join('|')}))+$`), '')
+    assert.deepEqual(enemies.map(c => stripAffix(c.name)), expected.map(c => c.name), `floor ${floor}`)
     enemies.forEach((c, i) => {
       assert.equal(c.maxHp, Math.round(expected[i].maxHp * towerEnemyScale(floor)))
       assert.equal(c.attack, Math.round(expected[i].attack * towerEnemyScale(floor)))

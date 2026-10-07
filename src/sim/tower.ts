@@ -9,6 +9,8 @@ import type { Rng } from './rng'
 import { createRunCore, runMembers, syncRunParty, type RunCore } from './run-core'
 import { markPermadeath } from './run'
 import { towerSegment, rollSegmentRules, hasRule } from './tower-rule'
+import { rollMonsterAffixes, MONSTER_AFFIXES, affixedName, enterLog } from './monster-affix'
+import { pushLog } from './combat'
 export { towerEnemyScale } from './difficulty'
 
 // 黑苔高塔(批次 3/U38 改造:主菜赌局化):
@@ -126,6 +128,21 @@ export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = 
     ? enc.group.map((e) => towerFloorScale(e, floor))
     : []
   const enemyGroups: DungeonDef['enemyGroups'] = { tower: pool }
+  // #3.3 怪物词缀:进层 roll(词缀密度规则=上限+1);施加名字/机制/进场提示(可见性三层)
+  const affixRolls = rollMonsterAffixes(pool.length, hasRule(rules, 'affix-density'), () => createLootRng((run.seed ?? 0) * 17 + floor * 291)())
+  if (affixRolls.length) {
+    run.monsterAffixes = { ...(run.monsterAffixes ?? {}), [String(floor)]: affixRolls.map((r) => r.affixId) }
+    for (const roll of affixRolls) {
+      const def = MONSTER_AFFIXES[roll.affixId]
+      const base = pool[roll.enemyIndex]
+      if (!base) continue
+      pool[roll.enemyIndex] = {
+        ...base,
+        name: affixedName(base.name, [roll.affixId]),
+        mechanics: [...(base.mechanics ?? []), { id: `affix-${def.id}`, kind: def.kind, name: def.name, params: def.params as Record<string, number | string> }],
+      }
+    }
+  }
   if (isBoss) {
     for (const mechanic of entry.boss.mechanics) {
       if (mechanic.kind !== 'summon') continue
@@ -178,6 +195,11 @@ export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = 
     for (const c of run.battle.combatants) {
       if (c.team === 'guild') c.healTakenMod = (c.healTakenMod ?? 1) * 0.5
     }
+  }
+  // 可见性第二层:进场提示(U22 红线——词缀怪杀人前必须可见)
+  for (const roll of affixRolls) {
+    const base = pool[roll.enemyIndex]
+    if (base) for (const line of enterLog([roll.affixId], base.name)) pushLog(run.battle, 'enemy', line)
   }
   run.phase = 'battle'
 }

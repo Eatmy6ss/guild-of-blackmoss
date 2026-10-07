@@ -146,7 +146,7 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
     kind: 'cast-buff',
     label: '强化咏唱',
     counter: '集火打断——读条期间打出足够伤害即可中断',
-    defaults: { everyTicks: 240, attackBuff: 8, durationTicks: 120, breakDamage: 450, firstTick: 90, castTicks: 25 },
+    defaults: { everyTicks: 240, attackBuff: 8, durationTicks: 120, breakDamage: 450, firstTick: 90, castTicks: 25, allyShield: 0 }, // allyShield>0=圣咏通道(同伴护盾)
     describe(m) {
       const cast = mechanicParam(m, 'castTicks')
       const buff = mechanicParam(m, 'attackBuff')
@@ -156,6 +156,17 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
     },
     startLog: ({ self: c, def: m }) => `${c.name} 开始咏唱【${m.name}】——集火可以打断！`,
     onComplete({ state, self: c, def: m }) {
+      // U22/#3.3 圣咏通道:allyShield=为同伴套吸收盾(否则自身攻击强化)
+      const allyShield = mechanicParam(m, 'allyShield')
+      if (allyShield > 0) {
+        for (const a of state.combatants) {
+          if (a.team === c.team && a.alive && a.id !== c.id) {
+            a.absorbShield = (a.absorbShield ?? 0) + Math.round(allyShield)
+          }
+        }
+        pushLog(state, 'enemy', `🎵 ${c.name} 的咏唱完成——同伴获得了护盾!`)
+        return
+      }
       c.buffAttack = mechanicParam(m, 'attackBuff')
       c.buffUntil = state.tick + mechanicParam(m, 'durationTicks')
       pushLog(state, 'enemy', `${c.name} 的【${m.name}】咏唱完成，攻击力提升！`)
@@ -356,14 +367,19 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
     kind: 'enrage',
     label: '狂暴软墙',
     counter: '拖延即灾难——尽快压血,别和它耗',
-    defaults: { atTick: 280, attackMult: 2 },
+    defaults: { atTick: 280, attackMult: 2, hpBelow: 0 }, // hpBelow>0=血量阈值触发(血怒);0=按 atTick(老 boss 零变)
     describe(m) {
       const at = mechanicParam(m, 'atTick')
       const mult = mechanicParam(m, 'attackMult')
       return `战斗拖过 ${sec(at)} 后狂暴,攻击 ×${mult}——拖延即灾难,全力压血`
     },
     step({ state, self: c, def: m, rt }) {
-      if (!rt.fired && state.tick >= mechanicParam(m, 'atTick')) {
+      // U22/#3.3 血怒通道:hpBelow 定义=血量阈值触发(否则按时间 atTick)
+      const hpBelow = mechanicParam(m, 'hpBelow')
+      const fired = hpBelow > 0
+        ? !rt.fired && c.hp / c.maxHp <= hpBelow
+        : !rt.fired && state.tick >= mechanicParam(m, 'atTick')
+      if (fired) {
         rt.fired = 1
         c.attack = Math.round(c.attack * mechanicParam(m, 'attackMult'))
         state.events.push({ tick: state.tick, type: 'enraged', targetId: c.id })
