@@ -8,6 +8,7 @@ import { scaleEnemy, towerEnemyScale, TOWER_SCALING_PER_FLOOR } from './difficul
 import type { Rng } from './rng'
 import { createRunCore, runMembers, syncRunParty, type RunCore } from './run-core'
 import { markPermadeath } from './run'
+import { towerSegment, rollSegmentRules, hasRule } from './tower-rule'
 export { towerEnemyScale } from './difficulty'
 
 // 黑苔高塔(批次 3/U38 改造:主菜赌局化):
@@ -58,6 +59,10 @@ export interface TowerRun extends RunCore {
   potions: { heal: number; fury: number }
   /** #3.1 下塔才结算:装备掉落暂存(金币/经验/星髓走 RunCore.pendingLoot);离开时兑现 */
   pendingDrops?: ItemInstance[]
+  /** B3-2:当前段规则词缀(进段 roll,段=3 层)与历史(收手界面用) */
+  segmentIndex?: number
+  segmentRules?: import('./tower-rule').TowerRuleId[]
+  ruleHistory?: Record<number, import('./tower-rule').TowerRuleId[]>
   /** 遗物安葬 2.0:本层已投保(阵亡装备免赎回费) */
   insuredFloor?: boolean
   /** 休整时购买的下一层保障，进入指定层时生效 */
@@ -105,6 +110,15 @@ export function towerEncounterRaw(floor: number): { kind: 'boss'; entry: (typeof
 /** 生成某一层的战斗(复用 createBattle:威胁/站位/机制全继承) */
 export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = []): void {
   const floor = run.floor
+  // B3-2:进新段 roll 规则词缀(1–2 条,层数越高越多)
+  const segment = towerSegment(floor)
+  if (run.segmentIndex !== segment) {
+    run.segmentIndex = segment
+    const lootRngSeg = createLootRng((run.seed ?? 0) * 131 + segment * 613)
+    run.segmentRules = rollSegmentRules(segment, () => lootRngSeg())
+    run.ruleHistory = { ...(run.ruleHistory ?? {}), [segment]: run.segmentRules }
+  }
+  const rules = run.segmentRules
   const enc = towerEncounterRaw(floor)
   const isBoss = enc.kind === 'boss'
   const entry = enc.kind === 'boss' ? enc.entry : BOSS_ROTATION[0]! // wave 层不消费 entry(类型收窄垫片)
@@ -125,6 +139,7 @@ export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = 
     rating: 1,
     size: 3,
     terrains: {},
+    ...(hasRule(rules, 'scorching') ? { env: 'heat' as const } : {}),
     enemyGroups,
     bosses: isBoss ? { boss: towerFloorScale(entry.boss, floor) } : {},
     encounters: [
@@ -134,10 +149,12 @@ export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = 
     ],
   }
   // 药水经济:本层从携带库存中支取;5 层起每场可用减半(深层药力稀薄,残酷分层)
-  const alloc = {
-    heal: floor >= TOWER.potionHalfFromFloor ? Math.min(run.potions.heal, Math.max(1, Math.floor(run.potions.heal / 2))) : run.potions.heal,
-    fury: floor >= TOWER.potionHalfFromFloor ? Math.min(run.potions.fury, Math.max(1, Math.floor(run.potions.fury / 2))) : run.potions.fury,
-  }
+  const alloc = hasRule(rules, 'no-potion')
+    ? { heal: 0, fury: 0 }
+    : {
+        heal: floor >= TOWER.potionHalfFromFloor ? Math.min(run.potions.heal, Math.max(1, Math.floor(run.potions.heal / 2))) : run.potions.heal,
+        fury: floor >= TOWER.potionHalfFromFloor ? Math.min(run.potions.fury, Math.max(1, Math.floor(run.potions.fury / 2))) : run.potions.fury,
+      }
   run.potions = { heal: run.potions.heal - alloc.heal, fury: run.potions.fury - alloc.fury }
   run.battle = createBattle(
     runMembers(run, roster).filter((m) => m.alive),
@@ -151,6 +168,17 @@ export function startTowerFloor(run: TowerRun, seed: number, roster: Member[] = 
     alloc,
     { towerFloor: floor },
   )
+  // B3-2 规则接线:残血开局(60% C4)/治疗减半(healTakenMod,#2.7 独立乘区)
+  if (hasRule(rules, 'low-start')) {
+    for (const c of run.battle.combatants) {
+      if (c.team === 'guild' && c.alive) c.hp = Math.max(1, Math.round(c.maxHp * 0.6))
+    }
+  }
+  if (hasRule(rules, 'half-heal')) {
+    for (const c of run.battle.combatants) {
+      if (c.team === 'guild') c.healTakenMod = (c.healTakenMod ?? 1) * 0.5
+    }
+  }
   run.phase = 'battle'
 }
 
@@ -236,6 +264,8 @@ export function settleTowerFloor(run: TowerRun, rng?: Rng, itemId?: () => string
 /** 层间休整:幸存者回复(塔内比副本更紧);不推进层数——推进由 towerNext
  *  F05 修复(2026-09-25):接通疗养所加成(towerRestHealPct),不再吃固定常量 */
 export function towerRest(run: TowerRun, healPct: number = TOWER.restHealPct, roster: Member[] = []): void {
+  // B3-2 无营地:本段休整不回复
+  if (hasRule(run.segmentRules, 'no-camp')) return
   for (const m of runMembers(run, roster)) {
     if (!m.alive) continue
     const c = run.battle?.combatants.find((x) => x.memberId === m.id)
