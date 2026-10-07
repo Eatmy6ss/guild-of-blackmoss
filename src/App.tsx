@@ -76,7 +76,6 @@ const START_JOBS = ['guard', 'priest', 'ranger'] as const
 
 
 const SEED_BASE = 7777
-const ROSTER_CAP = 6
 const MANUAL_BONUS = 0.05 // 已研习 boss 全队对其伤害 +5%
 
 // UI 2.0 屏幕栈:公会大厅(hub) + 功能界面覆盖层。快捷键呼出,Esc/再按关闭。
@@ -389,6 +388,8 @@ export default function App() {
   const [chronicle, setChronicle] = useState<ChronicleEntry[]>(() => saved?.chronicle ?? [])
   const chronicleRef = useRef(chronicle)
   const [buildings, setBuildings] = useState<Record<string, number>>(() => saved?.buildings ?? {})
+  // #4.4 建筑职责重分工:名册上限派生自宿舍等级(基础 6,每级 +1)——不再是无增长的常量
+  const rosterCap = baseEffects(buildings).rosterCap
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   // 药水库存(经济改造):出征携带/战斗消耗/回城退回,仓库补货
@@ -566,7 +567,7 @@ export default function App() {
     memorial, protectOn, hintsSeen, rareHuntNext, pendingEvent, setRecruitCooldown,
     dismissHint, setPlaytestEnding, members, setExpeditionIds, activeDungeon, sfxVictory,
     sfxDefeat, syncAll, setPendingEvent, setEventResult, setDay, SEED_BASE,
-    MANUAL_BONUS, receiveItems, gainGold, ROSTER_CAP, setUnlockedHybrids, newRoster,
+    MANUAL_BONUS, receiveItems, gainGold, ROSTER_CAP: rosterCap, setUnlockedHybrids, newRoster,
     setStarMarrow, setHealingNotice, healingBusyRef, setChronicle, setEventImpacts, setOfflineNote,
     setDungeonId, setSaveTransfer, setTowerRunning, eventResolvingRef, eventCursorRef, sfxCoin,
     blessing, kingdomRef, expeditionIds, resolveEventRef, dismissEventRef, eventResult,
@@ -679,7 +680,7 @@ export default function App() {
 
   // 判定已由 sim 完成；这里仅将结果同步到公会状态和当前玩法。
   const signVisitor = () => {
-    if (!visitor || runRef.current || towerRunRef.current || aliveCount() >= ROSTER_CAP) return
+    if (!visitor || runRef.current || towerRunRef.current || aliveCount() >= rosterCap) return
     if (membersRef.current.some(m => m.id === visitor.member.id)) return
     // Reserve the recruit before a second click can replay this render's visitor.
     membersRef.current = [...membersRef.current, visitor.member]
@@ -691,7 +692,7 @@ export default function App() {
   }
 
   const hireBounty = (job: JobId) => {
-    if (runRef.current || effectiveCooldown > 0 || gold < ECONOMY.bountyCost || aliveCount() >= ROSTER_CAP) return
+    if (runRef.current || effectiveCooldown > 0 || gold < ECONOMY.bountyCost || aliveCount() >= rosterCap) return
     setGold((g) => g - ECONOMY.bountyCost)
     const m = bountyCandidate(guildRng, membersRef.current, job)
     rollWishFor(m); rollTraitFor(m)
@@ -702,7 +703,7 @@ export default function App() {
   }
 
   const rollTale = () => {
-    if (runRef.current || effectiveCooldown > 0 || aliveCount() >= ROSTER_CAP) return
+    if (runRef.current || effectiveCooldown > 0 || aliveCount() >= rosterCap) return
     if (gold < ECONOMY.taleCost.gold || blessing < ECONOMY.taleCost.blessing) return
     setGold((g) => g - ECONOMY.taleCost.gold)
     setBlessing((b) => b - ECONOMY.taleCost.blessing)
@@ -711,7 +712,7 @@ export default function App() {
   }
 
   const hire = (m: Member) => {
-    if (runRef.current || towerRunRef.current || membersRef.current.some(x => x.id === m.id) || aliveCount() >= ROSTER_CAP) return
+    if (runRef.current || towerRunRef.current || membersRef.current.some(x => x.id === m.id) || aliveCount() >= rosterCap) return
     // 宪法 v3:招募即带专精;F06(2026-09-25):候选已定专精(生成时默认线/三选一可能混合线)——
     // 入职保留之,不再重 roll(否则玩家看中的专精在入职瞬间被替换)
     const recruited = m.spec ? m : { ...m, spec: rollSpec(m.job, guildRng) }
@@ -975,7 +976,7 @@ export default function App() {
       />}
       <div className={`layout${inBattle || inTowerBattle ? ' battle-mode' : ''}`}>
         <HallScreen
-          screen={screen} day={day} gold={gold} blessing={blessing} members={members} potions={potions}
+          screen={screen} day={day} rosterCap={rosterCap} gold={gold} blessing={blessing} members={members} potions={potions}
           muted={muted} volume={volume} towerBest={towerBest} towerUnlocked={towerUnlocked}
           canExpedition={canExpedition} busy={!!run || !!towerRun} kingdom={kingdom}
           dungeonMastery={dungeonMastery} inventory={inventory as never} expedition={expedition as never} manual={manual}
@@ -992,7 +993,7 @@ export default function App() {
               inBattle={!!run && run.phase === 'battle'} onResolve={resolveEvent} onDismiss={dismissEvent} />
           )}
             {screen === 'tavern' && <TavernScreen gold={gold} blessing={blessing} members={members}
-              visitor={visitor} candidates={candidates} effectiveCooldown={effectiveCooldown} busy={!!run || !!towerRun}
+              visitor={visitor} candidates={candidates} effectiveCooldown={effectiveCooldown} busy={!!run || !!towerRun} rosterCap={rosterCap}
               onFeast={() => { setGold((g) => g - 60); applyFeast(membersRef.current, baseEffects(buildings).feastBoost); for (const d of membersRef.current) { if (d.alive && d.trait === 'drinker') d.morale = Math.min(100, (d.morale ?? 60) + Math.round(baseEffects(buildings).feastBoost * 0.5)) } setMembers([...membersRef.current]); logChronicle(chronicleFeast(day, 60)); sfxCoin() }}
               onWaitNight={() => setVisitor(rollVisitor(guildRng, membersRef.current, 0, { hybrids: !__PLAYTEST__ }))}
               onSign={signVisitor} onBounty={hireBounty} onTale={rollTale} onHire={hire} onBack={goBack}

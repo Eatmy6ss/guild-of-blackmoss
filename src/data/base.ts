@@ -32,7 +32,7 @@ export const BUILDINGS: BuildingDef[] = [
     id: 'smithy',
     name: '铁匠铺',
     icon: '⚒',
-    desc: '1 级:重铸词条(重掷一条词条数值);每级:装备变卖价 +15%',
+    desc: '1 级:重铸词条;每级:变卖价 +15%,出征维护费 −15%',
     maxLevel: 3,
     costs: [{ gold: 90 }, { gold: 200 }, { gold: 360 }],
   },
@@ -52,6 +52,14 @@ export const BUILDINGS: BuildingDef[] = [
     maxLevel: 3,
     costs: [{ gold: 110 }, { gold: 240 }, { gold: 420 }],
   },
+  {
+    id: 'dormitory',
+    name: '宿舍',
+    icon: '🛏',
+    desc: '#4.4 建筑重分工:每级名册上限 +1,休息日精力恢复 +15%',
+    maxLevel: 3,
+    costs: [{ gold: 80 }, { gold: 180 }, { gold: 320 }],
+  },
 ]
 
 /** 建筑等级 → 各系统加成(唯一的效果汇总处,App 与测试都用它) */
@@ -63,6 +71,10 @@ export interface BaseEffects {
   blessingPerDeath: number
   feastBoost: number
   towerRestHealPct: number
+  /** #4.4 宿舍:名册上限(基础 6 + 每级 1) */
+  rosterCap: number
+  /** #4.4 宿舍:休息日精力恢复倍率 */
+  staminaRestMult: number
 }
 
 export function baseEffects(buildings: Record<string, number>): BaseEffects {
@@ -75,5 +87,7 @@ export function baseEffects(buildings: Record<string, number>): BaseEffects {
     blessingPerDeath: 3 + lv('shrine'),
     feastBoost: 30 + lv('shrine') * 5,
     towerRestHealPct: 0.2 + lv('infirmary') * 0.05,
+    rosterCap: 6 + lv('dormitory'),
+    staminaRestMult: 1 + lv('dormitory') * 0.15,
   }
 }

@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { recastRoll, rollDrop } from './loot'
 import { addInventoryItems, createGuildItems, inheritRegisteredRelic, recastRegisteredItem } from '../state/item-registry'
 import { createRng } from './rng'
+import { baseEffects, BUILDINGS } from '../data/base'
+import { restStamina } from './stamina'
+import { generateMember } from './gen'
 
 // R4.2b 设施各管玩法(redesign §6):铁匠铺重铸 / 祠堂遗物传承。
 
@@ -46,5 +49,28 @@ describe('R4.2b 祠堂·遗物传承', () => {
     expect(r.state.inventory).toContain('it_4')
     expect(inheritRegisteredRelic(state, 'it_4', 59)).toBeNull()
     expect(inheritRegisteredRelic(state, 'nope', 999)).toBeNull()
+  })
+})
+
+describe('#4.4 建筑职责重分工', () => {
+  it('宿舍:名册上限 6+每级1;精力恢复倍率 1+每级0.15;休息日恢复量取整', () => {
+    const base = baseEffects({})
+    expect(base.rosterCap).toBe(6)
+    expect(base.staminaRestMult).toBe(1)
+    const lv3 = baseEffects({ dormitory: 3 })
+    expect(lv3.rosterCap).toBe(9)
+    expect(lv3.staminaRestMult).toBeCloseTo(1.45)
+    const m = generateMember('guard', 5, 97)
+    m.stamina = 10
+    restStamina([m], 1, 1.45)
+    expect(m.stamina).toBe(10 + Math.round(20 * 1.45)) // 29
+  })
+
+  it('宿舍在 BUILDINGS 注册表中可建且三级费用递增', () => {
+    const dorm = BUILDINGS.find((b) => b.id === 'dormitory')
+    expect(dorm).toBeDefined()
+    expect(dorm!.maxLevel).toBe(3)
+    expect(dorm!.costs.length).toBe(3)
+    expect(dorm!.costs[1]!.gold).toBeGreaterThan(dorm!.costs[0]!.gold)
   })
 })

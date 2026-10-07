@@ -7,7 +7,7 @@ import { guildRankOf } from '../../sim/rank'
 import { kingdomRank, kingdomTrust } from '../../sim/kingdom'
 import { COMMISSIONS } from '../../data/kingdom'
 import { guildGoals } from '../../sim/goals'
-const ROSTER_CAP = 6
+
 import type { Member } from '../../sim/types'
 
 // R5.2c(U33⑦):大厅本体(顶栏/功能坞/目标/王国链接/高塔入口/快捷键/重开)自 App.tsx 迁出。
@@ -15,6 +15,8 @@ import type { Member } from '../../sim/types'
 export function HallScreen(props: {
   screen: Screen
   day: number
+  /** #4.4 宿舍:名册上限(6+每级1) */
+  rosterCap: number
   gold: number
   blessing: number
   members: Member[]
@@ -46,7 +48,7 @@ export function HallScreen(props: {
   dismissHint: (id: string) => void
   children?: React.ReactNode
 }) {
-  const { screen, day, gold, blessing, members, potions, muted, volume, towerBest, towerUnlocked, canExpedition, busy, kingdom, dungeonMastery, inventory, expedition, manual, hintsSeen, go } = props
+  const { screen, day, rosterCap, gold, blessing, members, potions, muted, volume, towerBest, towerUnlocked, canExpedition, busy, kingdom, dungeonMastery, inventory, expedition, manual, hintsSeen, go } = props
   return (
     <div className="panel hub-panel">
           <div className="hub-topbar">
@@ -54,7 +56,7 @@ export function HallScreen(props: {
             <span>第 {day} 日</span>
             <span>💰 {gold}</span>
             <span>🕯 {blessing}</span>
-            <span>👥 {members.filter((m) => m.alive).length}/{ROSTER_CAP}</span>
+            <span>👥 {members.filter((m) => m.alive).length}/{rosterCap}</span>
             <span>🧪 {potions.heal}</span>
             <span>⚡ {potions.fury}</span>
             <span className="tb-volume">

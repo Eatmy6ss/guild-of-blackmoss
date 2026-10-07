@@ -31,10 +31,10 @@ export function spendStamina(m: Member, battles = 1): void {
   m.stamina = Math.max(0, staminaOf(m) - STAMINA.perBattle * battles)
 }
 
-/** 天数恢复(出发日推进时全体存活;上限 cap)——精力唯一恢复途径 */
-export function restStamina(members: Member[], days = 1): void {
+/** 天数恢复(出发日推进时全体存活;上限 cap)——精力唯一恢复途径;mult=#4.4 宿舍加成 */
+export function restStamina(members: Member[], days = 1, mult = 1): void {
   for (const m of members) {
-    if (m.alive) m.stamina = Math.min(STAMINA.cap, staminaOf(m) + STAMINA.restPerDay * days)
+    if (m.alive) m.stamina = Math.min(STAMINA.cap, staminaOf(m) + Math.round(STAMINA.restPerDay * mult) * days)
   }
 }
 

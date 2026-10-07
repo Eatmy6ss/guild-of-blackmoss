@@ -34,14 +34,15 @@ interface TavernScreenProps {
   intelStock: number
   intelNotice: string | null
   onBuyIntel: (dungeonId: string, kind: import('../../sim/intel').IntelKind, tierId: string) => void
+  /** #4.4 宿舍:名册上限(6+每级1) */
+  rosterCap: number
 }
 
-const ROSTER_CAP = 6
 const ROLE_NAME: Record<string, string> = { tank: '坦克', healer: '治疗', dps: '输出' }
 const START_JOBS = ['guard', 'priest', 'ranger'] as const
 
 export function TavernScreen(props: TavernScreenProps) {
-  const { gold, blessing, members, visitor, candidates, effectiveCooldown, onBack } = props
+  const { gold, blessing, members, visitor, candidates, effectiveCooldown, onBack, rosterCap } = props
   return (
             <div className="screen-overlay fullpage">
               <div className="screen-panel">
@@ -50,7 +51,7 @@ export function TavernScreen(props: TavernScreenProps) {
                   <button className="screen-close" onClick={() => onBack()}>✕ Esc</button>
                 </div>
                 <p className="screen-sub">
-                  💰 {gold} · 🕯 祝福 {blessing} · 招募位 {members.filter((m) => m.alive).length}/{ROSTER_CAP}
+                  💰 {gold} · 🕯 祝福 {blessing} · 招募位 {members.filter((m) => m.alive).length}/{rosterCap}
                 </p>
           <p className="hint">
             {effectiveCooldown > 0
@@ -74,7 +75,7 @@ export function TavernScreen(props: TavernScreenProps) {
                 <span>{personalityLine(visitor.member)}</span>
               </div>
               <p className="hint">“{visitor.story}”</p>
-              <button onClick={props.onSign} disabled={props.busy || members.filter((m) => m.alive).length >= ROSTER_CAP}>
+              <button onClick={props.onSign} disabled={props.busy || members.filter((m) => m.alive).length >= rosterCap}>
                 ✋ 免费签下（缘分不排队）
               </button>
             </div>
@@ -104,7 +105,7 @@ export function TavernScreen(props: TavernScreenProps) {
             {START_JOBS.map((job) => (
               <button
                 key={job}
-                disabled={props.busy || effectiveCooldown > 0 || gold < ECONOMY.bountyCost || members.filter((m) => m.alive).length >= ROSTER_CAP}
+                disabled={props.busy || effectiveCooldown > 0 || gold < ECONOMY.bountyCost || members.filter((m) => m.alive).length >= rosterCap}
                 onClick={() => props.onBounty(job)}
               >
                 {JOBS[job].name} {ECONOMY.bountyCost} 金
@@ -113,7 +114,7 @@ export function TavernScreen(props: TavernScreenProps) {
           </div>
           <div className="tavern-row">
             <button
-              disabled={props.busy || effectiveCooldown > 0 || gold < ECONOMY.taleCost.gold || blessing < ECONOMY.taleCost.blessing || members.filter((m) => m.alive).length >= ROSTER_CAP}
+              disabled={props.busy || effectiveCooldown > 0 || gold < ECONOMY.taleCost.gold || blessing < ECONOMY.taleCost.blessing || members.filter((m) => m.alive).length >= rosterCap}
               onClick={props.onTale}
             >
               🎲 酒馆传闻：{ECONOMY.taleCost.gold} 金 + {ECONOMY.taleCost.blessing} 祝福，三选一（品质更高）
