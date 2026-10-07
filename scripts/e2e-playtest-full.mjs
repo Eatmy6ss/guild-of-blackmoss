@@ -113,9 +113,10 @@ const STEP = (prio) => `(()=>{${BTN_HELPER}
   r.acted = hit((t)=>t==='▶ 继续旅程') || hit((t)=>t==='知道了') || hit((t)=>t==='确认'||t==='确定');
   if(!r.acted){const c=[...document.querySelectorAll('.event-choices button')].find((x)=>!x.disabled);if(c){c.click();r.acted='EVENT:'+c.textContent.trim().slice(0,30)}}
   if(!r.acted && btns().some((x)=>x.textContent.includes('跑到结束'))){
-    if(!find((t)=>t.includes('跑到结束'))) hit((t)=>t.includes('⏸ 暂停'));
-    if(!body.includes('挂机中')) hit((t)=>t.startsWith('🤖 挂机'));
-    r.acted = hit((t)=>t.includes('跑到结束')) || 'battle-wait';
+    // 每步只点一次；不开挂机连刷，否则自动离开终局会绕过 RETURN 计数。
+    r.acted = find((t)=>t.includes('跑到结束'))
+      ? hit((t)=>t.includes('跑到结束'))
+      : hit((t)=>t.includes('⏸ 暂停')) || 'battle-wait';
   }
   // U27① R1.1+U29 节点图:点可走的地图节点(不选路不能前进,没有「继续深入」)
   if(!r.acted){const c=[...document.querySelectorAll('.dungeon-graph .dg-node.available')][0];if(c){c.click();r.acted='NODE:'+c.textContent.trim().slice(0,20)}}
@@ -198,9 +199,10 @@ const MAP_PRIO = ['荆棘要塞', '渊底祭坛', '白霜墓园', '灰烬旧战�
 async function phaseBuild() {
   console.log('\n▶ build:试玩包产物')
   if (args.build) {
-    for (const cmd of [['npx', ['vite', 'build', '--config', 'vite.config.playtest.ts']], ['node', ['scripts/inline-assets.mjs']]]) {
-      const r = spawnSync(cmd[0], cmd[1], { cwd: ROOT, stdio: 'inherit' })
-      if (r.status !== 0) throw new Error(cmd.join(' ') + ' 失败')
+    // 直接复用当前 Node，避免 Windows 下 spawnSync('npx') 找不到 .cmd 包装器。
+    for (const cmd of [['node_modules/vite/bin/vite.js', 'build', '--config', 'vite.config.playtest.ts'], ['scripts/inline-assets.mjs']]) {
+      const r = spawnSync(process.execPath, cmd, { cwd: ROOT, stdio: 'inherit' })
+      if (r.status !== 0) throw new Error(cmd.join(' ') + ' 失败: ' + (r.error?.message ?? r.status))
     }
   }
   if (!existsSync(HTML)) { check('B1', '试玩包存在', 'FAIL', 'dist-playtest/index.html 不存在,加 --build'); return false }
@@ -253,7 +255,7 @@ async function phaseFresh() {
     }
 
     let maxHints = 0; let storyReturns = 0; const b3 = []; const b5 = []; const s8 = []
-    await drive(b, {
+    const journey = await drive(b, {
       prio: MAP_PRIO, maxReturns: EXPEDITIONS, timeoutMs: Number(args.timeout ?? 900_000),
       onTick: (r) => { maxHints = Math.max(maxHints, r.hints) },
       onReturn: async () => {
@@ -270,6 +272,9 @@ async function phaseFresh() {
         }
       },
     })
+    check('FRESH', '新档实际完成目标远征趟数或到达试玩终局',
+      journey.returns >= EXPEDITIONS || journey.ending ? 'PASS' : 'FAIL',
+      `实际 ${journey.returns} / 目标 ${EXPEDITIONS}${journey.timeout ? '，已超时' : ''}${journey.ending ? '，到达终局' : ''}`)
     await b.shot('end')
     check('S10', '首场战斗引导提示一次只弹一条', maxHints <= 1 ? 'PASS' : 'FAIL', `同屏最多 ${maxHints} 条`)
     const keys = await b.evalJs('Object.keys(localStorage)')
@@ -433,7 +438,10 @@ try {
     const ok = await phases[p]()
     if (p === 'build' && ok === false) break
   }
-} catch (e) { crashed = String(e?.message ?? e); console.error('\n✗ 脚本中断:', crashed) }
+} catch (e) {
+  crashed = String(e?.message ?? e)
+  check('FLOW', '试玩流程未中断', 'FAIL', crashed)
+}
 
 check('CONSOLE', '全程无控制台错误', observations.consoleErrors.length === 0 ? 'PASS' : 'FAIL', observations.consoleErrors.slice(0, 3).join(' | '))
 const report = { at: new Date().toISOString(), phases: order, checks, crashed, ...observations }

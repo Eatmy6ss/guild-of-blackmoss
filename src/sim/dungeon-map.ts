@@ -53,10 +53,25 @@ export function nodeById(map: DungeonMap, nodeId: string): MapNode | undefined {
   return undefined
 }
 
+/** 暗道不能成为普通节点的唯一出口。旧断点也按同一规则读取，不改写存档或额外抽随机数。 */
+export function publicMapEdges(map: DungeonMap): DungeonMap['edges'] {
+  const nodes = map.layers.flat()
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  const added: DungeonMap['edges'] = []
+  for (const node of nodes) {
+    if (node.kind === 'boss' || node.kind === 'secret') continue
+    const exits = map.edges.filter(([from]) => from === node.id).map(([, to]) => byId.get(to))
+    if (exits.length === 0 || exits.some(n => n && n.kind !== 'secret')) continue
+    const visible = map.layers[node.layer + 1]?.find(n => n.kind !== 'secret')
+    if (visible) added.push([node.id, visible.id])
+  }
+  return added.length ? [...map.edges, ...added] : map.edges
+}
+
 /** 当前可选的下一批节点:空路径 = 第 0 层;否则当前节点的出边(暗道的出边由生成器指向跳层) */
 export function nextOptions(map: DungeonMap, nodeId: string): MapNode[] {
   if (!nodeId) return [...(map.layers[0] ?? [])]
-  const outs = map.edges.filter(([a]) => a === nodeId).map(([, b]) => b)
+  const outs = publicMapEdges(map).filter(([a]) => a === nodeId).map(([, b]) => b)
   const opts = outs.map((id) => nodeById(map, id)).filter(Boolean) as MapNode[]
   return opts
 }
@@ -246,5 +261,6 @@ export function generateMap(dungeon: DungeonDef, seed: number): DungeonMap {
   }
 
   const mapLayers: MapNode[][] = layers.map((layer) => layer.map(({ out: _out, ...n }) => n))
-  return { seed: seed >>> 0, layers: mapLayers, edges }
+  const map = { seed: seed >>> 0, layers: mapLayers, edges }
+  return { ...map, edges: publicMapEdges(map) }
 }

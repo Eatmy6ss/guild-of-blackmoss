@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { DungeonRun } from '../../sim/run'
 import { REST_HEAL_PCT, revealTier, MASTERY, currentNode, mapOptions, bossSequence, nextBossEncounter } from '../../sim/run'
 import { revealPenaltyLayers } from '../../sim/conditions'
-import { nodeById, TERRAIN_NAMES, type MapNode } from '../../sim/dungeon-map'
+import { nodeById, publicMapEdges, TERRAIN_NAMES, type MapNode } from '../../sim/dungeon-map'
 import { runDungeon } from '../../sim/run-core'
 import { describeItem } from '../../sim/loot'
 import { activeConditions, restHealMult } from '../../sim/conditions'
@@ -190,7 +190,7 @@ export function MapScreen({ run, mastery, revealBonus = 0, intelEntries = [], dr
           <>
             <div className="dungeon-graph">
               <svg className="dg-edges" viewBox="0 0 100 100" preserveAspectRatio="none">
-                {run.map.edges.map(([a, b]) => {
+                {publicMapEdges(run.map).map(([a, b]) => {
                   const na = nodeByIdIn(a)
                   const nb = nodeByIdIn(b)
                   if (!na || !nb) return null

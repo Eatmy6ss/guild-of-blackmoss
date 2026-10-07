@@ -19,6 +19,51 @@ function castingBattle() {
 }
 
 describe('A3 #1.1 招牌技:真打断', () => {
+  test('非打断招牌技只按真实伤害累计破条，不强制填满或冒领打断', () => {
+    const { state, me, enemy } = castingBattle()
+    me.specId = 'ranger-hawk'
+    me.weaponFamily = 'bow'
+    me.weaponProficient = true
+    enemy.hp = enemy.maxHp = 10000
+    enemy.bossMechanics![0].params = { breakDamage: 10000 }
+    expect(useSignature(state, me.memberId!, enemy.id)).toBe(true)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
+    const damage = state.events.filter(e => e.type === 'damage' && e.attackerId === me.id)
+      .reduce((sum, e) => sum + (e.amount ?? 0), 0)
+    expect(damage).toBeGreaterThan(0)
+    expect(enemy.mech!['telegraph-aoe'].taken).toBeCloseTo(10 + damage * 0.25)
+    expect(enemy.mech!['telegraph-aoe'].brokenBy).toBeUndefined()
+  })
+
+  test('圣疗不改变敌方读条；真实伤害仍能累计达到打断阈值', () => {
+    const { state, me, enemy } = castingBattle()
+    me.specId = 'priest-holy'
+    me.hp = 1
+    expect(useSignature(state, me.memberId!, me.memberId)).toBe(true)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
+    expect(enemy.mech!['telegraph-aoe'].taken).toBe(10)
+    expect(enemy.mech!['telegraph-aoe'].brokenBy).toBeUndefined()
+    enemy.mech!['telegraph-aoe'].taken = 99
+    enemy.hp = enemy.maxHp = 1000
+    applyHit(state, me, enemy, 8, '攻击')
+    expect(enemy.mech!['telegraph-aoe'].taken).toBe(101)
+  })
+
+  test.each([0, 0.25])('招牌冷却按施放时的冷却缩减 %s 计算，到期才可再次受理', (reduction) => {
+    const { state, me, enemy } = castingBattle()
+    me.cdReduction = reduction
+    enemy.mech!['telegraph-aoe'].until = 1000
+    expect(useSignature(state, me.memberId!, enemy.id)).toBe(true)
+    executeSignature(state, state.commands.signatures![me.memberId!]!)
+    const readyAt = state.tick + Math.round(60 / (1 + reduction))
+    expect(state.signatureCd?.[me.memberId!]).toBe(readyAt)
+    state.commands.signatures = undefined
+    state.tick = readyAt - 1
+    expect(useSignature(state, me.memberId!, enemy.id)).toBe(false)
+    state.tick = readyAt
+    expect(useSignature(state, me.memberId!, enemy.id)).toBe(true)
+  })
+
   test('受理→执行:置 taken=阈值走打断管线,brokenBy 归属,护盾二段,冷却记录', () => {
     const { state, me, enemy } = castingBattle()
     expect(useSignature(state, me.memberId!, enemy.id)).toBe(true)
