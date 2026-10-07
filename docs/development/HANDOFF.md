@@ -18,8 +18,8 @@
 
 | 谁 | 工单 | 开工动作 | 交付动作 |
 |---|---|---|---|
-| **Codex**(同机第二 AI) | 全量测试+意见书(见下节) | `git fetch origin && git merge origin/main`,按工单跑 verify+七项复核 | 复审报告写 HANDOFF 新工单节,只标注不改码 |
-| **shldo**(制作人朋友,GPT/Codex 远端协作) | **分支重做**(见下节)——旧分支不合并 | ①`git fetch origin && git switch -c shldo/character-identity-redo origin/main`(基于最新 main 开新分支)②读本工单全文+美术参考三份 ③重新复检旧分支产出,重新生成交付 | 新分支提交+推送,PR/通知制作人;**不要动 main** |
+| **本机 Codex** 或 **shldo 侧 AI**(二选一,先到先得,领取后在本行标注) | 全量测试+意见书(见下节)——**这张单不限定是谁**:本机 Codex 可直接领(读本机文件更快),朋友侧 AI 也可领(走 GitHub),**别重复做** | `git fetch origin && git merge origin/main`,按工单跑 verify+七项复核 | 复审报告写 HANDOFF 新工单节,只标注不改码 |
+| **shldo**(制作人朋友,远端协作,**仅此单专属**) | **分支重做**(见下节)——旧分支不合并 | ①`git fetch origin && git switch -c shldo/character-identity-redo origin/main`(基于最新 main 开新分支)②读本工单全文+美术参考三份 ③重新复检旧分支产出,重新生成交付 | 新分支提交+推送,PR/通知制作人;**不要动 main** |
 | **Claude**(本机,可选) | 待制作人指派 | 同 Codex 模式 | 同上 |
 | **zcode**(本机主施工) | 批次 2·装备(#2.7 起,冻结中待指令) | — | — |
 
