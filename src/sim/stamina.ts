@@ -17,6 +17,8 @@ export const STAMINA = {
   scarBonusBelow: 0.1,
   /** 精力上限 */
   cap: 100,
+  /** #4.3 撤退额外精力惩罚(C4 占位;撤退=保命但更累,叠加在当日消耗之上) */
+  retreatExtra: 12,
 } as const
 
 /** 读取(老档 undefined=100 满精力,零迁移零变) */
@@ -34,6 +36,11 @@ export function restStamina(members: Member[], days = 1): void {
   for (const m of members) {
     if (m.alive) m.stamina = Math.min(STAMINA.cap, staminaOf(m) + STAMINA.restPerDay * days)
   }
+}
+
+/** #4.3 撤退额外精力惩罚(撤退结算时对幸存者调用) */
+export function spendRetreatStamina(m: Member): void {
+  m.stamina = Math.max(0, staminaOf(m) - STAMINA.retreatExtra)
 }
 
 /** 软地板以下攻击衰减(接线 3:toCombatant 攻击乘区) */

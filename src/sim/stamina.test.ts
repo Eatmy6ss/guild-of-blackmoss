@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STAMINA, spendStamina, restStamina, staminaAttackMult, staminaScarBonus, staminaOf, staminaLabel } from './stamina'
+import { STAMINA, spendStamina, restStamina, staminaAttackMult, staminaScarBonus, staminaOf, staminaLabel, spendRetreatStamina } from './stamina'
 import { generateMember } from './gen'
 
 // #4.1 精力系统:出征场次消耗,天数恢复(唯一途径);软地板以下攻击衰减+创伤加成。
@@ -37,5 +37,14 @@ describe('#4.1 精力系统', () => {
     expect(staminaOf(b)).toBe(STAMINA.cap) // 死者无关
     restStamina([a, b])
     expect(staminaOf(a)).toBe(STAMINA.cap) // 恢复全体存活(死者恢复无意义但无害)
+  })
+
+  it('#4.3 撤退额外精力惩罚:固定扣减,下限 0', () => {
+    const m = generateMember('guard', 5, 96)
+    spendRetreatStamina(m)
+    expect(staminaOf(m)).toBe(STAMINA.cap - STAMINA.retreatExtra)
+    m.stamina = 5
+    spendRetreatStamina(m)
+    expect(staminaOf(m)).toBe(0)
   })
 })

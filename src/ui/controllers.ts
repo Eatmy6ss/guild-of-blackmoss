@@ -9,8 +9,8 @@ import { ECONOMY } from '../data/economy'
 import { applyRestMorale, refusesToMarch, applyMoraleDelta } from '../sim/morale'
 import { chronicleRefusal, chronicleBuilding, seedChronicle } from '../sim/chronicle'
 import { appendBio } from '../sim/bio'
-import { ageFaints, scarStatName } from '../sim/scars'
-import { restStamina } from '../sim/stamina'
+import { ageFaints, scarStatName, canGainScar, rollScar, RETREAT_SCAR_CHANCE } from '../sim/scars'
+import { restStamina, spendRetreatStamina } from '../sim/stamina'
 import { rationCost, maintenanceCost } from '../sim/supply'
 import { plannedLayers } from '../sim/dungeon-map'
 import { INTEL_STOCK_CAP, consumeIntelReveal, verifyIntelFor } from '../sim/intel'
@@ -296,6 +296,20 @@ export function createAppControllers(deps: ControllerDeps) {
       setDungeonMastery((prev) => ({ ...prev, [cost.dungeonId]: Math.max(0, (prev[cost.dungeonId] ?? 0) - cost.mastery) }))
     }
     logChronicle(chronicleRaw(day, `撤退回城:本趟金币 −${cost.gold}、${runDungeon(r).name}熟练度 −${cost.mastery}(撤退代价,装备照拿)。`))
+    // #4.3 撤退代价补齐:额外精力惩罚+创伤判定(收获减半=R5 既有口径,计划「全丢」的偏差已登记 HANDOFF)
+    let retreatScarCount = 0
+    for (const m of runMembers(r, membersRef.current)) {
+      if (!m.alive) continue
+      spendRetreatStamina(m)
+      if (canGainScar(m) && guildRng() < RETREAT_SCAR_CHANCE) {
+        const scar = rollScar(guildRng)
+        m.scars = [...(m.scars ?? []), scar]
+        appendBio(m, { day, kind: 'scar', text: `撤退路上添了${scarStatName(scar.stat)}创伤——走得太急,代价没躲开。` })
+        setScarNotices((q: string[]) => [...(q ?? []), `${m.name} 在撤退途中添了${scarStatName(scar.stat)}创伤(−1 ${scarStatName(scar.stat)})。`])
+        retreatScarCount++
+      }
+    }
+    setMembers([...membersRef.current])
   }
 
   // 结算入口的阶段守卫确保指挥、快进和终局 effect 都不能重复发奖。

@@ -37,6 +37,8 @@ export const HEAL_BASE_RATE = 0.85
 export const WORSEN_CHANCE = 0.15
 /** U32(C4 占位):虚痕静养消退所需公会日 */
 export const FAINT_DAYS = 4
+/** #4.3 撤退创伤判定:每次撤退每名幸存者的独立 roll(C4 占位) */
+export const RETREAT_SCAR_CHANCE = 0.15
 
 const STAT_NAME: Record<ScarStat, string> = {
   str: '力量', agi: '敏捷', int: '智力', vit: '体质', spr: '精神', lck: '幸运',
