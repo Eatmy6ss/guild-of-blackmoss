@@ -12,7 +12,8 @@ import { newKingdomState } from './kingdom'
 import { applyDeathShock, applyVictory } from './morale'
 import { rollDrop } from './loot'
 import { chronicleRaw, seedChronicle } from './chronicle'
-import { EMPTY_LEDGER } from './fact-ledger'
+import { appendFact, EMPTY_LEDGER, markExpeditionStart, markTold, normalizeLedger, type FactLedger } from './fact-ledger'
+import { tellExpedition } from './storyteller'
 import { settleEncounter, type EncounterGuild, type EncounterInput } from './settlement'
 
 function roster() {
@@ -60,6 +61,42 @@ function fixture(source: 'dungeon' | 'tower', status = 'retreated' as 'guild-win
 }
 
 describe('统一遭遇结算', () => {
+  it.each(['dungeon', 'tower'] as const)('%s 结算保留故事窗口和模板历史，跨趟/读档不再讲旧阵亡者', (source) => {
+    const f = fixture(source)
+    const ledger: FactLedger = f.guild.factLedger = { nextId: 1, facts: [] }
+    appendFact(ledger, 1, { kind: 'death', actors: ['old'], names: { old: '前趟亡者' }, refs: {},
+      cause: { kind: 'battle', where: { source: 'dungeon', id: 'blackmoss' } } })
+    appendFact(ledger, 1, { kind: 'relic-bind', actors: ['old'], refs: { itemUid: 'old-item' } })
+    markTold(ledger, 'relic-wait', 0)
+    markExpeditionStart(ledger)
+    f.guild.members[0].equipment.weapon = rollDrop('wpn-t1-sword', createRng(5))
+    const before = structuredClone(f)
+    const o = settleEncounter(f, () => 0.99)!
+    const story = tellExpedition(o.guild.factLedger, () => 0, {
+      fromId: o.guild.factLedger.toldThrough ?? 0, startId: o.guild.factLedger.expeditionStart ?? 0,
+    })!
+    expect(story.text).toContain(f.guild.members[0].name)
+    expect(story.text).not.toContain('前趟亡者')
+    expect(story.templateIdx).not.toBe(0)
+    expect(story.factIds.every(id => id >= ledger.expeditionStart!)).toBe(true)
+    markTold(o.guild.factLedger, story.type, story.templateIdx)
+    const restored = normalizeLedger(JSON.parse(JSON.stringify(o.guild.factLedger)))
+    expect(tellExpedition(restored, () => 0, {
+      fromId: restored.toldThrough!, startId: restored.expeditionStart!,
+    })).toBeNull()
+    expect(f).toEqual(before)
+  })
+
+  it('随机地图 Boss 首杀与同场阵亡共用战斗序号，不把地图层号误当场次', () => {
+    const g = guild(), r = createRun(g.members, BLACKMOSS, 221)
+    beginBossFinal(r, BLACKMOSS, 221)
+    r.battle!.status = 'guild-win'
+    const victim = r.battle!.combatants.find(c => c.memberId === g.members[1].id)!
+    victim.alive = false; victim.hp = 0
+    const o = settleEncounter({ source: 'dungeon', run: r, guild: g }, () => 0.99)!
+    expect(tellExpedition(o.guild.factLedger, () => 0)?.type).toBe('firstkill-death')
+  })
+
   it('I9：同样的阵亡在副本和高塔都有真实冲击、创伤、遗物与编年史，不只返回空键', () => {
     const outcomes = (['dungeon', 'tower'] as const).map(source => {
       const f = fixture(source)

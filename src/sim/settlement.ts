@@ -95,7 +95,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     manual: [...input.guild.manual],
     dungeonMastery: { ...input.guild.dungeonMastery },
     // A2:账本必须显式拷贝——appendFact 原地改写,浅拷贝会穿透到输入方(违反结算契约,run-recovery 抓过)
-    factLedger: { nextId: input.guild.factLedger.nextId, facts: [...input.guild.factLedger.facts] },
+    factLedger: { ...input.guild.factLedger, facts: [...input.guild.factLedger.facts] },
   }
   const members = runMembers(original, guild.members)
   // 旧模拟助手只改成员/阶段/药水及 scarsSettled；隔离这些可写对象，战斗日志不复制。
@@ -120,7 +120,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   const moments: string[] = []
   let seq = guild.chronicle.reduce((max, e) => Math.max(max, e.seq), 0)
   let itemSeq = 0
-  // R1.1:遭遇序列改由地图路径推出;流水号用「第几场战斗」,refs.encounter 记节点层号(R1.6 口径)
+  // 物品流水号与首杀/死亡事实都使用本趟战斗序号；地图层号无法区分同节点的 Boss 连战。
   const encounterSeq = input.source === 'dungeon' ? input.run.battlesFought : input.run.floor
   const itemId = () => `i-${original.id}-${encounterSeq}-${++itemSeq}`
   const effects = baseEffects(guild.buildings)
@@ -148,7 +148,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         // R4.1 生平:首杀同时写进当事人生平(永久条目,U34)
         appendBio(killer, { day, kind: 'first-kill', text: `亲手斩下了${boss.name}的首级——公会的旗上多了一道疤。`, permanent: true })
         moments.push('公会首杀:' + boss.name)
-        appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: nodeById(r.map, r.nodeId)?.layer ?? encounterSeq } })
+        appendFact(guild.factLedger, day, { kind: 'first-kill', actors: [killer.id], names: { [killer.id]: killer.name }, refs: { bossId: enc.bossId, dungeonId: runDungeon(r).id, encounter: encounterSeq } })
       }
     } else if (outcome.win) {
       // R5/U33①:水域节点掉落率 ×1.5(地形回报)× 暴露 upside ×2(R5.1b);精英品质下限绿(U33②)
