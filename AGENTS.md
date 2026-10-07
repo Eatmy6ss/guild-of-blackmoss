@@ -1,6 +1,6 @@
 # 黑苔公会：开发接续入口
 
-- 新任务或上下文恢复时，按序读:①`AGENTS.md`(本文件) ②`docs/development/README.md`(文档地图+术语表) ③`docs/development/HANDOFF.md`(状态卡+活跃工单)。开始具体工作前核对当前分支、提交和未提交改动。**工单必须挂认领人**;历史交接在 HANDOFF-archive.md,不要通读。
+- 新任务或上下文恢复时，按序读:①`AGENTS.md`(本文件) ②`docs/development/README.md`(文档地图+术语表) ③`docs/development/HANDOFF.md`——**先看「认领板」:每个协作者(Codex/shldo/Claude/zcode)的工单和开工动作都在那张表里,从表里领自己的活**;开始具体工作前核对当前分支、提交和未提交改动。**工单必须挂认领人**;历史交接在 HANDOFF-archive.md,不要通读。
 - 按任务需要读取 `docs/development/BACKLOG.md` 的对应条目和 `docs/development/DECISIONS.md` 的相关决策。想快速了解"游戏现在有什么/缺什么/什么挂起"，读 `docs/development/SYSTEM-MAP.md`（全景盘点，制作人侧维护）。无需每次重读全部设计历史或整份审查报告。
 - 用户当前明确指示优先。区分“当前实现事实”“用户已确认需求”“审查建议/待决事项”。不要把建议或历史草案视为已批准的改版。
 - 当前技术主线是 TypeScript + React + PixiJS + Vite。玩法审查证据在 `docs/gameplay-audit-2026-09-24.md`；历史设计在 `docs/DESIGN.md`，其中有已替代或暂缓的方案。

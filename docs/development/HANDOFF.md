@@ -14,6 +14,17 @@
 | 下一单 | **#2.7 治疗定位纠偏**(药水声明+healTakenMod 拆乘区)→ #2.3 触发类词条 → #2.8 倾向池 → #2.4 对比界面 → #2.5 过滤分解 → #2.6 确定性改造 |
 | 批次 2 出口 | C4 数值解冻 → G3 第一轮正式平衡(连带外部反馈一次调完) |
 
+## 认领板(每个协作者/AI 从这里找自己的活)
+
+| 谁 | 工单 | 开工动作 | 交付动作 |
+|---|---|---|---|
+| **Codex**(同机第二 AI) | 全量测试+意见书(见下节) | `git fetch origin && git merge origin/main`,按工单跑 verify+七项复核 | 复审报告写 HANDOFF 新工单节,只标注不改码 |
+| **shldo**(制作人朋友,GPT/Codex 远端协作) | **分支重做**(见下节)——旧分支不合并 | ①`git fetch origin && git switch -c shldo/character-identity-redo origin/main`(基于最新 main 开新分支)②读本工单全文+美术参考三份 ③重新复检旧分支产出,重新生成交付 | 新分支提交+推送,PR/通知制作人;**不要动 main** |
+| **Claude**(本机,可选) | 待制作人指派 | 同 Codex 模式 | 同上 |
+| **zcode**(本机主施工) | 批次 2·装备(#2.7 起,冻结中待指令) | — | — |
+
+> **给 shldo 的 AI(重要)**:你的工单叫「shldo 分支重做」,在本文件「活跃工单」区。旧分支 `codex/character-equipment-identity` **不要合并、不要 checkout 到 main**——制作人已拍板由 shldo 基于最新 main 重新复检再重新生成。旧分支内容只作参考(美术产出清单见 [art-resource-library-2026-10-01.md](art-resource-library-2026-10-01.md));main 侧存档 v22→v30/App 拆分/签名系统已大改,旧分支的修复组大概率作废。
+
 ## 活跃工单
 
 ### 📋 Codex 全量测试(已发布,待领取;制作人指令 2026-10-07)
@@ -22,8 +33,10 @@
 - **重点复核七项**:①存档迁移链 v22→v30(占位迁移防默认步骤重置资产;缺省字段不注入键)②settlement 浅拷贝契约 ③U36 买情报对 guildRng 序列的扰动 ④R4.2b 替补跟操对升级节奏的影响 ⑤U35 花名册 v2 Esc 层级 ⑥U36 情报验证闭环 ⑦新增 UI 色值纪律(:root 变量)。
 - **要求提意见**:对 R4.1 生平/R4.2 设施/R4.4 货架定价/U35 信息架构/U36 情报(假情报挫败感)各至少一条,只标注不改码。
 
-### 📋 shldo 分支重做(制作人拍板:不合并)
-- `origin/codex/character-equipment-identity`(2026-10-03,190 文件+4106,人物辨识/装备外形/武器来历+修复三组)**不合并**;shldo 基于最新 main 重新复检再重新生成(新分支)。提示:main 侧存档 v22→v30/App 拆分/签名系统已大改,旧分支的修复组大概率作废;美术产出清单见 [art-resource-library-2026-10-01.md](art-resource-library-2026-10-01.md)。
+### 📋 shldo 分支重做(制作人拍板:不合并;认领人=shldo)
+- **旧分支**:`origin/codex/character-equipment-identity`(2026-10-03,190 文件+4106,人物辨识/装备外形/武器来历+修复三组)——**不合并**,仅作参考。
+- **你的任务**:①基于最新 `origin/main` 开新分支(建议名 `shldo/character-identity-redo`);②重新复检旧分支的全部产出——哪些已被 main 超越(存档/App 拆分/签名系统已大改,修复组大概率作废)、哪些仍然成立(参考点:57 件独立物品图/21 件武器原创名与来历/12 专精轮廓);③在新分支上重新生成交付(每步 `npm run verify`,旧门禁断言若因美术资源变化挂掉,先看本文件纪律第 4 条);④推分支+通知制作人,由 zcode 复审后合并。
+- **美术参考**(旧轮验收记录,未过期):[art-resource-library-2026-10-01.md](art-resource-library-2026-10-01.md)、[ui-ux-art-upgrade-2026-09-30.md](ui-ux-art-upgrade-2026-09-30.md)、ui-art-audit-2026-09-30/。
 
 ### 📋 G2 外部试玩(U37:招募并行,不阻塞施工)
 - 发包:https://eatmy6ss.github.io/guild-of-blackmoss/ (build 2026-10-07)。

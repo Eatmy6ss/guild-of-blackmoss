@@ -1,6 +1,6 @@
 # docs/development · 文档地图
 
-> **外部 AI/新读者请按此顺序读**:①仓库根 [AGENTS.md](../../AGENTS.md) ② [HANDOFF.md](HANDOFF.md)(状态卡+活跃工单)③ [DECISIONS.md](DECISIONS.md)(拍板台账)。不要从头读历史;需要历史再看 [HANDOFF-archive.md](HANDOFF-archive.md)。
+> **外部 AI/新读者请按此顺序读**:①仓库根 [AGENTS.md](../../AGENTS.md) ② [HANDOFF.md](HANDOFF.md)——**「认领板」表格里有每个协作者(Codex/shldo/Claude/zcode)各自该领的工单和开工动作** ③ [DECISIONS.md](DECISIONS.md)(拍板台账)。不要从头读历史;需要历史再看 [HANDOFF-archive.md](HANDOFF-archive.md)。
 
 ## 现行文档(7+4 份)
 
