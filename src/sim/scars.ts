@@ -6,6 +6,7 @@
 // 虚痕不减属性,静养 FAINT_DAYS 个公会日后自动消退(出发结算日推进)。
 
 import type { Member, Combatant, BattleState } from './types'
+import { staminaScarBonus } from './stamina'
 import { createRng, type Rng } from './rng'
 
 /** 创伤影响的六维 */
@@ -86,7 +87,7 @@ export function settleScars(run: ScarRun, witnessedDeath: boolean, towerFloor = 
     const c = b.combatants.find(c => c.team === 'guild' && c.memberId === m.id)!
     const nearDeath = c.hp / c.maxHp < 0.15
     const witness = witnessedDeath && !(run.witnessScarredIds ?? []).includes(m.id)
-    const p = rollScarChance({ mechanicHits: c.scarMechanicHits ?? 0, nearDeath, witnessedDeath: witness, towerFloor: m === deepTarget ? towerFloor : 0 })
+    const p = rollScarChance({ mechanicHits: c.scarMechanicHits ?? 0, nearDeath, witnessedDeath: witness, towerFloor: m === deepTarget ? towerFloor : 0 }) + staminaScarBonus(m)
     if (p <= 0 || rng() >= p) continue
     const scar = rollScar(rng)
     m.scars = [...(m.scars ?? []), scar]

@@ -191,9 +191,9 @@ describe('统一遭遇结算', () => {
           expect(o.run.phase).toBe(old.phase)
           expect(o.run.path).toEqual(old.path)
           expect(o.run.potions).toEqual(old.potions)
-          // U34:bio 是新增叙事层,旧链对照剥离 bio 后逐字段一致
-          expect(o.guild.members.filter(m => o.run.memberIds.includes(m.id)).map(({ bio: _b, ...rest }) => rest))
-            .toEqual(old.members.map(({ bio: _b2, ...rest }) => rest))
+          // U34/#4.1:bio/stamina 是新增层,旧链对照剥离后逐字段一致
+          expect(o.guild.members.filter(m => o.run.memberIds.includes(m.id)).map(({ bio: _b, stamina: _s, ...rest }) => rest))
+            .toEqual(old.members.map(({ bio: _b2, stamina: _s2, ...rest }) => rest))
           expect(o.loot.gold).toBe(status === 'guild-win' ? ECONOMY.battleGold.wave * 2 : 0)
           expect(o.loot.clearGold).toBe(0) // 中途(非 Boss 末场)永不清关
           expect(o.guild.recruitCooldown).toBe(1)

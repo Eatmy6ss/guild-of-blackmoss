@@ -448,6 +448,7 @@ function rngScope(scope: Record<string, unknown>) {
     appendBio: () => {}, // U4.1 生平(U34):App/controllers 个人叙事写入点,默认空实现(垫片第 10 次扩容)
     ageFaints: () => [], scarStatName: (s: string) => s, FAINT_DAYS: 4, setScarNotices: () => {}, // R4.2(U32):出发虚痕消退
     intelEntries: [], setIntelEntries: () => {}, setIntelStock: () => {}, intelStock: 3, // U36:情报条目化(出发补货源/消耗真情报)
+    restStamina: () => {}, setMembers: (() => {}) as never, // #4.1 精力天数恢复(垫片第 11 次扩容)
     consumeIntelReveal: (entries: unknown[]) => ({ entries, bonus: 0 }), verifyIntelFor: (entries: unknown[]) => ({ entries, notes: [] }), INTEL_STOCK_CAP: 3,
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
     lastRetreatRunRef: { current: null }, goBack: () => {},

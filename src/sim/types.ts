@@ -234,6 +234,8 @@ export interface Member {
   grudges?: number
   /** R4.1 生平(U34):个人传记时间线;可选=老档无字段,零迁移 */
   bio?: import('./bio').BioEntry[]
+  /** #4.1 精力(0-100):出征场次消耗,天数恢复;可选=老档满精力零迁移 */
+  stamina?: number
 }
 
 // ===== 战斗实体（战斗内的临时投影，战斗结束即弃）=====

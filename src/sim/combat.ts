@@ -13,6 +13,7 @@ import { JOBS, specOf } from '../data/jobs'
 import { ITEM_BASES } from '../data/items'
 import { AFFIXES } from '../data/affixes'
 import { MONSTER_AFFIXES } from './monster-affix'
+import { staminaAttackMult } from './stamina'
 import { SIGNATURE_SKILLS } from '../data/signature'
 import { equipmentSetBonus } from './equipment-sets'
 import { formatStat, formatPercent, STAT_NAME } from './loot'
@@ -214,7 +215,7 @@ export function toCombatant(member: Member): Combatant {
       ((Math.max(1, base.attack + (mods.attack ?? 0)) + (member.level - 1) * job.growth.attack) *
         (1 + eff[job.attackAttr] * 0.05) +
         (eq.attack ?? 0)) *
-        braveryAtkMult * weaponProfMult + augAtk,
+        braveryAtkMult * weaponProfMult * staminaAttackMult(member) + augAtk,
     ),
     defense: Math.round(
       Math.max(0, base.defense + (mods.defense ?? 0) + augDef) *

@@ -10,6 +10,7 @@ import { applyRestMorale, refusesToMarch, applyMoraleDelta } from '../sim/morale
 import { chronicleRefusal, chronicleBuilding, seedChronicle } from '../sim/chronicle'
 import { appendBio } from '../sim/bio'
 import { ageFaints, scarStatName } from '../sim/scars'
+import { restStamina } from '../sim/stamina'
 import { INTEL_STOCK_CAP, consumeIntelReveal, verifyIntelFor } from '../sim/intel'
 import { stepBattle, orderRetreat, toCombatant } from '../sim/combat'
 import { appendFact, latestEventChoice, markExpeditionStart, markTold } from '../sim/fact-ledger'
@@ -416,6 +417,9 @@ export function createAppControllers(deps: ControllerDeps) {
       setPendingConsequences((q: PendingConsequenceX[]) => { const at = q.findIndex((c: PendingConsequenceX) => c.eventId === due.eventId && c.dueDay === due.dueDay); return q.filter((_: PendingConsequenceX, i: number) => i !== at) })
     }
     setDay((d) => d + 1)
+    // #4.1 精力:天数恢复(全体存活,唯一恢复途径)
+    restStamina(membersRef.current)
+    setMembers([...membersRef.current])
     // U32 稳定制:出发日推进——虚痕到期消退(可见通知+当事人生平;早退分支前也要跑)
     const faded = ageFaints(membersRef.current, (day ?? 0) + 1)
     for (const f of faded) {

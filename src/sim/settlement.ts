@@ -27,6 +27,7 @@ import {
   chronicleTowerRecord, type ChronicleEntry,
 } from './chronicle'
 import { appendBio } from './bio'
+import { spendStamina } from './stamina'
 import type { Rng } from './rng'
 import { runMembers, runDungeon, runRng, syncRunParty } from './run-core'
 import { terrainRewardOf } from '../data/terrain-rewards'
@@ -278,6 +279,10 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
   }) }))
   outcome.blessing = dead.length * effects.blessingPerDeath
 
+  // #4.1 精力:远征幸存者每场消耗(塔不消耗——塔按层数另有残酷分层;C4 占位)
+  if (outcome.source === 'dungeon' && outcome.win) {
+    for (const m of alive) spendStamina(m)
+  }
   if (outcome.source === 'tower') {
     // #3.1 下塔才结算:reward 只用于小结/通知,pendingLoot 由 leaveTower 兑现——这里不再入账
     // 写时克隆(R1 浅拷贝契约):settleTowerFloor 会累计 pendingLoot/pendingDrops,浅拷贝共享引用会打穿输入

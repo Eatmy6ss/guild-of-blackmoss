@@ -10,6 +10,7 @@ import { RACES } from '../../data/races'
 import { ITEM_BASES } from '../../data/items'
 import { AFFIXES } from '../../data/affixes'
 import { scarStatName, FAINT_DAYS } from '../../sim/scars'
+import { staminaLabel } from '../../sim/stamina'
 import { WEAPON_FAMILIES, FAMILY_IDS, JOB_FAMILIES, isFamilyProficient } from '../../data/weapon-families'
 import { STAT_NAME, formatStat, describeItem, compareWithEquipped } from '../../sim/loot'
 import { toCombatant } from '../../sim/combat'
@@ -111,6 +112,7 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
           {/* 左:属性 */}
           <div className="ms-col">
             <h3>属性</h3>
+            <p className="hint">{staminaLabel(member)}——精力随出征场次消耗,休整日恢复;疲惫会降低攻击、更易添创伤</p>
             <table className="ms-table">
               <tbody>
                 {(Object.keys(ATTR_NAMES) as (keyof typeof member.attrs)[]).map((k) => (
