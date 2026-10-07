@@ -55,6 +55,8 @@ export interface DungeonRun extends RunCore {
   retreatCost?: { gold: number; mastery: number; dungeonId: string }
   /** R4.3(U30):酒馆情报——真情报使本趟揭示档 +1(出发时从公会 intel 消费) */
   intelBonus?: number
+  /** #4.2 装备维护:远征终局时算出、回城时扣款(可选字段,旧档零迁移) */
+  maintenanceDue?: number
 }
 
 /** 副本的 Boss 链遭遇(按 encounters 顺序):有变体(U28)的原型位由变体顶替——

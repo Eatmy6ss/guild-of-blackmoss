@@ -107,6 +107,11 @@ interface GenNode extends MapNode {
   out: string[]
 }
 
+/** 预计行程层(主体层+Boss 层;与 generateMap 的层数规则同源——口粮计价/#4.6 时间口径共用) */
+export function plannedLayers(dungeon: DungeonDef): number {
+  return (dungeon.size === 3 ? 5 : 6) + 1
+}
+
 /** 生成一张分层地图。同 seed 同图;保证项由确定性收尾补丁落实。 */
 export function generateMap(dungeon: DungeonDef, seed: number): DungeonMap {
   const rng = createRng(seed >>> 0)

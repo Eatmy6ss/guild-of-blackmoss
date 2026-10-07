@@ -449,6 +449,8 @@ function rngScope(scope: Record<string, unknown>) {
     ageFaints: () => [], scarStatName: (s: string) => s, FAINT_DAYS: 4, setScarNotices: () => {}, // R4.2(U32):出发虚痕消退
     intelEntries: [], setIntelEntries: () => {}, setIntelStock: () => {}, intelStock: 3, // U36:情报条目化(出发补货源/消耗真情报)
     restStamina: () => {}, setMembers: (() => {}) as never, // #4.1 精力天数恢复(垫片第 11 次扩容)
+    rationCost: () => 0, maintenanceCost: () => 0, plannedLayers: () => 6, // #4.2 补给成本(垫片第 12 次扩容;0 值=零影响)
+    gold: 999999, setGold: () => {}, buildings: {}, // startExpedition 口粮守卫读 deps.gold/setGold——默认恒走「足额」分支且不记账,不扰动旧断言;settleBattleEnd 读 buildings.smithy(默认 0 级)
     consumeIntelReveal: (entries: unknown[]) => ({ entries, bonus: 0 }), verifyIntelFor: (entries: unknown[]) => ({ entries, notes: [] }), INTEL_STOCK_CAP: 3,
     scarNotices: [] as string[], setConfirmAsk: () => {}, battleSpeed: 1, setBattleSpeed: () => {}, volume: 0.5, setVolumeState: () => {},
     lastRetreatRunRef: { current: null }, goBack: () => {},

@@ -84,6 +84,9 @@ export function ResultScreen({ run, dungeonName, members, snapshot, drops, story
       {cost && (cost.gold > 0 || cost.mastery > 0) && (
         <p className="hint" role="status" style={{ textAlign: 'center', opacity: 0.85 }}>撤退:金币 −{cost.gold}、熟练度 −{cost.mastery}(装备照拿,药水照退)</p>
       )}
+      {!!run.maintenanceDue && (
+        <p className="hint" role="status" style={{ textAlign: 'center', opacity: 0.85 }}>⚒ 装备维护:回城付铁匠铺 {run.maintenanceDue} 金(场数×幸存者,铁匠铺每级减免)</p>
+      )}
 
       {/* ② 成长:错峰浮入,数字滚动 */}
       <div className="rs-section">

@@ -11,6 +11,8 @@ import { chronicleRefusal, chronicleBuilding, seedChronicle } from '../sim/chron
 import { appendBio } from '../sim/bio'
 import { ageFaints, scarStatName } from '../sim/scars'
 import { restStamina } from '../sim/stamina'
+import { rationCost, maintenanceCost } from '../sim/supply'
+import { plannedLayers } from '../sim/dungeon-map'
 import { INTEL_STOCK_CAP, consumeIntelReveal, verifyIntelFor } from '../sim/intel'
 import { stepBattle, orderRetreat, toCombatant } from '../sim/combat'
 import { appendFact, latestEventChoice, markExpeditionStart, markTold } from '../sim/fact-ledger'
@@ -301,6 +303,12 @@ export function createAppControllers(deps: ControllerDeps) {
     if (runRef.current !== current) return // 忽略已应用结果替代掉的旧闭包。
     const o = settleEncounter({ source: 'dungeon', run: current, guild: encounterGuild() })
     if (!o) return
+    // #4.2 装备维护:整趟场数×幸存者(团灭 0 幸存=无账可收),铁匠铺减免;回城时扣款
+    o.run.maintenanceDue = maintenanceCost(
+      o.run.battlesFought,
+      runMembers(o.run, o.guild.members).filter((m) => m.alive).length,
+      buildings.smithy ?? 0,
+    )
     applyOutcome(o)
     const r = o.run
     const endPhase = r.phase
@@ -430,6 +438,19 @@ export function createAppControllers(deps: ControllerDeps) {
     // 事件二期:过期的公会层状态自然消退
     setGuildBuffs((q: StoredGuildBuffX[]) => q.filter((g: StoredGuildBuffX) => g.endDay > (day ?? 0) + 1))
     if (expedition.length < activeDungeon.size) return
+    // #4.2 出征补给:口粮(人数×预计行程层)。不足不拦出征(防软锁)——扣到 0+全员饿肚子士气 −8(C4)。
+    const ration = rationCost(expedition.length, plannedLayers(activeDungeon))
+    if (gold >= ration) {
+      setGold((g) => g - ration)
+      logChronicle(chronicleRaw(day, `出征补给：采买口粮花费 ${ration} 金（${expedition.length} 人 × ${plannedLayers(activeDungeon)} 层行程）。`))
+    } else {
+      setGold(() => 0)
+      for (const m of membersRef.current) {
+        if (m.alive) m.morale = Math.max(0, (m.morale ?? 60) - 8)
+      }
+      setMembers([...membersRef.current])
+      logChronicle(chronicleRaw(day, `补给不足（口粮需 ${ration} 金）——队伍饿着肚子出征，全员士气 −8。`))
+    }
     // M1 P0 成长快照:结算页要展示"这把你变强了什么"
     growthSnapshotRef.current = new Map(
       expedition.map((m: Member) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s: number, n: number) => s + bondStars(n), 0), bonds: { ...m.bonds } }]),
@@ -618,6 +639,13 @@ export function createAppControllers(deps: ControllerDeps) {
     setResumeNotice('')
     const r = runRef.current
     if (r) noteStatistics(expeditionStatistics(r))
+    // #4.2 装备维护扣款:远征终局算出的账单,回城一次一收
+    if (r?.maintenanceDue) {
+      const due = r.maintenanceDue
+      setGold((g) => g - due)
+      r.maintenanceDue = 0
+      logChronicle(chronicleRaw(day, `回城维护装备：铁匠铺收 ${due} 金（场数×幸存者，铁匠铺减免）。`))
+    }
     if (r) resetAfterRun(membersRef.current)
     // 药水经济:未用完的药水退回公会库存
     if (r) setPotions({ ...r.potions })
