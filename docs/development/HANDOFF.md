@@ -16,8 +16,8 @@
 
 ## ⚡ 实时状态牌(2026-10-07 新规:每次开工/推进/收尾都必须刷新此牌——防止撞车)
 
-> **⏳ 正在更新(本机 zcode,2026-10-07 晚)**:批次 3 施工中。已交付并推送:B3-1 塔结构(下塔才结算+禁挂机+全版图内容池)/B3-2 塔规则词缀/B3-3 怪物词缀四通道(HEAD 86349f8,src/sim/tower*.ts+monster-affix.ts+mechanic-registry/combat)。
-> **🔜 下一步将更新**:B3-4 侦查分级 UI+营地换装(RunCore.spares)+死因写入词缀(DeathCause.affixes)→ B3-5 保险扩展+收手界面(TowerRestScreen 改造)。**涉及文件预告:src/sim/tower.ts、src/sim/types.ts(DeathCause)、src/ui/screens/TowerScreens.tsx、src/App.tsx 出征面板**。
+> **⏳ 正在更新(本机 zcode,2026-10-07 深夜)**:**B3-4 开工**——死因写入词缀(combat 死亡块/markPermadeath/renderDeathCause)+塔侦查分级 UI(TowerRestScreen)+营地换装(RunCore.spares/ExpeditionBoard/TowerRestScreen/MapScreen)。**涉及文件:src/sim/combat.ts、src/sim/run.ts、src/sim/types.ts、src/ui/screens/{TowerScreens,MapScreen,ExpeditionBoard}.tsx、src/ui/controllers.ts。**
+> **📦 已交付并推送**:B3-1/B3-2/B3-3(HEAD ac805e6 含状态牌)。
 > **⚠ 给所有远程协作者(含 shldo)**:上述文件即将变更——如果你正基于旧 main 改这些区域,**请先决定**:①等本机推完再 rebase;②或改用你自己的分支避免冲突。撞车前本节会持续更新;本机每单交付后立即推 main 并刷新此牌。
 > **✅ 空闲标记**:批次 3 全部交付后,此牌会改写为「空闲,可安全并行」。
 
