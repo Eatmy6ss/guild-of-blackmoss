@@ -18,11 +18,9 @@
 
 ## ⚡ 实时状态牌(2026-10-07 新规:每次开工/推进/收尾都必须刷新此牌——防止撞车)
 
-> **✅ 空闲标记(2026-10-08)**:#4.1 精力系统已交付推送(1088588,批次 4 第一单)——远征每场-8 精力/出发日全体+20(唯一恢复)/低于 40 攻击 ×0.85+创伤加成 0.1(C4);成员卡与档案显示 ⚡ 读数;老档 undefined=满精力零迁移。**批次 4 后续单(#4.2 补给成本/#4.3 撤退代价已有 R5 版/#4.4 建筑重分工/#4.6 天收口)等制作人指令**;M2 塔主菜试玩仍待制作人(与批次 4 并行不冲突)。
-> **📦 已交付并推送**:批次 2 全量+B3-1~B3-5(HEAD 见状态卡);试玩包已重部署(build 2026-10-07 深夜)。**B3-1~B3-4 已全部交付推送**(B3-4=f92a631:死因写入词缀/塔侦查 UI/营地换装 rest 相解锁)。
-> **🔜 B3-5 精确待办**:①insureNextTowerFloor 扩展「团灭保住部分 pendingLoot」(现仅阵亡装备免赎回);②收手界面=TowerRestScreen 加累计 pendingLoot 展示(金币/经验/掉落清单)+下段规则预告(ruleHistory 分段)+「带着 X 金收手」按钮文案;③改完跑 verify+推+重部署试玩包 → **M2 交制作人试玩**。
-> **⚠ 给所有远程协作者(含 shldo)**:上述文件即将变更——如果你正基于旧 main 改这些区域,**请先决定**:①等本机推完再 rebase;②或改用你自己的分支避免冲突。撞车前本节会持续更新;本机每单交付后立即推 main 并刷新此牌。
-> **✅ 空闲标记**:批次 3 全部交付后,此牌会改写为「空闲,可安全并行」。
+> **🔨 施工中(2026-10-08,zcode)**:制作人指令「继续推进到 4.6 结束」——批次 4 剩余单连续施工:**#4.2 出征补给成本 → #4.3 撤退代价补齐 → #4.4 建筑职责重分工(新增宿舍建筑) → #4.5 attrPoint 改玩家指定维 → #4.6 天收口(advanceGuildDay 单一日历+建设/治疗占天+委托期限)**,每单独立提交+完整 verify。
+> **📁 涉及文件预告(远程协作者撞车提示)**:`src/sim/supply.ts`(新)/`stamina.ts`/`scars.ts`/`run.ts`/`kingdom.ts`/`data/base.ts`(宿舍+BaseEffects 扩容)/`data/economy.ts`/`ui/controllers.ts`(startExpedition/upgradeBuilding/resolveEvent/backToGuild)/`App.tsx`(ROSTER_CAP 删常量改派生/enterExpedition busy 守卫)/`ui/screens/EventModal.tsx`(六维选择)/`ui/screens/ResultScreen.tsx`(维护费行)/`HallScreen.tsx`。shldo 的分支重做若涉及 base.ts/App.tsx 请等本批推完再 rebase。
+> **📦 已交付并推送**:#4.1 精力系统(1088588)/批次 3 全量(B3-1~B3-5)/批次 2 全量;试玩包 build 2026-10-07 深夜。
 
 ## 认领板(每个协作者/AI 从这里找自己的活)
 
