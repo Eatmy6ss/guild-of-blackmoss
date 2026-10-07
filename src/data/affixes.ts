@@ -84,6 +84,22 @@ export const AFFIXES: Record<string, AffixDef> = {
     tiers: [{ tier: 1, range: [0.08, 0.15] }, { tier: 2, range: [0.12, 0.2] }],
     pools: ['caster', 'healer'],
   },
+  // ===== #2.3 触发类词条(复用威能钩子:击杀回血/低血攻击/受击反弹;数值 C4 占位) =====
+  'aff-blooddebt': {
+    id: 'aff-blooddebt', name: '血债', stat: 'lifesteal', trigger: 'kill-heal',
+    tiers: [{ tier: 1, range: [0.02, 0.04] }, { tier: 2, range: [0.04, 0.07] }],
+    pools: ['dps'],
+  },
+  'aff-vow': {
+    id: 'aff-vow', name: '背水', stat: 'attack', trigger: 'low-hp-attack',
+    tiers: [{ tier: 1, range: [0.12, 0.2] }, { tier: 2, range: [0.18, 0.3] }],
+    pools: ['dps', 'tank'],
+  },
+  'aff-thorn': {
+    id: 'aff-thorn', name: '棘肤', stat: 'defense', trigger: 'hit-reflect',
+    tiers: [{ tier: 1, range: [0.08, 0.15] }, { tier: 2, range: [0.12, 0.2] }],
+    pools: ['tank'],
+  },
 }
 
 /** v30 迁移映射:被删多档词条 → 存活词条(rolls 值保留,重掷时才按 tier 重取区间) */

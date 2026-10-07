@@ -118,9 +118,17 @@ export function itemStats(item: ItemInstance): StatBundle {
   const out: StatBundle = { [base.stat]: base.value }
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
+    if (aff.trigger) continue // #2.3:触发词条不进属性聚合(走 Combatant 触发字段)
     out[aff.stat] = round2((out[aff.stat] ?? 0) + r.value)
   }
   return out
+}
+
+/** #2.3 触发词条的说明文案(值=触发数值,百分比) */
+export const TRIGGER_TEXT: Record<string, (v: number) => string> = {
+  'kill-heal': (v) => `击杀敌人时回复 ${Math.round(v * 100)}% 最大生命`,
+  'low-hp-attack': (v) => `生命低于 30% 时,伤害 +${Math.round(v * 100)}%`,
+  'hit-reflect': (v) => `被近战命中时反弹 ${Math.round(v * 100)}% 伤害`,
 }
 
 export function equipmentStats(equipment: Partial<Record<Slot, ItemInstance>>): StatBundle {
@@ -141,7 +149,7 @@ export function describeItem(item: ItemInstance): string {
   const parts = [qName + `${STAT_NAME[base.stat]}${formatStat(base.stat, base.value, true)}`]
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
-    parts.push(`${aff.name}${formatStat(aff.stat, r.value, true)}`)
+    parts.push(aff.trigger ? `${aff.name}:${TRIGGER_TEXT[aff.trigger]!(r.value)}` : `${aff.name}${formatStat(aff.stat, r.value, true)}`)
   }
   const LEGACY_NAMES: Record<string, string> = { focus: '锋镝', killheal: '饮血', bulwark: '磐石', mend: '春霖', elitewarden: '嗜功', emberward: '烬衣', triumph: '凯歌', scavenger: '拾荒' }
   const legacy = base.legacy ? '〔' + (LEGACY_NAMES[base.legacy] ?? base.legacy) + '〕' : ''

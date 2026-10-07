@@ -11,6 +11,7 @@ import type {
 } from './types'
 import { JOBS, specOf } from '../data/jobs'
 import { ITEM_BASES } from '../data/items'
+import { AFFIXES } from '../data/affixes'
 import { SIGNATURE_SKILLS } from '../data/signature'
 import { equipmentSetBonus } from './equipment-sets'
 import { formatStat, formatPercent, STAT_NAME } from './loot'
@@ -116,6 +117,10 @@ export function toCombatant(member: Member): Combatant {
     let legacyMend = 0
     let setCrown = 0
     let setHunt = 0
+    // #2.3 触发词条聚合(复用威能钩子通道)
+    let killHealPct = 0
+    let lowHpAtkMult = 0
+    let hitReflect = 0
     for (const eqItem of Object.values(member.equipment)) {
       const lk = eqItem ? ITEM_BASES[eqItem.baseId]?.legacy : undefined
       if (lk === 'focus') legacyFocus = true
@@ -128,6 +133,13 @@ export function toCombatant(member: Member): Combatant {
       const sn = eqItem ? ITEM_BASES[eqItem.baseId]?.setName : undefined
       if (sn === 'gray-crown') setCrown++
       if (sn === 'wind-hunt') setHunt++
+      // #2.3:触发词条 roll 值聚合
+      for (const r of eqItem?.rolls ?? []) {
+        const aff = AFFIXES[r.affixId]
+        if (aff?.trigger === 'kill-heal') killHealPct += r.value
+        else if (aff?.trigger === 'low-hp-attack') lowHpAtkMult += r.value
+        else if (aff?.trigger === 'hit-reflect') hitReflect += r.value
+      }
     }
   // 混合职阶(宪法 v3):自带头部/站位/主职,不走基础职业线;普通专精 = 线 base + 专精修正
   const hy = isHybrid(member.spec) ? HYBRIDS[member.spec!] : undefined
@@ -228,7 +240,13 @@ export function toCombatant(member: Member): Combatant {
     legacyFocus, legacyKillheal, legacyBulwark, legacyElitewarden, legacyEmberward, setCrown, setHunt,
     specId: baseSpec.id,
     spr: eff.spr,
-    counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
+    // #2.3:反弹=专精被动+棘肤词条(0.4 封顶);0/undefined=无反弹
+    counterMult: (() => {
+      const total = (baseSpec.passive === 'counter' ? 0.3 : 0) + Math.min(0.4, hitReflect)
+      return total > 0 ? total : undefined
+    })(),
+    killHealPct: Math.min(0.15, killHealPct),
+    lowHpAtkMult: Math.min(0.5, lowHpAtkMult),
     healReceived: loyaltyHeal + (race.passive.healReceived ?? 0) + eff.spr * 0.004 + (eq.healReceived ?? 0) + legacyMend,
     fireResist: Math.min(0.75, eq.fireResist ?? 0),
     // #2.2 批次 2 新属性(装备词条聚合;数值口径见各数学点,C4 占位)
@@ -662,8 +680,9 @@ export function applyHit(
     // 装备 2.0 传承威能·饮血:己方击杀敌人时,持有者回复 2% 最大生命
     if (target.team === 'enemy' && attacker.team === 'guild') {
       for (const g of aliveOf(state, 'guild')) {
-        if (!g.legacyKillheal) continue
-        const back = Math.max(1, Math.round(g.maxHp * 0.02))
+        const pct = (g.legacyKillheal ? 0.02 : 0) + (g.killHealPct ?? 0)
+        if (pct <= 0) continue
+        const back = Math.max(1, Math.round(g.maxHp * pct))
         g.hp = Math.min(g.maxHp, g.hp + back)
       }
     }    // 死亡特质:湮灭自爆/冰封遗骸/临终呼援
@@ -728,6 +747,11 @@ function dealDamage(
     packMult *= 1 + Math.max(0, kin - 1) * 0.08
   }
   if (attacker.traits?.includes('last-stand') && attacker.hp / attacker.maxHp < 0.3) packMult *= 1.4
+  // #2.3 背水词条:生命低于 30% 时伤害 +(乘区)
+  if (attacker.lowHpAtkMult && attacker.hp / attacker.maxHp < 0.3) {
+    traitHint(state, 'last-stand')
+    packMult *= 1 + attacker.lowHpAtkMult
+  }
   // 龙威压制(版图二 dragon-fear 特质/龙威光环):被压制的单位出伤 ×0.85
   const fearMult = attacker.fearUntilTick && state.tick < attacker.fearUntilTick ? 0.85 : 1
   let variance = 0.85 + nextRandom(state) * 0.3

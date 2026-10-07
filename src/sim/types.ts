@@ -144,6 +144,9 @@ export type StatKey =
 /** 倾向池(#2.8/E02):只影响掉落分布,不限制穿戴 */
 export type AffixPool = 'common' | 'tank' | 'healer' | 'dps' | 'caster'
 
+/** #2.3 触发类词条:复用威能钩子通道(击杀回血/低血攻击/受击反弹),不新建触发系统 */
+export type AffixTrigger = 'kill-heal' | 'low-hp-attack' | 'hit-reflect'
+
 export interface AffixDef {
   id: string
   name: string
@@ -152,6 +155,8 @@ export interface AffixDef {
   tiers: { tier: 1 | 2 | 3 | 4; range: [number, number] }[]
   /** 倾向池(职业命名装备从对应池抽取;通用词条标 common) */
   pools: AffixPool[]
+  /** #2.3 触发类:有值=触发词条(rolls 值=触发数值,不进属性聚合) */
+  trigger?: AffixTrigger
 }
 
 // ===== 武器族(R3/U31):武器决定攻击方式与站位,职业决定能不能用好 =====
@@ -251,6 +256,10 @@ export interface Combatant {
   cdReduction?: number
   /** #2.7:远征/塔词缀的"受到治疗"独立乘区(不再覆盖玩家堆的受疗词条) */
   healTakenMod?: number
+  /** #2.3 触发词条(装备聚合;0/undefined=无) */
+  killHealPct?: number
+  lowHpAtkMult?: number
+  hitReflect?: number
   cooldownLeft: number
   alive: boolean
   memberId?: string

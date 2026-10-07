@@ -1390,7 +1390,8 @@ const towerFailures: string[] = []
     const medT = trash.length ? [...trash].sort((a, b) => a - b)[Math.floor(trash.length / 2)] : 0
     console.log(`⑲ ${d.name}:杂兵 ${medT.toFixed(1)}s(胜 ${trash.length}/6)`)
     // 难度递增改版(2026-09-25):前期图快(教学 8-15s)、后期图有拉扯(25-30s)是设计曲线
-    if (trash.length < 5 || medT < 7 || medT > 40) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
+    // #2.3 触发词条进掉落池后再抬前期 DPS:防秒杀线 7→6(记录;G3 校准)
+    if (trash.length < 5 || medT < 6 || medT > 40) fail19.push(`⑲ ${d.name} 杂兵节奏越带 ${medT.toFixed(1)}s`)
     // 每个 boss 都要过考试(不只末位):验收机器人无撤退保护、打法标准化,≥4/8 为可达性下限
     // (真人另有撤退保护/药水存量/练度垫);节奏带只约束毕业考,门考只要求 ≥26s(不可是秒杀)
     for (const enc of bossEncs) {
