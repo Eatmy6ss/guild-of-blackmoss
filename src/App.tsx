@@ -1101,7 +1101,7 @@ export default function App() {
           {screen === 'tower' && towerRun && towerRun.phase === 'rest' && (
             <TowerRestScreen
               towerRun={towerRun} gold={gold} setGold={setGold} towerRunRef={towerRunRef}
-              setTowerRun={setTowerRun} day={day}
+              setTowerRun={setTowerRun} day={day} members={members}
               towerNextFloor={towerNextFloor} leaveTower={leaveTower}
             />
           )}

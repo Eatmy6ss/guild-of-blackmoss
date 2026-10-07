@@ -783,9 +783,10 @@ export function createAppControllers(deps: ControllerDeps) {
     const t = towerRunRef.current
     // 药水经济:离开高塔,未用完的药水退回公会库存(settleTowerFloor 已逐层回写)
     if (t) setPotions({ ...t.potions })
-    // #3.1 下塔才结算:主动离开/撤退=全额;团灭只保 20%(C4 占位,「损失大部分」)
+    // #3.1 下塔才结算:主动离开/撤退=全额;团灭只保 20%(C4);B3-5 保险扩展:投保层团灭保 60%(对冲工具)
     if (t) {
-      const claim = claimPendingLoot(t, t.result === 'defeated' ? 0.2 : 1)
+      const wipeMult = t.insuredFloor ? 0.6 : 0.2
+      const claim = claimPendingLoot(t, t.result === 'defeated' ? wipeMult : 1)
       if (claim.gold) gainGold(claim.gold, 'tower')
       if (claim.exp) {
         // 经验按塔结算口径发给出征队员(settleGrowth 的 exp 部分在爬塔时已延迟到这里)
