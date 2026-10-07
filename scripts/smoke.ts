@@ -8,7 +8,7 @@ import { generateMember, memberGenerationState } from '../src/sim/gen'
 import { initialRunState } from '../src/sim/run-state'
 import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit, useSignature, statLayers } from '../src/sim/combat'
 import { SIGNATURE_SKILLS } from '../src/data/signature'
-import { rollBossDrops, rollDrop, rollWaveDrop, describeItem, itemStats, createLootRng } from '../src/sim/loot'
+import { rollBossDrops, rollDrop, rollWaveDrop, describeItem, itemStats, createLootRng, dungeonItemTier } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
 import { ITEM_BASES } from '../src/data/items'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
@@ -398,10 +398,13 @@ for (let i = 0; i < 60; i++) {
   }
   for (const r of item.rolls) {
     const aff = AFFIXES[r.affixId]
-    // 装备扩容:T2 词条区间 ×1.5 × 品级紫 ×1.25(rollAffixes tierScale + quality)
-    const hi = aff.range[1] * 1.5 * 1.25 + 0.01
-    if (r.value < aff.range[0] - 0.01 || r.value > hi) {
-      lootFailures.push(`6b 词条 ${aff.id} 数值越界 ${r.value}(上界 ${hi.toFixed(2)})`)
+    // #2.1 tier 化:T2 词条区间按 tiers 表(≤装备 tier 最大档)× 品级紫 ×1.25
+    const [lo, hi] = [...aff.tiers].filter((t) => t.tier <= 2).pop()!.range
+    // 品质包络:白 0.9 / 绿 1.08 / 紫 1.25
+    const floor = lo * 0.9 - 0.01
+    const cap = hi * 1.25 + 0.01
+    if (r.value < floor || r.value > cap) {
+      lootFailures.push(`6b 词条 ${aff.id} 数值越界 ${r.value}(界 [${floor.toFixed(2)}, ${cap.toFixed(2)}])`)
     }
   }
   if (!describeItem(item).includes('逐风长弓')) lootFailures.push('6b 描述缺失')
@@ -1332,14 +1335,25 @@ const towerFailures: string[] = []
     const comp = dungeon.size >= 5 ? RAID5_JOBS : JOBS
     // 版图二:probe 按副本预期等级出阵(龙脊山脉对 L5 是碾压局,验收无意义)
     const lvl = Math.min(15, (dungeon.expectedLevel ?? 5) + 1)
+    // 装备=入场券(U33⑨):版图二(itemTier>=3)按职业配 T3 三件套(本命武器族+重甲/布衣)
+    const PROBE_GEAR3: Record<string, [string, string, string]> = {
+      guard: ['wpn-t3-dawn', 'arm-t3-bulwark', 'trk-t3-vanguard'],
+      priest: ['wpn-t3-vox', 'arm-t3-whisper', 'trk-t3-seer'],
+      ranger: ['wpn-t3-gale', 'arm-t3-gale', 'trk-t3-vanguard'],
+      warrior: ['wpn-t3-dawn', 'arm-t3-bulwark', 'trk-t3-vanguard'],
+      mage: ['wpn-t3-ember', 'arm-t3-whisper', 'trk-t3-seer'],
+      warlock: ['wpn-t3-ember', 'arm-t3-whisper', 'trk-t3-seer'],
+    }
     const squad = comp.map((job, j) => {
       const m = generateMember(job, lvl, 980000 + seed * 100 + j)
       const g = PROBE_GEAR[m.job] ?? PROBE_GEAR.ranger!
       let rs = 990000 + seed * 977 + j
       const rng = () => { rs = (rs * 1103515245 + 12345) % 2147483648; return rs / 2147483648 }
-      m.equipment.weapon = rollDrop(g[0]!, rng)
-      m.equipment.armor = rollDrop(g[1]!, rng)
-      m.equipment.trinket = rollDrop(g[2]!, rng)
+      // 装备=入场券(U33⑨ 验收理念):探针不下白装(真人不会穿白装打高 rating 图)
+      const gear = dungeonItemTier(dungeon.id) >= 3 ? (PROBE_GEAR3[m.job] ?? PROBE_GEAR3.ranger!) : g
+      m.equipment.weapon = rollDrop(gear[0]!, rng, { minQuality: 'green' })
+      m.equipment.armor = rollDrop(gear[1]!, rng, { minQuality: 'green' })
+      m.equipment.trinket = rollDrop(gear[2]!, rng, { minQuality: 'green' })
       return m
     })
     const b = createBattle(squad, dungeon, encId, seed * 31 + 7, 0, 0, false)
@@ -2082,8 +2096,9 @@ const towerFailures: string[] = []
       const r2 = t2.rolls.find((x) => x.affixId === 'aff-atk')
       if (!r1 || !r2) continue
       checked++
-      if (Math.abs(r2.value - r1.value * 1.5) > 0.02) {
-        fail28.push(`㉘ T2 缩放异常:T1 ${r1.value} → T2 ${r2.value}(应 ×1.5)`)
+      // #2.1 tier 化:锋利 t1[2,6]→t2[4,9],中点 4→6.5 必升(区间端点单调)
+      if (r2.value <= r1.value) {
+        fail28.push(`㉘ T2 缩放异常:T1 ${r1.value} → T2 ${r2.value}(t2 区间应高于 t1)`)
       }
       console.log(`㉘ 词条缩放对:${checked} 锋利 T1 ${r1.value} → T2 ${r2.value}`)
     }

@@ -126,12 +126,17 @@ export type StatKey =
   /** 火抗(0-1):灼热地形与环境火伤按此减免(版图二·龙脊山脉) */
   | 'fireResist'
 
+/** 倾向池(#2.8/E02):只影响掉落分布,不限制穿戴 */
+export type AffixPool = 'common' | 'tank' | 'healer' | 'dps' | 'caster'
+
 export interface AffixDef {
   id: string
   name: string
   stat: StatKey
-  /** roll 区间 [min, max]，按装备 tier 缩放 */
-  range: [number, number]
+  /** #2.1 tier 化:同词条不同 tier 只改区间,不新增 id;roll 按装备 tier 查表 */
+  tiers: { tier: 1 | 2 | 3 | 4; range: [number, number] }[]
+  /** 倾向池(职业命名装备从对应池抽取;通用词条标 common) */
+  pools: AffixPool[]
 }
 
 // ===== 武器族(R3/U31):武器决定攻击方式与站位,职业决定能不能用好 =====

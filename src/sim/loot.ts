@@ -11,11 +11,12 @@ function round2(n: number): number {
 }
 
 // 装备纪元：版图一 T1-T2，版图二 T3-T4；品质仅提供数值与追加条数预算。
-const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
+// #2.1 tier 化:词条区间按装备 tier 查 tiers 表(不再用乘算 TIER_SCALE)。
 
 export interface AffixBudget {
   count: readonly [number, number]
-  tierScale: number
+  /** 装备 tier(1-4):词条数值区间查 tiers 表 */
+  tier: 1 | 2 | 3 | 4
   qualityScale: number
   /** 初始条数未达到上限时，最多追加一条的概率。 */
   bonusChance?: number
@@ -35,7 +36,7 @@ export function rollAffixes(budget: AffixBudget, pools: readonly AffixDef[], rng
     // 保留普通词条原有两次取整，避免其他品质及百分比属性漂移。
     rolls.push({
       affixId: aff.id,
-      value: round2(affixValue(aff, budget.tierScale, rng) * budget.qualityScale),
+      value: round2(affixValue(aff, budget.tier, rng) * budget.qualityScale),
     })
     return true
   }
@@ -47,10 +48,11 @@ export function rollAffixes(budget: AffixBudget, pools: readonly AffixDef[], rng
   return rolls
 }
 
-/** 阶级区间取值供普通与追加共用；品质倍率由同一个预算入口统一应用。 */
-export function affixValue(aff: AffixDef, tierScale: number, rng: () => number): number {
-  const lo = aff.range[0] * tierScale
-  const hi = aff.range[1] * tierScale
+/** #2.1 tier 化:取 ≤装备 tier 的最大档区间(词条档位不足时封顶其最高档) */
+export function affixValue(aff: AffixDef, tier: 1 | 2 | 3 | 4, rng: () => number): number {
+  const range = [...aff.tiers].filter((t) => t.tier <= tier).pop()?.range ?? aff.tiers[0]!.range
+  const lo = range[0]
+  const hi = range[1]
   return round2(lo + rng() * (hi - lo))
 }
 
@@ -77,7 +79,7 @@ export function rollDrop(
   const qAdj = quality === 'purple' ? { mult: 1.25, bonusChance: 0.6 } : quality === 'green' ? { mult: 1.08, bonusChance: 0 } : { mult: 0.9, bonusChance: 0 }
   const rolls = rollAffixes({
     count: base.affixCount,
-    tierScale: TIER_SCALE[base.tier] ?? 1,
+    tier: base.tier as 1 | 2 | 3 | 4,
     qualityScale: qAdj.mult,
     bonusChance: qAdj.bonusChance,
   }, Object.values(AFFIXES), rng)
@@ -201,7 +203,8 @@ export const DUNGEON_TIER: Record<string, number> = {
 }
 
 /** 副本特化装备池(试玩反馈④:装备多样性——在对应图刷会有专属掉落) */
-const DUNGEON_SIGNS: Record<string, string[]> = {
+/** 副本特化装备池(试玩反馈④;smoke ⑲ 探针按图配装也用它) */
+export const DUNGEON_SIGNS: Record<string, string[]> = {
   blackmoss: ['trk-sign-frogeye', 'wpn-line-guard', 'wpn-line-priest'],
   rustmine: ['arm-sign-minershell', 'wpn-line-ranger', 'wpn-line-mage'],
   ashfield: ['wpn-sign-warbrand', 'wpn-line-warrior', 'arm-line-guard'],
@@ -250,7 +253,7 @@ export function recastRoll(item: ItemInstance, rollIndex: number, rng: () => num
   if (!aff) return null
   const base = ITEM_BASES[item.baseId]
   const qualityScale = item.quality === 'purple' ? 1.25 : item.quality === 'green' ? 1.08 : 0.9
-  const value = round2(affixValue(aff, TIER_SCALE[base?.tier ?? 1] ?? 1, rng) * qualityScale)
+  const value = round2(affixValue(aff, (base?.tier ?? 1) as 1 | 2 | 3 | 4, rng) * qualityScale)
   if (value === roll.value) return null
   const rolls = item.rolls.map((r, i) => (i === rollIndex ? { ...r, value } : r))
   return { ...item, rolls }

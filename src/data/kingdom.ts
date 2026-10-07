@@ -124,7 +124,7 @@ export const ROYAL_SHELF: RoyalGood[] = [
   { id: 'shelf-supply', name: '官契补给', desc: '治疗药×2、爆发药×1——按官契价结算,比市价便宜', threshold: 0, gold: 55, heal: 2, fury: 1 },
   { id: 'shelf-marrow', name: '王家库房·星髓', desc: '王室从没收品里拆出的星髓 ×1', threshold: 20, gold: 150, marrow: 1 },
   { id: 'shelf-sword', name: '誓约制式·折颈巨剑', desc: 'T2 制式巨剑,带官印词条(锋利/致命)', threshold: 50, gold: 280,
-    item: { baseId: 'wpn-t2-greatsword', quality: 'green', rolls: [{ affixId: 'aff-atk', value: 7 }, { affixId: 'aff-keen', value: 0.1 }] } },
+    item: { baseId: 'wpn-t2-greatsword', quality: 'green', rolls: [{ affixId: 'aff-atk', value: 7 }, { affixId: 'aff-crit', value: 0.1 }] } },
   { id: 'shelf-plate', name: '誓约制式·泽地重铠', desc: 'T2 制式重铠,带官印词条(坚韧/御守)', threshold: 100, gold: 320,
-    item: { baseId: 'arm-t2-plate', quality: 'green', rolls: [{ affixId: 'aff-hp', value: 30 }, { affixId: 'aff-guard', value: 5 }] } },
+    item: { baseId: 'arm-t2-plate', quality: 'green', rolls: [{ affixId: 'aff-hp', value: 30 }, { affixId: 'aff-def', value: 5 }] } },
 ]

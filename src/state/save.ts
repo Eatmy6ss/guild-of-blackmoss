@@ -10,6 +10,7 @@ import { newKingdomState, normalizeKingdom, type KingdomState } from '../sim/kin
 import { newStatistics, normalizeStatistics, type GameplayStatistics } from '../sim/statistics'
 import { sanitizeBio } from '../sim/bio'
 import { sanitizeIntelEntries } from '../sim/intel'
+import { AFFIX_RENAMES } from '../data/affixes'
 import { initialRunState, validateRunState, type RunUIState } from '../sim/run-state'
 import type { Visitor } from '../sim/tavern'
 
@@ -21,7 +22,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 29
+export const SAVE_VERSION = 30
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -156,6 +157,20 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   27: (d) => d,
   // U36 情报条目化:v28 的 intel 布尔表作废(真伪/文本不再隐藏),换 intelEntries+intelStock
   28: (d) => { delete (d as Record<string, unknown>).intel; return d },
+  // #2.1 词条 tier 化:老装备 rolls 里被删的多档词条 id 映射到存活词条(值保留,重掷才按 tier 重取)
+  29: (d) => {
+    const items = d.items as Record<string, { rolls?: { affixId: string }[] }> | undefined
+    if (items && typeof items === 'object') {
+      for (const item of Object.values(items)) {
+        if (!Array.isArray(item?.rolls)) continue
+        item.rolls = item.rolls.map((r) => {
+          const to = AFFIX_RENAMES[r?.affixId]
+          return to ? { ...r, affixId: to } : r
+        })
+      }
+    }
+    return d
+  },
   // A2 事实账本(ROADMAP §3.3):v22 起记录,旧档为空账本(编年史不迁移)
   21: (d) => ({ ...d, factLedger: { nextId: 1, facts: [] } }),
   20: (d) => ({ ...d, runState: initialRunState(), visitor: null, generationState: null }),

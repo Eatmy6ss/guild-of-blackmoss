@@ -18,38 +18,39 @@ function scripted(...values: number[]): () => number {
 }
 
 const pool = Object.values(AFFIXES)
-const budget: AffixBudget = { count: [2, 3], tierScale: 2.1, qualityScale: 1.25, bonusChance: 0.6 }
+const budget: AffixBudget = { count: [2, 3], tier: 3, qualityScale: 1.25, bonusChance: 0.6 }
 
 describe('词条预算', () => {
   it('T3 紫装追加词条继承相同的阶级和品质预算，并在完整区间抽样（B04）', () => {
     // 普通攻击/生命均抽下限；追加防御抽上半区，应该高于同预算下限 2.63。
     const item = rollDrop('wpn-t3-dawn', scripted(0, 0, 0, 0, 0, 0, 0, 0, 0.5))
     expect(item.quality).toBe('purple')
+    // #2.1 tier 区间:T3 锋利[6,11]×1.25=7.5;坚韧[40,80]×1.25=50;加固(t3 封顶 t2)[3,6]×1.25
     expect(item.rolls).toEqual([
-      { affixId: 'aff-atk', value: 5.25 },
-      { affixId: 'aff-hp', value: 26.25 },
-      { affixId: 'aff-def', value: 6.56 },
+      { affixId: 'aff-atk', value: 7.5 },
+      { affixId: 'aff-hp', value: 50 },
+      { affixId: 'aff-def', value: 5.63 },
     ])
-    expect(describeItem(item)).toContain('加固+6.6')
+    expect(describeItem(item)).toContain('加固+5.6')
   })
 
   it('I4：相同预算、词条和抽样下，普通与追加路径逐项相同', () => {
     for (const affix of pool) {
-      for (const tierScale of [1, 1.5, 2.1, 2.8]) {
+      for (const tier of [1, 2, 3, 4] as const) {
         for (const qualityScale of [0.9, 1.08, 1.25]) {
           for (const valueDraw of [0, 0.137, 0.5, 0.999999]) {
-            const sameBudget: AffixBudget = { count: [0, 1], tierScale, qualityScale, bonusChance: 0.6 }
+            const sameBudget: AffixBudget = { count: [0, 1], tier, qualityScale, bonusChance: 0.6 }
             const ordinary = rollAffixes(sameBudget, [affix], scripted(0.99, 0, valueDraw))
             const bonus = rollAffixes(sameBudget, [affix], scripted(0, 0, 0, valueDraw))
             expect(ordinary).toHaveLength(1)
-            expect(bonus, `${affix.id}/${tierScale}/${qualityScale}/${valueDraw}`).toEqual(ordinary)
+            expect(bonus, `${affix.id}/${tier}/${qualityScale}/${valueDraw}`).toEqual(ordinary)
           }
         }
       }
     }
-    // 当前没有 T4 实物；预算接口仍需按既定 2.8 倍处理，不沿用旧追加分支的 1.5。
-    expect(rollAffixes({ ...budget, count: [0, 1], tierScale: 2.8 }, [AFFIXES['aff-def']], scripted(0, 0, 0, 0.5)))
-      .toEqual([{ affixId: 'aff-def', value: 8.75 }])
+    // 当前没有 T4 实物;#2.1 后 T4 用词条最高档(加固 t2 [3,6]×1.25)
+    expect(rollAffixes({ ...budget, count: [0, 1], tier: 4 }, [AFFIXES['aff-def']], scripted(0, 0, 0, 0.5)))
+      .toEqual([{ affixId: 'aff-def', value: 5.63 }])
   })
 
   it('追加保留 60% 边界、最多一条、不超过基底上限，池不足也不会重复', () => {
@@ -67,7 +68,6 @@ describe('词条预算', () => {
   it('所有实际基底和品质的词条落在预算区间内，生成不修改定义', () => {
     const basesBefore = structuredClone(ITEM_BASES)
     const affixesBefore = structuredClone(AFFIXES)
-    const scales: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.1, 4: 2.8 }
     const round2 = (n: number) => Math.round(n * 100) / 100
     for (const base of Object.values(ITEM_BASES)) {
       for (const [qualityDraw, multiplier] of [[0.9, 0.9], [0.3, 1.08], [0.01, 1.25]]) {
@@ -83,9 +83,10 @@ describe('词条预算', () => {
           expect(item.rolls.length).toBeLessThanOrEqual(base.affixCount[1])
           expect(new Set(item.rolls.map(r => r.affixId)).size).toBe(item.rolls.length)
           for (const roll of item.rolls) {
-            const [lo, hi] = AFFIXES[roll.affixId].range
-            expect(roll.value).toBeGreaterThanOrEqual(round2(round2(lo * scales[base.tier]) * multiplier))
-            expect(roll.value).toBeLessThanOrEqual(round2(round2(hi * scales[base.tier]) * multiplier))
+            const aff = AFFIXES[roll.affixId]
+            const [lo, hi] = [...aff.tiers].filter((t) => t.tier <= base.tier).pop()!.range
+            expect(roll.value).toBeGreaterThanOrEqual(round2(lo * multiplier))
+            expect(roll.value).toBeLessThanOrEqual(round2(hi * multiplier))
           }
         }
       }
@@ -107,19 +108,19 @@ describe('词条预算', () => {
     expect(dropAt(0.9, { minQuality: 'purple' }).quality).toBe('purple')
     expect(dropAt(0.15, { qualityBias: 0.05 }).quality).toBe('purple')
     expect(dropAt(0.15, { qualityBias: -0.05 }).quality).toBe('green')
-    expect(dropAt(0.9).rolls).toEqual([{ affixId: 'aff-atk', value: 3.44 }, { affixId: 'aff-hp', value: 17.2 }])
-    expect(dropAt(0.3).rolls).toEqual([{ affixId: 'aff-atk', value: 4.13 }, { affixId: 'aff-hp', value: 20.64 }])
-    // 63e29e3 的实际输出：浮点下 3.82 × 1.25 的两阶段取整为 4.77，兼容保留。
-    expect(dropAt(0.01).rolls).toEqual([{ affixId: 'aff-atk', value: 4.77 }, { affixId: 'aff-hp', value: 23.89 }])
+    // #2.1 tier 区间:T2 锋利[4,9]/坚韧[20,45],value draw=0.137;两阶段取整
+    expect(dropAt(0.9).rolls).toEqual([{ affixId: 'aff-atk', value: 4.22 }, { affixId: 'aff-hp', value: 21.09 }])
+    expect(dropAt(0.3).rolls).toEqual([{ affixId: 'aff-atk', value: 5.07 }, { affixId: 'aff-hp', value: 25.3 }])
+    expect(dropAt(0.01).rolls).toEqual([{ affixId: 'aff-atk', value: 5.86 }, { affixId: 'aff-hp', value: 29.29 }])
   })
 
   it('真实杂兵掉落使用修复后的追加预算，Boss 保底使用同一生成入口', () => {
     const wave = rollWaveDrop('emberpass', () => 0)!
     expect(wave.baseId).toBe('arm-t3-drake')
     expect(wave.rolls).toEqual([
-      { affixId: 'aff-atk', value: 5.25 },
-      { affixId: 'aff-hp', value: 26.25 },
-      { affixId: 'aff-def', value: 2.63 },
+      { affixId: 'aff-atk', value: 7.5 },
+      { affixId: 'aff-hp', value: 50 },
+      { affixId: 'aff-def', value: 3.75 },
     ])
     const options = { minQuality: 'purple' as const, pity: true }
     const boss = rollBossDrops([{ baseId: 'wpn-t3-dawn', chance: 0 }], 29, options)
@@ -152,12 +153,13 @@ describe('词条预算', () => {
     const [restoredMember] = resolveMembers(restored.members, itemStateFromSave(restored))
     expect(restoredMember.equipment).toEqual({ weapon: { ...oldPurple, id: restored.members[0].equipment.weapon } })
     expect(itemStats(restoredMember.equipment.weapon!)).toEqual({ attack: 31.25, maxHp: 26.25, defense: 1.5 })
-    expect(equipmentStats({ weapon: restored.items[restored.inventory[1]] })).toEqual({ attack: 31.25, maxHp: 26.25, defense: 2.63 })
+    expect(equipmentStats({ weapon: restored.items[restored.inventory[1]] })).toEqual({ attack: 33.5, maxHp: 50, defense: 3.75 })
     const oldUnit = toCombatant(restoredMember)
     const newUnit = toCombatant({ ...restoredMember, equipment: { weapon: restored.items[restored.inventory[1]] } })
+    // #2.1 tier 区间后新掉落数值更大;词条精确值已由 equipmentStats 断言,此处只断投影方向
     expect(newUnit.defense).toBeGreaterThan(oldUnit.defense)
-    expect(newUnit.attack).toBe(oldUnit.attack)
-    expect(newUnit.maxHp).toBe(oldUnit.maxHp)
+    expect(newUnit.attack).toBeGreaterThan(oldUnit.attack)
+    expect(newUnit.maxHp).toBeGreaterThan(oldUnit.maxHp)
     expect(migrated).toEqual(before)
   })
 })

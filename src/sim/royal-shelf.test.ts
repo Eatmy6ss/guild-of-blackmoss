@@ -13,13 +13,14 @@ describe('R4.4 王国货架', () => {
       if (!good.item) continue
       const base = ITEM_BASES[good.item.baseId]
       expect(base, good.item.baseId).toBeDefined()
-      const tierScale = base!.tier === 2 ? 1.5 : 1
       const q = good.item.quality === 'green' ? 1.08 : 1
       for (const r of good.item.rolls) {
         const aff = AFFIXES[r.affixId]
         expect(aff, r.affixId).toBeDefined()
-        expect(r.value).toBeGreaterThanOrEqual(aff!.range[0] * tierScale * q - 1e-9)
-        expect(r.value).toBeLessThanOrEqual(aff!.range[1] * tierScale * q + 1e-9)
+        // #2.1 tier 化:区间按装备 tier 查 tiers 表(≤tier 最大档)
+        const [lo, hi] = [...aff!.tiers].filter((t) => t.tier <= base!.tier).pop()!.range
+        expect(r.value).toBeGreaterThanOrEqual(lo * q - 1e-9)
+        expect(r.value).toBeLessThanOrEqual(hi * q + 1e-9)
       }
     }
   })
