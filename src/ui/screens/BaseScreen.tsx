@@ -29,6 +29,10 @@ interface BaseScreenProps {
   pendingRelics: { item: ItemInstance; hero: string; redeem: number }[]
   /** R4.2b:重铸(铁匠铺 Lv1 起,装备+词条序号) */
   onRecast: (uid: string, rollIndex: number) => void
+  /** #2.6:词条升档(星髓 2)/品质提升(星髓 3/6) */
+  starMarrow: number
+  onUpgradeRoll: (uid: string, rollIndex: number) => void
+  onRefineQuality: (uid: string) => void
   /** R4.2b:遗物传承(祠堂 Lv1 起,遗物+继承者) */
   onInherit: (uid: string, memberId: string) => void
   trainSelId: string | null
@@ -104,6 +108,15 @@ export function BaseScreen(props: BaseScreenProps) {
                   </select>
                   <button disabled={busy || gold < ECONOMY.recastCost} onClick={() => props.onRecast(recastUid, recastRollIdx)}>
                     ⚒ 重铸（{ECONOMY.recastCost} 金）
+                  </button>
+                  <button disabled={busy || props.starMarrow < 2} title="把这条词条按更高一档区间重新锻造(上限更高,数值重新起落)"
+                    onClick={() => props.onUpgradeRoll(recastUid, recastRollIdx)}>
+                    ⬆ 词条升档（2 星髓）
+                  </button>
+                  <button disabled={busy || props.starMarrow < ((recastItem.quality ?? 'white') === 'white' ? 3 : 6) || (recastItem.quality ?? 'white') === 'purple'}
+                    title="品质提升:普通→精良→史诗"
+                    onClick={() => props.onRefineQuality(recastUid)}>
+                    ✨ 品质提升（{(recastItem.quality ?? 'white') === 'white' ? 3 : 6} 星髓{(recastItem.quality ?? 'white') === 'purple' ? ' · 已满' : ''}）
                   </button>
                 </div>
               )}

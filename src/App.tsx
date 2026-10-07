@@ -572,7 +572,7 @@ export default function App() {
   })
   const { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent,
     startExpedition, chooseNode, backToGuild, restartGuild, dismantleT3, exchangeT3, sellItem,
-    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood } = ctl
+    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood, toggleLock, bulkDismantle, upgradeRoll, refineQuality } = ctl
   applyRetreatDeductionRef.current = applyRetreatDeduction
   startExpeditionRef.current = startExpedition
   continueDeepRef.current = chooseNode
@@ -1011,12 +1011,14 @@ export default function App() {
               pendingRelics={pendingRelics} starMarrow={starMarrow} blessing={blessing} busy={!!run || !!towerRun}
               invSort={invSort} onSortChange={setInvSort} onBuyPotion={buyPotion} onRedeemRelic={redeemRelic}
               onDismantle={dismantleT3} onSell={sellItem} onExchange={exchangeT3}
-              lastDropCount={lastDrops.length} sellMult={baseEffects(buildings).sellMult} onBack={goBack} />}
+              lastDropCount={lastDrops.length} sellMult={baseEffects(buildings).sellMult} onBack={goBack}
+              onToggleLock={toggleLock} onBulkDismantle={bulkDismantle} />}
             {screen === 'base' && <BaseScreen day={day} gold={gold} blessing={blessing} members={members}
               busy={!!run || !!towerRun} trainingReady={trainingReady} healingNotice={healingNotice}
               healingMastery={healingMastery} buildings={buildings} unlockedHybrids={unlockedHybrids}
               inventory={inventory} pendingRelics={pendingRelics}
               onRecast={recast} onInherit={inheritRelic}
+              starMarrow={starMarrow} onUpgradeRoll={upgradeRoll} onRefineQuality={refineQuality}
               trainSelId={trainSelId} bondTotal={bondTotalOf}
               onBuyTraining={() => {
                 if (trainingReadyRef.current || gold < 150 || runRef.current || towerRunRef.current) return

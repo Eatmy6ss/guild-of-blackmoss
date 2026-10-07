@@ -1,6 +1,7 @@
 import { ITEM_BASES } from '../data/items'
+import { AFFIXES } from '../data/affixes'
 import type { ItemInstance, Member, Slot } from '../sim/types'
-import { recastRoll } from '../sim/loot'
+import { recastRoll, affixValue } from '../sim/loot'
 
 export type ItemUid = string
 export type EquipmentRefs = Partial<Record<Slot, ItemUid>>
@@ -259,4 +260,63 @@ export function applyEncounterItems(state: GuildItems, members: Member[], loot: 
   }
   assertItemOwnership(next)
   return { state: next, items }
+}
+
+// ===== #2.5 批量分解 / #2.6 确定性改造 =====
+
+/** #2.5 批量分解:锁定件跳过;T3 拆星髓(2/件),T1/T2 按变卖价折金币。返回明细供通知。 */
+export function dismantleBulk(state: GuildItems, uids: ItemUid[], sellMult: number): { state: GuildItems; gold: number; marrow: number; count: number } | null {
+  const next = copyState(state)
+  let gold = 0
+  let marrow = 0
+  let count = 0
+  for (const uid of uids) {
+    const item = next.items[uid]
+    if (!item || item.locked) continue
+    if (!next.inventory.includes(uid)) continue // 只拆仓库件(穿戴中不在 inventory,天然受保护)
+    next.inventory = next.inventory.filter((x) => x !== uid)
+    if (ITEM_BASES[item.baseId]?.tier === 3) {
+      marrow += 2
+    } else {
+      const b = ITEM_BASES[item.baseId]
+      gold += Math.max(1, Math.round((b?.value ?? 1) * 0.6 * sellMult))
+    }
+    delete next.items[uid]
+    count++
+  }
+  if (count === 0) return null
+  assertItemOwnership(next)
+  return { state: next, gold, marrow, count }
+}
+
+/** #2.6 词条升级:该词条按更高一档 tier 重掷数值(已最高档=T4 封顶;星髓计价由 UI 层)。锁定件拒绝。 */
+export function upgradeRegisteredRoll(state: GuildItems, uid: ItemUid, rollIndex: number, rng: () => number): { state: GuildItems; item: ItemInstance } | null {
+  const registered = state.items[uid]
+  if (!registered || registered.locked) return null
+  const roll = registered.rolls[rollIndex]
+  if (!roll) return null
+  const aff = AFFIXES[roll.affixId]
+  const base = ITEM_BASES[registered.baseId]
+  const nextTier = Math.min(4, (base?.tier ?? 1) + 1) as 1 | 2 | 3 | 4
+  const qualityScale = registered.quality === 'purple' ? 1.25 : registered.quality === 'green' ? 1.08 : 0.9
+  const value = Math.round(affixValue(aff, nextTier, rng) * qualityScale * 100) / 100
+  if (value === roll.value) return null
+  const next = copyState(state)
+  next.items[uid] = { ...registered, rolls: registered.rolls.map((r, i) => (i === rollIndex ? { ...r, value } : r)) }
+  assertItemOwnership(next)
+  return { state: next, item: next.items[uid]! }
+}
+
+/** #2.6 品质提升:white→green→purple(词条数值不变,品质倍率影响后续重铸口径);锁定件拒绝。 */
+export function refineRegisteredQuality(state: GuildItems, uid: ItemUid): { state: GuildItems; item: ItemInstance; from: string; to: string } | null {
+  const registered = state.items[uid]
+  if (!registered || registered.locked) return null
+  const ladder = ['white', 'green', 'purple']
+  const at = ladder.indexOf(registered.quality ?? 'white')
+  if (at < 0 || at >= ladder.length - 1) return null
+  const to = ladder[at + 1]!
+  const next = copyState(state)
+  next.items[uid] = { ...registered, quality: to as typeof registered.quality }
+  assertItemOwnership(next)
+  return { state: next, item: next.items[uid]!, from: ladder[at]!, to }
 }

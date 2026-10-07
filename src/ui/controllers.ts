@@ -1,5 +1,6 @@
 import { newStatistics, recordStatistics, expeditionStatistics } from '../sim/statistics'
 import { advanceCommissions, newKingdomState, kingdomTrust, royalPotionCost, royalGoodLock } from '../sim/kingdom'
+import { dismantleBulk, upgradeRegisteredRoll, refineRegisteredQuality } from '../state/item-registry'
 import type { RoyalGood } from '../data/kingdom'
 import type { BattleState, Member, Slot } from '../sim/types'
 import { maxHpOf, bondStars, grantExp } from '../sim/gen'
@@ -852,6 +853,51 @@ export function createAppControllers(deps: ControllerDeps) {
     sfxCoin()
   }
 
+  // #2.5 锁定保护(批量分解兜底;锁定状态随物品存档,可选字段零迁移)
+  const toggleLock = (uid: string) => {
+    if (runRef.current || towerRunRef.current) return
+    const item = itemOwnershipRef.current.items[uid]
+    if (!item) return
+    const next = structuredClone(itemOwnershipRef.current)
+    next.items[uid] = { ...item, locked: !item.locked }
+    updateItemOwnership(next)
+  }
+  // #2.5 一键分解:UI 层已过滤,这里对锁定件再兜底跳过;T3 拆星髓,其余折金币
+  const bulkDismantle = (uids: string[]) => {
+    if (runRef.current || towerRunRef.current) return
+    const r = dismantleBulk(itemOwnershipRef.current, uids, baseEffects(buildings).sellMult)
+    if (!r) return
+    updateItemOwnership(r.state)
+    if (r.gold) gainGold(r.gold, 'sales')
+    if (r.marrow) setStarMarrow((m: number) => m + r.marrow)
+    logChronicle(chronicleRaw(day, `批量分解了 ${r.count} 件装备:${r.gold ? `${r.gold} 金` : ''}${r.marrow ? `${r.marrow} 星髓` : ''}。`))
+    sfxCoin()
+  }
+  // #2.6 词条升级:词条按更高一档 tier 重掷;星髓 2/次
+  const upgradeRoll = (uid: string, rollIndex: number) => {
+    if (runRef.current || towerRunRef.current || starMarrow < 2) return
+    const r = upgradeRegisteredRoll(itemOwnershipRef.current, uid, rollIndex, guildRng)
+    if (!r) return
+    updateItemOwnership(r.state)
+    setStarMarrow((m: number) => m - 2)
+    logChronicle(chronicleRaw(day, `在铁匠铺把一条词条锻升了一档。`))
+    sfxCoin()
+  }
+  // #2.6 品质提升:white→green→purple;星髓 3/6
+  const refineQuality = (uid: string) => {
+    if (runRef.current || towerRunRef.current) return
+    const cur = itemOwnershipRef.current.items[uid]
+    if (!cur) return
+    const cost = (cur.quality ?? 'white') === 'white' ? 3 : 6
+    if (starMarrow < cost) return
+    const r = refineRegisteredQuality(itemOwnershipRef.current, uid)
+    if (!r) return
+    updateItemOwnership(r.state)
+    setStarMarrow((m: number) => m - cost)
+    logChronicle(chronicleRaw(day, `在铁匠铺把装备品质提升到了${r.to === 'purple' ? '史诗' : '精良'}。`))
+    sfxCoin()
+  }
+
   const resolveEvent = (choiceIdx: number) => {
     const ev = pendingEvent
     if (!ev || eventResult || eventResolvingRef.current) return
@@ -1013,5 +1059,5 @@ export function createAppControllers(deps: ControllerDeps) {
 
   return { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent,
     startExpedition, chooseNode, backToGuild, restartGuild, dismantleT3, exchangeT3, sellItem,
-    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood }
+    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood, toggleLock, bulkDismantle, upgradeRoll, refineQuality }
 }

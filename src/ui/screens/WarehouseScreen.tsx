@@ -1,4 +1,5 @@
-// warehouse 屏(U29 R2-5 自 App.tsx 迁出;行为零变——处理器留在 App,props 下传)
+// warehouse 屏(U29 R2-5 自 App.tsx 迁出;#2.5 加过滤/锁定/批量分解——处理器留 App,props 下传)
+import { useState } from 'react'
 import { ITEM_BASES } from '../../data/items'
 import { kingdomRank, kingdomTrust, royalPotionCost } from '../../sim/kingdom'
 import { describeItem } from '../../sim/loot'
@@ -27,12 +28,26 @@ interface WarehouseScreenProps {
   /** 变卖价系数(基地祠堂/王国加成,App 单一来源) */
   sellMult: number
   onBack: () => void
+  /** #2.5:锁定/解锁;批量分解(过滤项,锁定件 App 层再兜底跳过) */
+  onToggleLock: (uid: string) => void
+  onBulkDismantle: (uids: string[]) => void
 }
 
 export function WarehouseScreen(props: WarehouseScreenProps) {
   const { inventory, potions, gold, kingdom, pendingRelics, starMarrow, blessing, busy, sellMult, onBack } = props
   const EXCHANGE_LIST = ['wpn-t3-dawn', 'arm-t3-bulwark', 'trk-t3-seer']
   const inventorySorted = sortInventoryItems(inventory, props.invSort)
+  // #2.5:品质/倾向池/关键字过滤 + 一键分解(锁定件保护)
+  const [quality, setQuality] = useState<'all' | 'white' | 'green' | 'purple'>('all')
+  const [pool, setPool] = useState<'all' | 'tank' | 'healer' | 'dps' | 'caster' | 'common'>('all')
+  const [text, setText] = useState('')
+  const filtered = inventorySorted.filter((i) => {
+    if (quality !== 'all' && (i.quality ?? 'white') !== quality) return false
+    if (pool !== 'all' && ITEM_BASES[i.baseId]?.pool !== pool) return false
+    if (text && !describeItem(i).includes(text)) return false
+    return true
+  })
+  const bulkIds = filtered.filter((i) => !i.locked).map((i) => i.id)
   return (
             <div className="screen-overlay fullpage">
               <div className="screen-panel">
@@ -82,6 +97,7 @@ export function WarehouseScreen(props: WarehouseScreenProps) {
             </div>
           )}
           {inventory.length > 0 && (
+            <>
             <div className="tavern-row" role="group" aria-label="排序方式">
               <span className="hint">排序:</span>
               {(Object.keys(INV_SORT_LABEL) as InvSort[]).map((mode) => (
@@ -90,12 +106,32 @@ export function WarehouseScreen(props: WarehouseScreenProps) {
                 </button>
               ))}
             </div>
+            <div className="tavern-row" role="group" aria-label="过滤">
+              <span className="hint">过滤:</span>
+              <select aria-label="品质过滤" value={quality} onChange={(e) => setQuality(e.target.value as typeof quality)}>
+                <option value="all">全部品质</option><option value="white">普通</option><option value="green">精良</option><option value="purple">史诗</option>
+              </select>
+              <select aria-label="倾向过滤" value={pool} onChange={(e) => setPool(e.target.value as typeof pool)}>
+                <option value="all">全部倾向</option><option value="tank">坦克</option><option value="dps">输出</option><option value="healer">治疗</option><option value="caster">施法</option>
+              </select>
+              <input aria-label="搜索" placeholder="搜名称…" value={text} onChange={(e) => setText(e.target.value)} style={{ maxWidth: 140 }} />
+              <button data-testid="bulk-dismantle" disabled={busy || bulkIds.length === 0}
+                title="分解过滤结果中的未锁定件:T3 拆星髓,其余折金币(变卖价 60%)"
+                onClick={() => props.onBulkDismantle(bulkIds)}>
+                ♻ 一键分解({bulkIds.length})
+              </button>
+              <span className="hint">🔒 点击装备行可锁定/解锁,锁定件不参与批量分解</span>
+            </div>
+            </>
           )}
           {inventory.length === 0 ? (
             <p className="hint">击败 boss 掉落装备（首次击杀保底一件）。从成员卡的下拉框穿戴。</p>
           ) : (
             inventorySorted.map((i) => (
-              <div key={i.id} className="inv-item">
+              <div key={i.id} className={`inv-item${i.locked ? ' inv-locked' : ''}`} role="button" tabIndex={0}
+                title={i.locked ? '已锁定(再点解锁)' : '点击锁定(批量分解保护)'}
+                onClick={() => props.onToggleLock(i.id)}>
+                {i.locked ? '🔒 ' : ''}
                 {(() => {
                   // R5.3e(U33⑥):武器行前缀武器族(装备前可见)
                   const fam = ITEM_BASES[i.baseId].family
@@ -104,11 +140,11 @@ export function WarehouseScreen(props: WarehouseScreenProps) {
                 })()}
                 {describeItem(i)}
                 {ITEM_BASES[i.baseId].tier === 3 && (
-                  <button className="sell-btn" onClick={() => props.onDismantle(i.id)}>
+                  <button className="sell-btn" onClick={(e) => { e.stopPropagation(); props.onDismantle(i.id) }}>
                     ♻ 拆解 +2 星髓
                   </button>
                 )}
-                <button className="sell-btn" onClick={() => props.onSell(i.id)}>
+                <button className="sell-btn" onClick={(e) => { e.stopPropagation(); props.onSell(i.id) }}>
                   变卖 +{sellValue(i, sellMult)} 金
                 </button>
               </div>

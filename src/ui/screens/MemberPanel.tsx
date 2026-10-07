@@ -11,7 +11,7 @@ import { ITEM_BASES } from '../../data/items'
 import { AFFIXES } from '../../data/affixes'
 import { scarStatName, FAINT_DAYS } from '../../sim/scars'
 import { WEAPON_FAMILIES, FAMILY_IDS, JOB_FAMILIES, isFamilyProficient } from '../../data/weapon-families'
-import { STAT_NAME, formatStat, describeItem } from '../../sim/loot'
+import { STAT_NAME, formatStat, describeItem, compareWithEquipped } from '../../sim/loot'
 import { toCombatant } from '../../sim/combat'
 import { SIGNATURE_SKILLS } from '../../data/signature'
 import { skillLine, LEGACY_INFO } from '../../data/effect-text'
@@ -30,6 +30,8 @@ interface Props {
   onEquip?: (slot: 'weapon' | 'armor' | 'trinket', itemId: string) => void
   /** U35 花名册改版:嵌入模式(作为花名册主区渲染,隐藏关闭按钮) */
   embedded?: boolean
+  /** #2.4 对比语境(E04):仓库选一件候选,与已装备逐属性 delta(不给单一结论);缺省=不渲染 */
+  compareItem?: ItemInstance
   /** U35:武器专修(按人学族)迁入档案页;可选=不渲染该区 */
   familyTraining?: {
     gold: number
@@ -47,7 +49,7 @@ const ATTR_NAMES: Record<string, string> = { str: '力量', agi: '敏捷', int: 
 
 const QUALITY_TAG: Record<string, string> = { purple: '【史诗】', green: '【精良】', white: '' }
 
-export function MemberPanel({ member, members, onClose, inventory, weaponTraining, onEquip, embedded, familyTraining }: Props) {
+export function MemberPanel({ member, members, onClose, inventory, weaponTraining, onEquip, embedded, familyTraining, compareItem }: Props) {
   const [equipSort, setEquipSort] = useState<'rarity-desc' | 'name'>('rarity-desc')
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -259,6 +261,25 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
             {canEquip && (
           <div className="inv-panel">
             <h2>⚔ 换装(从仓库穿戴)</h2>
+            {compareItem && (() => {
+              const cmp = compareWithEquipped(compareItem, member.equipment[ITEM_BASES[compareItem.baseId].slot])
+              return (
+                <div className="potion-supply" data-testid="gear-compare">
+                  <span className="hint">⚖ 对比:{describeItem(compareItem)} vs 当前{ITEM_BASES[compareItem.baseId].slot === 'weapon' ? '武器' : ITEM_BASES[compareItem.baseId].slot === 'armor' ? '护甲' : '饰品'}</span>
+                  <ul className="ms-list">
+                    {cmp.rows.map((r) => (
+                      <li key={r.key}>
+                        {STAT_NAME[r.key]}:{formatStat(r.key, r.candidate)} {r.delta !== 0 && (
+                          <b style={{ color: r.delta > 0 ? '#7fb069' : '#c96f6f' }}>({r.delta > 0 ? '+' : ''}{formatStat(r.key, r.delta, true)})</b>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  {cmp.notes.map((n, i) => <p key={i} className="hint">{n}</p>)}
+                  <p className="hint">属性有得有失是常态——按这名成员的定位自己取舍(评分只用于排序,不代表更强)。</p>
+                </div>
+              )
+            })()}
             <div className="tavern-row" role="group" aria-label="装备排序">
               <span className="hint">排序:</span>
               <button className={equipSort === 'rarity-desc' ? 'active' : ''} onClick={() => setEquipSort('rarity-desc')}>稀有度 ↓</button>

@@ -191,6 +191,8 @@ export interface ItemInstance {
   /** 品级(宪法 v3.3 装备三轴):白/绿/紫——绿精良,紫史诗 */
   quality?: ItemQuality
   rolls: { affixId: string; value: number }[]
+  /** #2.5 锁定保护:锁定件不参与批量分解/变卖(可选字段零迁移) */
+  locked?: boolean
 }
 
 // ===== 成员（公会的人，战斗外的持久实体）=====

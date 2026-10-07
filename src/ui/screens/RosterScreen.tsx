@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { describeItem } from '../../sim/loot'
 // roster 屏 v2(U35,制作人 2026-10-06 反馈②③):一打开花名册=人物详细页;
 // 右下角=角色略缩图(MemberCard)+六维雷达图;顶部成员切换条;武器专修迁入档案页。
 import type { BattleState, ItemInstance, Member, Slot } from '../../sim/types'
@@ -30,6 +31,7 @@ export function RosterScreen(props: RosterScreenProps) {
   const { members, battle, run, expedition, inventory, expeditionIds, onEquip, onEnter, onLeave, gold, busy, today, trainingLevel, onLearnFamily, onBack } = props
   const alive = members.filter((m) => m.alive)
   const [selId, setSelId] = useState(alive[0]?.id ?? '')
+  const [compareUid, setCompareUid] = useState('')
   const sel = alive.find((m) => m.id === selId) ?? alive[0]
   if (!sel) {
     return (
@@ -46,6 +48,14 @@ export function RosterScreen(props: RosterScreenProps) {
     <div className="screen-overlay fullpage">
       <div className="screen-panel roster-v2">
         <div className="screen-head"><h2>🛡 花名册</h2><button className="screen-close" onClick={() => onBack()}>✕ Esc</button></div>
+        {/* #2.4 对比语境:从仓库选一件候选,档案页展示逐属性取舍(E04) */}
+        <div className="tavern-row" role="group" aria-label="装备对比">
+          <span className="hint">⚖ 对比:</span>
+          <select aria-label="对比候选" value={compareUid} onChange={(e) => setCompareUid(e.target.value)}>
+            <option value="">选择仓库装备…</option>
+            {inventory.map((i) => <option key={i.id} value={i.id}>{describeItem(i)}</option>)}
+          </select>
+        </div>
         {/* 成员切换条:点谁看谁的档案 */}
         <div className="roster-tabs" role="tablist" aria-label="切换成员">
           {alive.map((m) => (
@@ -60,6 +70,7 @@ export function RosterScreen(props: RosterScreenProps) {
           <div className="roster-detail">
             <MemberPanel member={sel} members={members} onClose={onBack} embedded
               inventory={inventory} onEquip={(slot, itemId) => onEquip(sel, slot, itemId)}
+              compareItem={compareUid ? inventory.find((i) => i.id === compareUid) : undefined}
               familyTraining={{ gold, busy, busyUntilDay: sel.busyUntilDay ?? 0, today, trainingLevel, onLearn: trainSel }} />
           </div>
           <aside className="roster-side">

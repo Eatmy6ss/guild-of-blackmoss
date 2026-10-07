@@ -1045,3 +1045,4 @@ button.primary:hover:not(:disabled) {
 .intel-flag { }
 .intel-item .intel-flag { }
 .intel-fresh { border: 1px solid var(--gold, #d8a24a); padding: 6px 10px; }
+.inv-locked { opacity: 0.75; border-color: var(--gold, #d8a24a) !important; }

@@ -274,3 +274,44 @@ export function recastRoll(item: ItemInstance, rollIndex: number, rng: () => num
   const rolls = item.rolls.map((r, i) => (i === rollIndex ? { ...r, value } : r))
   return { ...item, rolls }
 }
+
+// ===== #2.4 装备对比(取舍语境):逐属性 delta+行为差异说明,不给单一结论(E04) =====
+
+export interface GearCompareRow { key: StatKey; candidate: number; equipped: number; delta: number }
+export interface GearCompare {
+  rows: GearCompareRow[]
+  /** 行为类差异(威能/套装/触发词条),文字说明 */
+  notes: string[]
+}
+
+const LEGACY_TEXT: Record<string, string> = {
+  focus: '锋镝:对集火目标 +10%', killheal: '饮血:击杀回复 2% 生命', bulwark: '磐石:受 boss 伤 -8%',
+  mend: '春霖:受疗 +8%', elitewarden: '嗜功:对精英/boss +8%', emberward: '烬衣:灼热减半',
+  triumph: '凯歌:胜场全队士气+2', scavenger: '拾荒:掉率 +4%',
+}
+
+export function compareWithEquipped(candidate: ItemInstance, equipped: ItemInstance | undefined): GearCompare {
+  const cs = itemStats(candidate)
+  const es = equipped ? itemStats(equipped) : {}
+  const keys = Array.from(new Set([...Object.keys(cs), ...Object.keys(es)])) as StatKey[]
+  const rows = keys
+    .map((key) => ({ key, candidate: cs[key] ?? 0, equipped: es[key] ?? 0, delta: round2((cs[key] ?? 0) - (es[key] ?? 0)) }))
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+  const notes: string[] = []
+  const behaviorOf = (item: ItemInstance | undefined): string[] => {
+    if (!item) return []
+    const out: string[] = []
+    const base = ITEM_BASES[item.baseId]
+    if (base?.legacy && LEGACY_TEXT[base.legacy]) out.push(LEGACY_TEXT[base.legacy]!)
+    for (const r of item.rolls) {
+      const aff = AFFIXES[r.affixId]
+      if (aff.trigger) out.push(`${aff.name}:${TRIGGER_TEXT[aff.trigger]!(r.value)}`)
+    }
+    return out
+  }
+  const eqNotes = behaviorOf(equipped)
+  const caNotes = behaviorOf(candidate)
+  for (const n of eqNotes) if (!caNotes.includes(n)) notes.push('换下将失去:' + n)
+  for (const n of caNotes) if (!eqNotes.includes(n)) notes.push('换上将获得:' + n)
+  return { rows, notes }
+}
