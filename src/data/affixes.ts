@@ -48,6 +48,42 @@ export const AFFIXES: Record<string, AffixDef> = {
     tiers: [{ tier: 1, range: [0.08, 0.18] }, { tier: 2, range: [0.15, 0.28] }],
     pools: ['common'],
   },
+  // ===== #2.2 批次 2 新属性词条(数值 C4 占位) =====
+  'aff-critdmg': {
+    id: 'aff-critdmg', name: '暴烈', stat: 'critDamage',
+    tiers: [{ tier: 1, range: [0.15, 0.35] }, { tier: 2, range: [0.25, 0.5] }],
+    pools: ['dps'],
+  },
+  'aff-atkspd': {
+    id: 'aff-atkspd', name: '迅疾', stat: 'attackSpeed',
+    tiers: [{ tier: 1, range: [0.08, 0.15] }, { tier: 2, range: [0.12, 0.22] }],
+    pools: ['dps', 'common'],
+  },
+  'aff-pen': {
+    id: 'aff-pen', name: '破甲', stat: 'armorPen',
+    tiers: [{ tier: 1, range: [2, 4] }, { tier: 2, range: [3, 6] }],
+    pools: ['dps'],
+  },
+  'aff-bulwarkheart': {
+    id: 'aff-bulwarkheart', name: '磐心', stat: 'damageReduction',
+    tiers: [{ tier: 1, range: [0.04, 0.08] }, { tier: 2, range: [0.06, 0.12] }],
+    pools: ['tank'],
+  },
+  'aff-holyheal': {
+    id: 'aff-holyheal', name: '圣愈', stat: 'healPower',
+    tiers: [{ tier: 1, range: [0.1, 0.2] }, { tier: 2, range: [0.15, 0.3] }],
+    pools: ['healer', 'caster'],
+  },
+  'aff-dread': {
+    id: 'aff-dread', name: '慑魄', stat: 'threatMult',
+    tiers: [{ tier: 1, range: [0.15, 0.3] }, { tier: 2, range: [0.25, 0.45] }],
+    pools: ['tank'],
+  },
+  'aff-focusmind': {
+    id: 'aff-focusmind', name: '凝神', stat: 'cdReduction',
+    tiers: [{ tier: 1, range: [0.08, 0.15] }, { tier: 2, range: [0.12, 0.2] }],
+    pools: ['caster', 'healer'],
+  },
 }
 
 /** v30 迁移映射:被删多档词条 → 存活词条(rolls 值保留,重掷时才按 tier 重取区间) */

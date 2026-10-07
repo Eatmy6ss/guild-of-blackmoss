@@ -80,8 +80,11 @@ export function pushLog(state: BattleState, kind: LogKind, text: string): void {
 /** 战力分:装备/等级/默契之外的统一成长读数(单调即可,不求精确) */
 export function powerScore(member: Member): number {
   const c = toCombatant(member)
+  // #2.2 新属性权重(C4 占位):攻速已体现在 attackInterval;其余按"对一场战斗的期望贡献"折算
   return Math.round(
-    c.attack * 3 + c.maxHp * 0.4 + c.defense * 4 + c.critChance * 200 + (60 / c.attackInterval) * 2,
+    c.attack * 3 + c.maxHp * 0.4 + c.defense * 4 + c.critChance * 200 + (60 / c.attackInterval) * 2 +
+    (c.critDamage ?? 0) * 150 + (c.armorPen ?? 0) * 2 + (c.damageReduction ?? 0) * 120 +
+    (c.healPower ?? 0) * 120 + (c.threatMult ?? 0) * 20 + (c.cdReduction ?? 0) * 80,
   )
 }
 
@@ -208,8 +211,8 @@ export function toCombatant(member: Member): Combatant {
     ),
     critChance: base.critChance + (mods.critChance ?? 0) + augCrit + greedCrit + (eff.agi * 0.003 + eff.lck * 0.003) + (eq.critChance ?? 0) + equipmentSetBonus('wind-hunt', setHunt),
     attackInterval: Math.max(
-      6,
-      Math.round((60 / (base.speed + (mods.speed ?? 0) + eff.agi * 0.04 + (eq.speed ?? 0))) * weaponIntervalMult),
+      4,
+      Math.round(((60 / (base.speed + (mods.speed ?? 0) + eff.agi * 0.04 + (eq.speed ?? 0))) * weaponIntervalMult) / (1 + (eq.attackSpeed ?? 0))),
     ),
     cooldownLeft: 0,
     alive: true,
@@ -228,6 +231,14 @@ export function toCombatant(member: Member): Combatant {
     counterMult: baseSpec.passive === 'counter' ? 0.3 : undefined,
     healReceived: loyaltyHeal + (race.passive.healReceived ?? 0) + eff.spr * 0.004 + (eq.healReceived ?? 0) + legacyMend,
     fireResist: Math.min(0.75, eq.fireResist ?? 0),
+    // #2.2 批次 2 新属性(装备词条聚合;数值口径见各数学点,C4 占位)
+    critDamage: eq.critDamage ?? 0,
+    attackSpeed: eq.attackSpeed ?? 0,
+    armorPen: eq.armorPen ?? 0,
+    damageReduction: eq.damageReduction ?? 0,
+    healPower: eq.healPower ?? 0,
+    threatMult: eq.threatMult ?? 0,
+    cdReduction: eq.cdReduction ?? 0,
     tauntedTicks: 0,
     position: stancePosition,
     range: stanceRange,
@@ -437,8 +448,10 @@ function effectiveAttack(state: BattleState, c: Combatant): number {
   return (c.attack + buff) * fury * stance * legacy * bond * aura
 }
 
-function effectiveDefense(state: BattleState, target: Combatant): number {
+function effectiveDefense(state: BattleState, target: Combatant, attacker?: Combatant): number {
   let def = target.defense
+  // #2.2 破甲词条:攻击者定值先扣(对 shield 原型的针对性价值)
+  if (attacker?.armorPen) def = Math.max(0, def - attacker.armorPen)
   // R5.3b(U33⑤)锤斧·破甲:被破甲者防御 ×0.8(3 秒)
   if (target.armorBreakUntilTick !== undefined && state.tick < target.armorBreakUntilTick) def *= 0.8
   if (target.team === 'guild') {
@@ -543,6 +556,10 @@ export function applyHit(
   if (target.vulnUntilTick && state.tick < target.vulnUntilTick) {
     amount = Math.round(amount * (target.vulnMult ?? 1.2))
   }
+  // #2.2 减伤词条:受伤乘区(0.6 封顶,与防御的定值减算分工)
+  if (target.damageReduction) {
+    amount = Math.max(1, Math.round(amount * (1 - Math.min(0.6, target.damageReduction))))
+  }
   // 装备 2.0 传承威能·磐石:受到 boss 的伤害 -8%
   if (target.legacyBulwark && attacker.team === 'enemy' && attacker.boss) {
     amount = Math.round(amount * 0.92)
@@ -564,7 +581,7 @@ export function applyHit(
     attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(amount * attacker.lifesteal))
   }
   if (attacker.team === 'guild') {
-    target.threat[attacker.id] = (target.threat[attacker.id] ?? 0) + amount
+    target.threat[attacker.id] = (target.threat[attacker.id] ?? 0) + amount * (1 + (attacker.threatMult ?? 0))
   }
   // 特质·venom(淬毒):命中附加易伤
   if (attacker.traits?.includes('venom') && target.alive) {
@@ -721,7 +738,7 @@ function dealDamage(
     packMult *
     variance *
     fearMult *
-    (crit ? 1.5 : 1) *
+    (crit ? 1.5 + (attacker.critDamage ?? 0) : 1) *
     synergyDamageMult(state, attacker)
   if (attacker.team === 'guild' && state.commands.focusId === target.id) {
     raw *= FOCUS_MULT
@@ -738,7 +755,7 @@ function dealDamage(
     ? Math.max(1, Math.round(raw))
     : Math.max(
         1,
-        Math.round((raw * MITIGATION_K) / (MITIGATION_K + effectiveDefense(state, target))),
+        Math.round((raw * MITIGATION_K) / (MITIGATION_K + effectiveDefense(state, target, attacker))),
       )
   applyHit(state, attacker, target, dmg, label, {
     crit,
@@ -769,7 +786,8 @@ function actWith(c: Combatant, state: BattleState): void {
     if (ready.cooldownLeft > 0) continue
     if (skillFamilyBlocked(c, ready.def.weaponFamily)) continue // R3/W3:非熟练/族不合,AI 不会傻按
     if (useSkill(c, ready.def, allies, pool, state)) {
-      ready.cooldownLeft = ready.def.cooldownTicks
+      // #2.2 冷却缩减:施放时一次折算(无小数累积)
+      ready.cooldownLeft = Math.round(ready.def.cooldownTicks / (1 + (c.cdReduction ?? 0)))
       return
     }
   }
@@ -829,7 +847,7 @@ function useSkill(
       const target = hurt.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
       // 治疗吞吐须覆盖 boss 基础压力:D15 加压轮后 3.0 倍;节奏改版(血池×1.5/战斗拉长)后
       // 牧师基础攻击 7.0 配 4.5 倍 ≈ 31/s,恢复 D15 校准的绝对吞吐,否则长战斗必崩盘
-      const amount = Math.round(c.attack * 4.5 * (1 + (target.healReceived ?? 0)))
+      const amount = Math.round(c.attack * 4.5 * (1 + (c.healPower ?? 0)) * (1 + (target.healReceived ?? 0)))
       target.hp = Math.min(target.maxHp, target.hp + amount)
       // 治疗仇恨：0.4× 转化为威胁(节奏改版④:战斗拉长后 1:1 会让牧师威胁反超坦克,
       // 远程转火治疗——打折扣保住坦克仇恨线;坦克倒下后累积仍会居首,兜底逻辑不变)

@@ -152,6 +152,8 @@ export function describeItem(item: ItemInstance): string {
 export const STAT_FORMAT: Record<StatKey, 'number' | 'percent'> = {
   attack: 'number', maxHp: 'number', defense: 'number', speed: 'number',
   critChance: 'percent', lifesteal: 'percent', healReceived: 'percent', fireResist: 'percent',
+  critDamage: 'percent', attackSpeed: 'percent', armorPen: 'number',
+  damageReduction: 'percent', healPower: 'percent', threatMult: 'percent', cdReduction: 'percent',
 }
 
 function formatValue(value: number, unit: 'number' | 'percent', signed: boolean): string {
@@ -177,6 +179,8 @@ export const STAT_NAME: Record<StatKey, string> = {
   critChance: '暴击',
   lifesteal: '吸血', healReceived: '受疗',
   fireResist: '火抗',
+  critDamage: '暴伤', attackSpeed: '疾攻', armorPen: '破甲',
+  damageReduction: '减伤', healPower: '圣愈', threatMult: '威压', cdReduction: '凝神',
 }
 
 export function slotsOf(item: ItemInstance): Slot {

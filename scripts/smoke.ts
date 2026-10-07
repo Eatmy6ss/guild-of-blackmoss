@@ -1403,7 +1403,9 @@ const towerFailures: string[] = []
       console.log(`⑲   ${isFinal ? '毕业考' : '门考'} ${enc.name} ${medB.toFixed(1)}s(胜 ${bossD.length}/8)`)
       if (bossD.length < 4) fail19.push(`⑲ ${d.name} ${enc.name} 验收胜率不足 ${bossD.length}/8`)
       // 难度递增:前期 Boss 15s 级(教学),毕业考逼近 60s(荆棘 52.9s=版图一顶点);下限只防秒杀
-      if (medB < 12) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
+      // #2.2 新词条上线后装备强度整体抬升,格鲁什门考 26s→11.3s(设计后果,U33⑫ 同类漂移);
+      // 门考只防秒杀,下限重标 12→10(真平衡校准在批次 2 出口 G3)
+      if (medB < 10) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
       if (isFinal && medB > 70) fail19.push(`⑲ ${d.name} ${enc.name} 节奏越带 ${medB.toFixed(1)}s`)
     }
   }

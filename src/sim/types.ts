@@ -125,6 +125,21 @@ export type StatKey =
   | 'healReceived'
   /** 火抗(0-1):灼热地形与环境火伤按此减免(版图二·龙脊山脉) */
   | 'fireResist'
+  // ===== #2.2 批次 2 新增 7 属性(每条走 7 处接线清单,I8 断言守活) =====
+  /** 暴击伤害(加算到 1.5 基础倍率上):与暴击率形成首个真乘区取舍 */
+  | 'critDamage'
+  /** 攻速(0-1):攻击间隔 ÷(1+攻速) */
+  | 'attackSpeed'
+  /** 破甲(定值):攻击时先从目标防御扣除 */
+  | 'armorPen'
+  /** 减伤(0-0.6 封顶):受伤乘区,与防御分工(百分比 vs 定值) */
+  | 'damageReduction'
+  /** 治疗强度(0-1):我治别人的输出乘区(#2.7;药水不吃) */
+  | 'healPower'
+  /** 威胁加成(0-1):造成伤害转化的仇恨 ×(1+威胁加成) */
+  | 'threatMult'
+  /** 冷却缩减(0-1):技能施放时 CD ÷(1+冷却缩减) */
+  | 'cdReduction'
 
 /** 倾向池(#2.8/E02):只影响掉落分布,不限制穿戴 */
 export type AffixPool = 'common' | 'tank' | 'healer' | 'dps' | 'caster'
@@ -226,6 +241,14 @@ export interface Combatant {
   critChance: number
   /** 攻击间隔（tick） */
   attackInterval: number
+  /** #2.2 批次 2 新属性(可选=0;敌方与老档默认无) */
+  critDamage?: number
+  attackSpeed?: number
+  armorPen?: number
+  damageReduction?: number
+  healPower?: number
+  threatMult?: number
+  cdReduction?: number
   cooldownLeft: number
   alive: boolean
   memberId?: string

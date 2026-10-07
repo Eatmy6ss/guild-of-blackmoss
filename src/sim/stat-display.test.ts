@@ -21,7 +21,8 @@ test('装备分层包含火抗和攻速，数值精度与物品说明一致', ()
 })
 
 test('I5：所有 StatKey 单位完整，正负与零值遵循统一精度', () => {
-  const percent = new Set<StatKey>(['critChance', 'lifesteal', 'healReceived', 'fireResist'])
+  // #2.2 后百分比类=8 条(critDamage/attackSpeed/damageReduction/healPower/threatMult/cdReduction 与火抗同族)
+  const percent = new Set<StatKey>(['critChance', 'lifesteal', 'healReceived', 'fireResist', 'critDamage', 'attackSpeed', 'damageReduction', 'healPower', 'threatMult', 'cdReduction'])
   expect(Object.keys(STAT_FORMAT).sort()).toEqual(Object.keys(STAT_NAME).sort())
   for (const stat of Object.keys(STAT_NAME) as StatKey[]) {
     expect(formatStat(stat, 0.125, true)).toBe(percent.has(stat) ? '+12.5%' : '+0.1')
