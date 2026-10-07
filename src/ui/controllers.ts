@@ -44,6 +44,10 @@ import { rollDrop } from '../sim/loot'
 import { chronicleRaw } from '../sim/chronicle'
 import { playtestAllows } from '../data/regions'
 
+// #4.5(B9):事件属性点六维表(玩家指定维;EventModal 复用标签)
+export const ATTR_DIMS = ['str', 'agi', 'int', 'vit', 'spr', 'lck'] as const
+export const ATTR_DIM_LABELS: Record<string, string> = { str: '力量', agi: '敏捷', int: '智力', vit: '体质', spr: '精神', lck: '幸运' }
+
 // R5.2d(U33⑦):App 的远征/塔/经济控制器集群,正文自 App.tsx@7a672f9 逐字迁入;可变状态全部经 deps 注入(行为零变)。
 import type { TowerRun } from '../sim/tower'
 import type { ChronicleEntry } from '../sim/chronicle'
@@ -136,6 +140,9 @@ export interface ControllerDeps {
   rareHuntNext: { mult: number; rewardMult: number } | null
   pendingEvent: GuildEventDef | null
   setRecruitCooldown: SetFn<number>
+  /** #4.5(B9):事件属性点待选状态 */
+  pendingAttr: { amount: number } | null
+  setPendingAttr: SetFn<{ amount: number } | null>
   dismissHint: (id: string) => void
   setPlaytestEnding: (v: boolean) => void
   members: Member[]
@@ -159,6 +166,7 @@ export interface ControllerDeps {
   healingBusyRef: AnyRef<boolean>
   setChronicle: SetFn<ChronicleEntry[]>
   setEventImpacts: (v: import("../sim/run-state").RunUIState["eventImpacts"]) => void
+  eventImpacts: import("../sim/run-state").RunUIState["eventImpacts"]
   setOfflineNote: SetFn<string | null>
   setDungeonId: (v: string) => void
   setSaveTransfer: Set<{ mode: "import" | "export"; code: string } | null>
@@ -186,10 +194,11 @@ export function createAppControllers(deps: ControllerDeps) {
     kingdom, buildings, potions, dungeonMastery, guildRng, go,
     encounterGuild, drainAndSync, checkWishes, starMarrow, pendingConsequences, guildBuffs,
     memorial, protectOn, hintsSeen, rareHuntNext, pendingEvent, setRecruitCooldown,
+    pendingAttr, setPendingAttr, // #4.5(B9):事件属性点玩家指定维
     dismissHint, setPlaytestEnding, members, setExpeditionIds, activeDungeon, sfxVictory,
     sfxDefeat, syncAll, setPendingEvent, setEventResult, setDay, SEED_BASE,
     MANUAL_BONUS, receiveItems, gainGold, ROSTER_CAP, setUnlockedHybrids, newRoster,
-    setStarMarrow, setHealingNotice, healingBusyRef, setChronicle, setEventImpacts, setOfflineNote,
+    setStarMarrow, setHealingNotice, healingBusyRef, setChronicle, setEventImpacts, setOfflineNote, eventImpacts,
     intelEntries, setIntelEntries, setIntelStock,
     setDungeonId, setSaveTransfer, setTowerRunning, eventResolvingRef, eventCursorRef, sfxCoin,
     blessing, kingdomRef, expeditionIds,
@@ -1022,16 +1031,20 @@ export function createAppControllers(deps: ControllerDeps) {
       }
       chip('一人负伤(生命减半)', 'neg')
     }
-    // 属性点(六维改革):全队每人 +N 随机维
+    // 属性点(六维改革 B9/#4.5):全队每人 +N——手动=玩家指定维(结果面板选),挂机=队长随机代选
     if (fx.attrPoint) {
-      const DIMS = ['str', 'agi', 'int', 'vit', 'spr', 'lck'] as const
-      for (const m of membersRef.current) {
-        if (!m.alive) continue
-        const dim = DIMS[Math.floor(rng() * DIMS.length)]
-        m.attrs[dim] += fx.attrPoint
+      if (runRef.current?.autoMode) {
+        for (const m of membersRef.current) {
+          if (!m.alive) continue
+          const dim = ATTR_DIMS[Math.floor(rng() * ATTR_DIMS.length)]
+          m.attrs[dim] += fx.attrPoint
+        }
+        setMembers([...membersRef.current])
+        chip(`全队属性点 +${fx.attrPoint}(队长代选维度)`, 'pos')
+      } else {
+        setPendingAttr({ amount: fx.attrPoint })
+        chip(`全队属性点 +${fx.attrPoint}——选择要强化的维度`, 'hook')
       }
-      setMembers([...membersRef.current])
-      chip(`全队属性点 +${fx.attrPoint}`, 'pos')
     }
     // 药水经济接入事件叙事(F07 残余修复 2026-09-25):远征中触发的事件药水进远征携带
     // (run.potions)——否则进公会库存后回城被 run.potions 退回覆盖,等于白给;公会层事件照旧进库存
@@ -1119,7 +1132,20 @@ export function createAppControllers(deps: ControllerDeps) {
 
   // 装备 2.0:拆解 T3 得星髓;灰冠兑换(信任 100 解锁)用星髓+金币换指定 T3
 
-  return { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent,
+  // #4.5(B9):玩家在事件结果面板选维度,全队 +N(挂机路径已在 resolveEvent 内代选)
+  const chooseAttrDim = (dim: string) => {
+    if (!pendingAttr) return
+    if (!ATTR_DIMS.includes(dim as (typeof ATTR_DIMS)[number])) return
+    for (const m of membersRef.current) {
+      if (!m.alive) continue
+      m.attrs[dim as keyof Member['attrs']] += pendingAttr.amount
+    }
+    setMembers([...membersRef.current])
+    setEventImpacts([...(eventResult != null ? (eventImpacts ?? []) : []), { t: `全队属性点 +${pendingAttr.amount}(${ATTR_DIM_LABELS[dim] ?? dim})`, tone: 'pos' }])
+    setPendingAttr(null)
+  }
+
+  return { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent, chooseAttrDim,
     startExpedition, chooseNode, backToGuild, restartGuild, dismantleT3, exchangeT3, sellItem,
     enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood, toggleLock, bulkDismantle, upgradeRoll, refineQuality }
 }

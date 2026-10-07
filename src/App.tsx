@@ -390,6 +390,8 @@ export default function App() {
   const [buildings, setBuildings] = useState<Record<string, number>>(() => saved?.buildings ?? {})
   // #4.4 建筑职责重分工:名册上限派生自宿舍等级(基础 6,每级 +1)——不再是无增长的常量
   const rosterCap = baseEffects(buildings).rosterCap
+  // #4.5(B9):事件属性点玩家指定维——待选状态(选完即清)
+  const [pendingAttr, setPendingAttr] = useState<{ amount: number } | null>(null)
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   // 药水库存(经济改造):出征携带/战斗消耗/回城退回,仓库补货
@@ -557,6 +559,7 @@ export default function App() {
     guildRngRef, pendingDepartureRef, pendingConsequenceRef, growthSnapshotRef, factLedgerRef, setFactLedger,
     setTowerBest, setHealingMastery, setBuildings, setProtectOn, setEventsSeen, setPendingConsequences,
     setGuildBuffs, setRareHuntNext, setRun, setTowerRun, setRunning, setMembers,
+    pendingAttr, setPendingAttr, eventImpacts, // #4.5(B9):事件属性点玩家指定维
     setGold, setBlessing, setPotions, setLastDrops, setScarNotices, setMemorial,
     intelEntries, intelStock, setIntelEntries, setIntelStock,
     setManual, setCandidates, setVisitor, setStatistics, setRoyalNotice, setResumeNotice,
@@ -572,7 +575,7 @@ export default function App() {
     setDungeonId, setSaveTransfer, setTowerRunning, eventResolvingRef, eventCursorRef, sfxCoin,
     blessing, kingdomRef, expeditionIds, resolveEventRef, dismissEventRef, eventResult,
   })
-  const { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent,
+  const { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent, chooseAttrDim,
     startExpedition, chooseNode, backToGuild, restartGuild, dismantleT3, exchangeT3, sellItem,
     enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood, toggleLock, bulkDismantle, upgradeRoll, refineQuality } = ctl
   applyRetreatDeductionRef.current = applyRetreatDeduction
@@ -990,7 +993,8 @@ export default function App() {
             onAbandon={(id) => { if (runRef.current || towerRunRef.current) return; updateKingdom(abandonCommission(kingdomRef.current, id)); setRoyalNotice('委托已撤销，可重新接取。王国信任不变。') }} />}
           {screen !== 'title' && pendingEvent && (
             <EventModal event={pendingEvent} result={eventResult} impacts={eventImpacts}
-              inBattle={!!run && run.phase === 'battle'} onResolve={resolveEvent} onDismiss={dismissEvent} />
+              inBattle={!!run && run.phase === 'battle'} attrChoice={pendingAttr} onChooseAttr={chooseAttrDim}
+              onResolve={resolveEvent} onDismiss={dismissEvent} />
           )}
             {screen === 'tavern' && <TavernScreen gold={gold} blessing={blessing} members={members}
               visitor={visitor} candidates={candidates} effectiveCooldown={effectiveCooldown} busy={!!run || !!towerRun} rosterCap={rosterCap}
