@@ -3,7 +3,7 @@ import type { ItemBaseDef } from '../sim/types'
 // 装备基础盘（M0：3 槽位 × 2 阶）。boss 掉落表引用这里的 id（Q22）
 export const ITEM_BASES: Record<string, ItemBaseDef> = {
   'wpn-t1-sword': {
-    id: 'wpn-t1-sword', name: '戍卒铁剑', slot: 'weapon', family: 'blade', tier: 1,
+    id: 'wpn-t1-sword', name: '戍卒铁剑', slot: 'weapon', family: 'blade', tier: 1, pool: 'dps',
     stat: 'attack', value: 6, affixCount: [1, 2],
   },
   'wpn-t2-bow': {
@@ -11,11 +11,11 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'attack', value: 12, affixCount: [2, 3], legacy: 'killheal', setName: 'wind-hunt',
   },
   'arm-t1-mail': {
-    id: 'arm-t1-mail', name: '戍卒锁甲', slot: 'armor', tier: 1,
+    id: 'arm-t1-mail', name: '戍卒锁甲', slot: 'armor', tier: 1, pool: 'tank',
     stat: 'defense', value: 4, affixCount: [1, 2],
   },
   'arm-t2-plate': {
-    id: 'arm-t2-plate', name: '泽地重铠', slot: 'armor', tier: 2,
+    id: 'arm-t2-plate', name: '泽地重铠', slot: 'armor', tier: 2, pool: 'tank',
     stat: 'defense', value: 8, affixCount: [2, 3], legacy: 'bulwark',
   },
   'trk-t1-band': {
@@ -28,64 +28,64 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   // ===== 装备扩容(2026-09-22):6→20,基础盘风格化(高攻少词条/均衡/多词条) =====
   'wpn-t1-axe': {
-    id: 'wpn-t1-axe', name: '开荒斧', slot: 'weapon', family: 'axe', tier: 1,
+    id: 'wpn-t1-axe', name: '开荒斧', slot: 'weapon', family: 'axe', tier: 1, pool: 'dps',
     stat: 'attack', value: 8, affixCount: [0, 1],
   },
   'wpn-t1-dagger': {
-    id: 'wpn-t1-dagger', name: '哨探短刃', slot: 'weapon', family: 'blade', tier: 1,
+    id: 'wpn-t1-dagger', name: '哨探短刃', slot: 'weapon', family: 'blade', tier: 1, pool: 'dps',
     stat: 'critChance', value: 0.04, affixCount: [2, 2],
   },
   'wpn-t2-greatsword': {
-    id: 'wpn-t2-greatsword', name: '折颈巨剑', slot: 'weapon', family: 'blade', tier: 2,
+    id: 'wpn-t2-greatsword', name: '折颈巨剑', slot: 'weapon', family: 'blade', tier: 2, pool: 'dps',
     stat: 'attack', value: 15, affixCount: [1, 2], legacy: 'focus',
   },
   'wpn-t2-staff': {
-    id: 'wpn-t2-staff', name: '春霖法杖', slot: 'weapon', family: 'staff', tier: 2,
+    id: 'wpn-t2-staff', name: '春霖法杖', slot: 'weapon', family: 'staff', tier: 2, pool: 'healer',
     stat: 'healReceived', value: 0.06, affixCount: [2, 3], legacy: 'mend',
   },
   'wpn-t2-crossbow': {
-    id: 'wpn-t2-crossbow', name: '戍弩', slot: 'weapon', family: 'bow', tier: 2,
+    id: 'wpn-t2-crossbow', name: '戍弩', slot: 'weapon', family: 'bow', tier: 2, pool: 'dps',
     stat: 'attack', value: 11, affixCount: [2, 2],
   },
   // ===== R3/W4 长柄六件(U31):数值走现有 tier 曲线;美术暂用剑帧占位(明确不做清单) =====
   'wpn-t1-halberd': {
-    id: 'wpn-t1-halberd', name: '戍卒长戟', slot: 'weapon', family: 'polearm', tier: 1,
+    id: 'wpn-t1-halberd', name: '戍卒长戟', slot: 'weapon', family: 'polearm', tier: 1, pool: 'tank',
     stat: 'attack', value: 7, affixCount: [0, 1],
   },
   'wpn-t1-spear': {
-    id: 'wpn-t1-spear', name: '巡林刺矛', slot: 'weapon', family: 'polearm', tier: 1,
+    id: 'wpn-t1-spear', name: '巡林刺矛', slot: 'weapon', family: 'polearm', tier: 1, pool: 'dps',
     stat: 'attack', value: 6, affixCount: [1, 2],
   },
   'wpn-t2-banner': {
-    id: 'wpn-t2-banner', name: '荆棘旗枪', slot: 'weapon', family: 'polearm', tier: 2,
+    id: 'wpn-t2-banner', name: '荆棘旗枪', slot: 'weapon', family: 'polearm', tier: 2, pool: 'tank',
     stat: 'defense', value: 4, affixCount: [1, 2], legacy: 'bulwark',
   },
   'wpn-t2-tidebreak': {
-    id: 'wpn-t2-tidebreak', name: '断潮矛', slot: 'weapon', family: 'polearm', tier: 2,
+    id: 'wpn-t2-tidebreak', name: '断潮矛', slot: 'weapon', family: 'polearm', tier: 2, pool: 'tank',
     stat: 'attack', value: 14, affixCount: [1, 2],
   },
   'wpn-t3-bulwarkpike': {
-    id: 'wpn-t3-bulwarkpike', name: '铁壁拒马枪', slot: 'weapon', family: 'polearm', tier: 3,
+    id: 'wpn-t3-bulwarkpike', name: '铁壁拒马枪', slot: 'weapon', family: 'polearm', tier: 3, pool: 'tank',
     stat: 'defense', value: 12, affixCount: [2, 3], legacy: 'bulwark',
   },
   'wpn-t3-dragonpole': {
-    id: 'wpn-t3-dragonpole', name: '龙脊长柄', slot: 'weapon', family: 'polearm', tier: 3,
+    id: 'wpn-t3-dragonpole', name: '龙脊长柄', slot: 'weapon', family: 'polearm', tier: 3, pool: 'tank',
     stat: 'attack', value: 24, affixCount: [2, 3], legacy: 'focus',
   },
   'arm-t1-leather': {
-    id: 'arm-t1-leather', name: '斥候皮甲', slot: 'armor', tier: 1,
+    id: 'arm-t1-leather', name: '斥候皮甲', slot: 'armor', tier: 1, pool: 'dps',
     stat: 'speed', value: 1, affixCount: [1, 2],
   },
   'arm-t2-chain': {
-    id: 'arm-t2-chain', name: '巷道链甲', slot: 'armor', tier: 2,
+    id: 'arm-t2-chain', name: '巷道链甲', slot: 'armor', tier: 2, pool: 'dps',
     stat: 'defense', value: 7, affixCount: [2, 3],
   },
   'arm-t2-robe': {
-    id: 'arm-t2-robe', name: '织法者长袍', slot: 'armor', tier: 2,
+    id: 'arm-t2-robe', name: '织法者长袍', slot: 'armor', tier: 2, pool: 'caster',
     stat: 'healReceived', value: 0.05, affixCount: [2, 3],
   },
   'arm-t2-bulwark': {
-    id: 'arm-t2-bulwark', name: '断崖胸铠', slot: 'armor', tier: 2,
+    id: 'arm-t2-bulwark', name: '断崖胸铠', slot: 'armor', tier: 2, pool: 'tank',
     stat: 'maxHp', value: 55, affixCount: [1, 2], legacy: 'bulwark',
   },
   'trk-t1-charm': {
@@ -93,36 +93,36 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'maxHp', value: 15, affixCount: [1, 2],
   },
   'trk-t2-rune': {
-    id: 'trk-t2-rune', name: '先知符印', slot: 'trinket', tier: 2,
+    id: 'trk-t2-rune', name: '先知符印', slot: 'trinket', tier: 2, pool: 'caster',
     stat: 'critChance', value: 0.05, affixCount: [2, 2], legacy: 'focus',
   },
   'trk-t2-medic': {
-    id: 'trk-t2-medic', name: '医者徽记', slot: 'trinket', tier: 2,
+    id: 'trk-t2-medic', name: '医者徽记', slot: 'trinket', tier: 2, pool: 'healer',
     stat: 'healReceived', value: 0.08, affixCount: [1, 2], legacy: 'mend',
   },
   // ===== 六线专属武器(掉落表按主题挂到对应 boss) =====
   'wpn-line-guard': {
-    id: 'wpn-line-guard', name: '苔盾剑', slot: 'weapon', family: 'blade', tier: 2,
+    id: 'wpn-line-guard', name: '苔盾剑', slot: 'weapon', family: 'blade', tier: 2, pool: 'tank',
     stat: 'defense', value: 5, affixCount: [2, 3], legacy: 'bulwark',
   },
   'wpn-line-priest': {
-    id: 'wpn-line-priest', name: '晨祷权杖', slot: 'weapon', family: 'staff', tier: 2,
+    id: 'wpn-line-priest', name: '晨祷权杖', slot: 'weapon', family: 'staff', tier: 2, pool: 'healer',
     stat: 'healReceived', value: 0.09, affixCount: [2, 3], legacy: 'mend',
   },
   'wpn-line-ranger': {
-    id: 'wpn-line-ranger', name: '鹘眼长弓', slot: 'weapon', family: 'bow', tier: 2,
+    id: 'wpn-line-ranger', name: '鹘眼长弓', slot: 'weapon', family: 'bow', tier: 2, pool: 'dps',
     stat: 'critChance', value: 0.06, affixCount: [2, 3], legacy: 'focus', setName: 'wind-hunt',
   },
   'wpn-line-warrior': {
-    id: 'wpn-line-warrior', name: '碎颚斧', slot: 'weapon', family: 'axe', tier: 2,
+    id: 'wpn-line-warrior', name: '碎颚斧', slot: 'weapon', family: 'axe', tier: 2, pool: 'dps',
     stat: 'attack', value: 17, affixCount: [1, 2], legacy: 'elitewarden',
   },
   'wpn-line-mage': {
-    id: 'wpn-line-mage', name: '霜火宝珠', slot: 'weapon', family: 'staff', tier: 2,
+    id: 'wpn-line-mage', name: '霜火宝珠', slot: 'weapon', family: 'staff', tier: 2, pool: 'caster',
     stat: 'attack', value: 13, affixCount: [2, 3], legacy: 'emberward',
   },
   'wpn-line-warlock': {
-    id: 'wpn-line-warlock', name: '缚魂典', slot: 'weapon', family: 'staff', tier: 2,
+    id: 'wpn-line-warlock', name: '缚魂典', slot: 'weapon', family: 'staff', tier: 2, pool: 'caster',
     stat: 'lifesteal', value: 0.06, affixCount: [2, 3], legacy: 'killheal',
   },
   // ===== 六线专属防具+饰品(试玩反馈④:装备多样性——职阶专精可换装) =====
@@ -131,7 +131,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'defense', value: 6, affixCount: [2, 3], legacy: 'bulwark',
   },
   'trk-line-guard': {
-    id: 'trk-line-guard', name: '誓约之石', slot: 'trinket', tier: 2,
+    id: 'trk-line-guard', name: '誓约之石', slot: 'trinket', tier: 2, pool: 'tank',
     stat: 'defense', value: 3, affixCount: [2, 2], legacy: 'bulwark',
   },
   'arm-line-priest': {
@@ -139,7 +139,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'healReceived', value: 0.07, affixCount: [2, 3], legacy: 'mend',
   },
   'trk-line-priest': {
-    id: 'trk-line-priest', name: '祈祷烛台', slot: 'trinket', tier: 2,
+    id: 'trk-line-priest', name: '祈祷烛台', slot: 'trinket', tier: 2, pool: 'healer',
     stat: 'maxHp', value: 30, affixCount: [2, 2], legacy: 'triumph',
   },
   'arm-line-ranger': {
@@ -147,7 +147,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'speed', value: 2, affixCount: [2, 3], legacy: 'focus', setName: 'wind-hunt',
   },
   'trk-line-ranger': {
-    id: 'trk-line-ranger', name: '鹘眼坠饰', slot: 'trinket', tier: 2,
+    id: 'trk-line-ranger', name: '鹘眼坠饰', slot: 'trinket', tier: 2, pool: 'dps',
     stat: 'critChance', value: 0.06, affixCount: [2, 2], legacy: 'focus', setName: 'wind-hunt',
   },
   'arm-line-warrior': {
@@ -155,7 +155,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'lifesteal', value: 0.05, affixCount: [2, 3], legacy: 'killheal',
   },
   'trk-line-warrior': {
-    id: 'trk-line-warrior', name: '骨髓哨', slot: 'trinket', tier: 2,
+    id: 'trk-line-warrior', name: '骨髓哨', slot: 'trinket', tier: 2, pool: 'dps',
     stat: 'attack', value: 6, affixCount: [2, 2], legacy: 'elitewarden',
   },
   'arm-line-mage': {
@@ -163,7 +163,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'critChance', value: 0.05, affixCount: [2, 3], legacy: 'focus',
   },
   'trk-line-mage': {
-    id: 'trk-line-mage', name: '秘法核心', slot: 'trinket', tier: 2,
+    id: 'trk-line-mage', name: '秘法核心', slot: 'trinket', tier: 2, pool: 'caster',
     stat: 'attack', value: 5, affixCount: [2, 2], legacy: 'focus',
   },
   'arm-line-warlock': {
@@ -207,51 +207,51 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
 
 // ===== T3 灰冠纪元(装备 2.0,2026-09-25):版图二毕业+高塔深层,全带传承威能 =====
   'wpn-t3-dawn': {
-    id: 'wpn-t3-dawn', name: '渊晨巨剑', slot: 'weapon', family: 'blade', tier: 3,
+    id: 'wpn-t3-dawn', name: '渊晨巨剑', slot: 'weapon', family: 'blade', tier: 3, pool: 'dps',
     stat: 'attack', value: 26, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'wpn-t3-tide': {
-    id: 'wpn-t3-tide', name: '缚潮咒典', slot: 'weapon', family: 'staff', tier: 3,
+    id: 'wpn-t3-tide', name: '缚潮咒典', slot: 'weapon', family: 'staff', tier: 3, pool: 'caster',
     stat: 'lifesteal', value: 0.1, affixCount: [2, 3], legacy: 'killheal', setName: 'gray-crown',
   },
   'wpn-t3-gale': {
-    id: 'wpn-t3-gale', name: '隼击长弓', slot: 'weapon', family: 'bow', tier: 3,
+    id: 'wpn-t3-gale', name: '隼击长弓', slot: 'weapon', family: 'bow', tier: 3, pool: 'dps',
     stat: 'critChance', value: 0.08, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'wpn-t3-ember': {
-    id: 'wpn-t3-ember', name: '烬渊宝珠', slot: 'weapon', family: 'staff', tier: 3,
+    id: 'wpn-t3-ember', name: '烬渊宝珠', slot: 'weapon', family: 'staff', tier: 3, pool: 'caster',
     stat: 'attack', value: 23, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
   'wpn-t3-vox': {
-    id: 'wpn-t3-vox', name: '春霖圣杖', slot: 'weapon', family: 'staff', tier: 3,
+    id: 'wpn-t3-vox', name: '春霖圣杖', slot: 'weapon', family: 'staff', tier: 3, pool: 'healer',
     stat: 'healReceived', value: 0.12, affixCount: [2, 3], legacy: 'mend', setName: 'gray-crown',
   },
   'arm-t3-bulwark': {
-    id: 'arm-t3-bulwark', name: '灰冠壁垒', slot: 'armor', tier: 3,
+    id: 'arm-t3-bulwark', name: '灰冠壁垒', slot: 'armor', tier: 3, pool: 'tank',
     stat: 'defense', value: 16, affixCount: [2, 3], legacy: 'bulwark', setName: 'gray-crown',
   },
   'arm-t3-drake': {
-    id: 'arm-t3-drake', name: '渊龙鳞铠', slot: 'armor', tier: 3,
+    id: 'arm-t3-drake', name: '渊龙鳞铠', slot: 'armor', tier: 3, pool: 'tank',
     stat: 'fireResist', value: 0.25, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
   'arm-t3-whisper': {
-    id: 'arm-t3-whisper', name: '缚魂裹尸布', slot: 'armor', tier: 3,
+    id: 'arm-t3-whisper', name: '缚魂裹尸布', slot: 'armor', tier: 3, pool: 'caster',
     stat: 'lifesteal', value: 0.09, affixCount: [2, 3], legacy: 'killheal', setName: 'gray-crown',
   },
   'arm-t3-gale': {
-    id: 'arm-t3-gale', name: '风脊猎衣', slot: 'armor', tier: 3,
+    id: 'arm-t3-gale', name: '风脊猎衣', slot: 'armor', tier: 3, pool: 'dps',
     stat: 'speed', value: 3, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'trk-t3-vanguard': {
-    id: 'trk-t3-vanguard', name: '前卫印玺', slot: 'trinket', tier: 3,
+    id: 'trk-t3-vanguard', name: '前卫印玺', slot: 'trinket', tier: 3, pool: 'tank',
     stat: 'defense', value: 8, affixCount: [2, 3], legacy: 'bulwark', setName: 'gray-crown',
   },
   'trk-t3-seer': {
-    id: 'trk-t3-seer', name: '先知圣徽', slot: 'trinket', tier: 3,
+    id: 'trk-t3-seer', name: '先知圣徽', slot: 'trinket', tier: 3, pool: 'healer',
     stat: 'critChance', value: 0.07, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'trk-t3-pyrexia': {
-    id: 'trk-t3-pyrexia', name: '血宴杯', slot: 'trinket', tier: 3,
+    id: 'trk-t3-pyrexia', name: '血宴杯', slot: 'trinket', tier: 3, pool: 'dps',
     stat: 'attack', value: 8, affixCount: [2, 3], legacy: 'killheal', setName: 'gray-crown',
   },
 
@@ -263,4 +263,12 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     id: 'wpn-dragon-brand', name: '烙焰长剑', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'attack', value: 14, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
+}
+
+// #2.8 断言:池标注必须合法(注册表键名实读校验,坑台账纪律)
+{
+  const POOLS = ['common', 'tank', 'healer', 'dps', 'caster']
+  for (const [k, b] of Object.entries(ITEM_BASES)) {
+    if (b.pool && !POOLS.includes(b.pool)) throw new Error(`基底 ${k} pool 非法:${b.pool}`)
+  }
 }

@@ -25,13 +25,13 @@ describe('词条预算', () => {
     // 普通攻击/生命均抽下限；追加防御抽上半区，应该高于同预算下限 2.63。
     const item = rollDrop('wpn-t3-dawn', scripted(0, 0, 0, 0, 0, 0, 0, 0, 0.5))
     expect(item.quality).toBe('purple')
-    // #2.1 tier 区间:T3 锋利[6,11]×1.25=7.5;坚韧[40,80]×1.25=50;加固(t3 封顶 t2)[3,6]×1.25
+    // #2.8 倾向池:dps 基底从 dps+common 池抽(锋利/轻捷/致命;坚韧属坦克池不再出现)
     expect(item.rolls).toEqual([
       { affixId: 'aff-atk', value: 7.5 },
-      { affixId: 'aff-hp', value: 50 },
-      { affixId: 'aff-def', value: 5.63 },
+      { affixId: 'aff-spd', value: 2.5 },
+      { affixId: 'aff-crit', value: 0.1 },
     ])
-    expect(describeItem(item)).toContain('加固+5.6')
+    expect(describeItem(item)).toContain('致命')
   })
 
   it('I4：相同预算、词条和抽样下，普通与追加路径逐项相同', () => {
@@ -117,10 +117,11 @@ describe('词条预算', () => {
   it('真实杂兵掉落使用修复后的追加预算，Boss 保底使用同一生成入口', () => {
     const wave = rollWaveDrop('emberpass', () => 0)!
     expect(wave.baseId).toBe('arm-t3-drake')
+    // #2.8:tank 池(坚韧/加固/轻捷-common)
     expect(wave.rolls).toEqual([
-      { affixId: 'aff-atk', value: 7.5 },
       { affixId: 'aff-hp', value: 50 },
       { affixId: 'aff-def', value: 3.75 },
+      { affixId: 'aff-spd', value: 2.5 },
     ])
     const options = { minQuality: 'purple' as const, pity: true }
     const boss = rollBossDrops([{ baseId: 'wpn-t3-dawn', chance: 0 }], 29, options)
@@ -153,13 +154,13 @@ describe('词条预算', () => {
     const [restoredMember] = resolveMembers(restored.members, itemStateFromSave(restored))
     expect(restoredMember.equipment).toEqual({ weapon: { ...oldPurple, id: restored.members[0].equipment.weapon } })
     expect(itemStats(restoredMember.equipment.weapon!)).toEqual({ attack: 31.25, maxHp: 26.25, defense: 1.5 })
-    expect(equipmentStats({ weapon: restored.items[restored.inventory[1]] })).toEqual({ attack: 33.5, maxHp: 50, defense: 3.75 })
+    expect(equipmentStats({ weapon: restored.items[restored.inventory[1]] })).toEqual({ attack: 33.5, speed: 2.5, critChance: 0.06 })
     const oldUnit = toCombatant(restoredMember)
     const newUnit = toCombatant({ ...restoredMember, equipment: { weapon: restored.items[restored.inventory[1]] } })
-    // #2.1 tier 区间后新掉落数值更大;词条精确值已由 equipmentStats 断言,此处只断投影方向
-    expect(newUnit.defense).toBeGreaterThan(oldUnit.defense)
+    // #2.1/#2.8 后新掉落(dps 池)=攻/速/暴:精确值已由 equipmentStats 断言,此处只断投影方向
     expect(newUnit.attack).toBeGreaterThan(oldUnit.attack)
-    expect(newUnit.maxHp).toBeGreaterThan(oldUnit.maxHp)
+    expect(newUnit.attackInterval).toBeLessThanOrEqual(oldUnit.attackInterval)
+    expect(newUnit.critChance).toBeGreaterThan(oldUnit.critChance)
     expect(migrated).toEqual(before)
   })
 })

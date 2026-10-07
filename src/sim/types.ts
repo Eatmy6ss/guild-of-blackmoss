@@ -178,6 +178,8 @@ export interface ItemBaseDef {
   setName?: string
   /** R3 武器族(仅 slot='weapon' 必填;护甲/饰品无族) */
   family?: WeaponFamily
+  /** #2.8 倾向池:职业命名装备从对应池抽词条(缺省=全池通用);只影响掉落,不限制穿戴 */
+  pool?: AffixPool
 }
 
 /** 一次具体的掉落实例：baseId 固定来源，词条掉落时 roll（Q22） */

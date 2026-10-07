@@ -77,12 +77,16 @@ export function rollDrop(
   if (opts?.minQuality === 'green' && quality === 'white') quality = 'green'
   if (opts?.minQuality === 'purple') quality = 'purple'
   const qAdj = quality === 'purple' ? { mult: 1.25, bonusChance: 0.6 } : quality === 'green' ? { mult: 1.08, bonusChance: 0 } : { mult: 0.9, bonusChance: 0 }
+  // #2.8 倾向池:职业命名装备(pool 标注)从 本池+通用池 抽词条;通用件全池。只影响掉落,不限制穿戴(规格红线)
+  const candidates = base.pool && base.pool !== 'common'
+    ? Object.values(AFFIXES).filter((a) => a.pools.includes(base.pool!) || a.pools.includes('common'))
+    : Object.values(AFFIXES)
   const rolls = rollAffixes({
     count: base.affixCount,
     tier: base.tier as 1 | 2 | 3 | 4,
     qualityScale: qAdj.mult,
     bonusChance: qAdj.bonusChance,
-  }, Object.values(AFFIXES), rng)
+  }, candidates, rng)
   return { id: opts?.id ?? `i${crypto.randomUUID()}`, baseId, quality, rolls }
 }
 
