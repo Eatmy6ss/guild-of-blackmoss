@@ -52,6 +52,31 @@ describe('I8 无死属性(#2.2 接线守卫)', () => {
     }
   })
 
+  it('I8 补充:套装加成参与战斗(灰冠伤害乘区/猎风暴击,批次 2 出口条件)', { timeout: 30_000 }, () => {
+    const equipSet = (members: ReturnType<typeof generateMember>[], setName: 'gray-crown' | 'wind-hunt') => {
+      const bases = Object.entries(ITEM_BASES).filter(([, b]) => b.setName === setName).slice(0, 2)
+      members[2].equipment.armor = { id: 'set-a', baseId: bases[0]![0], quality: 'white', rolls: [] }
+      members[2].equipment.trinket = { id: 'set-b', baseId: bases[1]![0], quality: 'white', rolls: [] }
+    }
+    const fight = (setName?: 'gray-crown' | 'wind-hunt') => {
+      const members = SQUAD_JOBS.map((job, j) => {
+        const m = generateMember(job, 6, 990000 + j)
+        m.spec = undefined
+        m.equipment = {}
+        return m
+      })
+      if (setName) equipSet(members, setName)
+      const b = createBattle(members, BLACKMOSS, 'enc-wolves', 88, 0, 0, false)
+      let guard = 0
+      while (b.status === 'running' && guard++ < 20000) stepBattle(b)
+      return `${b.tick}|${b.combatants.reduce((s, c) => s + c.hp, 0)}`
+    }
+    const base = fight(undefined)
+    for (const set of ['gray-crown', 'wind-hunt'] as const) {
+      expect(fight(set), `${set} 两件套轨迹不变=套装加成未接战斗`).not.toBe(base)
+    }
+  })
+
   for (const key of ALL) {
     it(`I8:${key} 参与战斗(两探针轨迹不同)`, { timeout: 30_000 }, () => {
       const roll = bigRollFor(key)!
