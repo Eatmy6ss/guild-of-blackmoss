@@ -1,3 +1,5 @@
+import { SIGNATURE_SKILLS } from '../data/signature'
+import { normalizeLedger } from '../sim/fact-ledger'
 import type { DeadHero, Member } from '../sim/types'
 import { readItemFields, itemStateFromSave, resolveMembers, serializeGuildItems, assertItemOwnership, type StoredItemFields } from './item-registry'
 import { JOBS } from '../data/jobs'
@@ -22,7 +24,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 30
+export const SAVE_VERSION = 31
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -41,6 +43,8 @@ export const saveFailNotice = () => saveFailReason
 export let lastLoadError = ''
 
 export interface PendingConsequence {
+  /** 当次真实选择；老队列缺省时不猜来源。 */
+  originFactId?: number
   eventId: string
   dueDay: number
 }
@@ -112,6 +116,26 @@ export interface GuildSave extends StoredItemFields {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  // 旧人物分支也使用 v23，但仍是 steps 路线；按结构识别，不能只看版本号。
+  30: (d) => {
+    d = migrateStoryRecovery(d)
+    const state = d.runState as Partial<RunUIState> | undefined
+    if (!state || typeof state !== 'object' || Array.isArray(state)) return d
+    const next = { ...state, lastNodeResult: state.lastNodeResult === undefined ? null : state.lastNodeResult }
+    const run = state.activeRun as unknown as Record<string, any> | null
+    if (run?.kind === 'dungeon' && run.schema === 1 && run.map === undefined &&
+        Array.isArray(run.steps) && run.steps.length > 0 && run.steps.every((s: unknown) => typeof s === 'string') &&
+        Number.isInteger(run.stepIdx) && run.stepIdx >= 0 && run.stepIdx <= run.steps.length) {
+      // 旧路线不能重放；保留已落袋资产，不模拟胜负或再发奖励。
+      Object.assign(next, { activeRun: null, playing: false, autoLoop: false,
+        eventId: null, eventResult: null, eventImpacts: [], pendingDeparture: null, pendingConsequence: null,
+        notices: [...(state.notices ?? []), '旧版远征路线已失效，队伍已撤回。公会资产与已获得的装备保留，请重新出发。'] })
+      const stock = run.battle?.commands
+      const potions = stock ? { heal: stock.healStock, fury: stock.furyStock } : run.potions
+      if (potions && [potions.heal, potions.fury].every(n => Number.isSafeInteger(n) && n >= 0)) d.potions = potions
+    }
+    return { ...d, runState: next }
+  },
   // R1.1(U27①):副本远征改读分层地图——旧 steps/routeNodes 格式的进行中远征按撤退处理:
   // 成员带着现有状态回城,不扣东西,通知一句;高塔断点不受影响。
   22: (d) => {
@@ -214,6 +238,36 @@ const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, 
   10: (d) => ({ ...d, eventsSeen: (d.eventsSeen as string[] | undefined) ?? [], guildBuffs: (d.guildBuffs as unknown[] | undefined) ?? [] }),
 }
 
+function migrateStoryRecovery(d: Record<string, unknown>): Record<string, unknown> {
+  const runState = d.runState as RunUIState | undefined
+  const battle = runState?.activeRun?.battle
+  if (!battle?.commands || !Object.hasOwn(battle.commands, 'signature')) return d
+  const commands = { ...battle.commands } as typeof battle.commands & { signature?: unknown }
+  const old = commands.signature as { memberId?: unknown; skillId?: unknown; targetId?: unknown } | null
+  delete commands.signature
+  const member = Array.isArray(battle.combatants) && old && typeof old.memberId === 'string'
+    ? battle.combatants.find(c => c.team === 'guild' && c.memberId === old.memberId) : undefined
+  const skill = member?.specId ? SIGNATURE_SKILLS[member.specId] : undefined
+  if (old && member && skill && skill.id === old.skillId && typeof old.memberId === 'string' &&
+      (old.targetId === undefined || typeof old.targetId === 'string')) {
+    const slots = commands.signatures ?? {}
+    if (!Object.hasOwn(slots, old.memberId)) commands.signatures = {
+      ...slots, [old.memberId]: { memberId: old.memberId, skillId: skill.id, ...(old.targetId === undefined ? {} : { targetId: old.targetId }) },
+    }
+  }
+  return { ...d, runState: { ...runState, activeRun: { ...runState!.activeRun, battle: { ...battle, commands } } } }
+}
+
+/** 来源编号是可选证据。损坏时只降级为无来源，不能让后果留在队列中反复兑现。 */
+function normalizeConsequenceOrigin<T>(value: T): T {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, 'originFactId')) return value
+  const entry = value as Record<string, unknown>
+  if (Number.isSafeInteger(entry.originFactId) && (entry.originFactId as number) > 0) return value
+  const cleaned = { ...entry }
+  delete cleaned.originFactId
+  return cleaned as T
+}
+
 /** 老档没有序列，按已有公会时间/日期建立稳定起点；迁移不访问随机数或改资产。 */
 function legacyRngState(d: Record<string, unknown>): number {
   const time = typeof d.lastSeen === 'number' && Number.isFinite(d.lastSeen) ? d.lastSeen : 7777
@@ -242,6 +296,13 @@ export function migrate(data: Record<string, unknown>): GuildSave {
   else delete d.intelStock // 不注入缺省键:逐字节往返对照要求老档对象不变(App 侧取缺省)
   d.kingdom = normalizeKingdom(d.kingdom)
   d.statistics = normalizeStatistics(d.statistics, typeof d.day === 'number' ? d.day : 1)
+  d.factLedger = normalizeLedger(d.factLedger)
+  if (Array.isArray(d.pendingConsequences)) d.pendingConsequences = d.pendingConsequences.map(normalizeConsequenceOrigin)
+  const progress = d.runState as RunUIState | undefined
+  if (progress?.pendingConsequence) {
+    const pendingConsequence = normalizeConsequenceOrigin(progress.pendingConsequence)
+    if (pendingConsequence !== progress.pendingConsequence) d.runState = { ...progress, pendingConsequence }
+  }
   const hunt = d.rareHuntNext as GuildSave['rareHuntNext']
   d.rareHuntNext = hunt && Number.isFinite(hunt.mult) && hunt.mult >= 1 &&
     Number.isFinite(hunt.rewardMult) && hunt.rewardMult >= 1

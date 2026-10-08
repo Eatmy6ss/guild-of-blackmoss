@@ -1,3 +1,6 @@
+import { SignatureBar } from './ui/battle/SignatureBar'
+import { BattleHints } from './ui/battle/BattleHints'
+import { SIGNATURE_SKILLS } from './data/signature'
 import { BattleIntel } from './ui/art/BattleIntel'
 import { CreditsDialog } from './ui/art/Credits'
 import { KingdomPanel } from './ui/screens/KingdomPanel'
@@ -16,7 +19,7 @@ import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } 
 import { appendBio } from './sim/bio'
 import { INTEL_TIERS, INTEL_STOCK_CAP, intelDungeonFull, rollIntel, type IntelEntry, type IntelKind } from './sim/intel'
 import { TICK_MS, stepBattle, setFocus, useSignature } from './sim/combat'
-import { DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
+import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { WEAPON_FAMILIES } from './data/weapon-families'
 import { MemberPanel } from './ui/screens/MemberPanel'
@@ -619,7 +622,7 @@ export default function App() {
   useEffect(() => {
     if (progress !== progressRef.current) return
     const ar = progress.activeRun
-    const combatRunning = !!ar?.battle && ar.battle.status === 'running'
+    const combatRunning = progress.playing && !!ar?.battle && ar.battle.status === 'running'
     if (combatRunning) {
       const now = Date.now()
       if (!combatSaveDue(now, lastCombatSaveRef.current)) return
@@ -1088,6 +1091,19 @@ export default function App() {
             onSelectDungeon={setDungeonId} onDepart={() => startExpeditionRef.current?.()} />}
 
 
+          {(inBattle || inTowerBattle) && battle?.status === 'running' && <>
+            <BattleHints hints={BATTLE_HINTS.filter(h => !hintsSeen.includes(h.id) &&
+              (h.applies?.({ hasSignature: battle.combatants.some(c => c.team === 'guild' && c.alive && !!c.specId && !!SIGNATURE_SKILLS[c.specId]) }) ?? true))}
+              onDismiss={dismissHint} />
+            <SignatureBar battle={battle} members={members} casterId={intents?.casterId} focusId={battle.commands.focusId}
+              onUse={(memberId, targetId) => {
+                const command = inTowerBattle ? cmdTower : cmd
+                command(b => {
+                  if (useSignature(b, memberId, targetId)) setPlayMeta(m => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))
+                }, true)
+              }} />
+          </>}
+
           {screen === 'battle' && run && inBattle && battle && (
             <BattleScreen
               run={run} battle={battle} inBattle={inBattle} inTowerBattle={inTowerBattle}
@@ -1152,6 +1168,7 @@ export default function App() {
                   members={membersRef.current}
                   snapshot={growthSnapshotRef.current}
                   drops={lastDrops}
+                  notices={progress.notices}
                   story={progress.notices.find((n) => n.startsWith('📖')) ?? null}
                   onBack={backToGuild}
                   onAgain={() => { backToGuild(); window.setTimeout(() => startExpeditionRef.current?.(), 120) }}

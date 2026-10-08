@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { tellExpedition } from './storyteller'
-import { EMPTY_LEDGER, type FactLedger } from './fact-ledger'
+import { EMPTY_LEDGER, normalizeLedger, type FactLedger } from './fact-ledger'
 import { TEMPLATES } from '../data/story-templates'
 
 const ledger = (): FactLedger => ({ nextId: 1, facts: [] })
@@ -18,6 +18,46 @@ const killFact = (id: number, boss: string, dungeonId: string, encounter: number
 describe('A9 基础', () => {
   test('空账本不讲(没有事实就没有故事)', () => {
     expect(tellExpedition(EMPTY_LEDGER, () => 0.5)).toBeNull()
+  })
+
+  test('前趟未成故事的阵亡，不与本趟首杀拼成同场陪葬', () => {
+    const l = ledger()
+    l.facts = [deathFact(1, 'old', '前趟亡者', 'blackmoss', 2), killFact(2, 'grush', 'blackmoss', 2)]
+    expect(tellExpedition(l, () => 0, { fromId: 0, startId: 2 })).toBeNull()
+  })
+
+  test('出发前兑现的延迟后果可引用旧选择，讲过后不因保留旧因果重讲', () => {
+    const l = ledger()
+    l.facts = [
+      { id: 1, day: 1, kind: 'event-choice', actors: [], refs: { eventId: 'dying-knight' } },
+      { id: 2, day: 7, kind: 'consequence-due', actors: [], refs: { eventId: 'knight-pursuit' }, links: [1] },
+    ]
+    expect(tellExpedition(l, () => 0, { fromId: 2, startId: 3 })?.factIds).toEqual([2, 1])
+    expect(tellExpedition(l, () => 0, { fromId: 3, startId: 2 })).toBeNull()
+  })
+
+  test('旧档第二幕伪来源不生成选择日期，也不挡住后续真实因果', () => {
+    const l = normalizeLedger({ nextId: 5, facts: [
+      { id: 1, day: 2, kind: 'event-choice', actors: [], refs: { eventId: 'knight-pursuit' } },
+      { id: 2, day: 9, kind: 'consequence-due', actors: [], refs: { eventId: 'knight-pursuit' }, links: [1] },
+    ] })
+    expect(tellExpedition(l, () => 0)).toBeNull()
+    l.facts.push(
+      { id: 3, day: 10, kind: 'event-choice', actors: [], refs: { eventId: 'dying-knight' } },
+      { id: 4, day: 15, kind: 'consequence-due', actors: [], refs: { eventId: 'knight-pursuit' }, links: [3] },
+    )
+    const story = tellExpedition(l, () => 0, { fromId: 2, startId: 5 })
+    expect(story?.factIds).toEqual([4, 3])
+    expect(story?.text).toContain('10')
+    expect(story?.text).toContain('15')
+  })
+
+  test('延迟后果缺来源或来源晚于兑现时不编造故事', () => {
+    const l = ledger()
+    l.facts = [{ id: 2, day: 7, kind: 'consequence-due', actors: [], refs: { eventId: 'knight-pursuit' }, links: [1] }]
+    expect(tellExpedition(l, () => 0)).toBeNull()
+    l.facts.unshift({ id: 1, day: 9, kind: 'event-choice', actors: [], refs: { eventId: 'dying-knight' } })
+    expect(tellExpedition(l, () => 0)).toBeNull()
   })
 })
 
@@ -60,6 +100,14 @@ describe('第 5 组 Q4-C 默契门槛', () => {
 })
 
 describe('第 5 组 Q4-C 创伤门槛', () => {
+  test('旧创伤缺次数或人物时不把空槽写进故事', () => {
+    const l = ledger()
+    l.facts = [{ id: 1, day: 3, kind: 'scar', actors: ['m1'], refs: { nearDeath: true } }]
+    expect(tellExpedition(l, () => 0)).toBeNull()
+    l.facts[0].actors = []
+    l.facts[0].refs.scarNth = 2
+    expect(tellExpedition(l, () => 0)).toBeNull()
+  })
   test('第 1 条且非濒死 → 不讲;濒死的第 1 条、非濒死的第 2 条 → 讲', () => {
     const first = (nearDeath: boolean) => {
       const l = ledger()
@@ -78,8 +126,8 @@ describe('第 5 组 Q4-B 模板去重(记在账本)', () => {
   test('同类连讲 3 次下标两两不同;序列化 → normalize 后仍生效', () => {
     const l = ledger()
     l.facts = [
-      { id: 1, day: 9, kind: 'consequence-due', actors: [], refs: { eventId: 'cursed-coffin' }, links: [0] },
-      { id: 0, day: 2, kind: 'event-choice', actors: [], refs: { eventId: 'cursed-coffin' } },
+      { id: 2, day: 9, kind: 'consequence-due', actors: [], refs: { eventId: 'knight-pursuit' }, links: [1] },
+      { id: 1, day: 2, kind: 'event-choice', actors: [], refs: { eventId: 'dying-knight' } },
     ] as typeof l.facts
     const seen: number[] = []
     for (let i = 0; i < 3; i++) {

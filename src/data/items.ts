@@ -3,11 +3,11 @@ import type { ItemBaseDef } from '../sim/types'
 // 装备基础盘（M0：3 槽位 × 2 阶）。boss 掉落表引用这里的 id（Q22）
 export const ITEM_BASES: Record<string, ItemBaseDef> = {
   'wpn-t1-sword': {
-    id: 'wpn-t1-sword', name: '戍卒铁剑', slot: 'weapon', family: 'blade', tier: 1, pool: 'dps',
+    id: 'wpn-t1-sword', name: '黑苔卫戍军长剑', flavor: '剑锷刻着服役编号。名字的位置，留给回营的人。', slot: 'weapon', family: 'blade', tier: 1, pool: 'dps',
     stat: 'attack', value: 6, affixCount: [1, 2],
   },
   'wpn-t2-bow': {
-    id: 'wpn-t2-bow', name: '逐风长弓', slot: 'weapon', family: 'bow', tier: 2,
+    id: 'wpn-t2-bow', name: '逐风者的长弓', flavor: '弓梢系着褪色的路标布。它的主人总比风晚一步归来。', slot: 'weapon', family: 'bow', tier: 2,
     stat: 'attack', value: 12, affixCount: [2, 3], legacy: 'killheal', setName: 'wind-hunt',
   },
   'arm-t1-mail': {
@@ -28,23 +28,23 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   // ===== 装备扩容(2026-09-22):6→20,基础盘风格化(高攻少词条/均衡/多词条) =====
   'wpn-t1-axe': {
-    id: 'wpn-t1-axe', name: '开荒斧', slot: 'weapon', family: 'axe', tier: 1, pool: 'dps',
+    id: 'wpn-t1-axe', name: '荒野开拓者之斧', flavor: '先砍倒挡路的老树，再面对树后醒来的东西。', slot: 'weapon', family: 'axe', tier: 1, pool: 'dps',
     stat: 'attack', value: 8, affixCount: [0, 1],
   },
   'wpn-t1-dagger': {
-    id: 'wpn-t1-dagger', name: '哨探短刃', slot: 'weapon', family: 'blade', tier: 1, pool: 'dps',
+    id: 'wpn-t1-dagger', name: '夜巡者的短刃', flavor: '黑苔的巡夜人不磨亮刀背，以免月光先暴露自己。', slot: 'weapon', family: 'blade', tier: 1, pool: 'dps',
     stat: 'critChance', value: 0.04, affixCount: [2, 2],
   },
   'wpn-t2-greatsword': {
-    id: 'wpn-t2-greatsword', name: '折颈巨剑', slot: 'weapon', family: 'blade', tier: 2, pool: 'dps',
+    id: 'wpn-t2-greatsword', name: '断脊者重剑', flavor: '剑刃上的豁口从未补平。持剑人说，那是它记住的战斗。', slot: 'weapon', family: 'blade', tier: 2, pool: 'dps',
     stat: 'attack', value: 15, affixCount: [1, 2], legacy: 'focus',
   },
   'wpn-t2-staff': {
-    id: 'wpn-t2-staff', name: '春霖法杖', slot: 'weapon', family: 'staff', tier: 2, pool: 'healer',
+    id: 'wpn-t2-staff', name: '春霖看护者之杖', flavor: '枯木杖头仍留着一截新芽，像战地帐篷里迟来的春天。', slot: 'weapon', family: 'staff', tier: 2, pool: 'healer',
     stat: 'healReceived', value: 0.06, affixCount: [2, 3], legacy: 'mend',
   },
   'wpn-t2-crossbow': {
-    id: 'wpn-t2-crossbow', name: '戍弩', slot: 'weapon', family: 'bow', tier: 2, pool: 'dps',
+    id: 'wpn-t2-crossbow', name: '锈坑哨卫强弩', flavor: '矿道容不下完整的弓身，却总能容下一支弩箭。', slot: 'weapon', family: 'bow', tier: 2, pool: 'dps',
     stat: 'attack', value: 11, affixCount: [2, 2],
   },
   // ===== R3/W4 长柄六件(U31):数值走现有 tier 曲线;美术暂用剑帧占位(明确不做清单) =====
@@ -102,27 +102,27 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
   },
   // ===== 六线专属武器(掉落表按主题挂到对应 boss) =====
   'wpn-line-guard': {
-    id: 'wpn-line-guard', name: '苔盾剑', slot: 'weapon', family: 'blade', tier: 2, pool: 'tank',
+    id: 'wpn-line-guard', name: '苔垒守望者之剑', flavor: '盾墙后流传着一句誓言：苔痕可以越过城砖，敌人不行。', slot: 'weapon', family: 'blade', tier: 2, pool: 'tank',
     stat: 'defense', value: 5, affixCount: [2, 3], legacy: 'bulwark',
   },
   'wpn-line-priest': {
-    id: 'wpn-line-priest', name: '晨祷权杖', slot: 'weapon', family: 'staff', tier: 2, pool: 'healer',
+    id: 'wpn-line-priest', name: '晨祷者的赐福权杖', flavor: '杖柄被一代代掌心磨得光亮，祷词却始终只有一句：愿他们归来。', slot: 'weapon', family: 'staff', tier: 2, pool: 'healer',
     stat: 'healReceived', value: 0.09, affixCount: [2, 3], legacy: 'mend',
   },
   'wpn-line-ranger': {
-    id: 'wpn-line-ranger', name: '鹘眼长弓', slot: 'weapon', family: 'bow', tier: 2, pool: 'dps',
+    id: 'wpn-line-ranger', name: '隼眼追猎者长弓', flavor: '猎人从不夸耀射程，只把断弦埋在失手的地方。', slot: 'weapon', family: 'bow', tier: 2, pool: 'dps',
     stat: 'critChance', value: 0.06, affixCount: [2, 3], legacy: 'focus', setName: 'wind-hunt',
   },
   'wpn-line-warrior': {
-    id: 'wpn-line-warrior', name: '碎颚斧', slot: 'weapon', family: 'axe', tier: 2, pool: 'dps',
+    id: 'wpn-line-warrior', name: '碎颚者战斧', flavor: '斧柄缠着换过许多次的皮带。斧头的名字从未换过。', slot: 'weapon', family: 'axe', tier: 2, pool: 'dps',
     stat: 'attack', value: 17, affixCount: [1, 2], legacy: 'elitewarden',
   },
   'wpn-line-mage': {
-    id: 'wpn-line-mage', name: '霜火宝珠', slot: 'weapon', family: 'staff', tier: 2, pool: 'caster',
+    id: 'wpn-line-mage', name: '霜烬交织宝珠', flavor: '一半结着细霜，一半映着余烬。两种光从不越过中央的裂纹。', slot: 'weapon', family: 'staff', tier: 2, pool: 'caster',
     stat: 'attack', value: 13, affixCount: [2, 3], legacy: 'emberward',
   },
   'wpn-line-warlock': {
-    id: 'wpn-line-warlock', name: '缚魂典', slot: 'weapon', family: 'staff', tier: 2, pool: 'caster',
+    id: 'wpn-line-warlock', name: '缚魂者的禁忌魔典', flavor: '封底留有历任主人的签名。最后一页，墨迹尚未干透。', slot: 'weapon', family: 'staff', tier: 2, pool: 'caster',
     stat: 'lifesteal', value: 0.06, affixCount: [2, 3], legacy: 'killheal',
   },
   // ===== 六线专属防具+饰品(试玩反馈④:装备多样性——职阶专精可换装) =====
@@ -184,7 +184,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'defense', value: 9, affixCount: [2, 3], legacy: 'bulwark',
   },
   'wpn-sign-warbrand': {
-    id: 'wpn-sign-warbrand', name: '灰隼军刀', slot: 'weapon', family: 'blade', tier: 2,
+    id: 'wpn-sign-warbrand', name: '灰隼军团军刀', flavor: '旧战场的灰掩住了旗帜，护手上的隼翼纹仍然清晰。', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'attack', value: 14, affixCount: [2, 3], legacy: 'focus',
   },
   'trk-sign-frostheart': {
@@ -192,7 +192,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'defense', value: 5, affixCount: [2, 3], legacy: 'bulwark',
   },
   'wpn-sign-bloodletter': {
-    id: 'wpn-sign-bloodletter', name: '医官放血刃', slot: 'weapon', family: 'blade', tier: 2,
+    id: 'wpn-sign-bloodletter', name: '无眠医官的放血刃', flavor: '刀鞘内侧刻着一列名字，没人能说清那是获救者还是亡者。', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'critChance', value: 0.07, affixCount: [2, 3], legacy: 'killheal',
   },
   'arm-sign-thornmail': {
@@ -207,23 +207,23 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
 
 // ===== T3 灰冠纪元(装备 2.0,2026-09-25):版图二毕业+高塔深层,全带传承威能 =====
   'wpn-t3-dawn': {
-    id: 'wpn-t3-dawn', name: '渊晨巨剑', slot: 'weapon', family: 'blade', tier: 3, pool: 'dps',
+    id: 'wpn-t3-dawn', name: '渊晨，灰冠守望者之刃', flavor: '灰冠早已蒙尘。剑身朝向深渊时，仍映出一线天光。', slot: 'weapon', family: 'blade', tier: 3, pool: 'dps',
     stat: 'attack', value: 26, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'wpn-t3-tide': {
-    id: 'wpn-t3-tide', name: '缚潮咒典', slot: 'weapon', family: 'staff', tier: 3, pool: 'caster',
+    id: 'wpn-t3-tide', name: '深潮低语，缚魂者的禁典', flavor: '页边满是退潮留下的盐渍。翻到末页时，远处仿佛又响起潮声。', slot: 'weapon', family: 'staff', tier: 3, pool: 'caster',
     stat: 'lifesteal', value: 0.1, affixCount: [2, 3], legacy: 'killheal', setName: 'gray-crown',
   },
   'wpn-t3-gale': {
-    id: 'wpn-t3-gale', name: '隼击长弓', slot: 'weapon', family: 'bow', tier: 3, pool: 'dps',
+    id: 'wpn-t3-gale', name: '隼誓，风脊追猎者之弓', flavor: '弓背铭文只剩半句：若群山留住我的脚步，就让此箭替我归乡。', slot: 'weapon', family: 'bow', tier: 3, pool: 'dps',
     stat: 'critChance', value: 0.08, affixCount: [2, 3], legacy: 'focus', setName: 'gray-crown',
   },
   'wpn-t3-ember': {
-    id: 'wpn-t3-ember', name: '烬渊宝珠', slot: 'weapon', family: 'staff', tier: 3, pool: 'caster',
+    id: 'wpn-t3-ember', name: '烬心，龙渊不灭之火', flavor: '龙渊的炉火熄灭后，这枚宝珠仍照着一片不肯冷却的余烬。', slot: 'weapon', family: 'staff', tier: 3, pool: 'caster',
     stat: 'attack', value: 23, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
   'wpn-t3-vox': {
-    id: 'wpn-t3-vox', name: '春霖圣杖', slot: 'weapon', family: 'staff', tier: 3, pool: 'healer',
+    id: 'wpn-t3-vox', name: '春霖，复苏者的圣杖', flavor: '杖身刻满被划去的悼词，空白处长出了细小的叶纹。', slot: 'weapon', family: 'staff', tier: 3, pool: 'healer',
     stat: 'healReceived', value: 0.12, affixCount: [2, 3], legacy: 'mend', setName: 'gray-crown',
   },
   'arm-t3-bulwark': {
@@ -260,7 +260,7 @@ export const ITEM_BASES: Record<string, ItemBaseDef> = {
     stat: 'fireResist', value: 0.15, affixCount: [1, 2], legacy: 'emberward', setName: 'gray-crown',
   },
   'wpn-dragon-brand': {
-    id: 'wpn-dragon-brand', name: '烙焰长剑', slot: 'weapon', family: 'blade', tier: 2,
+    id: 'wpn-dragon-brand', name: '烙焰，鳞音誓约之剑', flavor: '鳞音圣地的誓词刻在剑脊上，烧灼的痕迹止于最后一个字。', slot: 'weapon', family: 'blade', tier: 2,
     stat: 'attack', value: 14, affixCount: [2, 3], legacy: 'emberward', setName: 'gray-crown',
   },
 }

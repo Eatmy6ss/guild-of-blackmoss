@@ -113,9 +113,10 @@ const STEP = (prio) => `(()=>{${BTN_HELPER}
   r.acted = hit((t)=>t==='▶ 继续旅程') || hit((t)=>t==='知道了') || hit((t)=>t==='确认'||t==='确定');
   if(!r.acted){const c=[...document.querySelectorAll('.event-choices button')].find((x)=>!x.disabled);if(c){c.click();r.acted='EVENT:'+c.textContent.trim().slice(0,30)}}
   if(!r.acted && btns().some((x)=>x.textContent.includes('跑到结束'))){
-    if(!find((t)=>t.includes('跑到结束'))) hit((t)=>t.includes('⏸ 暂停'));
-    if(!body.includes('挂机中')) hit((t)=>t.startsWith('🤖 挂机'));
-    r.acted = hit((t)=>t.includes('跑到结束')) || 'battle-wait';
+    // 每步只点一次；不开挂机连刷，否则自动离开终局会绕过 RETURN 计数。
+    r.acted = find((t)=>t.includes('跑到结束'))
+      ? hit((t)=>t.includes('跑到结束'))
+      : hit((t)=>t.includes('⏸ 暂停')) || 'battle-wait';
   }
   // U27① R1.1+U29 节点图:点可走的地图节点(不选路不能前进,没有「继续深入」)
   if(!r.acted){const c=[...document.querySelectorAll('.dungeon-graph .dg-node.available')][0];if(c){c.click();r.acted='NODE:'+c.textContent.trim().slice(0,20)}}
@@ -198,9 +199,10 @@ const MAP_PRIO = ['荆棘要塞', '渊底祭坛', '白霜墓园', '灰烬旧战�
 async function phaseBuild() {
   console.log('\n▶ build:试玩包产物')
   if (args.build) {
-    for (const cmd of [['npx', ['vite', 'build', '--config', 'vite.config.playtest.ts']], ['node', ['scripts/inline-assets.mjs']]]) {
-      const r = spawnSync(cmd[0], cmd[1], { cwd: ROOT, stdio: 'inherit' })
-      if (r.status !== 0) throw new Error(cmd.join(' ') + ' 失败')
+    // 直接复用当前 Node，避免 Windows 下 spawnSync('npx') 找不到 .cmd 包装器。
+    for (const cmd of [['node_modules/vite/bin/vite.js', 'build', '--config', 'vite.config.playtest.ts'], ['scripts/inline-assets.mjs']]) {
+      const r = spawnSync(process.execPath, cmd, { cwd: ROOT, stdio: 'inherit' })
+      if (r.status !== 0) throw new Error(cmd.join(' ') + ' 失败: ' + (r.error?.message ?? r.status))
     }
   }
   if (!existsSync(HTML)) { check('B1', '试玩包存在', 'FAIL', 'dist-playtest/index.html 不存在,加 --build'); return false }
@@ -223,37 +225,42 @@ async function phaseFresh() {
     const exportBeforeEnding = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&(x.textContent.includes('导出试玩记录')||x.title?.includes('导出试玩记录')))`)
     check('S1', '结束画面之前也能导出试玩记录(流失玩家能回传)', exportBeforeEnding ? 'PASS' : 'FAIL', exportBeforeEnding ? '' : '大厅无导出入口')
 
-    // U27①/R1.3 断言:新档(熟练度 0)的地图——不选路不能前进;U33③④ 修订:相邻层见地形、更远层全盲、暗道零渲染
+    // 2026-10-07 修订:低熟练度当前可选/后续路线均未知，已知路线靠熟练度与情报逐步揭示。
     {
       await clickText(b, '黑苔沼泽'); await sleep(300)
       const depart = await clickText(b, '出发'); await sleep(800)
       if (depart) {
+        // Windows 无头窗口可能没有焦点，先模拟前台页，才能触发真实 focus 事件与 React 提示。
+        await b.send('Emulation.setFocusEmulationEnabled', { enabled: true })
+        await b.evalJs(`document.querySelector('.dungeon-graph .dg-node.available')?.focus()`); await sleep(150)
         const probe = await b.evalJs(`(()=>{
           const body=document.body.innerText
-          const cells=[...document.querySelectorAll('.dungeon-graph .dg-node')].map(x=>({t:x.textContent.trim(), n:x.querySelector('.dg-name')?.textContent.trim() ?? ''}))
+          const cells=[...document.querySelectorAll('.dungeon-graph .dg-node')].map(x=>({t:x.textContent.trim(), n:x.querySelector('.dg-name')?.textContent.trim() ?? '',title:x.title,boss:x.classList.contains('boss')}))
           const icons=[...document.querySelectorAll('.dungeon-graph .dg-node:not(.walked):not(.current) .dg-icon')].map(x=>x.textContent.trim())
           const TERRAINS=['水域','林野','道路','营地','地下','废墟','墓地','圣所','熔岩']
           const leak=cells.filter(c=>/精英|宝箱|暗道|休整|事件/.test(c.t)).map(c=>c.t)
             .concat(icons.filter(ic=>/⚔|☠|🎁|⛺|🕳|👑/.test(ic)))
           const terrainShown=cells.filter(c=>TERRAINS.includes(c.n)).length
           const masked=cells.filter(c=>c.n==='未知岔路').length
-          const allKnown=cells.every(c=>TERRAINS.includes(c.n)||c.n==='未知岔路')
+          const allMasked=cells.every(c=>c.n==='未知岔路'&&c.title.startsWith('未知岔路')&&!c.boss)
           const flavor=cells.filter(c=>/洼地|猎场|栈道|棚屋|林地/.test(c.n)).map(c=>c.n)
-          return { inMap: cells.length>0, hasDeep: body.includes('继续深入'), terrainShown, masked, allKnown, leak, flavor } })()`)
+          const tooltip=document.querySelector('.dg-intel')?.textContent??''
+          return { inMap: cells.length>0, hasDeep: body.includes('继续深入'), terrainShown, masked, allMasked, leak, flavor,tooltip, focused: document.hasFocus(), active: document.activeElement?.className } })()`)
         check('M1', '地图:不选路不能前进(无「继续深入」)', probe.inMap && !probe.hasDeep ? 'PASS' : 'FAIL', `节点数=${probe.terrainShown + probe.masked}`)
-        check('M2', 'U33③④ 迷雾起点:相邻层见地形、更远层全盲、类型/风味名零泄露、暗道零渲染',
-          probe.inMap && probe.leak.length === 0 && probe.allKnown && probe.terrainShown > 0 && probe.masked > 0 && probe.flavor.length === 0 ? 'PASS' : 'FAIL',
-          `地形名 ${probe.terrainShown} / 全盲 ${probe.masked}${probe.leak.length ? ';泄露:' + probe.leak.join('|') : ''}${probe.flavor.length ? ';风味名:' + probe.flavor.join('|') : ''}`)
+        check('M2', '陌生地图:当前可选与后续全为问号，名称/样式/焦点提示不泄露遭遇',
+          probe.inMap && probe.leak.length === 0 && probe.allMasked && probe.terrainShown === 0 && probe.masked > 0 && probe.flavor.length === 0 && probe.tooltip.startsWith('未知岔路') && !/这里能给|走这里可能/.test(probe.tooltip) ? 'PASS' : 'FAIL',
+          JSON.stringify(probe))
+        await b.shot('fog-entry')
         await clickText(b, '🏳 撤退回城'); await sleep(500)
         await clickText(b, '返回公会'); await sleep(300)
       } else {
         check('M1', '地图:不选路不能前进(无「继续深入」)', 'SKIP', '出发不可点(编制/锁定)')
-        check('M2', 'U33③④ 迷雾起点断言', 'SKIP', '同上')
+        check('M2', '陌生地图全盲断言', 'SKIP', '同上')
       }
     }
 
     let maxHints = 0; let storyReturns = 0; const b3 = []; const b5 = []; const s8 = []
-    await drive(b, {
+    const journey = await drive(b, {
       prio: MAP_PRIO, maxReturns: EXPEDITIONS, timeoutMs: Number(args.timeout ?? 900_000),
       onTick: (r) => { maxHints = Math.max(maxHints, r.hints) },
       onReturn: async () => {
@@ -270,6 +277,9 @@ async function phaseFresh() {
         }
       },
     })
+    check('FRESH', '新档实际完成目标远征趟数或到达试玩终局',
+      journey.returns >= EXPEDITIONS || journey.ending ? 'PASS' : 'FAIL',
+      `实际 ${journey.returns} / 目标 ${EXPEDITIONS}${journey.timeout ? '，已超时' : ''}${journey.ending ? '，到达终局' : ''}`)
     await b.shot('end')
     check('S10', '首场战斗引导提示一次只弹一条', maxHints <= 1 ? 'PASS' : 'FAIL', `同屏最多 ${maxHints} 条`)
     const keys = await b.evalJs('Object.keys(localStorage)')
@@ -282,6 +292,7 @@ async function phaseEnding() {
   console.log('\n▶ ending:Lv12 满编档打荆棘要塞 → 结束画面 → 导出')
   const save = await devSave(12)
   save.manual = [...REGION1_BOSSES]; save.day = 12
+  save.dungeonMastery = { ...save.dungeonMastery, blackmoss: 0 }
   // R3/W5:①给一名成员注入其本命族线装(档案应示「✔ 熟练」);②给一名非守卫成员注入长柄
   // (对非守卫族不熟练,档案应示「⚠ 非熟练·长柄」),并以长柄站位打完整场 Boss 战。
   // 断言放本段而非 fresh:新档功能坞渐进解锁(A10),点不开基地/花名册。
@@ -334,11 +345,28 @@ async function phaseEnding() {
     await pressEscape(b); await sleep(300)
     // U36 R4C:情报 v2——买官署密报(恒真),买完立刻看到文本+入清单
     await clickText(b, '酒馆'); await sleep(500)
+    await b.evalJs(`(()=>{const d=document.querySelector('[aria-label="情报副本"]');d.value='blackmoss';d.dispatchEvent(new Event('change',{bubbles:true}))})()`)
     await b.evalJs(`(()=>{const sels=[...document.querySelectorAll('.potion-supply select')];const tier=sels.find(x=>x.getAttribute('aria-label')==='情报档位');if(tier){tier.value='royal';tier.dispatchEvent(new Event('change',{bubbles:true}))}})()`)
     await b.evalJs(`[...document.querySelectorAll('.potion-supply button')].find(x=>x.textContent.includes('买情报'))?.click()`); await sleep(500)
     const intel = await b.evalJs(`(()=>({fresh:document.querySelector('.intel-fresh')?.textContent??null,items:[...document.querySelectorAll('.intel-list .intel-item')].map(li=>li.textContent),stock:document.querySelector('.potion-supply .hint')?.textContent.includes('货架上有')}))()`)
     check('R4C', '情报v2:官署密报买完即见文本+入清单(未验证)', intel && intel.fresh && intel.fresh.length > 8 && intel.items.length === 1 && intel.items[0].includes('未验证') ? 'PASS' : 'FAIL', JSON.stringify(intel).slice(0, 120))
     await pressEscape(b); await sleep(300)
+    // 真正购买、出发、刷新：零熟练度也能凭情报看清部分路线，不能全图透视。
+    await clickText(b, '黑苔沼泽'); await sleep(200)
+    await clickText(b, '出发'); await sleep(600)
+    const scoutProbe = `(()=>{const names=[...document.querySelectorAll('.dg-name')].map(x=>x.textContent);return {known:names.filter(n=>n!=='未知岔路').length,masked:names.filter(n=>n==='未知岔路').length,hint:document.querySelector('.route-choice>.hint')?.textContent??'',intel:document.querySelector('.intel-list')?.textContent??''}})()`
+    const scout = await b.evalJs(scoutProbe)
+    check('M3', '情报侦察:零熟练度提前看清部分路线，并保留怪物资料',
+      scout.known > 0 && scout.masked > 0 && scout.hint.includes('熟练度 0') && scout.hint.includes('本趟提前揭示一档') && scout.intel.includes('未验证') ? 'PASS' : 'FAIL', JSON.stringify(scout).slice(0, 200))
+    await b.shot('scouted-map')
+    await b.send('Page.reload'); await sleep(1500)
+    await clickText(b, '继续旅程'); await sleep(500)
+    const resumed = await b.evalJs(scoutProbe)
+    check('M4', '刷新后情报揭示与未知路线保持，永久熟练度不变',
+      scout.known > 0 && JSON.stringify(resumed) === JSON.stringify(scout) ? 'PASS' : 'FAIL', JSON.stringify(resumed).slice(0, 200))
+    // 此样本只检查地图；恢复原终局夹具再继续既有武器/通关检查。
+    await b.send('Page.reload'); await sleep(1200)
+    await importSave(b, encode(save))
     const openProfile = async (name) => {
       // 自导航:名册不在场才点「花名册」——功能坞按钮是开关式,名册开着时再点=关闭
       const hasRoster = await b.evalJs(`!!document.querySelector('.member-card')`)
@@ -349,6 +377,21 @@ async function phaseEnding() {
       const text = await b.evalJs(`document.querySelector('[data-testid="weapon-proficiency"]')?.textContent ?? null`)
       // R4.1(U34):同一趟顺带读生平栏(条数/永久徽标/倒序首条)
       const bio = await b.evalJs(`(()=>{const l=document.querySelector('.bio-list');if(!l)return null;return {n:l.children.length,flag:l.textContent.includes('⚑'),first:l.textContent.includes('D9')}})()`)
+      const art = await b.evalJs(`(()=>{const nodes=[...document.querySelectorAll('.member-sheet .hero-portrait canvas,.member-sheet .item-art canvas')];return {count:nodes.length,painted:nodes.every(c=>c.getContext('2d').getImageData(0,0,32,32).data.some((v,i)=>i%4===3&&v>0))}})()`)
+      const label = name === poleMember?.name ? 'polearm' : 'home'
+      check('ART-' + label, '人物档案和装备画布有实际像素', art.count > 1 && art.painted ? 'PASS' : 'FAIL', JSON.stringify(art))
+      const gear = await b.evalJs(`Array.from(document.querySelectorAll('.member-panel select.slot-select'),s=>({value:s.value,text:s.selectedOptions[0]?.textContent??''}))`)
+      check('GEAR-' + label, '换装下拉正确显示当前穿戴，不误报空槽', gear.length === 3 && gear.every(s=>s.value && !s.text.endsWith('·空')) ? 'PASS' : 'FAIL', JSON.stringify(gear).slice(0, 200))
+      await b.evalJs(`document.querySelector('.roster-v2').parentElement.scrollTop=0`)
+      await b.shot('profile-' + label)
+      if (label === 'home') {
+        await b.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false })
+        await sleep(250)
+        const narrow = await b.evalJs(`(()=>{const sheet=document.querySelector('.member-sheet');const panel=document.querySelector('.member-panel');const tabs=document.querySelector('.roster-tabs');const overlay=document.querySelector('.roster-v2').parentElement;const r=sheet.getBoundingClientRect();return {width:r.width,overflow:Math.max(sheet.scrollWidth-sheet.clientWidth,overlay.scrollWidth-overlay.clientWidth),embedded:!panel.classList.contains('screen-overlay'),belowTabs:r.top>=tabs.getBoundingClientRect().bottom,slots:panel.querySelectorAll('select.slot-select').length}})()`)
+        check('ART-narrow', '窄屏人物档案保持可读宽度，换装与成员切换同页可达', narrow.width >= 280 && narrow.overflow <= 1 && narrow.embedded && narrow.belowTabs && narrow.slots === 3 ? 'PASS' : 'FAIL', JSON.stringify(narrow))
+        await b.shot('profile-narrow')
+        await b.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
+      }
       await pressEscape(b); await sleep(250)
       return { text, bio }
     }
@@ -433,7 +476,10 @@ try {
     const ok = await phases[p]()
     if (p === 'build' && ok === false) break
   }
-} catch (e) { crashed = String(e?.message ?? e); console.error('\n✗ 脚本中断:', crashed) }
+} catch (e) {
+  crashed = String(e?.message ?? e)
+  check('FLOW', '试玩流程未中断', 'FAIL', crashed)
+}
 
 check('CONSOLE', '全程无控制台错误', observations.consoleErrors.length === 0 ? 'PASS' : 'FAIL', observations.consoleErrors.slice(0, 3).join(' | '))
 const report = { at: new Date().toISOString(), phases: order, checks, crashed, ...observations }

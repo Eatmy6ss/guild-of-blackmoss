@@ -304,14 +304,17 @@ describe('R5.1f 挂机选路', () => {
     expect(t3?.kind).toBe('secret')
   })
 
-  it('迷途降档进档位:熟练 35+迷途(降 1)=档 0 → 盲选,不认宝箱', () => {
+  it('迷途遮住眼前选项：低/高熟练挂机都盲选，不能偷看宝箱', () => {
     expect(revealTier(35, 0, 0)).toBe(1)
     expect(revealTier(35, 0, 1)).toBe(0)
     const treasure = node('t1', 'treasure', 'road')
     const battle = node('b1', 'battle', 'road')
-    // 档 0:不认宝箱,盲选(rng 钉 0.9 → 命中后者 battle)
-    const blind = autoPickNode([treasure, battle], { tier: 0, avgHp: 0.6, rng: () => 0.9 })
-    expect(blind?.id).toBe('b1')
+    for (const mastery of [0, 35, 60, 80]) {
+      const blind = autoPickNode([treasure, battle], {
+        tier: revealTier(mastery, 0, 1), avgHp: 0.6, rng: () => 0.9, conditions: ['lost'],
+      })
+      expect(blind?.id, `熟练度 ${mastery} 遇到迷途也不能优先宝箱`).toBe('b1')
+    }
     // 档 1:优先宝箱
     const knows = autoPickNode([treasure, battle], { tier: 1, avgHp: 0.6, rng: () => 0.9 })
     expect(knows?.id).toBe('t1')

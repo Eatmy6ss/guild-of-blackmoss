@@ -165,6 +165,8 @@ export type WeaponFamily = 'blade' | 'bow' | 'staff' | 'axe' | 'polearm'
 export interface ItemBaseDef {
   id: string
   name: string
+  /** 原创装备来历，仅展示，不参与属性计算。 */
+  flavor?: string
   slot: Slot
   tier: number
   /** 基础属性 */

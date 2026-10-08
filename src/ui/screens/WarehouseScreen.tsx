@@ -1,3 +1,4 @@
+import { ItemArt, ItemLore } from '../art/ItemArt'
 // warehouse 屏(U29 R2-5 自 App.tsx 迁出;#2.5 加过滤/锁定/批量分解——处理器留 App,props 下传)
 import { useState } from 'react'
 import { ITEM_BASES } from '../../data/items'
@@ -127,10 +128,13 @@ export function WarehouseScreen(props: WarehouseScreenProps) {
           {inventory.length === 0 ? (
             <p className="hint">击败 boss 掉落装备（首次击杀保底一件）。从成员卡的下拉框穿戴。</p>
           ) : (
-            inventorySorted.map((i) => (
+            filtered.map((i) => (
               <div key={i.id} className={`inv-item${i.locked ? ' inv-locked' : ''}`} role="button" tabIndex={0}
                 title={i.locked ? '已锁定(再点解锁)' : '点击锁定(批量分解保护)'}
-                onClick={() => props.onToggleLock(i.id)}>
+                onClick={() => props.onToggleLock(i.id)}
+                onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); props.onToggleLock(i.id) } }}>
+                <ItemArt item={i} slot={ITEM_BASES[i.baseId].slot} />
+                <div className="inv-description">
                 {i.locked ? '🔒 ' : ''}
                 {(() => {
                   // R5.3e(U33⑥):武器行前缀武器族(装备前可见)
@@ -139,6 +143,8 @@ export function WarehouseScreen(props: WarehouseScreenProps) {
                   return famName
                 })()}
                 {describeItem(i)}
+                <ItemLore baseId={i.baseId} />
+                </div>
                 {ITEM_BASES[i.baseId].tier === 3 && (
                   <button className="sell-btn" onClick={(e) => { e.stopPropagation(); props.onDismantle(i.id) }}>
                     ♻ 拆解 +2 星髓

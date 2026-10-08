@@ -1,3 +1,5 @@
+import { ItemArt, ItemLore } from '../art/ItemArt'
+import { ITEM_BASES } from '../../data/items'
 import { useEffect, useState } from 'react'
 import type { Member, ItemInstance } from '../../sim/types'
 import type { DungeonRun } from '../../sim/run'
@@ -40,6 +42,7 @@ interface ResultScreenProps {
   members: Member[]
   snapshot: Map<string, GrowthSnapshot>
   drops: ItemInstance[]
+  notices?: string[]
   story: string | null
   onBack: () => void
   /** 一键再战同一副本(返回公会+立即重新出征;缩短到下一局的路径) */
@@ -52,7 +55,7 @@ const QUALITY_STYLE: Record<string, { border: string; tag: string }> = {
   white: { border: '#6b6b6b', tag: '普通' },
 }
 
-export function ResultScreen({ run, dungeonName, members, snapshot, drops, story, onBack, onAgain }: ResultScreenProps) {
+export function ResultScreen({ run, dungeonName, members, snapshot, drops, story, notices = [], onBack, onAgain }: ResultScreenProps) {
   const rows = runMembers(run, members)
     .map((m) => {
       const snap = snapshot.get(m.id)
@@ -121,8 +124,10 @@ export function ResultScreen({ run, dungeonName, members, snapshot, drops, story
               return (
                 <div key={i.id} className="rs-drop" style={{ borderColor: q.border, animationDelay: `${450 + k * 130}ms` }}
                   title={describeItem(i)}>
+                  <ItemArt item={i} slot={ITEM_BASES[i.baseId].slot} />
                   <span className="rs-drop-tag" style={{ color: q.border }}>{q.tag}</span>
                   <span className="rs-drop-name">{describeItem(i)}</span>
+                  <ItemLore baseId={i.baseId} />
                 </div>
               )
             })}
@@ -130,6 +135,10 @@ export function ResultScreen({ run, dungeonName, members, snapshot, drops, story
         </div>
       )}
 
+      {notices.some(n => n !== story) && <section className="rs-section" aria-label="远征结算明细">
+        <h3 className="rs-title">本趟见闻与代价</h3>
+        <div role="status">{notices.filter(n => n !== story).map((n, i) => <p key={i} className="hint">{n}</p>)}</div>
+      </section>}
       {/* ⑤ 说书人 */}
       {story && (
         <div className="rs-story rs-rise" style={{ animationDelay: `${700 + drops.length * 90}ms` }}>

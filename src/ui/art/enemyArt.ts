@@ -1,3 +1,12 @@
+export const BOSS_ART: Record<string, string> = {
+  grush: '/assets/mon/boss-grush.png', talma: '/assets/mon/boss-talma.png',
+  delveanchor: '/assets/mon/lindwurm.png', moldreke: '/assets/mon/deathknight.png',
+  velhola: '/assets/mon/boss-velhola.png', malsau: '/assets/mon/boss-malsau.png',
+  colt: '/assets/mon/boss-colt.png', victor: '/assets/mon/boss-victor.png',
+  kazraxes: '/assets/mon/boss-kazraxes.png', ignathos: '/assets/mon/boss-ignathos.png',
+  valselon: '/assets/mon/boss-valselon.png', oengus: '/assets/mon/boss-oengus.png',
+  gramas: '/assets/mon/boss-gramas.png', valosaris: '/assets/mon/boss-valosaris.png',
+}
 // 当前12图定义的稳定ID绑定；改名不换图，新敌人显式登记。
 export const ENEMY_ART: Record<string, string> = {
   "frog-a": "mon-goliathfrog",
@@ -116,5 +125,6 @@ export const ENEMY_ART: Record<string, string> = {
   "de-a": "mon-dracoknight",
   "de-b": "mon-dracoknight",
   "de-c": "mon-dracored",
-  "valosaris": "mon-firedragon"
+  "valosaris": "mon-firedragon",
+  ...BOSS_ART,
 }

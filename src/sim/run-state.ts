@@ -23,7 +23,7 @@ export interface RunUIState {
   eventImpacts: Impact[]
   /** 出发被到期后果暂缓的标记(U27④ 后无岔路可记,只存 'go') */
   pendingDeparture: string | null
-  pendingConsequence: { eventId: string; dueDay: number } | null
+  pendingConsequence: { eventId: string; dueDay: number; originFactId?: number } | null
   dropIds: string[]
   notices: string[]
   /** R1.2 反馈:最近一次节点选择的可见后果(休整/宝箱/挂机代选事件等),选下一条路时清空 */

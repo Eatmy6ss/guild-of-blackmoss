@@ -54,6 +54,11 @@ export const FACT_KEEP_DAYS = 30
 
 /** 唯一追加入口。约束断言(写关系不写数值):death 必带 cause;relic-bind 同一 itemUid 同一时刻仅一个有效 */
 export function appendFact(ledger: FactLedger, day: number, draft: Omit<Fact, 'id' | 'day'>): Fact | undefined {
+  // 极端坏档也不回绕/复用编号；暂停历史写入不能中断资产结算。
+  if (!Number.isSafeInteger(ledger.nextId) || ledger.nextId < 1 || ledger.nextId >= Number.MAX_SAFE_INTEGER) {
+    console.warn('账本约束(跳过写入):事实编号已超出安全范围')
+    return undefined
+  }
   if (draft.kind === 'death' && !draft.cause) {
     assertOrWarn('death 事实必须携带 DeathCause')
     return undefined
@@ -91,7 +96,15 @@ export function markTold(ledger: FactLedger, storyType?: string, templateIdx?: n
 /** 体积修剪:永久类全留,其余只保留最近 keepDays 天内的事实(按 day 字段,倒序保序) */
 export function pruneFacts(ledger: FactLedger, currentDay: number, keepDays = FACT_KEEP_DAYS): void {
   const floor = currentDay - keepDays
-  ledger.facts = ledger.facts.filter((f) => f.day >= floor || PERMANENT.includes(f.kind))
+  const kept = ledger.facts.filter((f) => f.day >= floor || PERMANENT.includes(f.kind))
+  const byId = new Map(ledger.facts.map((f) => [f.id, f]))
+  const ids = new Set(kept.map((f) => f.id))
+  // 留下兑现记录时也留下它可查询的来源，不让时间修剪割断事实链。
+  for (let i = 0; i < kept.length; i++) for (const id of kept[i].links ?? []) {
+    const origin = byId.get(id)
+    if (origin && !ids.has(id)) { ids.add(id); kept.push(origin) }
+  }
+  ledger.facts = ledger.facts.filter((f) => ids.has(f.id))
 }
 
 /** 查询:遗物的前主人链(说书人:"这件遗物又等来了下一位主人") */
@@ -113,33 +126,90 @@ export function factById(ledger: FactLedger, id: number): Fact | undefined {
   return ledger.facts.find((f) => f.id === id)
 }
 
-/** JSON 往返防御:坏档/缺字段回落空账本(永不抛) */
+const FACT_KINDS: Record<FactKind, true> = {
+  death: true, scar: true, 'relic-bind': true, 'relic-redeem': true, 'item-inherit': true,
+  'wish-done': true, 'event-choice': true, 'consequence-due': true, 'first-kill': true,
+  'bond-star': true, 'tower-record': true,
+}
+const DEATH_KINDS: Record<DeathCause['kind'], true> = { battle: true, mechanic: true, event: true, scar: true, other: true }
+const MECHANIC_KINDS: Record<NonNullable<DeathCause['mechanic']>, true> = {
+  'telegraph-aoe': true, 'cast-buff': true, 'cast-heal': true, 'slow-touch': true, pull: true,
+  'ground-zone': true, 'phase-invuln': true, summon: true, bind: true, enrage: true,
+  'breath-charge': true, 'fear-aura': true,
+}
+const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+const text = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0
+const count = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
+const identity = (v: unknown): v is number => count(v) && v > 0
+
+function normalizedCause(value: unknown): DeathCause | undefined {
+  if (!object(value) || !text(value.kind) || !Object.hasOwn(DEATH_KINDS, value.kind) || !object(value.where)) return
+  const w = value.where
+  if ((w.source !== 'dungeon' && w.source !== 'tower') || !text(w.id)) return
+  const cause = { ...value, where: { ...w } } as unknown as DeathCause
+  if (w.floor !== undefined && (!identity(w.floor))) delete cause.where.floor
+  if (value.killerName !== undefined && !text(value.killerName)) delete cause.killerName
+  if (value.mechanic !== undefined && (!text(value.mechanic) || !Object.hasOwn(MECHANIC_KINDS, value.mechanic))) delete cause.mechanic
+  if (value.affixes !== undefined) {
+    if (Array.isArray(value.affixes)) cause.affixes = value.affixes.filter(text)
+    else delete cause.affixes
+  }
+  return cause
+}
+
+/** 只修复历史账本，不碰公会资产；不重编编号，合法 JSON 的键序/缺省形态保留。 */
 export function normalizeLedger(value: unknown): FactLedger {
-  const v = value as FactLedger | undefined
-  if (!v || !Array.isArray(v.facts) || typeof v.nextId !== 'number' || !Number.isSafeInteger(v.nextId)) {
-    return { ...EMPTY_LEDGER, facts: [], nextId: 1 }
+  if (!object(value)) return { nextId: 1, facts: [] }
+  const raw = Array.isArray(value.facts) ? value.facts.filter(object) : []
+  let nextId = identity(value.nextId) ? value.nextId : 1
+  const counts = new Map<number, number>()
+  for (const f of raw) if (identity(f.id)) {
+    nextId = Math.max(nextId, Math.min(Number.MAX_SAFE_INTEGER, f.id + 1))
+    counts.set(f.id, (counts.get(f.id) ?? 0) + 1)
   }
-  // S9:nextId 取 max(nextId, maxId+1);补缺省 refs/actors;links 只留账本内存在的 id
-  let nextId = v.nextId
-  const rawFacts = v.facts.filter((f) => f && typeof f.id === 'number' && typeof f.kind === 'string')
-  const knownIds = new Set(rawFacts.map((f) => f.id))
-  const facts: Fact[] = rawFacts.map((f) => ({
-    ...f,
-    actors: Array.isArray(f.actors) ? f.actors : [],
-    refs: f.refs && typeof f.refs === 'object' ? f.refs : {},
-    links: Array.isArray(f.links) ? f.links.filter((id) => knownIds.has(id)) : undefined,
-  }))
-  for (const f2 of facts) if (f2.id >= nextId) nextId = f2.id + 1
-  const recent = v.recentTemplates && typeof v.recentTemplates === 'object' ? v.recentTemplates : {}
-  const cleanRecent: Partial<Record<string, number[]>> = {}
-  for (const [k, arr] of Object.entries(recent)) {
-    if (Array.isArray(arr)) cleanRecent[k] = arr.filter((n) => Number.isSafeInteger(n) && (n as number) >= 0)
+  const facts: Fact[] = [], seen = new Set<number>(), bound = new Set<string>()
+  for (const f of raw.filter((entry) => identity(entry.id)).sort((a, b) => Number(a.id) - Number(b.id))) {
+    // 重复编号来源有歧义，整组舍弃；PendingConsequence 也按 id 引用，不能保留一条后误绑。
+    if (!identity(f.id) || counts.get(f.id) !== 1 || seen.has(f.id) || !identity(f.day) || !text(f.kind) || !Object.hasOwn(FACT_KINDS, f.kind)) continue
+    const refs = { ...(object(f.refs) ? f.refs : {}) } as Fact['refs']
+    for (const key of ['itemUid', 'eventId', 'bossId', 'dungeonId'] as const) if (refs[key] !== undefined && !text(refs[key])) delete refs[key]
+    for (const key of ['floor', 'scarNth', 'stars'] as const) if (refs[key] !== undefined && !identity(refs[key])) delete refs[key]
+    if (refs.encounter !== undefined && !count(refs.encounter)) delete refs.encounter
+    if (refs.nearDeath !== undefined && typeof refs.nearDeath !== 'boolean') delete refs.nearDeath
+    const cause = normalizedCause(f.cause)
+    if (f.kind === 'death' && !cause) continue
+    if (['relic-bind', 'relic-redeem', 'item-inherit'].includes(f.kind) && !refs.itemUid) continue
+    if (f.kind === 'relic-bind' && bound.has(refs.itemUid!)) continue
+    const fact = { ...f, actors: Array.isArray(f.actors) ? f.actors.filter(text) : [], refs } as unknown as Fact
+    if (f.names !== undefined) {
+      if (object(f.names)) fact.names = Object.fromEntries(Object.entries(f.names).filter(([, name]) => text(name))) as Record<string, string>
+      else delete fact.names
+    }
+    if (cause) fact.cause = cause
+    else delete fact.cause
+    if (f.links !== undefined) {
+      if (Array.isArray(f.links)) fact.links = [...new Set(f.links.filter(identity))]
+      else delete fact.links
+    }
+    if (f.kind === 'relic-bind') bound.add(refs.itemUid!)
+    if (f.kind === 'relic-redeem') bound.delete(refs.itemUid!)
+    facts.push(fact); seen.add(f.id)
   }
-  return {
-    nextId,
-    facts,
-    toldThrough: typeof v.toldThrough === 'number' ? v.toldThrough : undefined,
-    expeditionStart: typeof v.expeditionStart === 'number' ? v.expeditionStart : undefined,
-    recentTemplates: cleanRecent,
+  const byId = new Map(facts.map((f) => [f.id, f]))
+  for (const f of facts) if (f.links) f.links = f.links.filter((id) => {
+    const origin = byId.get(id)
+    return !!origin && counts.get(id) === 1 && id < f.id && origin.day <= f.day &&
+      (f.kind !== 'consequence-due' || (origin.kind === 'event-choice' && !!origin.refs.eventId))
+  })
+  const ledger = { ...value, nextId, facts } as unknown as FactLedger
+  for (const key of ['toldThrough', 'expeditionStart'] as const) {
+    if (value[key] !== undefined && (!count(value[key]) || value[key] > nextId)) delete ledger[key]
   }
+  if (value.recentTemplates !== undefined) {
+    if (object(value.recentTemplates)) ledger.recentTemplates = Object.fromEntries(Object.entries(value.recentTemplates)
+      .filter(([, recent]) => Array.isArray(recent))
+      .map(([type, recent]) => [type, (recent as unknown[]).filter(count).slice(-2)]))
+    else delete ledger.recentTemplates
+  }
+  return ledger
 }

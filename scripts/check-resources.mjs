@@ -13,7 +13,13 @@ for (const asset of manifest.assets) {
   const data = readFileSync(file)
   if (createHash('sha256').update(data).digest('hex') !== asset.sha256) throw Error(`文件被改，需重新审核清单：${asset.path}`)
   if (asset.kind === 'sprite') {
-    if (data.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' || data.readUInt32BE(16) !== 32 || data.readUInt32BE(20) !== 32) throw Error(`不是32px PNG：${asset.path}`)
+    if (data.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw Error(`不是PNG：${asset.path}`)
+    const width = data.readUInt32BE(16), height = data.readUInt32BE(20)
+    if (asset.dimensions?.[0] !== width || asset.dimensions?.[1] !== height) throw Error(`PNG尺寸记录不符：${asset.path}`)
+    if (asset.sourceRect) {
+      const [x, y, w, h] = asset.sourceRect
+      if (asset.sourceRect.length !== 4 || !asset.sourceRect.every(Number.isInteger) || x < 0 || y < 0 || w < 1 || h < 1 || w > 32 || h > 32 || x + w > width || y + h > height) throw Error(`图集切片越界或大于32px：${asset.path}`)
+    } else if (width !== 32 || height !== 32) throw Error(`不是32px PNG：${asset.path}`)
     if (!asset.archiveSha256) throw Error(`发布包指纹缺失：${asset.id}`)
   } else if (data.subarray(0, 4).toString() !== 'OggS') throw Error(`不是OGG音频：${asset.path}`)
 }

@@ -1,12 +1,12 @@
 # docs/development · 文档地图
 
-> **外部 AI/新读者请按此顺序读**:①仓库根 [AGENTS.md](../../AGENTS.md) ② [HANDOFF.md](HANDOFF.md)——**「认领板」表格里有每个协作者(Codex/shldo/Claude/zcode)各自该领的工单和开工动作** ③ [DECISIONS.md](DECISIONS.md)(拍板台账)。不要从头读历史;需要历史再看 [HANDOFF-archive.md](HANDOFF-archive.md)。
+> **外部 AI/新读者请按此顺序读**:①仓库根 [AGENTS.md](../../AGENTS.md) ②本文的文档地图与术语 ③ [HANDOFF.md](HANDOFF.md) 的状态卡、认领板和相关工单。按任务读 [DECISIONS.md](DECISIONS.md) 的相关决定；历史只按需查 [HANDOFF-archive.md](HANDOFF-archive.md)。先核对 Git，状态卡记录的提交不是自动更新的当前 HEAD。
 
 ## 现行文档(7+4 份)
 
 | 文档 | 职责 | 更新时机 |
 |---|---|---|
-| [AGENTS.md](../../AGENTS.md) | AI 上岗须知+制作人红线六条 | 协作管线变化时 |
+| [AGENTS.md](../../AGENTS.md) | AI 上岗须知+制作人红线七条 | 协作管线变化时 |
 | [HANDOFF.md](HANDOFF.md) | **当前状态卡+活跃工单+纪律要点** | 每工单交付时 |
 | [HANDOFF-archive.md](HANDOFF-archive.md) | 历史工单登记(R1→U36 全录,只读) | 只追加 |
 | [DECISIONS.md](DECISIONS.md) | 拍板台账(U01…U37,一行一决策) | 每次 grill 拍板 |
@@ -27,12 +27,13 @@
 | U01-U37 | DECISIONS 台账的拍板编号(grill 结论) |
 | #0.x-#6.x | 实施计划批次内工单号(批次 0 地基/1 战斗/2 装备/3 塔赌局/4 经营/5 副本阶梯/6 收尾) |
 | R1-R5 | 2026-10-03 改版轮:R1 副本层/R2 界面拆分/R3 武器族/R4 生平设施情报委托/R5 修补(全部已交付) |
+| SYS-0 至 SYS-5 | 用户要求的系统优化：文档校准/战斗缺陷/远征结算时点/公共战斗规则/公会状态操作/UI 与管理员对齐；当前范围与验收见 HANDOFF 认领工单 |
 | A1-A17 | 阶段 A 工单(批次 1 后的试玩包系列,已清) |
 | G0-G5 | ROADMAP 门:M1 操纵感✅/G1 批次0✅/**G2 外部试玩(招募中)**/G3 数值统调/M2 主菜门/M3 全验收 |
-| C1/C4/B6 | 宪法冻结:C1 宪法冻结/C4 数值冻结(批次 2 出口解冻)/B6 事件表冻结(U27 已解冻) |
+| C1/C4/B6 | 宪法冻结:C1 宪法冻结/C4 数值冻结(批次 2 出口后仍待制作人下令解冻)/B6 事件表冻结(U27 已解冻) |
 | ⑨⑲⑱ 等 | smoke 门禁编号(scripts/smoke.ts;⑨ 塔尔玛节奏带/⑲ 副本注册表+节奏带/⑱ 战斗节奏带/㉘ 装备扩容等) |
 | I8 / I4-I6 | 不变量断言(vitest):I8=无死属性(stat-wiring)/I4 词条取值统一/I5 格式化 |
-| v22-v30 | 存档 schema 版本(迁移链在 src/state/save.ts;**缺省字段不注入键**) |
+| v22-v31 | 存档 schema 版本(迁移链在 src/state/save.ts；v31 修复旧人物分支同号 v23 的结构歧义，其余可选字段保持缺省) |
 | M1/M2 | 实施计划里程碑:M1 操纵感✅/M2 主菜门 |
 | 垫片/rngScope | gameplay 回归测试的作用域注入(scripts/gameplay.test.ts;新标识符需同步扩容) |
 

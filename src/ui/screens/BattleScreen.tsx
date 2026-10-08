@@ -1,9 +1,5 @@
 import type { BattleState, Stance } from '../../sim/types'
 import { STANCE_NAME, setStance, setFocus, useHealPotion, useFuryPotion } from '../../sim/combat'
-import { BattleHints } from '../battle/BattleHints'
-import { BATTLE_HINTS } from '../../data/tutorial'
-import { SignatureBar } from '../battle/SignatureBar'
-import { SIGNATURE_SKILLS } from '../../data/signature'
 import type { DungeonRun } from '../../sim/run'
 
 // R5.2c(U33⑦):战场区(指挥台/节奏条/招牌技栏/战报/日志)自 App.tsx 迁出——行为零变,处理器留 App。
@@ -34,7 +30,7 @@ export function BattleScreen(props: {
   logPinnedRef: { current: boolean }
   retreat: () => void
 }) {
-  const { run, battle, inBattle, inTowerBattle, battleOver, running, battleSpeed, intents, hintsSeen, lastSummary } = props
+  const { run, battle, battleOver, running, battleSpeed, intents, lastSummary } = props
   if (!battle) return null
   return (
     <>
@@ -182,24 +178,9 @@ export function BattleScreen(props: {
         {battleSpeed !== 1 && <span className="speed-live" role="status">⏩ {battleSpeed}× 加速中</span>}
         <span className="tick-info">tick {battle.tick ?? 0}</span>
       </div>
-      {(inBattle || inTowerBattle) && battle.status === 'running' && !battleOver && (
-        <BattleHints
-          hints={BATTLE_HINTS.filter((h) => !hintsSeen.includes(h.id) && (h.applies?.({ hasSignature: battle.combatants.some((c) => c.team === 'guild' && c.alive && !!c.specId && SIGNATURE_SKILLS[c.specId]) }) ?? true)).map(({ id, text }) => ({ id, text }))}
-          onDismiss={props.dismissHint}
-        />
-      )}
-      {(inBattle || inTowerBattle) && battle.status === 'running' && (
-        <SignatureBar
-          battle={battle}
-          casterId={intents?.casterId}
-          focusId={battle.commands.focusId}
-          onUse={(memberId, targetId) => { props.onSignatureUse(); props.useSignatureCmd(battle, memberId, targetId) }}
-        />
-      )}
       {battle && !battleOver && (
         <p className="hint">
-          点击场上敌人 = 集火 · boss 蓄力出现红条倒计时 = 切「分散」减伤 · boss 出现紫条咏唱 = 点「打断咏唱！」 ·
-          狂暴前 = 爆发药或撤退令 · 倒下即永久牺牲
+          点击场上敌人集火 · 根据顶部机制提示应对读条 · 紫条可打断，红条须应对 · 留意队员生命与撤退时机
         </p>
       )}
       {battleOver && (
