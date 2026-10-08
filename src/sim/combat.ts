@@ -821,6 +821,11 @@ function dealDamage(
   }
 }
 
+/** 普通技能与招牌技共用施放时的冷却折算，计时仍由模拟 tick 驱动。 */
+function skillCooldownTicks(base: number, caster: Combatant): number {
+  return Math.round(base / (1 + (caster.cdReduction ?? 0)))
+}
+
 function actWith(c: Combatant, state: BattleState): void {
   const allies = aliveOf(state, c.team)
   const foes = aliveOf(state, c.team === 'guild' ? 'enemy' : 'guild')
@@ -833,7 +838,7 @@ function actWith(c: Combatant, state: BattleState): void {
     if (skillFamilyBlocked(c, ready.def.weaponFamily)) continue // R3/W3:非熟练/族不合,AI 不会傻按
     if (useSkill(c, ready.def, allies, pool, state)) {
       // #2.2 冷却缩减:施放时一次折算(无小数累积)
-      ready.cooldownLeft = Math.round(ready.def.cooldownTicks / (1 + (c.cdReduction ?? 0)))
+      ready.cooldownLeft = skillCooldownTicks(ready.def.cooldownTicks, c)
       return
     }
   }
@@ -1408,9 +1413,9 @@ export function executeSignature(state: BattleState, cmd: { memberId: string; sk
       return
     }
   }
-  state.signatureCd = { ...state.signatureCd, [cmd.memberId]: state.tick + skill.cdTicks }
+  state.signatureCd = { ...state.signatureCd, [cmd.memberId]: state.tick + skillCooldownTicks(skill.cdTicks, c) }
   let broken = false
-  if (target?.bossMechanics && target.mech) {
+  if (skill.effect.startsWith('interrupt') && target?.bossMechanics && target.mech) {
     for (const def of target.bossMechanics) {
       const threshold = interruptThreshold(def)
       if (threshold === undefined) continue

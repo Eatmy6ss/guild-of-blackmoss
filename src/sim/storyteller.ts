@@ -39,10 +39,11 @@ export interface StoryEntry {
 }
 
 export function tellExpedition(ledger: Pick<FactLedger, 'facts' | 'recentTemplates'>, rng: () => number, window: { fromId: number; startId: number } = { fromId: 0, startId: 0 }): StoryEntry | null {
-  // S8:碰撞照旧只看切片(fromId=已讲水位);延迟兑现的 origin 在全账本里找(不受水位切割)
+  // 同趟碰撞同时受出发/已讲水位约束；延迟后果可在出发前兑现，旧选择只作因果引用。
   const slots: StorySlots = {}
+  const expeditionFacts = ledger.facts.filter(f => f.id >= Math.max(window.fromId, window.startId))
   for (const type of PRIORITY) {
-    const factIds = collide(type, type === 'consequence-due' ? ledger.facts : ledger.facts.filter((f) => f.id >= window.fromId), slots, window.startId)
+    const factIds = collide(type, type === 'consequence-due' ? ledger.facts : expeditionFacts, slots, window.fromId)
     if (!factIds) continue
     const templates = TEMPLATES[type]
     // U26⑥ Q4-B:同类排除最近用过的 2 个下标
@@ -57,14 +58,14 @@ export function tellExpedition(ledger: Pick<FactLedger, 'facts' | 'recentTemplat
 }
 
 /** 识别一类碰撞:返回涉及的账本事实 id 并填充槽位;不构成则 null */
-function collide(type: StoryType, facts: Fact[], slots: StorySlots, startId: number): number[] | null {
+function collide(type: StoryType, facts: Fact[], slots: StorySlots, fromId: number): number[] | null {
   const deaths = facts.filter((f) => f.kind === 'death')
   const nameOf = (f: Fact, i = 0): string => f.names?.[f.actors[i]] ?? f.actors[i] ?? '某人'
   const placeOf = (f: Fact): string => dungeonName(f.cause?.where.id ?? f.refs.dungeonId)
 
   switch (type) {
     case 'consequence-due': {
-      const due = facts.find((f) => f.kind === 'consequence-due' && (f.links?.length ?? 0) > 0 && f.id >= startId)
+      const due = facts.find((f) => f.kind === 'consequence-due' && (f.links?.length ?? 0) > 0 && f.id >= fromId)
       if (!due) return null
       const origin = facts.find((f) => f.id === due.links![0])
       const evDef = GUILD_EVENTS.find((e) => e.id === due.refs.eventId)

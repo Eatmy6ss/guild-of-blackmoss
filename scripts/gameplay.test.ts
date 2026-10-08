@@ -19,6 +19,8 @@ import { settleGrowth, moveTo, mapOptions, currentNode, nextBossEncounter, REST_
 import { consequenceFiresIn, rollGuildEvent } from '../src/sim/guild-events'
 import { CONDITION_BY_ID } from '../src/data/conditions'
 import { baseEffects } from '../src/data/base'
+import { restStamina, spendRetreatStamina } from '../src/sim/stamina'
+import { COMMISSIONS } from '../src/data/kingdom'
 import { terrainEntryReward } from '../src/sim/conditions'
 import { runRng, int } from '../src/sim/run-core'
 import { towerEnemyScale, insureNextTowerFloor } from '../src/sim/tower'
@@ -26,12 +28,13 @@ import { redeemCost, sellValue } from '../src/sim/tavern'
 import { rollDrop, rollWaveDrop, rollBossDrops, dungeonItemTier, describeItem } from '../src/sim/loot'
 import { wishDone } from '../src/sim/wish'
 import { assignTrait, waveDropBonus } from '../src/sim/member-traits'
-import { attemptHeal, healingTerms, settleScars, rollScarChance } from '../src/sim/scars'
+import { attemptHeal, healingTerms, settleScars, rollScarChance, RETREAT_SCAR_CHANCE, canGainScar, rollScar, ageFaints, scarStatName } from '../src/sim/scars'
+import { consumeIntelReveal, verifyIntelFor, INTEL_STOCK_CAP } from '../src/sim/intel'
 import { applyDeathShock, applyMoraleDelta } from '../src/sim/morale'
 import { settleEncounter, type EncounterGuild } from '../src/sim/settlement'
 import { createRng, createStatefulRng, newRngSeed, int } from '../src/sim/rng'
-import { newKingdomState } from '../src/sim/kingdom'
-import { seedChronicle } from '../src/sim/chronicle'
+import { sweepExpiredCommissions, newKingdomState } from '../src/sim/kingdom'
+import { seedChronicle, chronicleRaw, chronicleRefusal } from '../src/sim/chronicle'
 import { ITEM_BASES } from '../src/data/items'
 import { AFFIXES } from '../src/data/affixes'
 import { BLACKMOSS, RUSTMINE, ASHFIELD, FROSTGRAVE, ABYSSALTAR, THORNHOLD, DUNGEONS } from '../src/data/dungeons'
@@ -462,7 +465,7 @@ function rngScope(scope: Record<string, unknown>) {
     factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } }, setFactLedger: () => {},
     storyCursorRef: { current: 0 }, expeditionStartFactRef: { current: 0 },
     weaponTraining: [] as string[], weaponTrainingRef: { current: [] as string[] }, setWeaponTraining: () => {},
-    applyRetreatDeduction: () => {}, setDungeonMastery: () => {},
+    applyRetreatDeduction: () => {}, finishExpedition: () => {}, setDungeonMastery: () => {},
     go: () => {}, back: () => {}, continueScreen: () => 'hall' as const, setScreen: () => {},
     hintsSeen: [] as string[], hintsSeenRef: { current: [] as string[] }, dismissHint: () => {},
     membersRef: { current: (scope.expedition ?? scope.members ?? []) as Member[] },
@@ -474,25 +477,27 @@ function rngScope(scope: Record<string, unknown>) {
 }
 
 /** 运行真实 App 的 applyOutcome 和结算回调；不再为每种玩法造一份假结算。 */
-function settlementUi(members: Member[]) {
+function settlementUi(members: Member[], intelEntries: any[] = []) {
   const state: any = {
-    members, manual: [], kingdom: newKingdomState(), dungeonMastery: {}, towerBest: 0,
+    members, intelEntries, manual: [], kingdom: newKingdomState(), dungeonMastery: {}, towerBest: 0,
     recruitCooldown: 2, day: 1, buildings: {}, chronicle: [], inventory: [], lastDrops: [],
     pendingRelics: [], memorial: [], gold: 0, starMarrow: 0, blessing: 0, statistics: newStatistics(), scarNotices: [],
   }
   const scope: any = {
     runRef: { current: null }, towerRunRef: { current: null }, membersRef: { current: members },
+    intelEntries, verifyIntelFor,
     itemOwnershipRef: { current: createGuildItems(members) },
     chronicleRef: { current: [] }, recordStatistics, seedChronicle, settleEncounter,
     setRun: () => {}, setTowerRun: () => {}, setTowerRunning: () => {}, drainAndSync: () => {},
     sfxVictory: () => {}, sfxDefeat: () => {}, int, baseEffects: () => ({ towerRestHealPct: 0.2 }),
     playtestAllows, hintsSeen: [] as string[], factLedger: { nextId: 1, facts: [] }, factLedgerRef: { current: { nextId: 1, facts: [] } },
-    markExpeditionStart: () => {}, markTold: () => {}, story: null, setPlaytestEnding: () => {},
+    markExpeditionStart, markTold, setPlaytestEnding: () => {},
     playMeta: { startedAt: 0, expeditions: 0, retreats: 0, signatureUses: 0 }, setPlayMeta: () => {},
     lastRetreatRunRef: { current: null }, goBack: () => {}, dismissHint: () => {},
+    spendRetreatStamina, canGainScar, rollScar, RETREAT_SCAR_CHANCE, scarStatName,
     appendBio, // U34:applyOutcome 说书人块写当事人生平(真函数,bio 落在成员克隆上)
   }
-  for (const key of ['Members', 'Manual', 'DungeonMastery', 'TowerBest', 'RecruitCooldown', 'Inventory', 'LastDrops', 'PendingRelics', 'Memorial', 'Gold', 'StarMarrow', 'Blessing', 'Statistics', 'Chronicle', 'ScarNotices']) {
+  for (const key of ['Members', 'Manual', 'DungeonMastery', 'TowerBest', 'RecruitCooldown', 'Inventory', 'LastDrops', 'PendingRelics', 'Memorial', 'Gold', 'StarMarrow', 'Blessing', 'Statistics', 'Chronicle', 'ScarNotices', 'FactLedger', 'IntelEntries']) {
     scope['set' + key] = (v: any) => {
       const field = key[0].toLowerCase() + key.slice(1)
       state[field] = typeof v === 'function' ? v(state[field]) : v
@@ -503,7 +508,13 @@ function settlementUi(members: Member[]) {
   scope.setItemOwnership = (v: any) => { state.itemOwnership = v; state.inventory = inventoryItems(v); state.pendingRelics = relicItems(v) }
   scope.updateItemOwnership = handler('updateItemOwnership', scope)
   scope.updateItemOwnership(scope.itemOwnershipRef.current)
-  scope.encounterGuild = (): EncounterGuild => ({ ...state, factLedger: { nextId: 1, facts: [] }, members: scope.membersRef.current, chronicle: scope.chronicleRef.current })
+  scope.chronicleRaw = chronicleRaw
+  scope.logChronicle = (entry: unknown) => {
+    scope.chronicleRef.current = [...scope.chronicleRef.current, entry]
+    scope.setChronicle(scope.chronicleRef.current)
+  }
+  scope.encounterGuild = (): EncounterGuild => ({ ...state, factLedger: scope.factLedgerRef.current, members: scope.membersRef.current, chronicle: scope.chronicleRef.current })
+  scope.finishExpedition = handler('finishExpedition', scope)
   scope.applyOutcome = handler('applyOutcome', scope)
   return {
     state, scope,
@@ -511,6 +522,101 @@ function settlementUi(members: Member[]) {
     tower: callback("source: 'tower', run: current", scope),
   }
 }
+
+test('map retreat tells the current expedition story once without repeating encounter rewards, including restored rest checkpoints', () => {
+  const ui = settlementUi(squad()), { scope, state } = ui
+  const run = beginBattle(createRun(scope.membersRef.current, BLACKMOSS, 49), 49)
+  markExpeditionStart(scope.factLedgerRef.current)
+  run.battle!.status = 'guild-win'; scope.runRef.current = run
+  ui.dungeon(run)
+  assert.equal(scope.runRef.current.phase, 'rest')
+  assert.equal(state.scarNotices.filter((x: string) => x.startsWith('📖')).length, 0)
+  const [a, b] = scope.membersRef.current
+  appendFact(scope.factLedgerRef.current, 1, { kind: 'bond-star', actors: [a.id, b.id],
+    names: { [a.id]: a.name, [b.id]: b.name }, refs: { stars: 3 } })
+  // 模拟地图断点读回账本，随后通过真实撤退入口结案。
+  scope.factLedgerRef.current = normalizeLedger(JSON.parse(JSON.stringify(scope.factLedgerRef.current)))
+  Object.assign(scope, { autoLoopRef: { current: false }, retreatRun, expeditionStatistics,
+    setRunning: () => {}, syncAll: () => {}, noteStatistics: () => {} })
+  scope.applyRetreatDeduction = handler('applyRetreatDeduction', scope)
+  const beforeGold = state.gold, beforeItems = state.inventory.length
+  const retreat = handler('retreat', scope)
+  retreat()
+  assert.equal(scope.runRef.current.phase, 'retreated')
+  const after = JSON.stringify(state)
+  retreat()
+  assert.equal(JSON.stringify(state), after, '重复点击不能再扣钱或讲故事')
+  assert.equal(state.gold, beforeGold - scope.runRef.current.retreatCost.gold)
+  assert.equal(state.inventory.length, beforeItems)
+  assert.equal(state.scarNotices.filter((x: string) => x.startsWith('📖')).length, 1)
+  assert.equal(state.chronicle.filter((x: any) => x.text.startsWith('📖')).length, 1)
+  assert.equal(state.factLedger.toldThrough, state.factLedger.nextId)
+  assert(scope.membersRef.current.some((m: Member) => m.bio?.some(x => x.kind === 'story')))
+})
+
+test('battle terminal story is persisted once and stale/loaded terminal callbacks cannot repeat rewards or stories', () => {
+  for (const status of ['retreated', 'guild-wipe'] as const) {
+    const roster = squad(); roster[0].equipment.weapon = item('wpn-t1-sword')
+    const ui = settlementUi(roster), { scope, state } = ui
+    const run = beginBattle(createRun(roster, BLACKMOSS, 49), 49)
+    markExpeditionStart(scope.factLedgerRef.current)
+    run.battle!.status = status
+    const victim = run.battle!.combatants.find(c => c.memberId === roster[0].id)!
+    victim.alive = false; victim.hp = 0
+    scope.runRef.current = run
+    ui.dungeon(run)
+    assert.equal(state.scarNotices.filter((x: string) => x.startsWith('📖')).length, 1)
+    assert.equal(state.factLedger.toldThrough, state.factLedger.nextId)
+    const before = JSON.stringify(state)
+    ui.dungeon(run)
+    scope.factLedgerRef.current = normalizeLedger(JSON.parse(JSON.stringify(state.factLedger)))
+    ui.dungeon(scope.runRef.current)
+    assert.equal(JSON.stringify(state), before)
+  }
+})
+
+test('D1 intel verifies only after a battle and a dungeon terminal; intermediate wins, zero-battle retreat and tower do not verify', () => {
+  const intel = () => [
+    { id: 1, dungeonId: 'blackmoss', kind: 'boss', text: '沼泽首领情报', real: true, day: 1 },
+    { id: 2, dungeonId: 'blackmoss', kind: 'mob', text: '贩子的假消息', real: false, day: 1 },
+    { id: 3, dungeonId: 'rustmine', kind: 'mob', text: '矿道见闻', real: true, day: 1 },
+  ]
+  for (const outcome of ['map-retreat', 'retreated', 'guild-wipe', 'victory', 'zero', 'tower']) {
+    const ui = settlementUi(squad(), intel()), { scope, state } = ui
+    if (outcome === 'tower') {
+      const r = startTower(scope.membersRef.current, 53)
+      r.battle!.status = 'guild-win'; scope.towerRunRef.current = r
+      ui.tower(r)
+    } else {
+      const r = createRun(scope.membersRef.current, BLACKMOSS, 49)
+      scope.runRef.current = r
+      if (outcome !== 'zero') {
+        beginBattle(r, 49)
+        if (outcome === 'victory') {
+          const boss = r.map.layers.at(-1)![0]
+          r.nodeId = boss.id; r.path = [boss.id]
+          r.battle!.encounterId = BLACKMOSS.encounters.filter(e => e.kind === 'boss').at(-1)!.id
+        }
+        r.battle!.status = outcome === 'retreated' ? 'retreated' : outcome === 'guild-wipe' ? 'guild-wipe' : 'guild-win'
+        ui.dungeon(r)
+      }
+      if (outcome === 'map-retreat' || outcome === 'zero') {
+        assert(state.intelEntries.every((e: any) => e.verified === undefined), '中途胜场不验真')
+        Object.assign(scope, { autoLoopRef: { current: false }, retreatRun, expeditionStatistics,
+          setRunning: () => {}, syncAll: () => {}, noteStatistics: () => {} })
+        const retreat = handler('retreat', scope)
+        retreat(); const after = JSON.stringify(state); retreat()
+        assert.equal(JSON.stringify(state), after)
+      }
+      if (outcome === 'victory') assert.equal(scope.runRef.current.phase, 'victory')
+    }
+    const verified = !['zero', 'tower'].includes(outcome)
+    assert.equal(state.intelEntries[0].verified, verified ? true : undefined, outcome)
+    assert.equal(state.intelEntries[1].verified, verified ? true : undefined, outcome)
+    assert.equal(state.intelEntries[2].verified, undefined, '其他副本不验真')
+    assert.equal(state.scarNotices.filter((n: string) => n.startsWith('情报验证')).length, verified ? 2 : 0)
+  }
+})
 
 test('actual item callbacks: atomic equip, sell and dismantle keep one owner and ignore repeated stale selections', () => {
   const members = squad(); members[0].equipment.weapon = item('wpn-t1-sword')
@@ -918,6 +1024,51 @@ test('due consequences defer departure without consuming a day or creating a bat
   assert.equal(pendingConsequenceRef.current,due)
   assert.equal(pendingDepartureRef.current,'go')
   assert.equal(days,0); assert.equal(created,0)
+})
+
+test('valid departure advances one day with stock/expiry together and preserves new notices; rejected/repeated departure changes nothing', () => {
+  const members = squad()
+  members[0].scars = [{ stat: 'str', value: 1, text: '旧伤', faint: true, faintSince: 1 }]
+  let day = 4, stock = 2, notices = ['上一趟通知']
+  let buffs: any[] = [{ endDay: 5, buff: { attackMult: 1.1 } }]
+  let entries: any[] = [{ id: 1, dungeonId: 'blackmoss', kind: 'mob', text: '沼泽情报', real: true, day: 1 }]
+  const runRef: any = { current: null }
+  const scope: any = {
+    pendingEvent: null, pendingConsequences: [], runRef, towerRunRef: { current: null },
+    expedition: members, membersRef: { current: members }, activeDungeon: BLACKMOSS, refusesToMarch: () => false,
+    day, setDay: (v: any) => { day = typeof v === 'function' ? v(day) : v }, setIntelStock: (f: any) => { stock = f(stock) },
+    setGuildBuffs: (f: any) => { buffs = f(buffs) }, guildBuffs: buffs,
+    setScarNotices: (v: any) => { notices = typeof v === 'function' ? v(notices) : v },
+    ageFaints, scarStatName, appendBio, chronicleRefusal, setMembers: () => {},
+    consumeIntelReveal, intelEntries: entries, setIntelEntries: (f: any) => { entries = f(entries) }, INTEL_STOCK_CAP,
+    growthSnapshotRef: { current: new Map() }, powerScore: () => 1, bondStars: () => 0,
+    createRun, SEED_BASE: 31, memorialAura: () => 0, memorial: [], protectOn: true, potions: { heal: 3, fury: 3 },
+    autoLoopRef: { current: false }, rareHuntNext: null, trainingReadyRef: { current: false },
+    setLastDrops: () => {}, rendererRef: { current: null }, setRunning: () => {}, syncAll: () => {},
+  }
+  members.forEach(m => { m.stamina = 50 })
+  Object.assign(scope, { restStamina, baseEffects, buildings: {}, sweepExpiredCommissions, COMMISSIONS,
+    kingdomRef: { current: newKingdomState() }, updateKingdom: () => {} })
+  scope.advanceGuildDay = handler('advanceGuildDay', scope)
+  const before = JSON.stringify({ day, stock, members, buffs, entries, notices })
+  for (const rejected of [{ expedition: members.slice(0, 2) }, { refusesToMarch: () => true }, { pendingEvent: {} }]) {
+    handler('startExpedition', { ...scope, ...rejected })()
+    assert.equal(JSON.stringify({ day, stock, members, buffs, entries, notices }), before)
+    assert.equal(runRef.current, null)
+  }
+  const start = handler('startExpedition', scope)
+  start()
+  assert.equal(day, 5); assert.equal(stock, 3)
+  assert(members.every(m => m.stamina === 70), "主线精力恢复仍由公会日执行一次")
+  assert.deepEqual(buffs, []); assert.deepEqual(members[0].scars, [])
+  assert(members[0].bio?.some(b => b.kind === 'heal' && b.day === 5))
+  assert.equal(entries[0].revealUsedDay, 5); assert.equal(runRef.current.intelBonus, 1)
+  assert(notices.some(n => n.includes('虚痕消退')))
+  assert(notices.some(n => n.includes('情报派上了用场')))
+  assert(!notices.includes('上一趟通知'))
+  const after = JSON.stringify({ day, stock, members, buffs, entries, notices, run: runRef.current })
+  start()
+  assert.equal(JSON.stringify({ day, stock, members, buffs, entries, notices, run: runRef.current }), after)
 })
 
 test('event pools split town/dungeon/terrain without leakage (U27④)', () => {

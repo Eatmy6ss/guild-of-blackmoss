@@ -1,10 +1,30 @@
 import { describe, it, expect } from 'vitest'
 import { DUNGEONS } from '../data/dungeons'
-import { generateMap, nodeById } from './dungeon-map'
+import { generateMap, nodeById, nextOptions, publicMapEdges, type DungeonMap } from './dungeon-map'
 
 // R1.1 分层地图·验收(redesign §3 R1.1):12 副本 × 200 seed 的结构不变量
 
 describe('R1.1 generateMap 结构验收', () => {
+  it('旧地图只有暗道出口时补可见路，显示与选路共用且不修改输入', () => {
+    const map: DungeonMap = {
+      seed: 1,
+      layers: [
+        [{ id: 'start', layer: 0, kind: 'battle', terrain: 'road', name: '起点' }],
+        [{ id: 'secret', layer: 1, kind: 'secret', terrain: 'under', name: '暗道', hidden: true },
+          { id: 'road', layer: 1, kind: 'rest', terrain: 'camp', name: '营地' }],
+        [{ id: 'boss', layer: 2, kind: 'boss', terrain: 'road', name: '首领' }],
+      ],
+      edges: [['start', 'secret'], ['secret', 'boss'], ['road', 'boss']],
+    }
+    const before = structuredClone(map)
+    expect(nextOptions(map, 'start').filter(n => n.kind !== 'secret').map(n => n.id)).toEqual(['road'])
+    expect(publicMapEdges(map)).toContainEqual(['start', 'road'])
+    expect(map).toEqual(before)
+    const repaired = { ...map, edges: publicMapEdges(map) }
+    expect(publicMapEdges(repaired)).toBe(repaired.edges)
+    expect(nextOptions(map, 'secret').map(n => n.id)).toEqual(['boss'])
+  })
+
   it('12 副本 × 200 seed:层数/每层 2-3 节点/每节点 ≥1 入 ≥1 出/Boss 在末层', { timeout: 30_000 }, () => {
     for (const dungeon of DUNGEONS) {
       for (let i = 0; i < 200; i++) {
@@ -31,6 +51,10 @@ describe('R1.1 generateMap 结构验收', () => {
             const outs = map.edges.filter(([a]) => a === n.id)
             if (n.kind !== 'boss') {
               expect(outs.length, `${dungeon.id}#${seed} ${n.id} 无出边`).toBeGreaterThanOrEqual(1)
+              if (n.kind !== 'secret') {
+                expect(outs.some(([, id]) => nodeById(map, id)?.kind !== 'secret'),
+                  `${dungeon.id}#${seed} ${n.id} 不能只有低熟练度看不到的暗道出口`).toBe(true)
+              }
             }
             if (n.layer > 0) {
               expect(incoming.has(n.id), `${dungeon.id}#${seed} ${n.id} 无入边`).toBe(true)

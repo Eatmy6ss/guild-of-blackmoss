@@ -19,6 +19,22 @@ describe('A9 基础', () => {
   test('空账本不讲(没有事实就没有故事)', () => {
     expect(tellExpedition(EMPTY_LEDGER, () => 0.5)).toBeNull()
   })
+
+  test('前趟未成故事的阵亡，不与本趟首杀拼成同场陪葬', () => {
+    const l = ledger()
+    l.facts = [deathFact(1, 'old', '前趟亡者', 'blackmoss', 2), killFact(2, 'grush', 'blackmoss', 2)]
+    expect(tellExpedition(l, () => 0, { fromId: 0, startId: 2 })).toBeNull()
+  })
+
+  test('出发前兑现的延迟后果可引用旧选择，讲过后不因保留旧因果重讲', () => {
+    const l = ledger()
+    l.facts = [
+      { id: 1, day: 1, kind: 'event-choice', actors: [], refs: { eventId: 'cursed-coffin' } },
+      { id: 2, day: 7, kind: 'consequence-due', actors: [], refs: { eventId: 'cursed-coffin' }, links: [1] },
+    ]
+    expect(tellExpedition(l, () => 0, { fromId: 2, startId: 3 })?.factIds).toEqual([2, 1])
+    expect(tellExpedition(l, () => 0, { fromId: 3, startId: 2 })).toBeNull()
+  })
 })
 
 describe('第 5 组 Q5:首杀陪葬分两组(encounter 记录死在哪一场)', () => {

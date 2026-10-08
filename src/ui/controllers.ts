@@ -205,6 +205,37 @@ export function createAppControllers(deps: ControllerDeps) {
     blessing, kingdomRef, expeditionIds,
   } = deps
 
+  // 趟级故事与每场奖励分开；战斗终局、地图撤退共用，调用方的阶段转换保证只执行一次。
+  const finishExpedition = (r: DungeonRun, notices: string[]) => {
+    if (!['victory', 'defeat', 'retreated'].includes(r.phase)) return
+    if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
+    const story = tellExpedition(factLedgerRef.current, createRng(r.seed + r.path.length * 77 + day), {
+      fromId: factLedgerRef.current.toldThrough ?? 0,
+      startId: factLedgerRef.current.expeditionStart ?? 0,
+    })
+    if (story) {
+      markTold(factLedgerRef.current, story.type, story.templateIdx)
+      setFactLedger({ ...factLedgerRef.current })
+      logChronicle(chronicleRaw(day, '📖 ' + story.text))
+      // U34:用事实参与者写生平，不按当前队伍或名字猜测归属。
+      const actorIds = new Set<string>()
+      for (const fid of story.factIds) {
+        const fact = factLedgerRef.current.facts.find(f => f.id === fid)
+        for (const id of fact?.actors ?? []) actorIds.add(id)
+      }
+      let bioTouched = false
+      for (const id of actorIds) {
+        const member = membersRef.current.find(m => m.id === id)
+        if (member) { appendBio(member, { day, kind: 'story', text: story.text }); bioTouched = true }
+      }
+      if (bioTouched) setMembers([...membersRef.current])
+    }
+    // D1：至少经历一场战斗后，在通关、失败或撤退时统一验真。
+    const verified = r.battlesFought > 0 ? verifyIntelFor(intelEntries, r.dungeonId) : null
+    if (verified?.notes.length) setIntelEntries(() => verified.entries)
+    setScarNotices([...notices, ...(story ? ['📖 ' + story.text] : []), ...(verified?.notes ?? [])])
+  }
+
   const applyOutcome = (o: EncounterOutcome) => {
     changeProgress({ lastSummary: o.summary })
     factLedgerRef.current = o.guild.factLedger
@@ -225,45 +256,13 @@ export function createAppControllers(deps: ControllerDeps) {
     chronicleRef.current = [...chronicleRef.current, ...o.consequences.chronicle]
     seedChronicle(chronicleRef.current)
     setChronicle(chronicleRef.current)
-    // A9/B3:远征终局先算故事(说书人只读账本),再一次性写横幅——故事不冲掉结算通知
-    let story: ReturnType<typeof tellExpedition> = null
-    if (o.source === 'dungeon' && ['victory', 'defeat', 'retreated'].includes(o.run.phase)) {
-      if (!hintsSeen.includes('first-return-done')) dismissHint('first-return-done')
-      story = tellExpedition(factLedgerRef.current, createRng(o.run.seed + o.run.path.length * 77 + day), {
-        fromId: factLedgerRef.current.toldThrough ?? 0,
-        startId: factLedgerRef.current.expeditionStart ?? 0,
-      })
-      if (story) {
-        markTold(factLedgerRef.current, story.type, story.templateIdx) // B4 水位+U26⑥ 模板下标入账本
-      }
-    }
-    setScarNotices(story ? [...o.notices, '📖 ' + story.text] : o.notices)
+    setScarNotices(o.notices)
     if (o.source === 'dungeon') {
       runRef.current = o.run
       setRun({ ...o.run })
-      // U36:该副本走过一趟 → 未验证情报全部验证(真/假),可见通知
-      const v = verifyIntelFor(intelEntries, o.run.dungeonId)
-      if (v.notes.length) {
-        setIntelEntries(() => v.entries)
-        for (const note of v.notes) setScarNotices((q: string[]) => [...(q ?? []), note])
-      }
+      finishExpedition(o.run, o.notices)
       // A11:试玩版通关版图一 → 「试玩版到此结束」画面
       if (__PLAYTEST__ && o.run.phase === 'victory' && o.run.dungeonId === 'thornhold') setPlaytestEnding(true)
-      if (story) {
-        logChronicle(chronicleRaw(day, '📖 ' + story.text))
-        // R4.1 生平(U34):说书人的故事同时写进当事人 bio——factIds 反查账本 actors(多人各记一条)
-        const actorIds = new Set<string>()
-        for (const fid of story.factIds) {
-          const f = factLedgerRef.current.facts.find((x) => x.id === fid)
-          for (const a of f?.actors ?? []) actorIds.add(a)
-        }
-        let bioTouched = false
-        for (const aid of actorIds) {
-          const m = membersRef.current.find((x) => x.id === aid)
-          if (m) { appendBio(m, { day, kind: 'story', text: story.text }); bioTouched = true }
-        }
-        if (bioTouched) setMembers([...membersRef.current])
-      }
     } else {
       towerRunRef.current = o.run
       setTowerRun({ ...o.run })
@@ -403,8 +402,9 @@ export function createAppControllers(deps: ControllerDeps) {
       setRunning(false)
       retreatRun(r, membersRef.current)
       go('result') // R5.2:rest 相撤退也走结算屏(finished 的渲染已收进状态机)
-      applyRetreatDeduction(r) // R5.1e:撤退代价(金币/熟练度减半)
       noteStatistics(expeditionStatistics(r))
+      finishExpedition(r, [])
+      applyRetreatDeduction(r) // 保留本次撤退创伤通知，不能被故事/情报反馈覆盖。
       syncAll()
     }
   }
@@ -474,8 +474,11 @@ export function createAppControllers(deps: ControllerDeps) {
       }
       setPendingConsequences((q: PendingConsequenceX[]) => { const at = q.findIndex((c: PendingConsequenceX) => c.eventId === due.eventId && c.dueDay === due.dueDay); return q.filter((_: PendingConsequenceX, i: number) => i !== at) })
     }
-    advanceGuildDay() // #4.6 天收口:公会日推进单一入口
-    if (expedition.length < activeDungeon.size) return
+    // 已通过出发守卫，清旧通知后推进公会日；保留本次消退/过期反馈。
+    const departureDay = day + 1
+    setScarNotices([])
+    advanceGuildDay()
+    setIntelStock((n: number) => Math.min(INTEL_STOCK_CAP, n + 1))
     // #4.2 出征补给:口粮(人数×预计行程层)。不足不拦出征(防软锁)——扣到 0+全员饿肚子士气 −8(C4)。
     const ration = rationCost(expedition.length, plannedLayers(activeDungeon))
     if (gold >= ration) {
@@ -494,6 +497,7 @@ export function createAppControllers(deps: ControllerDeps) {
       expedition.map((m: Member) => [m.id, { level: m.level, power: powerScore(m), bondTotal: Object.values(m.bonds).reduce((s: number, n: number) => s + bondStars(n), 0), bonds: { ...m.bonds } }]),
     )
     markExpeditionStart(factLedgerRef.current) // B4:水位入账本
+    setFactLedger({ ...factLedgerRef.current })
     setPlayMeta((m: PlayMeta) => ({ ...m, expeditions: (m.expeditions ?? 0) + 1 }))
     runRef.current = createRun(
       expedition,
@@ -503,7 +507,7 @@ export function createAppControllers(deps: ControllerDeps) {
       protectOn,
       potions,
       autoLoopRef.current,
-      guildBuffs.filter((g) => g.endDay > day + 1).map((g) => g.buff),
+      guildBuffs.filter((g) => g.endDay > departureDay).map((g) => g.buff),
       rareHuntNext ?? undefined,
     )
     if (trainingReadyRef.current) {
@@ -512,9 +516,8 @@ export function createAppControllers(deps: ControllerDeps) {
       setTrainingReady(false)
       logChronicle(chronicleRaw(day, '特权训练生效：本次远征所有胜场经验 +25%。'))
     }
-    // U36 情报:出发日货源 +1(cap 3);该副本有未消耗真情报 → 本趟揭示档 +1(消耗一条)
-    setIntelStock((n: number) => Math.min(INTEL_STOCK_CAP, n + 1))
-    const intelUse = consumeIntelReveal(intelEntries, activeDungeon.id, (day ?? 0) + 1)
+    // U36 情报:该副本有未消耗真情报 → 本趟揭示档 +1(消耗一条)。
+    const intelUse = consumeIntelReveal(intelEntries, activeDungeon.id, departureDay)
     if (intelUse.bonus > 0) {
       setIntelEntries(() => intelUse.entries)
       runRef.current.intelBonus = intelUse.bonus
@@ -524,7 +527,6 @@ export function createAppControllers(deps: ControllerDeps) {
       setRareHuntNext(null)
     }
     setLastDrops([])
-    setScarNotices([])
     setResumeNotice('')
     // 战斗背景主题(按副本):灼热/冰雪/沼泽/矿道…
     rendererRef.current?.setTheme(

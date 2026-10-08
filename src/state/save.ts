@@ -22,7 +22,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 30
+export const SAVE_VERSION = 31
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -112,6 +112,25 @@ export interface GuildSave extends StoredItemFields {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  // 旧人物分支也使用 v23，但仍是 steps 路线；按结构识别，不能只看版本号。
+  30: (d) => {
+    const state = d.runState as Partial<RunUIState> | undefined
+    if (!state || typeof state !== 'object' || Array.isArray(state)) return d
+    const next = { ...state, lastNodeResult: state.lastNodeResult === undefined ? null : state.lastNodeResult }
+    const run = state.activeRun as unknown as Record<string, any> | null
+    if (run?.kind === 'dungeon' && run.schema === 1 && run.map === undefined &&
+        Array.isArray(run.steps) && run.steps.length > 0 && run.steps.every((s: unknown) => typeof s === 'string') &&
+        Number.isInteger(run.stepIdx) && run.stepIdx >= 0 && run.stepIdx <= run.steps.length) {
+      // 旧路线不能重放；保留已落袋资产，不模拟胜负或再发奖励。
+      Object.assign(next, { activeRun: null, playing: false, autoLoop: false,
+        eventId: null, eventResult: null, eventImpacts: [], pendingDeparture: null, pendingConsequence: null,
+        notices: [...(state.notices ?? []), '旧版远征路线已失效，队伍已撤回。公会资产与已获得的装备保留，请重新出发。'] })
+      const stock = run.battle?.commands
+      const potions = stock ? { heal: stock.healStock, fury: stock.furyStock } : run.potions
+      if (potions && [potions.heal, potions.fury].every(n => Number.isSafeInteger(n) && n >= 0)) d.potions = potions
+    }
+    return { ...d, runState: next }
+  },
   // R1.1(U27①):副本远征改读分层地图——旧 steps/routeNodes 格式的进行中远征按撤退处理:
   // 成员带着现有状态回城,不扣东西,通知一句;高塔断点不受影响。
   22: (d) => {

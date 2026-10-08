@@ -288,6 +288,61 @@ test('真实 v20 注册表逐级升 v22：公会资产、UID/序号、公会随�
   expect(refresh(upgraded)).toEqual(upgraded)
 })
 
+test('旧人物分支 v23 回城/steps 途中档迁移保留资产；失效路线撤回一次且不返还已用药水', () => {
+  for (const active of [false, true]) {
+    const data: any = save()
+    data.version = 23
+    delete data.runState.lastNodeResult
+    data.runState.lastBranch = 'shortcut'
+    data.factLedger = { nextId: 2, toldThrough: 1, expeditionStart: 1, facts: [] }
+    data.visitor = rollVisitor(createRng(7), resolved(data))
+    data.chronicle = [{ day: 8, text: '原有远征记录' }]
+    if (active) {
+      const r: any = createRun(resolved(data), BLACKMOSS, 53, 0, false, data.potions)
+      // 1c1ab0c 的持久形态：steps/stepIdx，而非分层地图；同样的 v23 标签。
+      for (const k of ['map', 'path', 'nodeId', 'battlesFought', 'conditions']) delete r[k]
+      Object.assign(r, { steps: BLACKMOSS.encounters.map(e => e.id), stepIdx: 0,
+        routeTaken: ['shortcut'], nodeIds: [], eliteAt: [], phase: 'battle',
+        battle: createBattle(resolved(data), BLACKMOSS, BLACKMOSS.encounters[0].id, 53) })
+      r.battle.commands.healStock = 2; r.battle.commands.furyStock = 1
+      data.runState.activeRun = r; data.runState.playing = true; data.runState.autoLoop = true
+    }
+    const original = JSON.stringify(data)
+    const loaded = importSave(exportSave(data))!
+    expect(loaded).not.toBeNull()
+    for (const k of ['gold', 'blessing', 'starMarrow', 'items', 'chronicle', 'factLedger', 'visitor', 'dungeonMastery']) {
+      expect((loaded as any)[k]).toEqual(data[k])
+    }
+    expect(loaded.members.map(m => ({ id: m.id, hp: m.hp, equipment: m.equipment })))
+      .toEqual(data.members.map((m: any) => ({ id: m.id, hp: m.hp, equipment: m.equipment })))
+    expect(loaded.runState.activeRun).toBeNull()
+    expect(loaded.runState.lastNodeResult).toBeNull()
+    expect(loaded.runState.playing).toBe(false)
+    expect(loaded.runState.autoLoop).toBe(false)
+    expect(loaded.runState.notices.filter(n => n.includes('旧版远征路线')).length).toBe(active ? 1 : 0)
+    expect(loaded.potions).toEqual(active ? { heal: 2, fury: 1 } : data.potions)
+    expect(importSave(exportSave(loaded))).toEqual(loaded)
+    expect(JSON.stringify(data)).toBe(original)
+  }
+})
+
+test('v30 当前副本和高塔原样续接；缺图但没有旧 steps 的损坏新档仍拒绝', () => {
+  for (const kind of ['dungeon', 'tower'] as const) {
+    const s = save()
+    s.runState.activeRun = kind === 'tower' ? startTower(resolved(s), 53, s.potions)
+      : createRun(resolved(s), BLACKMOSS, 53, 0, false, s.potions)
+    const old = { ...s, version: 30 }
+    const loaded = importSave(exportSave(old))!
+    expect(loaded.runState).toEqual(s.runState)
+    expect(loaded.gold).toBe(s.gold)
+    if (kind === 'dungeon') {
+      const broken = JSON.parse(JSON.stringify(old))
+      delete broken.runState.activeRun.map
+      expect(importSave(exportSave(broken))).toBeNull()
+    }
+  }
+})
+
 test('坏远征断点不能覆盖资产：拒绝导入；有效备份恢复；双坏档保留，只有确认导入可解除保护', () => {
   const good = save()
   good.runState.activeRun = startTower(resolved(good), 3, good.potions)
