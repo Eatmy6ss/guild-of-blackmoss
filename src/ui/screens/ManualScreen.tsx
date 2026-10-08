@@ -1,10 +1,63 @@
 // manual 屏(U29 R2-5 自 App.tsx 迁出;行为零变)
 import { DUNGEONS } from '../../data/dungeons'
-import { ITEM_BASES } from '../../data/items'
 import { MECHANIC_REGISTRY, mechanicBrief } from '../../sim/mechanic-registry'
 
 import { GUILD_EVENTS } from '../../data/guild-events'
 import { TRAIT_INFO } from '../../data/traits'
+import { ITEM_BASES } from '../../data/items'
+import type { ItemBaseDef } from '../../sim/types'
+
+// #6.1 图鉴/收藏(批次 6):装备全表(名/来历/族/阶)+各副本杂兵构成——数据已有,只差界面。
+const SLOT_NAME: Record<string, string> = { weapon: '武器', armor: '护甲', trinket: '饰品' }
+const FAMILY_NAME: Record<string, string> = { blade: '刃', bow: '弓', staff: '杖圣器', axe: '锤斧', polearm: '长柄' }
+
+function EquipmentCodex() {
+  const all = Object.values(ITEM_BASES) as ItemBaseDef[]
+  const tiers = [...new Set(all.map((b) => b.tier))].sort((a, b) => a - b)
+  return (
+    <>
+      {tiers.map((t) => (
+        <div key={t} className="inv-panel">
+          <h3 style={{ margin: '4px 0' }}>{t === 1 ? '⬜ T1 初阶' : t === 2 ? '🟩 T2 精良' : t === 3 ? '🟪 T3 灰冠' : `timent T${t}`}</h3>
+          {all.filter((b) => b.tier === t).map((b) => (
+            <div key={b.id} className="inv-item">
+              <b>{b.name}</b>
+              <span className="hint">({SLOT_NAME[b.slot] ?? b.slot}/{FAMILY_NAME[b.family as string] ?? (b as { family?: string }).family ?? '—'},{b.stat}+{b.value},词条 {b.affixCount[0]}–{b.affixCount[1]} 条{b.legacy ? ',传承威能' : ''})</span>
+              {b.flavor && <div className="hint" style={{ fontStyle: 'italic' }}>「{b.flavor}」</div>}
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  )
+}
+
+function MobCodex() {
+  return (
+    <>
+      {DUNGEONS.map((d) => {
+        const groups = Object.entries(d.enemyGroups ?? {})
+        if (groups.length === 0) return null
+        return (
+          <div key={d.id} className="inv-panel">
+            <h3 style={{ margin: '4px 0' }}>🗺 {d.name}</h3>
+            {Object.values(d.encounters ?? {}).filter((e) => e.kind === 'wave').map((e) => {
+              const members = (e.enemyGroupIds ?? []).flatMap((gid) => (d.enemyGroups as Record<string, { name: string; traits?: string[] }[]>)[gid] ?? [])
+              if (members.length === 0) return null
+              const names = [...new Set(members.map((m) => m.name))]
+              const traits = [...new Set(members.flatMap((m) => m.traits ?? []))].map((t) => TRAIT_INFO[t]?.name ?? t)
+              return (
+                <div key={e.id} className="inv-item">
+                  <b>{e.name}</b><span className="hint">({members.length} 名:{names.join('、')}{traits.length > 0 ? ` · 特质:${traits.join('/')}` : ''})</span>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+    </>
+  )
+}
 import { useState } from 'react'
 
 interface ManualScreenProps {
@@ -80,6 +133,14 @@ export function ManualScreen({ manual, eventsSeen, protectOn, onToggleProtect, o
                 <div className="hint">💡 {tr.hint}</div>
               </div>
             ))}
+          </div>
+          <div className="inv-panel">
+            <h2>🎒 装备图鉴(共 {Object.keys(ITEM_BASES).length} 件——名字与来历,财宝的骨架)</h2>
+            <EquipmentCodex />
+          </div>
+          <div className="inv-panel">
+            <h2>🐺 怪物图鉴(各副本杂兵构成——知彼者不殆)</h2>
+            <MobCodex />
           </div>
               </div>
             </div>

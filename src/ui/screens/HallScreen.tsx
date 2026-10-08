@@ -108,6 +108,18 @@ export function HallScreen(props: {
                 <p className="hub-goal">
                   📋 当前目标:{cur ? cur.text : '全部达成!'}{cur?.progress ? `(${cur.progress})` : ''}
                 </p>
+                {/* #6.2 目标链可视化:已完成/当前/未来三态,折叠不占大厅空间 */}
+                <details className="hub-goal-chain">
+                  <summary className="hint">🗺 目标链({goals.filter((g) => g.done).length}/{goals.length} 已达成)</summary>
+                  {goals.map((g) => {
+                    const isCur = g === cur
+                    return (
+                      <div key={g.id} className="hint" style={{ paddingLeft: 12, color: g.done ? '#8d9b62' : isCur ? '#dcba87' : '#6b6b6b' }}>
+                        {g.done ? '✓' : isCur ? '→' : '🔒'} {g.text}{g.progress ? `(${g.progress})` : ''}
+                      </div>
+                    )
+                  })}
+                </details>
               </>
             )
           })()}
