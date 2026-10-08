@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { DungeonRun } from '../../sim/run'
 import { REST_HEAL_PCT, revealTier, MASTERY, currentNode, mapOptions, bossSequence, nextBossEncounter } from '../../sim/run'
 import { revealPenaltyLayers } from '../../sim/conditions'
+import { clauseLabels, clauseRewardMult } from '../../sim/bounty-clause'
 import { nodeById, publicMapEdges, TERRAIN_NAMES, type MapNode } from '../../sim/dungeon-map'
 import { runDungeon } from '../../sim/run-core'
 import { describeItem } from '../../sim/loot'
@@ -249,6 +250,18 @@ export function MapScreen({ run, mastery, revealBonus = 0, intelEntries = [], dr
           </>
         )}
       </div>
+      {/* #5.1 条款常驻条:约束与限时必须全程可见(条款在结算时才想起=设计失败) */}
+      {(run.bountyClauses?.length ?? 0) > 0 && (
+        <p className="hint" style={{ color: '#dcba87' }}>
+          📜 加码:{clauseLabels(run.bountyClauses ?? [])}
+          {run.bountyClauses?.includes('greenhorn') && run.greenhornId && ' (新人倒下则 ×1.5 作废)'}
+          {run.bountyClauses?.includes('haste') && ` (剩余时限 ${Math.max(0, Math.ceil(((run.hasteBudget ?? 0) - (run.battle?.tick ?? 0)) / 10))}s)`}
+          ——奖励 ×{clauseRewardMult(run.bountyClauses ?? []).toFixed(2)}
+        </p>
+      )}
+      {run.fastLaneUsed && (
+        <p className="hint" style={{ color: '#8d9b62' }}>🕳 快速通道:走过暗道的趟,沿途金币与经验减半(首领掉落照常)。</p>
+      )}
       {cur && (
         <p className="hint" style={{ opacity: 0.7 }}>
           已走:{run.path.map((id) => nodeByIdIn(id)?.name ?? id).join(' → ')}

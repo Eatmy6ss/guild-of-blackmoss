@@ -288,6 +288,8 @@ export function enemyToCombatant(def: EnemyDef): Combatant {
     cooldownLeft: 0,
     alive: true,
     traits: def.traits,
+    // #5.3 荆棘外壳(thorns):复用既有反弹通道(counterMult)——近战打它会被扎
+    counterMult: def.traits?.includes('thorns') ? 0.15 : undefined,
     skills: (def.skills ?? []).map((def2) => ({ def: def2, cooldownLeft: 0 })),
     bossMechanics: def.mechanics,
     mech: def.mechanics ? {} : undefined,
@@ -539,6 +541,13 @@ export function applyHit(
       return applyHit(state, attacker, guard, amount, label, opts)
     }
   }
+  // #5.3 游斗(evasive):对近战普攻 20% 闪避(C4)——技能与招牌必中,保住打断系与必中流的价值
+  if (label === '攻击' && attacker.range === 'melee' && target.alive && target.traits?.includes('evasive') && nextRandom(state) < 0.2) {
+    traitHint(state, 'evasive')
+    state.events.push({ tick: state.tick, type: 'dodge', attackerId: attacker.id, targetId: target.id })
+    pushLog(state, target.team, `💨 ${target.name} 侧身避开了 ${attacker.name} 的挥击!`)
+    return
+  }
   // Mitigation must precede HP loss, shields, threat and interrupt accounting.
   if (target.traits?.includes('heavy-plate') && !target.plateUsed) {
     traitHint(state, 'heavy-plate')
@@ -679,6 +688,18 @@ export function applyHit(
     target.alive = false
     state.events.push({ tick: state.tick, type: 'death', targetId: target.id })
     pushLog(state, 'system', `☠ ${target.name} 倒下了`)
+    // #5.3 复生怨念(vengeful):死亡瞬间缠上击杀者,反弹其自身攻击力(斩杀谁先谁后有了代价)
+    if (target.traits?.includes('vengeful') && attacker.alive && attacker.team !== target.team) {
+      const back = Math.max(1, Math.round(target.attack))
+      attacker.hp = Math.max(0, attacker.hp - back)
+      state.events.push({ tick: state.tick, type: 'counter', attackerId: target.id, targetId: attacker.id, amount: back })
+      pushLog(state, 'guild', `💀 ${target.name} 的怨念缠上了 ${attacker.name},奉还 ${back} 点伤害!`)
+      if (attacker.hp <= 0 && attacker.alive) {
+        attacker.alive = false
+        state.events.push({ tick: state.tick, type: 'death', targetId: attacker.id })
+        pushLog(state, 'system', `☠ ${attacker.name} 倒下了`)
+      }
+    }
     // B3-4 死因写入词缀:被带词缀敌人击杀 → 词缀名记入死者(DeathCause.affixes 消费)
     const killedAffix = target.team === 'guild' && attacker.team === 'enemy'
       ? (Object.values(MONSTER_AFFIXES).map((d) => d.name).find((n) => attacker.name.includes(n)) ?? undefined)

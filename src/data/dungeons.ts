@@ -17,9 +17,9 @@ export const BLACKMOSS: DungeonDef = {
   enemyGroups: {
     frogs: [
       { id: 'frog-a',
-      traits: ['regen'], name: '沼泽蛙人', maxHp: 428, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen', 'thorns'], name: '沼泽蛙人', maxHp: 428, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'frog-b',
-      traits: ['regen'], name: '沼泽蛙人', maxHp: 428, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
+      traits: ['regen', 'thorns'], name: '沼泽蛙人', maxHp: 428, attack: 8, defense: 4, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'frog-c',
       traits: ['regen'], skills: [{ id: 'frog-heal', name: '蛙群愈疗', effect: 'heal-lowest', target: 'ally', cooldownTicks: 90 }], name: '蛙人萨满', maxHp: 323, attack: 11, defense: 2, speed: 8, position: 'back', range: 'ranged', archetype: 'striker' },
     ],
@@ -175,9 +175,9 @@ export const RUSTMINE: DungeonDef = {
     ],
     bats: [
       { id: 'bat-a',
-      traits: ['pack-hunter', 'last-stand'], name: '锈穴蝠', maxHp: 571, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter', 'last-stand', 'evasive'], name: '锈穴蝠', maxHp: 571, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'bat-b',
-      traits: ['pack-hunter', 'last-stand'], name: '锈穴蝠', maxHp: 571, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['pack-hunter', 'last-stand', 'evasive'], name: '锈穴蝠', maxHp: 571, attack: 12, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'bat-c',
       traits: ['pack-hunter'], name: '锈穴蝠', maxHp: 462, attack: 11, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],
@@ -278,9 +278,9 @@ export const ASHFIELD: DungeonDef = {
     ],
     wraiths: [
       { id: 'wraith-a',
-      traits: ['last-stand'], name: '战场怨灵', maxHp: 720, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand', 'vengeful'], name: '战场怨灵', maxHp: 720, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'wraith-b',
-      traits: ['last-stand'], name: '战场怨灵', maxHp: 720, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
+      traits: ['last-stand', 'vengeful'], name: '战场怨灵', maxHp: 720, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
       { id: 'wraith-c',
       traits: ['last-stand'], name: '战场怨灵', maxHp: 648, attack: 13, defense: 2, speed: 14, position: 'front', range: 'melee', archetype: 'bruiser' },
     ],

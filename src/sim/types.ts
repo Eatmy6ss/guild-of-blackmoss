@@ -551,6 +551,7 @@ export type BattleEventType =
   | 'damage'
   | 'heal'
   | 'death'
+  | 'dodge' // #5.3 游斗(evasive):近战普攻被闪避
   | 'telegraph'
   | 'casting'
   | 'interrupted'

@@ -11,6 +11,7 @@ function castingBattle() {
     BLACKMOSS, 'enc-frogs', 4242,
   )
   const enemy = state.combatants.find((c) => c.team === 'enemy' && c.alive)!
+  enemy.traits = []; enemy.counterMult = undefined // #5.3:蛙人已带 thorns(投影期固化为 counterMult)——招牌机制测试清掉免扰动
   enemy.bossMechanics = [{ id: 'test-cast', kind: 'telegraph-aoe', name: '测试咏唱', params: { breakDamage: 100 } }]
   enemy.mech = { 'telegraph-aoe': { until: state.tick + 50, taken: 10 } }
   const me = state.combatants.find((c) => c.team === 'guild' && c.alive)!

@@ -57,6 +57,14 @@ export interface DungeonRun extends RunCore {
   intelBonus?: number
   /** #4.2 装备维护:远征终局时算出、回城时扣款(可选字段,旧档零迁移) */
   maintenanceDue?: number
+  /** #5.1 悬赏加码条款(自选可叠加;命名接缝:塔规则词缀用 clauses,远征条款用 bountyClauses) */
+  bountyClauses?: string[]
+  /** #5.1 急行军:整趟 tick 预算(超时即败) */
+  hasteBudget?: number
+  /** #5.1 带新人:出发时锁定的新人 id(其倒下则条款作废) */
+  greenhornId?: string
+  /** #5.2 快速通道:本趟走过暗道(沿途金币/经验减半,Boss 掉落照常) */
+  fastLaneUsed?: boolean
 }
 
 /** 副本的 Boss 链遭遇(按 encounters 顺序):有变体(U28)的原型位由变体顶替——
@@ -81,7 +89,10 @@ export function currentNode(run: DungeonRun): MapNode | null {
 
 /** 地图上当前可选的下一批节点(空路径=第 0 层;暗道跳层边已含其中) */
 export function mapOptions(run: DungeonRun): MapNode[] {
-  return nextOptions(run.map, run.nodeId)
+  const opts = nextOptions(run.map, run.nodeId)
+  // #5.1 深潜:禁走暗道,逐层推进(UI 选路与挂机 autoPickNode 共用此口;moveTo 兜底守卫)
+  if (run.bountyClauses?.includes('deepdive')) return opts.filter((n) => n.kind !== 'secret')
+  return opts
 }
 
 export function createRun(
@@ -120,9 +131,15 @@ export function createRun(
  *  R5.1b:走过一层后,'next-layer' 类状态(迷途)自动消退(先消退再掷新触发,重触发会重新亮起)。 */
 export function moveTo(run: DungeonRun, nodeId: string, mastery = 0): MapNode | null {
   const opts = mapOptions(run)
+  // #5.1 深潜兜底:即使旧存档/直呼绕过 mapOptions,暗道也不可进
+  const target = run.map && nodeById(run.map, nodeId)
+  if (run.bountyClauses?.includes('deepdive') && target?.kind === 'secret') return null
   const node = opts.find((n) => n.id === nodeId)
   if (!node) return null
   expireConditions(run, 'next-layer')
+  // #5.2 快速通道:满熟练(MASTER 80+)走暗道=主动直捣,沿途金币/经验减半(结算消费;Boss 与掉落不减);
+  // 低熟练经迷途显形误入暗道是意外收获,不罚(计划的快速通道是满熟练者的主动选择)
+  if (node.kind === 'secret' && mastery >= MASTERY.MASTER) run.fastLaneUsed = true
   run.nodeId = node.id
   run.path.push(node.id)
   enterNodeConditions(run, node, mastery)
@@ -163,7 +180,8 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0, roster
     run.auraBonus,
     manualBonus,
     run.protectOn,
-    run.potions,
+    // #5.1 轻装:途中事件给的药水留在 run.potions(回城照退),但战斗内库存恒 0=不可用
+    run.bountyClauses?.includes('lightload') ? { heal: 0, fury: 0 } : run.potions,
     { elite: isElite, rareHunt: rareMult },
     Object.keys(mods).length > 0 ? mods : undefined,
     Object.keys(cond.enemyMods).length > 0 ? cond.enemyMods : undefined,

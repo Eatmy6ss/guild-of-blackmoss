@@ -12,6 +12,7 @@ import { appendBio } from '../sim/bio'
 import { ageFaints, scarStatName, canGainScar, rollScar, RETREAT_SCAR_CHANCE } from '../sim/scars'
 import { restStamina, spendRetreatStamina } from '../sim/stamina'
 import { rationCost, maintenanceCost } from '../sim/supply'
+import { greenhornId, hasteBudget, clauseLabels, clauseRewardMult } from '../sim/bounty-clause'
 import { plannedLayers } from '../sim/dungeon-map'
 import { INTEL_STOCK_CAP, consumeIntelReveal, verifyIntelFor } from '../sim/intel'
 import { stepBattle, orderRetreat, toCombatant } from '../sim/combat'
@@ -144,6 +145,8 @@ export interface ControllerDeps {
   /** #4.5(B9):事件属性点待选状态 */
   pendingAttr: { amount: number } | null
   setPendingAttr: SetFn<{ amount: number } | null>
+  /** #5.1 悬赏加码条款(出征界面勾选) */
+  bountyClauses: string[]
   dismissHint: (id: string) => void
   setPlaytestEnding: (v: boolean) => void
   members: Member[]
@@ -196,6 +199,7 @@ export function createAppControllers(deps: ControllerDeps) {
     encounterGuild, drainAndSync, checkWishes, starMarrow, pendingConsequences, guildBuffs,
     memorial, protectOn, hintsSeen, rareHuntNext, pendingEvent, setRecruitCooldown,
     pendingAttr, setPendingAttr, // #4.5(B9):事件属性点玩家指定维
+    bountyClauses, // #5.1 悬赏加码条款(出征界面勾选,出发时锁定进 run)
     dismissHint, setPlaytestEnding, members, setExpeditionIds, activeDungeon, sfxVictory,
     sfxDefeat, syncAll, setPendingEvent, setEventResult, setDay, SEED_BASE,
     MANUAL_BONUS, receiveItems, gainGold, ROSTER_CAP, setUnlockedHybrids, newRoster,
@@ -457,6 +461,11 @@ export function createAppControllers(deps: ControllerDeps) {
       setMembers([...membersRef.current])
       return
     }
+    // #5.1 带新人守卫:勾了条款但编队里没有低于均级 5 级者,拒绝出发(防软锁:提示明确)
+    if (bountyClauses.includes('greenhorn') && !greenhornId(membersRef.current, expeditionIds)) {
+      setScarNotices((q: string[]) => [...(q ?? []), '「带新人」条款没有兑现——队伍里没有低于平均等级 5 级的成员。把新人编进来,或取消条款。'])
+      return
+    }
     // 先处理到期后果，再出征；不能让弹窗遮住正在推进的永久死亡战斗。
     // U27④:回城只触发 town 档;副本档后果在对应副本的 event 节点必出,不在这里弹。
     const due = pendingConsequences.find((c) => c.dueDay <= day + 1 && consequenceOf(c.eventId)?.at !== 'dungeon')
@@ -505,12 +514,19 @@ export function createAppControllers(deps: ControllerDeps) {
       activeDungeon,
       int(guildRng, 1, 100000) * SEED_BASE,
       memorialAura(memorial),
-      protectOn,
-      potions,
+      bountyClauses.includes('noquarter') ? false : protectOn, // #5.1 不设防:关闭撤退保护
+      bountyClauses.includes('lightload') ? { heal: 0, fury: 0 } : potions, // #5.1 轻装:不带药水(剩余照退)
       autoLoopRef.current,
       guildBuffs.filter((g) => g.endDay > departureDay).map((g) => g.buff),
       rareHuntNext ?? undefined,
     )
+    // #5.1 条款锁定进 run:清单/新人 id/急行军预算;地图状态条与结算屏读这些
+    if (bountyClauses.length > 0) {
+      runRef.current.bountyClauses = [...bountyClauses]
+      if (bountyClauses.includes('greenhorn')) runRef.current.greenhornId = greenhornId(membersRef.current, expeditionIds) ?? undefined
+      if (bountyClauses.includes('haste')) runRef.current.hasteBudget = hasteBudget(plannedLayers(activeDungeon))
+      logChronicle(chronicleRaw(day, `悬赏加码:${clauseLabels(bountyClauses)}——奖励 ×${clauseRewardMult(bountyClauses).toFixed(1)}。`))
+    }
     if (trainingReadyRef.current) {
       runRef.current.trainingExpMultiplier = 1.25
       trainingReadyRef.current = false

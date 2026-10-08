@@ -23,6 +23,10 @@ export const TRAIT_INFO: Record<string, TraitInfo> = {
   'dragon-scale': { id: 'dragon-scale', name: '龙鳞', desc: '受到的暴击伤害减半', hint: '鳞片弹开了暴击——对它别指望幸运一击!' },
   'ember-breath': { id: 'ember-breath', name: '灼息', desc: '命中后点燃目标,持续灼烧', hint: '被它喷到了会一直烧——治疗留意火伤!' },
   'dragon-fear': { id: 'dragon-fear', name: '龙威', desc: '命中后压制目标,攻击力暂时降低', hint: '它的威压让人手脚发软——被压住就先退后!' },
+  // #5.3 敌人原型扩充:三种新引擎特质
+  thorns: { id: 'thorns', name: '荆棘外壳', desc: '近战攻击它的人会被扎(反弹 15% 伤害)', hint: '别赤手空拳去碰它——让远程和技能上!' },
+  evasive: { id: 'evasive', name: '游斗', desc: '闪避近战普攻(约两成);技能与招牌技必中', hint: '它滑得像条泥鳅——用技能和招牌技锁住它!' },
+  vengeful: { id: 'vengeful', name: '复生怨念', desc: '死亡瞬间缠上击杀者,反弹其攻击力', hint: '补刀的人要掂量一下——它的怨念会带走你一口血!' },
 }
 
 /** 全部已用特质 id(校验用) */

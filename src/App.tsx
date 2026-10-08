@@ -395,6 +395,8 @@ export default function App() {
   const rosterCap = baseEffects(buildings).rosterCap
   // #4.5(B9):事件属性点玩家指定维——待选状态(选完即清)
   const [pendingAttr, setPendingAttr] = useState<{ amount: number } | null>(null)
+  // #5.1 悬赏加码条款:出征界面勾选,出发时锁定进 run(保留勾选方便连刷,每趟重新校验)
+  const [bountyClauses, setBountyClauses] = useState<string[]>(() => [])
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   // 药水库存(经济改造):出征携带/战斗消耗/回城退回,仓库补货
@@ -566,6 +568,7 @@ export default function App() {
     setTowerBest, setHealingMastery, setBuildings, setProtectOn, setEventsSeen, setPendingConsequences,
     setGuildBuffs, setRareHuntNext, setRun, setTowerRun, setRunning, setMembers,
     pendingAttr, setPendingAttr, eventImpacts, // #4.5(B9):事件属性点玩家指定维
+    bountyClauses, // #5.1 悬赏加码条款
     setGold, setBlessing, setPotions, setLastDrops, setScarNotices, setMemorial,
     intelEntries, intelStock, setIntelEntries, setIntelStock,
     setManual, setCandidates, setVisitor, setStatistics, setRoyalNotice, setResumeNotice,
@@ -654,6 +657,11 @@ export default function App() {
       // 渲染停摆（遮挡/最小化 → rAF 停）则暂停模拟：没有画面，跑模拟只会堆积冻结动画
       if (performance.now() - (rendererRef.current?.lastTickAt ?? 0) > 800) return
       stepBattle(b)
+      // #5.1 急行军:整趟 tick 预算耗尽即败(限时的意义=迫使玩家用招牌技与站位压缩战斗时长)
+      if (b.status === 'running' && r.bountyClauses?.includes('haste') && b.tick >= (r.hasteBudget ?? Infinity)) {
+        b.status = 'guild-wipe'
+        b.log.push({ kind: 'system', tick: b.tick, text: '⏳ 急行军时限已到——猎物脱出了包围圈,远征失败。' })
+      }
       // 终局结算先于界面同步：同步若抛错，结算（血量写回/永久死亡/掉落）不能被跳过
       if (b.status !== 'running') {
         setRunning(false)
@@ -1088,6 +1096,7 @@ export default function App() {
           {!run && !towerRun && <ExpeditionBoard dungeonId={dungeonId} manual={manual}
             expeditionCount={expedition.length} activeDungeonSize={activeDungeon.size} activeDungeonName={activeDungeon.name}
             canExpedition={canExpedition} busy={!!run || !!towerRun} playtestMode={!!__PLAYTEST__}
+            bountyClauses={bountyClauses} onToggleClause={(id) => setBountyClauses((q) => q.includes(id) ? q.filter((x) => x !== id) : [...q, id])}
             onSelectDungeon={setDungeonId} onDepart={() => startExpeditionRef.current?.()} />}
 
 

@@ -8,6 +8,7 @@ import { baseEffects } from '../data/base'
 import type { DeadHero, ItemInstance, Member } from './types'
 import { nodeById } from './dungeon-map'
 import { advanceRun, markPermadeath, settleGrowth, type DungeonRun, type GrowthResult } from './run'
+import { clauseRewardMult, FAST_LANE_GOLD_MULT } from './bounty-clause'
 import { buildBattleSummary, type BattleSummary } from './battle-summary'
 import { rankPromotion } from './rank'
 import { appendFact, pruneFacts, type FactLedger } from './fact-ledger'
@@ -161,16 +162,21 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     }
     guild.kingdom = settleKingdomBattle(guild.kingdom, r)
     c.kingdom = guild.kingdom
+    // #5.1 条款乘算(带新人倒下剔除;熟练度/掉落不乘)+ #5.2 快速通道(走过暗道的非 Boss 场减半)
+    const greenhornDown = !!(r.greenhornId && !members.find((m) => m.id === r.greenhornId)?.alive)
+    const clauseMult = clauseRewardMult(r.bountyClauses ?? [], greenhornDown)
+    const laneMult = r.fastLaneUsed && enc?.kind !== 'boss' ? FAST_LANE_GOLD_MULT : 1
     outcome.loot.gold = outcome.win
       ? Math.round((enc?.kind === 'boss' ? ECONOMY.battleGold.boss : ECONOMY.battleGold.wave) *
           (isEliteNode ? 2 : 1) * // R5/U33②:精英金币 ×2
-          (r.rareHunt && r.battlesFought === 1 ? r.rareHunt.rewardMult : 1)) : 0
+          (r.rareHunt && r.battlesFought === 1 ? r.rareHunt.rewardMult : 1) *
+          clauseMult * laneMult) : 0
     // R5.1e(U33④):本趟收益累计——撤退代价的基数
     r.earnedGold = (r.earnedGold ?? 0) + outcome.loot.gold
     // 必须在推进索引前捕获遭遇奖励/委托；先推进再登记死亡保持副本旧顺序。
     // R5.1b:经验/掉落倍率要在 advanceRun 消退状态前捕获;消退的状态写成可见提示。
     const condsBeforeSettle = [...(r.conditions ?? [])]
-    expMultCond = conditionExpMult(r)
+    expMultCond = conditionExpMult(r) * clauseMult * laneMult
     advanceRun(r, guild.members)
     for (const name of (r.conditions ?? []).length < condsBeforeSettle.length
       ? condsBeforeSettle.filter((id) => !(r.conditions ?? []).includes(id)).map((id) => CONDITION_BY_ID[id]?.name ?? id)
