@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "verifiedOn": "2026-10-01",
-  "note": "逐文件锁定OGA发布包；不主张当前DCSS仓库所有文件使用相同许可。PNG未改，显示经32色映射。字体另遵OFL。",
+  "verifiedOn": "2026-10-08",
+  "note": "逐文件锁定OGA发布包或原始图集；不主张作者其他文件使用相同许可。原PNG不改，人物/物件显示在32px逻辑画布并经32色映射；图集切片见sourceRect。字体另遵OFL。",
   "fonts": [
     {
       "author": "TakWolf / Fusion Pixel contributors",
@@ -1772,7 +1772,7 @@
       "sha256": "99f67255ce9d2a770c72779f40186a665eb0c74da7462e1ecf94822a533c7144",
       "modified": true,
       "modification": "agent: OGG转码/响度统一，未裁曲或改旋律",
-      "durationSeconds": 120.0
+      "durationSeconds": 120
     },
     {
       "id": "music.mourning",
@@ -1884,6 +1884,2538 @@
         32,
         32
       ]
+    },
+    {
+      "id": "mon.boss-grush",
+      "path": "/assets/mon/boss-grush.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/polyphemus_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "c5621435358bae9872b1d03242509fe0fb2dc8df0397b43ca3b7390674fcc13b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-talma",
+      "path": "/assets/mon/boss-talma.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/boris_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "63ee29f9a5f98ff339539095bdd497ffe67b268c3091ec2e017163b67e487cb7",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-velhola",
+      "path": "/assets/mon/boss-velhola.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/fannar.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "b7a63dd148ddead17557fda9e92a30380ccb71d532ae1a30c81c7a6839a06dee",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-malsau",
+      "path": "/assets/mon/boss-malsau.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/ereshkigal_small.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "643a6a13dcebe2ea7bf890d0f67a3838d7c7d8add767bc79b32c3b2c0cba014d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-colt",
+      "path": "/assets/mon/boss-colt.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/urug_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "43b2960f8346a9b241c53e51705a04fb52847376d9b9cae1ce972dad383d46b1",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-victor",
+      "path": "/assets/mon/boss-victor.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/donald_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "292c0cb6713d29b9f60bc4201187fe4f23e20f4d778c6930e5d38c6cb02b84e2",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-kazraxes",
+      "path": "/assets/mon/boss-kazraxes.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/azrael.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "f837bd75dc909d214c40814223493d45af623fcee66cffbbc373eb698bb270f8",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-ignathos",
+      "path": "/assets/mon/boss-ignathos.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/margery_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "1bb1c048065be97541460aa2e7c9e84188827802dfd451cd803b467d4e538994",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-valselon",
+      "path": "/assets/mon/boss-valselon.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/xtahua_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "0f3dbebd8c84ce72783e175a4b2e02189df600423fbddf2ca52e784b78cf51c3",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-oengus",
+      "path": "/assets/mon/boss-oengus.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/norbert.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "cc2342137cba997fd4fffffe7401b652cd38ed14ec35a39b2c5fa0eec33e9afa",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-gramas",
+      "path": "/assets/mon/boss-gramas.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/unique/wiglaf_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "c42ce3c4f494453cfcdebcf073e069df0f7300047e955e66c35f970825aab1db",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "mon.boss-valosaris",
+      "path": "/assets/mon/boss-valosaris.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/monster/dragons/golden_dragon.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "41c3616b6792f4baef74ed23c1c25564e0664277ab1a4a318a155f759d6768e2",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.hair_bloodelf",
+      "path": "/assets/layers/hair_bloodelf.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hair/elf_red.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "8bc653f56ffbb81bb6e435f303b01fe10f736804e6134044d0d2a210f3dcbead",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_fhelm_gray_3",
+      "path": "/assets/layers/head_fhelm_gray_3.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/fhelm_gray_3.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "28051bdef0984b5f8efd2b8545dbac4ab2e27de2432a0ecb83370595646a20e0",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_fhelm_horn_2",
+      "path": "/assets/layers/head_fhelm_horn_2.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/fhelm_horn_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "020a43ba182ce312dbf76cc524dc42f1b0fec07b91d3f2e16b816bccba36305c",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_healer",
+      "path": "/assets/layers/head_healer.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/healer.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "8b76270034208c51927fe98a302462d45db74fb9c9e26e662b4eecafd3bfdb04",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_hood_white",
+      "path": "/assets/layers/head_hood_white.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/hood_white.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "5343f290ee5a92b7092316e987170764d64936ba6855d46d6d4b4217d0639a53",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_feather_green",
+      "path": "/assets/layers/head_feather_green.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/feather_green.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "cb470145aaa16b3710cdd444c94d3f7d6a75c70e662b60dcf6ae8032b566a897",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_bear",
+      "path": "/assets/layers/head_bear.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/bear.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "ec3c0a6b97a2008b7602ac43164bf96502c66ef56e408962b8167932f93bbbff",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_bandana_ybrown",
+      "path": "/assets/layers/head_bandana_ybrown.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/bandana_ybrown.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "91d163c4d10243210dbda51dc941fd2724d9df9d45cf8f972594ccfaf5e42954",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_helm_plume",
+      "path": "/assets/layers/head_helm_plume.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/helm_plume.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "9d82979dfc54fd3753d398e104709c6f9d34acf7961c012ec9bf55ca07284d30",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_wizard_red",
+      "path": "/assets/layers/head_wizard_red.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/wizard_red.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "719f60aa0ee5dbd4de631ee19ef2b47bc9effcdc1ee1802f23e991c638d104ba",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_blue_horn_gold",
+      "path": "/assets/layers/head_blue_horn_gold.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/blue_horn_gold.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "1d71edf9825561ed0df425f877d9259c88a7b781f215df8ad6e274ef988d19e7",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_horn_evil",
+      "path": "/assets/layers/head_horn_evil.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/horn_evil.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "4614e17813ec0ce34cec520e064d7248e5e3136b8e04801792a34ac67c51571a",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.head_hood_black_2",
+      "path": "/assets/layers/head_hood_black_2.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/head/hood_black_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "9ac045107a254e67f0380b3e811ff089e3ea32c459f79fc7e549b3d1f16f6c6b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_plate_and_cloth",
+      "path": "/assets/layers/body_plate_and_cloth.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/plate_and_cloth.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "99e73695931198fffbdfd84a00071cdd5a57fde3ddaac246eb8237fade92c22f",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_dragon_armor_green",
+      "path": "/assets/layers/body_dragon_armor_green.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/dragon_armor_green.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "25692de7825255db066cbe31b46147e2668ad2245023f6f6835c44bd370fd59b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_robe_white_2",
+      "path": "/assets/layers/body_robe_white_2.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/robe_white_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "2c2d6744b6c043a683536625d9803d5b55b3c24034da0cba98977b6d296cfc92",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_robe_white_red",
+      "path": "/assets/layers/body_robe_white_red.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/robe_white_red.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "7187a36d988125d2304deb9f33cb0e0fc85b65063f8ba58c5c2d812d1ea96964",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_leather_heavy",
+      "path": "/assets/layers/body_leather_heavy.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/leather_heavy.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "f0cf4927b1d93cb0a7e5f634ef0b559ed610a289df7bc0cae4c7e25f7f420c99",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_animal_skin",
+      "path": "/assets/layers/body_animal_skin.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/animal_skin.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "68ed5e487752db56a5f04c05a8c46ee18996ad8422bbaa36e963e5e2a6134d11",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_plate_black",
+      "path": "/assets/layers/body_plate_black.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/plate_black.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "305d5c3adc16fa885c8f125578591a0739c00330e66cdf0bd89ae01183105331",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_half_plate_3",
+      "path": "/assets/layers/body_half_plate_3.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/half_plate_3.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "0d1cce87376867f0b7fac2162a75eab320f2aa04759cb953902f74ccab90b500",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_robe_red_gold",
+      "path": "/assets/layers/body_robe_red_gold.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/robe_red_gold.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "d0e17f5025b386acb0b15298119d8ab5f602e1aaa904eb2bbbfa7b43ca40e844",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_robe_blue_white",
+      "path": "/assets/layers/body_robe_blue_white.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/robe_blue_white.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "280b54ffce89b8ae87aeea875fdf1f104229d44c3517b063de45162d1ae65bb8",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_robe_black_red",
+      "path": "/assets/layers/body_robe_black_red.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/robe_black_red.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "a71084bdf62f3fa72be42533cb9d930d715a8c3758588992547fd5eae9f4e7e9",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_robe_of_night",
+      "path": "/assets/layers/body_robe_of_night.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/robe_of_night.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "c9030e2a9ac5b621141a8aa47f7c43dd1ae0f88124f2352e660e1dd6484425b0",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_bplate_green",
+      "path": "/assets/layers/body_bplate_green.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/bplate_green.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "3b5de8af921b329dead3a195040f7e4c00226a3279a0d7384c2d57d24f046a2a",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_leather_green",
+      "path": "/assets/layers/body_leather_green.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/leather_green.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "a0d67e76edcb66259847072381deccfc34dcd46f247b8335efd188d7a31ba795",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_dragon_scale_gold_new",
+      "path": "/assets/layers/body_dragon_scale_gold_new.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/dragon_scale_gold_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "45856f3c4682da161f2ca5286df94fe8a2f628f3f27cb2db838ca8dddc6e6ece",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_dragon_armor_gold_new",
+      "path": "/assets/layers/body_dragon_armor_gold_new.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/dragon_armor_gold_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "bcbcd7ea1dff2057c681a7121f859bbef04588b9e4da58b421be3d6c2a4bc0f4",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_robe_black_hood",
+      "path": "/assets/layers/body_robe_black_hood.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/robe_black_hood.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "7caf5ca1ec3927edade43e74b2052c312c49c8776462e0ffa415ed5c41fb0e4d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.body_leather_metal",
+      "path": "/assets/layers/body_leather_metal.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/body/leather_metal.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "748ae872ff0e4dafd50c1fdcabcb048edf4f498b6aa13178c2b57de51d7ecd17",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.off_lshield_green",
+      "path": "/assets/layers/off_lshield_green.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_left/lshield_green.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "cfcc7aacc7cd7f14513265a8d26b20db6d52916b110691cb215caa568a653bb4",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.off_shield_spriggan",
+      "path": "/assets/layers/off_shield_spriggan.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_left/shield_spriggan.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "2b60a6bc9c8c1815834a9558adce887c3461ec8bbe7bbfd2b1d35b27e1e0cfcc",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_blessed_blade",
+      "path": "/assets/layers/held_blessed_blade.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/blessed_blade.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "49c337cf8c4a8f5ab003ee447da604b3d1a815081270d0f1b1b0acef07a48a0d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_black_sword",
+      "path": "/assets/layers/held_black_sword.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/black_sword.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "7ff72eeef2e46208daf2edb6cb942d8dabcb8c7b30eefec12cfcbd52ef2f0cef",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_scepter",
+      "path": "/assets/layers/held_scepter.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/scepter.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "8e842ca022f4422817d9228246be82bf78b1248a73c6e04e81a02678595d84e7",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_staff_fancy",
+      "path": "/assets/layers/held_staff_fancy.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/staff_fancy.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "1c9c43a330e5ee19864bde631503d32680a8bd21fe8aabb94acf8e9300fc5201",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_staff_ring_blue",
+      "path": "/assets/layers/held_staff_ring_blue.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/staff_ring_blue.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "79f109a3141bf390d3eda7fc2c137ea1a2572458b6cb995641cd104ce6f63673",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_bow_2",
+      "path": "/assets/layers/held_bow_2.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/bow_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "74d1409d58815e25ba6d7556600a32f89c525928b36a7aeebda727ed577c3313",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_great_bow",
+      "path": "/assets/layers/held_great_bow.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/great_bow.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "b75474c35b2d6c51f2c153f9d9b22688db465651de410c39302023a322bfef91",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_axe_blood",
+      "path": "/assets/layers/held_axe_blood.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/axe_blood.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "520c26650a2eae9603e5ef5aeb8251f72339a2e55b22cf6b5a8156f607496d92",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_great_sword",
+      "path": "/assets/layers/held_great_sword.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/great_sword.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "57a5211b4dc83ecf1724d05491c537b55e4bd57e0daf3b7e17bf8939fad8a88e",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_katana",
+      "path": "/assets/layers/held_katana.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/katana.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "6a3a895259bcec74a7584d5f65d3848eb03f07841822c052bc45d598e9e0fe9a",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_rapier",
+      "path": "/assets/layers/held_rapier.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/rapier.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "2e6aac7673f3dfa727a90750f0df23b1309e62c51332d00e6c5ffd5555364949",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_sabre",
+      "path": "/assets/layers/held_sabre.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/sabre.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "db60ee0376fe6bd471d9910324227270d79f511c4f610144b8be5ab05df81eb2",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_staff_evil",
+      "path": "/assets/layers/held_staff_evil.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/staff_evil.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "de6bbc31c8b266b88b540b48ec86118e511c37b1802d12582a9cd5ea8d529c71",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_orb",
+      "path": "/assets/layers/held_orb.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/misc/orb.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "a861c66d7af6feb8dcbea9718ccb9bf5c4d50b76380556e32e7eb316c3439223",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_fire_red",
+      "path": "/assets/layers/held_fire_red.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/misc/fire_red.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "5469e43e58526f5944a19a3ccd4e233659297f7a371d21d8bbfcab7720253d90",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_crystal",
+      "path": "/assets/layers/held_crystal.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/misc/crystal.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "147495af541024e4ef0f5be0248bb4f0fc9eb86e508b5c6448d37dc42f23e968",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_soulbook",
+      "path": "/assets/layers/held_soulbook.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/book/book_of_the_dead_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "3388fd2e5322693810725f9cbf2be1918d7887f45a94c1a586437a6135cd8878",
+      "modified": false,
+      "rendering": "原PNG保留；持握层运行时nearest缩为16px，定位左手；32色映射",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "layers.held_tidebook",
+      "path": "/assets/layers/held_tidebook.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/book/metal_cyan_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "bf8da11b87f24422490e5a3bb0fc5a2fc274180a2d8224b9fc72a48b8e0b90b0",
+      "modified": false,
+      "rendering": "原PNG保留；持握层运行时nearest缩为16px，定位左手；32色映射",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t1-sword",
+      "path": "/assets/equipment/wpn-t1-sword.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/long_sword_1_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "a93eef119bcecdcb388205205e4a8d8394291e465eed39429906e195a5708d55",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t1-axe",
+      "path": "/assets/equipment/wpn-t1-axe.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/hand_axe_1_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "0928e002f4f74917f97a7fb1a78b82adc48f0ec43d01f3709e0dcd4fc8701792",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t1-dagger",
+      "path": "/assets/equipment/wpn-t1-dagger.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/dagger_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "81f53bd1e844e0152ae904e838d7485ab79bace732a6f28316c7ed8f0980029c",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t2-bow",
+      "path": "/assets/equipment/wpn-t2-bow.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/ranged/longbow_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "64e5aa515a0903f2d16bcd991e20a293a3d805e281aa3b73edad55c699701391",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t2-crossbow",
+      "path": "/assets/equipment/wpn-t2-crossbow.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/ranged/crossbow_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "59a817ec4bd36e908df8d53ccf50b5a3a011122a6c1c0a3328ef400c06e8edef",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t2-staff",
+      "path": "/assets/equipment/wpn-t2-staff.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/staff/staff_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "b0fd6c7a5063b2ba1cd63823bd949a04fdbdd1de693c037a5175546772452b94",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t2-greatsword",
+      "path": "/assets/equipment/wpn-t2-greatsword.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/greatsword_1_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "bd82c629609e86a5cc5748509e0f34ff584b188597b7546fb6741b3357aa14e8",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-line-guard",
+      "path": "/assets/equipment/wpn-line-guard.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/long_sword_3.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "71e0d1b80a120f5d0717952f43a2b426eb91a669c0eb93421313d3f8e97cc50c",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-line-priest",
+      "path": "/assets/equipment/wpn-line-priest.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/rod/rod_1_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "acd9632b05fc41372410fe2e65456c22d79ae6efedaa4d45474e8906bb24ec4d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-line-ranger",
+      "path": "/assets/equipment/wpn-line-ranger.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/ranged/longbow_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "04a9ad4f0fb55369ab8460140e24230c48a27ae632d61f1b1f0f99420921c85a",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-line-warrior",
+      "path": "/assets/equipment/wpn-line-warrior.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/executioner_axe_2_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "8d636ce5db88d81e8cc2a27ddaeb59583e246d8a6d67197f9382921642602885",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-line-mage",
+      "path": "/assets/equipment/wpn-line-mage.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/misc/misc_orb.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "1f812e9dfbec87db18fb28ee50efba9422c40b200a2456a39f9d01965615b4d7",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-line-warlock",
+      "path": "/assets/equipment/wpn-line-warlock.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/book/book_of_the_dead_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "3388fd2e5322693810725f9cbf2be1918d7887f45a94c1a586437a6135cd8878",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-sign-warbrand",
+      "path": "/assets/equipment/wpn-sign-warbrand.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/sabre_1_silver.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "2409bc29920351de8f213d7f1e84cd074cf9875ce94e3fc3640a16c700c9bf05",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-sign-bloodletter",
+      "path": "/assets/equipment/wpn-sign-bloodletter.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/dagger_6.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "d43ee2325ee19c78fba93a94e0ea6bffc704842969fb4da3e6b5035a73e519be",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-dragon-brand",
+      "path": "/assets/equipment/wpn-dragon-brand.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/artefact/spwpn_sword_of_cerebov_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "11df3cf456d48410d6594c28c643cb50defa6e480986c16b6efb0ad875bb7cad",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t3-dawn",
+      "path": "/assets/equipment/wpn-t3-dawn.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/claymore_blessed.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "3eab5140a07518c997ff49fb80149aee0e4612bb3314bfccffc85fcada563f0c",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t3-tide",
+      "path": "/assets/equipment/wpn-t3-tide.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/book/metal_cyan_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "bf8da11b87f24422490e5a3bb0fc5a2fc274180a2d8224b9fc72a48b8e0b90b0",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t3-gale",
+      "path": "/assets/equipment/wpn-t3-gale.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/ranged/longbow_3.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "2951f7089a514a8128272a165ee452a7d748d3bf9d2aee083c6cbdf36a18edb7",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t3-ember",
+      "path": "/assets/equipment/wpn-t3-ember.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/misc/misc_orb_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "bc1ef958c36ddcb722ddfd8ded7981a5a6dd40e015e99776db20af9c493dd921",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t3-vox",
+      "path": "/assets/equipment/wpn-t3-vox.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/staff/staff_8.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "a46808314a84678e451e153ad2713bc7313d3be1cba221a52c560fd2f05e9f5d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t1-mail",
+      "path": "/assets/equipment/arm-t1-mail.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/chain_mail_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "3bc0f26408fe0ec0dff50659c1dba795553ef4d4064a842a1971aabc0f52741d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t1-leather",
+      "path": "/assets/equipment/arm-t1-leather.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/leather_armor_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "cab2595c6ab1df239601c02ec79cb8248b46830f831b6cf20e7b76594ce93eae",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t2-plate",
+      "path": "/assets/equipment/arm-t2-plate.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/plate_mail_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "31b23d7433683e0587f47a2ea3bee9405f235e08e7731715c580153ddaa0e188",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t2-chain",
+      "path": "/assets/equipment/arm-t2-chain.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/chain_mail_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "bb7bbb0e7356491b31169855c62675a4a29ba3cffdb9f2f1f20fec5c1e83a80e",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t2-robe",
+      "path": "/assets/equipment/arm-t2-robe.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/robe_2_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "33995e80a2f0d60416e88509966c272c31d127df57e4f228cd82ee405a111ba5",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t2-bulwark",
+      "path": "/assets/equipment/arm-t2-bulwark.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/plate_mail_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "210b3b5971d8f47e7cba1734e81b11e85cf9453f64eadb446d752cea1a550348",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-line-guard",
+      "path": "/assets/equipment/arm-line-guard.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/swamp_dragon_armor_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "31960cc1a4794d586b20932cbc5b753a6860a559bd7b3ed7da20855e7ad5a88e",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-line-priest",
+      "path": "/assets/equipment/arm-line-priest.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/robe_ego_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "de2da19c17d76a591d6d557f81bfe9ccc50e6db7cadbea18ae4f3c6cafc549de",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-line-ranger",
+      "path": "/assets/equipment/arm-line-ranger.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/elven_leather_armor.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "40a82de3e187397896c3bb1b50aa5ca91681dd8c7f6bb5a3b87ea0ce2403845f",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-line-warrior",
+      "path": "/assets/equipment/arm-line-warrior.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/orcish_plate_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "90b38acca81cb94158b2da81a70f616374b1372910ca1ec67c097cd2cf0bac81",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-line-mage",
+      "path": "/assets/equipment/arm-line-mage.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/robe_art_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "ce12495d9c434c296ff6f180ecee37c475665933bd3dfd64df4942fa81bc47f2",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-line-warlock",
+      "path": "/assets/equipment/arm-line-warlock.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/robe_3.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "df7ba768623853b4aef606c7652a8c36b5e06150c259009e7ebeac70a779515e",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-sign-minershell",
+      "path": "/assets/equipment/arm-sign-minershell.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/splint_mail_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "f21b657bc528e91d167c99ee83b800be58883301beb12e72bdc7a09988683053",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-sign-thornmail",
+      "path": "/assets/equipment/arm-sign-thornmail.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/green_dragon_scale_mail.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "fc1818e078c935e80ac401d9144556f17b613969c7a450f538d8d8f7b10268b3",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-dragon-scalemail",
+      "path": "/assets/equipment/arm-dragon-scalemail.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/gold_dragon_armor_old.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "889036a3eaa6db59c914018f7762aeefb527e08a01de0ef2ac2c7f3d0003eb0e",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t3-bulwark",
+      "path": "/assets/equipment/arm-t3-bulwark.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/crystal_plate_mail.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "959de40154435fa23c90127ea320a9e6168b1747b08475f3fe5341a2d870179d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t3-drake",
+      "path": "/assets/equipment/arm-t3-drake.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/gold_dragon_armor_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "37b2ee89d7c34c3e40c7b75b1e45f4427efac3dc87f0bd812c70ce2b70c0f81e",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t3-whisper",
+      "path": "/assets/equipment/arm-t3-whisper.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/robe_art_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "f44408c0242f157438d3a7e79a0f7fa6ac9c05d98cd83da465ce4dc594746d1e",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.arm-t3-gale",
+      "path": "/assets/equipment/arm-t3-gale.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/armor/torso/studded_leather_armor.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "616c939fb38198806c719254040990ab3e1c09b0d42b455b6c33872d281a326d",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-t1-band",
+      "path": "/assets/equipment/trk-t1-band.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/ring/copper.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "fe9ba0c96cdf145e214cb0b6b904fd9d351c06de88129f743847e0a8af41c655",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-t1-charm",
+      "path": "/assets/equipment/trk-t1-charm.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/celtic_yellow.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "a081ceba86b8669ffe185e9a146e04963e469a786b0874e3a5ac2fbcbe26415b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-t2-totem",
+      "path": "/assets/equipment/trk-t2-totem.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/face_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "af6cbadf35ccd5ff74e427963a9fb5baa91925a25d109fc8a70006f0a092287f",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-t2-rune",
+      "path": "/assets/equipment/trk-t2-rune.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/misc/misc_rune.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "ffa791490778d1411b4a8dc08df49c1a95f1d4ffb73c4ee1422b22b12da91ca0",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-t2-medic",
+      "path": "/assets/equipment/trk-t2-medic.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/cameo_blue.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "be403f58268722d1b68d14b98558f871535e76bf9cb55d06678db8fa22fe338b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-line-guard",
+      "path": "/assets/equipment/trk-line-guard.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/stone_2_green.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "cc8f609aa1d96e705338ccc13d7fb95f8f148cc7783bda3ec0e89874047661b8",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-line-priest",
+      "path": "/assets/equipment/trk-line-priest.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/candles-oil-lamp-and-eye-with-varied-stands",
+      "author": "vk",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "candles_with_eyes.png",
+      "download": "https://opengameart.org/sites/default/files/candles_with_eyes.png",
+      "archiveSha256": "93da4135418b0663414ac0b15a4f02fcae251b23bfb4108f24ddda6ac1a70487",
+      "sha256": "93da4135418b0663414ac0b15a4f02fcae251b23bfb4108f24ddda6ac1a70487",
+      "modified": false,
+      "rendering": "原始图集逐字节保留；运行时按sourceRect截取单件、居中置入32px画布，不拉伸；32色映射",
+      "dimensions": [
+        164,
+        43
+      ],
+      "sourceRect": [
+        38,
+        15,
+        16,
+        28
+      ]
+    },
+    {
+      "id": "equipment.trk-line-ranger",
+      "path": "/assets/equipment/trk-line-ranger.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/eye_cyan.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "78daac3f59f1a4ee734ab1501fa0f6ecd0b2ab12f642a6bb830b0aa988ebf61c",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-line-warrior",
+      "path": "/assets/equipment/trk-line-warrior.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/misc/misc_horn.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "4eff85a029ff05cb8eb5ec5cbf744291ec37ee8d0084ad0fd435356e8cbe8710",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-line-mage",
+      "path": "/assets/equipment/trk-line-mage.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/misc/misc_crystal_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "b76687f69e2b01f253dd7059be7fcc8dbc4211f9ea1f9d723d27e17590f2afbf",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-line-warlock",
+      "path": "/assets/equipment/trk-line-warlock.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/ring/gold_red.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "00fd2f8b05f0ceb92ec03bd1b63f94d2fc994dd87a40f9979bf72ab766263f1b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-sign-frogeye",
+      "path": "/assets/equipment/trk-sign-frogeye.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/eye_green.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "c6ea80550a0173b82d149c0e3507a3785ae72d38a678d1ff46536b6a42058bdf",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-sign-frostheart",
+      "path": "/assets/equipment/trk-sign-frostheart.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/crystal_white.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "5b12346c9cf3e55e390d49a2506fbdcef483ae8e6d82427b10c7bd19d27b621b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-t3-vanguard",
+      "path": "/assets/equipment/trk-t3-vanguard.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/ring/gold.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "0076e2495ad19f8f8ad660ab8ea1f0b6c248fff112afcdb8edf7c6d452ba463c",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-t3-seer",
+      "path": "/assets/equipment/trk-t3-seer.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/penta_orange.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "bb238b7d01227e5b04cf1c77c1961e159ce46d8a23996e2498d2b603fa19d05b",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.trk-t3-pyrexia",
+      "path": "/assets/equipment/trk-t3-pyrexia.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dark-fantasy-item-sprites",
+      "author": "ETTiNGRiNDER",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "00_items_0.png",
+      "download": "https://opengameart.org/sites/default/files/00_items_0.png",
+      "archiveSha256": "471e8c1b516ec20226e66aab73864275cfa99e35ecfceb97682c830a87067f68",
+      "sha256": "471e8c1b516ec20226e66aab73864275cfa99e35ecfceb97682c830a87067f68",
+      "modified": false,
+      "rendering": "原始图集逐字节保留；运行时按sourceRect截取单件、居中置入32px画布，不拉伸；32色映射",
+      "dimensions": [
+        274,
+        150
+      ],
+      "sourceRect": [
+        216,
+        36,
+        18,
+        30
+      ]
+    },
+    {
+      "id": "equipment.trk-dragon-talisman",
+      "path": "/assets/equipment/trk-dragon-talisman.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/amulet/crystal_red.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "a9d905faee9b99fffd775d24331752c4eecbdc14e4cb17b39256cd0ebd458a35",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "equipment.wpn-t1-halberd",
+      "path": "/assets/equipment/wpn-t1-halberd.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/halberd_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "cc96611f75b8d5d3d246c23da2a949029c76a643ab5d945e25c1aa26c95c1564",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "长柄装备图标"
+    },
+    {
+      "id": "layers.held_wpn-t1-halberd",
+      "path": "/assets/layers/held_wpn-t1-halberd.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/halberd_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "c952ab46e0f4e44bec96226e03515d526874a503cb52befa9816b37110f43d07",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "人物持握长柄层"
+    },
+    {
+      "id": "equipment.wpn-t1-spear",
+      "path": "/assets/equipment/wpn-t1-spear.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/spear_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "fa868081c42681801ec6a0c8d22b5bdfb84d22f23567079de7ec5658afd85864",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "长柄装备图标"
+    },
+    {
+      "id": "layers.held_wpn-t1-spear",
+      "path": "/assets/layers/held_wpn-t1-spear.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/spear_1.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "0dadc49bbcc6adff260e79fabf3c966383d6fd892d1b7e813fe2e7f08f130820",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "人物持握长柄层"
+    },
+    {
+      "id": "equipment.wpn-t2-banner",
+      "path": "/assets/equipment/wpn-t2-banner.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/halberd_4.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "954997a9745c3cd56f31eed7744e8a43060d3ab4be9413e86c60bad6ebeb4ca1",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "长柄装备图标"
+    },
+    {
+      "id": "layers.held_wpn-t2-banner",
+      "path": "/assets/layers/held_wpn-t2-banner.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/glaive_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "343c8b194ce487783d7e08d91679ddbe1e4905c3dd323a631d7b3604a9c9dd48",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "人物持握长柄层"
+    },
+    {
+      "id": "equipment.wpn-t2-tidebreak",
+      "path": "/assets/equipment/wpn-t2-tidebreak.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/trident_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "2c32aa923a908f52406dee17691a37c30ac1b8a79163b633af9130b1808c29f0",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "长柄装备图标"
+    },
+    {
+      "id": "layers.held_wpn-t2-tidebreak",
+      "path": "/assets/layers/held_wpn-t2-tidebreak.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/trident_2.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "f169e09f3d18051eea088fc1657ab50cc37f24ff4b9ee79fcd6421d4e3f8d976",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "人物持握长柄层"
+    },
+    {
+      "id": "equipment.wpn-t3-bulwarkpike",
+      "path": "/assets/equipment/wpn-t3-bulwarkpike.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/bardiche_5.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "539c7069ae2c824edb9b44484aca7ae8978950569e88c11d97bea3d5de8c7ce0",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "长柄装备图标"
+    },
+    {
+      "id": "layers.held_wpn-t3-bulwarkpike",
+      "path": "/assets/layers/held_wpn-t3-bulwarkpike.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/artefact/glaive_of_the_guard_new.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "d6758c403eb2aee98fc191b38943eef827aeb785a5840bcba31be686c2efe894",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "人物持握长柄层"
+    },
+    {
+      "id": "equipment.wpn-t3-dragonpole",
+      "path": "/assets/equipment/wpn-t3-dragonpole.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/item/weapon/demon_trident.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "1b2efb600267983709a964e52cb4ab4ac00e244470c7e0f449f7fb13211f5030",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "长柄装备图标"
+    },
+    {
+      "id": "layers.held_wpn-t3-dragonpole",
+      "path": "/assets/layers/held_wpn-t3-dragonpole.png",
+      "kind": "sprite",
+      "source": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental",
+      "author": "DCSS contributors (upstream README credit list)",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceFile": "Dungeon Crawl Stone Soup Full/player/hand_right/trident_demon.png",
+      "download": "https://opengameart.org/sites/default/files/Dungeon%20Crawl%20Stone%20Soup%20Full.zip",
+      "archiveSha256": "41b4dc79632be19c47bf4555fd61e949189bb4496771b72e2dec5715b2d7bab4",
+      "sha256": "2b1ce571d760af32bf9f9bc6b88755be7e78f9b140c1400c03e4ba402b97f824",
+      "modified": false,
+      "rendering": "32色运行时量化；原PNG保留",
+      "dimensions": [
+        32,
+        32
+      ],
+      "usage": "人物持握长柄层"
     }
   ]
 }

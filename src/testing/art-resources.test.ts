@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { DUNGEONS } from '../data/dungeons'
 import { ITEM_BASES } from '../data/items'
-import { SCENE_ART, heroLayers, WEAPON_LAYERS, ARMOR_LAYERS, SPRITE_PATHS } from '../ui/art/catalog'
+import { SCENE_ART, heroLayers, itemIcon, WEAPON_LAYERS, ARMOR_LAYERS, SPRITE_PATHS } from '../ui/art/catalog'
+import { JOBS } from '../data/jobs'
+import { RACES } from '../data/races'
 import { ENEMY_ART } from '../ui/art/enemyArt'
 import { spriteKeyFor } from '../ui/battle/pixelSprites'
 import { ART_PALETTE, quantizeRgba } from '../ui/art/palette'
@@ -22,14 +24,42 @@ describe('资源接线与战斗可读性', () => {
     for (const item of Object.values(ITEM_BASES)) {
       if (item.slot === 'weapon') expect(WEAPON_LAYERS[item.id]).toBeTruthy()
       if (item.slot === 'armor') expect(ARMOR_LAYERS[item.id]).toBeTruthy()
+      expect(SPRITE_PATHS).toContain(itemIcon(item.id, item.slot))
     }
     const member = { job: 'guard' as const, equipment: { weapon: { id: 'item1', baseId: 'wpn-t2-bow', rolls: [] } } }
     const before = structuredClone(member), layers = heroLayers(member)
     expect(layers.at(-1)).toBe('/assets/layers/bow.png')
     expect(layers).not.toContain('/assets/layers/long_sword.png')
-    expect(layers.indexOf('/assets/layers/cloak_blue.png')).toBeLessThan(layers.indexOf('/assets/layers/chainmail.png'))
+    expect(layers.indexOf('/assets/layers/cloak_blue.png')).toBeLessThan(layers.indexOf('/assets/layers/body_plate_and_cloth.png'))
     expect(member).toEqual(before)
     for (const path of layers) expect(SPRITE_PATHS).toContain(path)
+  })
+  it('12专精同武器同护甲仍保留不同头部身份，全部种族组合的图层已入库', () => {
+    const heads: string[] = []
+    for (const job of Object.values(JOBS)) {
+      for (const spec of Object.values(job.specs)) {
+        for (const race of Object.keys(RACES)) {
+          const member = { job: job.id, spec: spec.id, race, equipment: {
+            weapon: { id: 'weapon', baseId: 'wpn-t2-bow', rolls: [] },
+            armor: { id: 'armor', baseId: 'arm-t1-mail', rolls: [] },
+          } }
+          const before = structuredClone(member), layers = heroLayers(member)
+          expect(layers.at(-1)).toBe('/assets/layers/bow.png')
+          expect(layers).toContain('/assets/layers/chainmail.png')
+          for (const path of layers) expect(SPRITE_PATHS).toContain(path)
+          expect(member).toEqual(before)
+          if (race === 'human') heads.push(layers.find(path => path.includes('/head_'))!)
+        }
+      }
+    }
+    expect(new Set(heads).size).toBe(12)
+  })
+  it('旧人物、跨职业专精、未知装备安全回落，不把别的职业装束穿过来', () => {
+    const base = { job: 'mage' as const }
+    expect(heroLayers({ ...base, spec: 'guard-ironwall' })).toEqual(heroLayers(base))
+    expect(heroLayers({ ...base, spec: 'unknown', equipment: { weapon: { id: 'unknown', baseId: 'unknown', rolls: [] } } })).toEqual(heroLayers(base))
+    expect(itemIcon('wpn-line-mage', 'armor')).toBe('/assets/icons/armor.png')
+    expect(heroLayers({ ...base, race: 'bloodelf' })).not.toEqual(heroLayers({ ...base, race: 'elf' }))
   })
   it('收色保留透明度与地砖暗部，输出只落在32色内', () => {
     const data = new Uint8ClampedArray([1,3,1,255, 3,13,3,200, 10,41,11,128, 255,0,0,0])
@@ -53,4 +83,15 @@ describe('资源接线与战斗可读性', () => {
     }
     expect(units).toEqual(before)
   })
+})
+
+it('六件长柄均有自己的已登记图标和持握层，未来未入库物品可回落', () => {
+  const poles = Object.values(ITEM_BASES).filter(i => i.family === 'polearm')
+  expect(poles).toHaveLength(6)
+  for (const pole of poles) {
+    expect(itemIcon(pole.id, pole.slot)).toBe(`/assets/equipment/${pole.id}.png`)
+    expect(SPRITE_PATHS).toContain(`/assets/layers/${WEAPON_LAYERS[pole.id]}.png`)
+  }
+  expect(new Set(poles.map(i => WEAPON_LAYERS[i.id])).size).toBe(6)
+  expect(SPRITE_PATHS).toContain(itemIcon('future-polearm', 'weapon'))
 })

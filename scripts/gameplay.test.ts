@@ -1686,3 +1686,56 @@ test('recovery: pending and paid automatic events wait on the title; restored re
   callback("if (screen === 'title' || !eventResult) return",{...scope,screen:'title',eventResult:'已经到账'})()
   assert.equal(scheduled,1)
 })
+
+test('真实事件选择分别关联同名第二幕，跨刷新兑现不串来源，旧档不猜来源', () => {
+  const ledger = normalizeLedger(undefined), ref = {current:ledger}
+  let queue: any[] = [], published: any
+  const members = squad(), first = GUILD_EVENTS.find(e=>e.choices.some(c=>c.outcomes.some(o=>o.effects?.delayed?.eventId==='knight-pursuit')))!
+  const common = {runRef:{current:null},membersRef:{current:members},factLedgerRef:ref,
+    setFactLedger:(v:any)=>{published=v},setPendingConsequences:(f:any)=>{queue=f(queue)},
+    setEventsSeen:()=>{},logChronicle:()=>{},setEventResult:()=>{},setEventImpacts:()=>{},setMembers:()=>{}}
+  for (const day of [2,4]) {
+    handler('resolveEvent',{...common,day,pendingEvent:first,eventResult:null,
+      eventResolvingRef:{current:false},pendingConsequenceRef:{current:null},
+      pickOutcome:()=>({text:'保留后果',effects:{delayed:{eventId:'knight-pursuit',dueDays:3}}}),
+    })(0)
+  }
+  assert.equal(ledger.facts.length,2)
+  assert.deepEqual(ledger.facts.map(f=>f.refs.eventId),[first.id,first.id])
+  assert.deepEqual(queue.map(c=>c.originFactId),[1,2])
+  ref.current=normalizeLedger(JSON.parse(JSON.stringify(published)))
+  queue=JSON.parse(JSON.stringify(queue))
+  for (const due of [...queue,{eventId:'knight-pursuit',dueDay:8}]) {
+    const before=ref.current.facts.length
+    handler('startExpedition',{...common,day:9,pendingEvent:null,towerRunRef:{current:null},
+      expedition:members,activeDungeon:BLACKMOSS,lastBranchRef:{current:''},refusesToMarch:()=>false,
+      pendingConsequences:[due],GUILD_EVENTS,consequenceOf,pendingDepartureRef:{current:null},pendingConsequenceRef:{current:null},
+      setPendingEvent:()=>{},
+    })()
+    assert.equal(ref.current.facts.length,before+1)
+    assert.deepEqual(ref.current.facts.at(-1)!.links,due.originFactId ? [due.originFactId] : undefined)
+  }
+})
+
+test('paused combat saves queued commands and read hints inside the 5-second window; active ticks remain throttled', () => {
+  const members = squad(), run = beginBattle(createRun(members, BLACKMOSS, 912), 912)
+  run.battle!.commands.signatures = { [members[0].id]: { memberId: members[0].id, skillId: 'sig-ironwall-break', targetId: run.battle!.combatants.find(c => c.team === 'enemy')!.id } }
+  const progress = { ...initialRunState(), activeRun: run, playing: true }
+  const lastCombatSaveRef = { current: 9500 }, writes: any[] = []
+  const scope: Record<string, unknown> = { members, membersRef: { current: members }, run, towerRun: null,
+    progress, progressRef: { current: progress }, lastCombatSaveRef, Date: { now: () => 10000 },
+    itemOwnershipRef: { current: createGuildItems(members) }, statistics: newStatistics(), potions: { heal: 3, fury: 3 },
+    hintsSeen: ['battle-signature'], saveGuild: (value: unknown) => { writes.push(value); return true } }
+  for (const key of ['trainingReady','rareHuntNext','starMarrow','healingMastery','kingdom','memorial','manual','protectOn','gold','blessing','recruitCooldown','towerBest','chronicle','day','buildings','unlockedHybrids','dungeonMastery','pendingConsequences','eventsSeen','guildBuffs']) scope[key] = undefined
+  const saveEffect = callback('saveGuild({ trainingReady', scope)
+  saveEffect(); assert.equal(writes.length, 0)
+  progress.playing = false
+  saveEffect(); assert.equal(writes.length, 1); assert.equal(lastCombatSaveRef.current, 0)
+  const restored = JSON.parse(JSON.stringify(writes[0]))
+  assert.deepEqual(restored.runState.activeRun.battle.commands.signatures, run.battle!.commands.signatures)
+  assert.deepEqual(restored.hintsSeen, ['battle-signature'])
+  assert.equal(restored.runState.playing, false)
+  progress.playing = true
+  saveEffect(); assert.equal(writes.length, 2); assert.equal(lastCombatSaveRef.current, 10000)
+  saveEffect(); assert.equal(writes.length, 2)
+})

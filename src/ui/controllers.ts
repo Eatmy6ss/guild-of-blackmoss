@@ -15,7 +15,7 @@ import { rationCost, maintenanceCost } from '../sim/supply'
 import { plannedLayers } from '../sim/dungeon-map'
 import { INTEL_STOCK_CAP, consumeIntelReveal, verifyIntelFor } from '../sim/intel'
 import { stepBattle, orderRetreat, toCombatant } from '../sim/combat'
-import { appendFact, latestEventChoice, markExpeditionStart, markTold } from '../sim/fact-ledger'
+import { appendFact, factById, normalizeLedger, markExpeditionStart, markTold } from '../sim/fact-ledger'
 import { tellExpedition } from '../sim/storyteller'
 import { createRng } from '../sim/rng'
 import { createRun, startStep, retreatRun, resetAfterRun, REST_HEAL_PCT, type DungeonRun } from '../sim/run'
@@ -463,7 +463,8 @@ export function createAppControllers(deps: ControllerDeps) {
     if (due) {
       const def = GUILD_EVENTS.find((e) => e.id === due.eventId)
       if (def) {
-        const link = latestEventChoice(factLedgerRef.current, due.eventId)
+        const origin = due.originFactId === undefined ? undefined : factById(factLedgerRef.current, due.originFactId)
+        const link = origin?.kind === 'event-choice' && origin.day <= day ? origin : undefined
         appendFact(factLedgerRef.current, day, { kind: 'consequence-due', actors: [], refs: { eventId: due.eventId }, links: link ? [link.id] : undefined })
         setFactLedger({ ...factLedgerRef.current })
         pendingConsequenceRef.current = due
@@ -472,7 +473,7 @@ export function createAppControllers(deps: ControllerDeps) {
         setEventResult(null)
         return
       }
-      setPendingConsequences((q: PendingConsequenceX[]) => { const at = q.findIndex((c: PendingConsequenceX) => c.eventId === due.eventId && c.dueDay === due.dueDay); return q.filter((_: PendingConsequenceX, i: number) => i !== at) })
+      setPendingConsequences((q: PendingConsequenceX[]) => { const at = q.findIndex((c: PendingConsequenceX) => c.eventId === due.eventId && c.dueDay === due.dueDay && c.originFactId === due.originFactId); return q.filter((_: PendingConsequenceX, i: number) => i !== at) })
     }
     // 已通过出发守卫，清旧通知后推进公会日；保留本次消退/过期反馈。
     const departureDay = day + 1
@@ -619,6 +620,11 @@ export function createAppControllers(deps: ControllerDeps) {
       if (dueNode) {
         const def = GUILD_EVENTS.find((e) => e.id === dueNode.eventId)
         if (def) {
+          const origin = dueNode.originFactId === undefined ? undefined : factById(factLedgerRef.current, dueNode.originFactId)
+          const link = origin?.kind === 'event-choice' && origin.day <= day ? origin : undefined
+          appendFact(factLedgerRef.current, day, { kind: 'consequence-due', actors: r.memberIds,
+            refs: { eventId: dueNode.eventId }, links: link ? [link.id] : undefined })
+          setFactLedger({ ...factLedgerRef.current })
           pendingConsequenceRef.current = dueNode
           setPendingEvent(def)
           setEventResult(null)
@@ -746,6 +752,8 @@ export function createAppControllers(deps: ControllerDeps) {
     setTowerBest(0)
     chronicleRef.current = []
     setChronicle([])
+    factLedgerRef.current = normalizeLedger(undefined)
+    setFactLedger(factLedgerRef.current)
     seedChronicle([])
     setPendingConsequences([])
     setEventsSeen([])
@@ -995,13 +1003,13 @@ export function createAppControllers(deps: ControllerDeps) {
     const rng = (runRef.current ? runRng(runRef.current) : guildRng)
     const outcome = pickOutcome(ev, choiceIdx, rng())
     eventResolvingRef.current = true
-    // A2:事件选择入账(说书链头;consequence-due 兑现时经 latestEventChoice 建链)
-    appendFact(factLedgerRef.current, day, { kind: 'event-choice', actors: runRef.current ? runRef.current.memberIds : [], refs: { eventId: ev.id } })
+    // 延迟后果指向当次选择，不借用同名事件的最近记录。
+    const eventChoice = appendFact(factLedgerRef.current, day, { kind: 'event-choice', actors: runRef.current ? runRef.current.memberIds : [], refs: { eventId: ev.id } })
     setFactLedger({ ...factLedgerRef.current })
     // 决策与奖励同批落盘;仅展示时保留队列,刷新不能跳过未处理后果。
     const due = pendingConsequenceRef.current
     if (due) {
-      setPendingConsequences((q) => { const at = q.findIndex(c => c.eventId === due.eventId && c.dueDay === due.dueDay); return q.filter((_, i) => i !== at) })
+      setPendingConsequences((q) => { const at = q.findIndex(c => c.eventId === due.eventId && c.dueDay === due.dueDay && c.originFactId === due.originFactId); return q.filter((_, i) => i !== at) })
       pendingConsequenceRef.current = null
     }
     const fx = outcome.effects ?? {}
@@ -1112,10 +1120,7 @@ export function createAppControllers(deps: ControllerDeps) {
     setEventsSeen((s) => (s.includes(ev.id) ? s : [...s, ev.id]))
     // 延迟第二幕:入队,dueDay 到期在出征日弹出;引子当场可见(反馈:后续事件要留钩子)
     if (fx.delayed) {
-      const link = latestEventChoice(factLedgerRef.current, fx.delayed!.eventId)
-      appendFact(factLedgerRef.current, day, { kind: 'event-choice', actors: runRef.current ? runRef.current.memberIds : [], refs: { eventId: fx.delayed!.eventId }, links: link ? [link.id] : undefined })
-      setFactLedger({ ...factLedgerRef.current })
-      setPendingConsequences((q) => [...(q ?? []), { eventId: fx.delayed!.eventId, dueDay: day + fx.delayed!.dueDays }])
+      setPendingConsequences((q) => [...(q ?? []), { eventId: fx.delayed!.eventId, dueDay: day + fx.delayed!.dueDays, originFactId: eventChoice?.id }])
       chip('这件事,还没有完……', 'hook')
     }
     // R4.1(U34 Q1):事件结果流水不再进大事记(弹层+影响明细 chips 已可视化)

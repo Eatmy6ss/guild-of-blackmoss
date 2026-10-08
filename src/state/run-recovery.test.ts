@@ -1,3 +1,4 @@
+import { appendFact } from '../sim/fact-ledger'
 import { beforeEach, expect, test, vi } from 'vitest'
 import { BLACKMOSS, DUNGEONS } from '../data/dungeons'
 import { GUILD_EVENTS } from '../data/guild-events'
@@ -375,4 +376,31 @@ test('坏远征断点不能覆盖资产：拒绝导入；有效备份恢复；�
     expect(loadGuildSave()!.runState).toEqual(good.runState)
     expect(saveLoadNotice()).toBe('')
   } finally { warn.mockRestore() }
+})
+
+test('当前版坏账本导入局部修复，保留资产/远征/延迟来源且编号不复用', () => {
+  const s = save()
+  s.runState.activeRun = createRun(resolved(s), BLACKMOSS, 53)
+  const choice = appendFact(s.factLedger, 2, {kind:'event-choice',actors:[],refs:{eventId:'dragon-egg'}})!
+  s.pendingConsequences = [{eventId:'egg-hatch',dueDay:9,originFactId:choice.id}]
+  ;(s.factLedger.facts as any[]).push({id:18,day:3,kind:'death',actors:['old'],refs:{},cause:{}}, {id:19,day:3,kind:'unknown',actors:[],refs:{}})
+  const loaded = importSave(exportSave(s))!
+  expect(loaded).not.toBeNull()
+  expect(loaded.gold).toBe(s.gold); expect(loaded.items).toEqual(s.items)
+  expect(loaded.members).toEqual(s.members); expect(loaded.runState).toEqual(s.runState)
+  expect(loaded.pendingConsequences).toEqual(s.pendingConsequences)
+  expect(loaded.factLedger.facts).toEqual([choice])
+  expect(appendFact(loaded.factLedger, 8, {kind:'wish-done',actors:[],refs:{}})!.id).toBeGreaterThan(19)
+})
+
+test('已弹出后果的非法来源局部降级，队列与弹窗可匹配消费', () => {
+  const s = save()
+  s.pendingConsequences = [{eventId:'egg-hatch',dueDay:9,originFactId:{bad:true} as any}]
+  s.runState.eventId = 'egg-hatch'
+  s.runState.pendingConsequence = {...s.pendingConsequences[0]}
+  const loaded = importSave(exportSave(s))!
+  expect(loaded).not.toBeNull()
+  expect(loaded.pendingConsequences).toEqual([{eventId:'egg-hatch',dueDay:9}])
+  expect(loaded.runState.pendingConsequence).toEqual(loaded.pendingConsequences![0])
+  expect(loaded.gold).toBe(s.gold); expect(loaded.members).toEqual(s.members)
 })

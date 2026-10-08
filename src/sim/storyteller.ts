@@ -65,15 +65,21 @@ function collide(type: StoryType, facts: Fact[], slots: StorySlots, fromId: numb
 
   switch (type) {
     case 'consequence-due': {
-      const due = facts.find((f) => f.kind === 'consequence-due' && (f.links?.length ?? 0) > 0 && f.id >= fromId)
-      if (!due) return null
-      const origin = facts.find((f) => f.id === due.links![0])
-      const evDef = GUILD_EVENTS.find((e) => e.id === due.refs.eventId)
-      if (!evDef) return null // S8:未知事件无法给出可读标题,不讲(生产中 due 必来自 GUILD_EVENTS)
-      slots.eventTitle = evDef.title.replace(/^第.幕·/, '')
-      slots.choiceDay = origin?.day ?? due.day
-      slots.dueDay = due.day
-      return [due.id, ...(due.links ?? [])]
+      for (const due of facts.filter((f) => f.kind === 'consequence-due' && f.id >= fromId)) {
+        if (!Number.isSafeInteger(due.day) || due.day < 1) continue
+        // 旧档可能把第二幕伪记为最初选择；只有真实事件链能证明跨日因果。
+        const origin = facts.find((f) => due.links?.includes(f.id) && f.id < due.id &&
+          f.kind === 'event-choice' && Number.isSafeInteger(f.day) && f.day >= 1 && f.day <= due.day &&
+          GUILD_EVENTS.find((event) => event.id === f.refs.eventId)?.choices.some((choice) =>
+            choice.outcomes.some((outcome) => outcome.effects?.delayed?.eventId === due.refs.eventId)))
+        const evDef = GUILD_EVENTS.find((event) => event.id === due.refs.eventId)
+        if (!origin || !evDef) continue
+        slots.eventTitle = evDef.title.replace(/^第.幕·/, '')
+        slots.choiceDay = origin.day
+        slots.dueDay = due.day
+        return [due.id, origin.id]
+      }
+      return null
     }
     case 'firstkill-death': {
       // U26⑤:Boss 战当场阵亡(同副本同 encounter)。旧事实缺 encounter 不配对(冒充同场)
@@ -105,7 +111,9 @@ function collide(type: StoryType, facts: Fact[], slots: StorySlots, fromId: numb
     }
     case 'scar-survive': {
       // U26⑥ Q4-C:创伤只讲「本场濒死后生还」或「第 2/3 条伤疤」;旧事实缺标记不讲
-      const scar = facts.find((f) => f.kind === 'scar' && ((f.refs.nearDeath === true) || (f.refs.scarNth ?? 0) >= 2))
+      const scar = facts.find((f) => f.kind === 'scar' && f.actors.length > 0 &&
+        Number.isSafeInteger(f.refs.scarNth) && (f.refs.scarNth ?? 0) >= 1 &&
+        (f.refs.nearDeath === true || (f.refs.scarNth ?? 0) >= 2))
       if (!scar) return null
       const scarred = scar.actors[0]
       if (deaths.some((d) => d.actors[0] === scarred)) return null // 人没了归遗物/死亡类,不这么讲

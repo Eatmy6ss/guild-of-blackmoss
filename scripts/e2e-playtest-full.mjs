@@ -377,6 +377,21 @@ async function phaseEnding() {
       const text = await b.evalJs(`document.querySelector('[data-testid="weapon-proficiency"]')?.textContent ?? null`)
       // R4.1(U34):同一趟顺带读生平栏(条数/永久徽标/倒序首条)
       const bio = await b.evalJs(`(()=>{const l=document.querySelector('.bio-list');if(!l)return null;return {n:l.children.length,flag:l.textContent.includes('⚑'),first:l.textContent.includes('D9')}})()`)
+      const art = await b.evalJs(`(()=>{const nodes=[...document.querySelectorAll('.member-sheet .hero-portrait canvas,.member-sheet .item-art canvas')];return {count:nodes.length,painted:nodes.every(c=>c.getContext('2d').getImageData(0,0,32,32).data.some((v,i)=>i%4===3&&v>0))}})()`)
+      const label = name === poleMember?.name ? 'polearm' : 'home'
+      check('ART-' + label, '人物档案和装备画布有实际像素', art.count > 1 && art.painted ? 'PASS' : 'FAIL', JSON.stringify(art))
+      const gear = await b.evalJs(`Array.from(document.querySelectorAll('.member-panel select.slot-select'),s=>({value:s.value,text:s.selectedOptions[0]?.textContent??''}))`)
+      check('GEAR-' + label, '换装下拉正确显示当前穿戴，不误报空槽', gear.length === 3 && gear.every(s=>s.value && !s.text.endsWith('·空')) ? 'PASS' : 'FAIL', JSON.stringify(gear).slice(0, 200))
+      await b.evalJs(`document.querySelector('.roster-v2').parentElement.scrollTop=0`)
+      await b.shot('profile-' + label)
+      if (label === 'home') {
+        await b.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false })
+        await sleep(250)
+        const narrow = await b.evalJs(`(()=>{const sheet=document.querySelector('.member-sheet');const panel=document.querySelector('.member-panel');const tabs=document.querySelector('.roster-tabs');const overlay=document.querySelector('.roster-v2').parentElement;const r=sheet.getBoundingClientRect();return {width:r.width,overflow:Math.max(sheet.scrollWidth-sheet.clientWidth,overlay.scrollWidth-overlay.clientWidth),embedded:!panel.classList.contains('screen-overlay'),belowTabs:r.top>=tabs.getBoundingClientRect().bottom,slots:panel.querySelectorAll('select.slot-select').length}})()`)
+        check('ART-narrow', '窄屏人物档案保持可读宽度，换装与成员切换同页可达', narrow.width >= 280 && narrow.overflow <= 1 && narrow.embedded && narrow.belowTabs && narrow.slots === 3 ? 'PASS' : 'FAIL', JSON.stringify(narrow))
+        await b.shot('profile-narrow')
+        await b.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
+      }
       await pressEscape(b); await sleep(250)
       return { text, bio }
     }

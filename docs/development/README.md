@@ -33,7 +33,7 @@
 | C1/C4/B6 | 宪法冻结:C1 宪法冻结/C4 数值冻结(批次 2 出口后仍待制作人下令解冻)/B6 事件表冻结(U27 已解冻) |
 | ⑨⑲⑱ 等 | smoke 门禁编号(scripts/smoke.ts;⑨ 塔尔玛节奏带/⑲ 副本注册表+节奏带/⑱ 战斗节奏带/㉘ 装备扩容等) |
 | I8 / I4-I6 | 不变量断言(vitest):I8=无死属性(stat-wiring)/I4 词条取值统一/I5 格式化 |
-| v22-v30 | 存档 schema 版本(迁移链在 src/state/save.ts;**缺省字段不注入键**) |
+| v22-v31 | 存档 schema 版本(迁移链在 src/state/save.ts；v31 修复旧人物分支同号 v23 的结构歧义，其余可选字段保持缺省) |
 | M1/M2 | 实施计划里程碑:M1 操纵感✅/M2 主菜门 |
 | 垫片/rngScope | gameplay 回归测试的作用域注入(scripts/gameplay.test.ts;新标识符需同步扩容) |
 

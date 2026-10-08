@@ -1,5 +1,5 @@
-import { HeroPortrait, ArtCanvas } from './art/ArtCanvas'
-import { itemIcon } from './art/catalog'
+import { HeroPortrait } from './art/ArtCanvas'
+import { ItemArt, ItemLore } from './art/ItemArt'
 import type { BattleState, ItemInstance, Member, Slot } from '../sim/types'
 import type { DungeonRun } from '../sim/run'
 import { RACES } from '../data/races'
@@ -99,7 +99,7 @@ export function MemberCard(props: {
             }
             return (
               <label key={slot} className="gear-control">
-                <ArtCanvas paths={[itemIcon(equipped?.baseId ?? '', slot)]} label={SLOT_NAME[slot]} size={32} />
+                <ItemArt item={equipped} slot={slot} />
                 <span>{SLOT_NAME[slot]}</span>
               <select
                 aria-label={m.name + '的' + SLOT_NAME[slot]}
@@ -115,6 +115,7 @@ export function MemberCard(props: {
                   </option>
                 ))}
               </select>
+              {equipped && <ItemLore baseId={equipped.baseId} />}
               </label>
             )
           })}

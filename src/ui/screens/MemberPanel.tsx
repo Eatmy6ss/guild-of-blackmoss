@@ -1,3 +1,5 @@
+import { HeroPortrait } from '../art/ArtCanvas'
+import { ItemArt, ItemLore } from '../art/ItemArt'
 // T2 信息透明化:角色档案页(WoW 式全量面板)——从花名册点开,一个页面看懂一个人物。
 // 纪律:所有数值经 toCombatant/statLayers 真实计算;所有说明来自 effect-text.ts,禁止臆造。
 import { useEffect, useRef } from 'react'
@@ -93,9 +95,10 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
   ]
 
   return (
-    <div className="screen-overlay fullpage" style={{ zIndex: 100 }}>
+    <div className={embedded ? 'member-panel embedded' : 'screen-overlay fullpage member-panel'} style={embedded ? undefined : { zIndex: 100 }}>
       <section className="member-sheet" ref={panel as never} tabIndex={-1}>
         <div className="ms-head">
+          <HeroPortrait member={member} size={96} />
           <div>
             <h2>{member.name}</h2>
             <p className="ms-sub">
@@ -154,12 +157,14 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
               const base = item ? ITEM_BASES[item.baseId] : undefined
               return (
                 <div key={slot} className="ms-eq">
+                  <ItemArt item={item} slot={slot} />
                   <b>{slotName[slot]}</b>
                   {!item || !base ? <span className="hint">空</span> : (
                     <div className="ms-eq-body">
                       <div className="ms-eq-name">
                         {base.name}
-                        {base.legacy && LEGACY_INFO[base.legacy] ? <span className="ms-legacy">〔{LEGACY_INFO[base.legacy].name}〕</span> : ''}
+                        <ItemLore baseId={item.baseId} />
+                      {base.legacy && LEGACY_INFO[base.legacy] ? <span className="ms-legacy">〔{LEGACY_INFO[base.legacy].name}〕</span> : ''}
                         {base.setName ? <span className="ms-set">[{base.setName === 'gray-crown' ? '灰冠' : base.setName === 'wind-hunt' ? '猎风' : base.setName}套装]</span> : null}
                       </div>
                       <div className="hint">{STAT_NAME[base.stat]}{formatStat(base.stat, base.value, true)}</div>
@@ -290,7 +295,9 @@ export function MemberPanel({ member, members, onClose, inventory, weaponTrainin
             <div className="voc-btns">
               {slots.map((slot) => {
                 const equipped = member.equipment[slot]
-                const options = sortInventoryItems(inventory!.filter((i) => ITEM_BASES[i.baseId]?.slot === slot), sortMode)
+                const candidates = inventory!.filter((i) => ITEM_BASES[i.baseId]?.slot === slot)
+                if (equipped && !candidates.some((i) => i.id === equipped.id)) candidates.push(equipped)
+                const options = sortInventoryItems(candidates, sortMode)
                 return (
                   <label key={slot} className="gear-control">
                     <span>{slotNames[slot]}</span>
