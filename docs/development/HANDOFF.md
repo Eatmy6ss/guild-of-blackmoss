@@ -2,6 +2,14 @@
 
 > **新读者/AI 入口**:先读 [AGENTS.md](../../AGENTS.md)(上岗须知+红线)→ [README.md](README.md)(文档地图与术语表)→ 本文件的认领板。按任务读 [DECISIONS.md](DECISIONS.md)(拍板台账)。历史交接全录在 [HANDOFF-archive.md](HANDOFF-archive.md)(2026-10-07 前的全部工单登记)。
 
+
+## 新工单(待制作人拍板后开工):UI 桌面化 D1–D4(拟交 Codex,2026-10-08)
+
+- **依据**:[ui-desktop-2026-10-08.md](ui-desktop-2026-10-08.md) §5、§7;规格以样稿 [ui-desktop-mock-2026-10-08.html](ui-desktop-mock-2026-10-08.html) 的 CSS 为准;大厅美术已精修,素材在 `ui-desktop-2026-10-08/hall-art/`。
+- **范围**:D1 舞台与两层分辨率 → D2 设计系统 → D3 战斗 HUD → D4 结算。只改表现,不碰玩法、数值和存档。
+- **验收**:每包附 1920×1080 截图,与样稿截图并排对比;`npm run verify` 全绿。
+- **状态**:方案三个文件(文档、样稿、图片目录)尚未入库,开工前先由制作人确认方向并提交。
+
 ## 状态卡(2026-10-08)
 
 | 项 | 值 |

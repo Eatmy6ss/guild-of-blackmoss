@@ -1,0 +1,188 @@
+<script>
+const stage = document.getElementById('stage')
+function fit() {
+  const k = Math.min(innerWidth / 1920, innerHeight / 1080)
+  stage.style.transform = `scale(${k})`
+  stage.style.left = Math.round((innerWidth - 1920 * k) / 2) + 'px'
+  stage.style.top = Math.round((innerHeight - 1080 * k) / 2) + 'px'
+}
+addEventListener('resize', fit); fit()
+
+const MEMBERS = [
+  { n: '莫达娜', job: '守卫', lv: 7, src: '{{hero_guard}}', hp: 84, st: 70, go: true },
+  { n: '巴尔德', job: '牧师', lv: 6, src: '{{hero_priest}}', hp: 62, st: 55, go: true },
+  { n: '托尔文', job: '游侠', lv: 7, src: '{{hero_ranger}}', hp: 93, st: 80, go: true },
+  { n: '格里姆', job: '战士', lv: 6, src: '{{hero_warrior}}', hp: 100, st: 22, go: false },
+  { n: '伊莎', job: '法师', lv: 5, src: '{{hero_mage}}', hp: 71, st: 90, go: false },
+]
+document.getElementById('mercs').innerHTML = MEMBERS.map((m, i) => `
+  <button class="merc${m.go ? ' go' : ''}${m.st < 30 ? ' tired' : ''}" data-t="m${i}" aria-label="${m.n}">
+    <div class="face"><img src="${m.src}" alt=""></div>
+    <div class="bar"><i style="width:${m.hp}%"></i></div><div class="bar st"><i style="width:${m.st}%"></i></div>
+    <div class="nm"><span>${m.n}</span><small>Lv${m.lv}</small></div></button>`).join('')
+
+const TIPS = {
+  kingdom: ['王国来函', '告示板', '<p>在办委托 1 / 2</p><p class="g">新来函 2 封</p>', 'Q'],
+  depart: ['出征之门', '黑苔沼泽', '<p>带上已编入的 3 人出发。</p><p class="d">每趟地图都不一样。</p>', 'Enter'],
+  tavern: ['酒馆', '壁炉与吧台', '<p>今晚有 1 位访客在等。</p><p class="d">招募、庆功宴、打听传闻。</p>', 'T'],
+  manual: ['手册', '书架', '<p class="d">首领机制、怪物特性、见过的事件。</p>', 'K'],
+  chronicle: ['大事记', '讲台', '<p class="d">公会的首杀、阵亡和晋升。每个人的经历记在各自的生平里。</p>', 'J'],
+  memorial: ['名人堂', '第 5 天开放', '<p class="d">阵亡的佣兵会被刻在这里。</p>', ''],
+  warehouse: ['仓库', '箱堆', '<p>装备 12 件</p><p class="g">2 件遗物可以赎回</p>', 'B'],
+  base: ['训练场', '铁砧与木人', '<p>转职、武器专修、疗伤。</p><p class="r">格里姆精力不足，需要休息</p>', 'N'],
+  gold: ['金币', '', '<p class="d">战斗、通关和委托所得。用来补给、招募和建设。</p>', ''],
+  bless: ['英灵祝福', '', '<p class="d">阵亡与心愿换来的祝福，用于转职和特殊训练。</p>', ''],
+  potion: ['治疗药', '', '<p class="d">出征随队携带，最多 3 瓶。</p>', ''],
+  pick: ['换个副本', '', '<p class="d">打开版图，选择要去的副本。</p>', 'M'],
+  supply: ['出征补给', '', '<p>口粮 3 人 × 6 层，装备维护</p><p class="d">出发时扣除。</p>', ''],
+  soaked: ['湿透', '路况', '<p class="r">受疗降低一成</p><p class="g">火抗提高 15%</p><p class="d">走到营地烤干后解除。</p>', ''],
+  buff1: ['守诺之重', '增益', '<p class="g">防御提高 15%</p><p class="d">持续到本趟结束。</p>', ''],
+  s1: ['破咒盾击', '莫达娜  招牌技', '<p>立即打断目标的咏唱，并举盾格挡接下来的几下攻击。</p><p class="g">现在可以用</p>', '1'],
+  s2: ['圣疗', '巴尔德  招牌技', '<p>大额治疗你点名的队友，并清除束缚与灼烧。</p><p class="r">冷却中，还要 6 秒</p>', '2'],
+  s3: ['贯甲狙击', '托尔文  招牌技', '<p>无视防御的重击，射向集火目标。</p><p class="g">现在可以用</p>', '3'],
+  p1: ['治疗药', '', '<p>全队回复三成生命。</p><p class="d">剩 3 瓶，30 秒一次。</p>', '4'],
+  p2: ['爆发药', '', '<p>全队攻击提高，持续 15 秒。</p><p class="d">剩 3 瓶。</p>', '5'],
+  auto: ['挂机', '', '<p class="d">队员按各自习惯出招。招牌技仍然可以随时手动按。</p>', 'A'],
+  focus: ['集火', '', '<p class="d">点一个敌人，全队优先攻击它。</p>', 'F'],
+  formation: ['阵型', '', '<p class="d">推进、标准、收缩、分散。</p>', 'G'],
+  retreat: ['撤退', '', '<p>放弃这一趟，队伍带伤回城。</p><p class="r">本趟金币和熟练度只保留一半。</p>', 'R'],
+  i1: ['蛙神之眼', '史诗饰品', '<p>受到的治疗 +10%</p><p class="epic">生还者之息：每场战斗第一次濒死时回复 20% 生命</p><p class="flavor">它从不眨眼。据说沼泽里的东西，都在通过它看着你。</p>', ''],
+  i2: ['逐风者的长弓', '精良武器  弓', '<p>攻击 +12</p><p class="g">暴击 +4%</p><p class="flavor">弓梢系着褪色的路标布。它的主人总比风晚一步归来。</p>', ''],
+  i3: ['泽地重铠', '精良护甲', '<p>防御 +8</p><p class="g">生命 +22</p>', ''],
+  i4: ['行路平安符', '饰品', '<p>生命 +15</p>', ''],
+}
+MEMBERS.forEach((m, i) => TIPS['m' + i] = [m.n, `${m.job} Lv${m.lv}`,
+  `<p>生命 ${m.hp}%   精力 ${m.st}%</p>${m.st < 30 ? '<p class="r">精力不足，今天别让他出门</p>' : m.go ? '<p class="g">已编入出征小队</p>' : '<p class="d">留在公会</p>'}`, 'C'])
+
+function bindTips(root, tip) {
+  root.querySelectorAll('[data-t]').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const t = TIPS[el.dataset.t]; if (!t) return
+      tip.innerHTML = `<h4>${t[0]}</h4>${t[1] ? `<div class="sub">${t[1]}</div>` : ''}${t[2]}${t[3] ? `<div class="foot">快捷键 <span class="key">${t[3]}</span></div>` : ''}`
+      const r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = sr.width / 1920
+      tip.classList.add('show')
+      const w = tip.offsetWidth, h = tip.offsetHeight
+      let x = (r.left - sr.left) / k + r.width / k / 2 - w / 2
+      let y = (r.top - sr.top) / k - h - 14
+      if (y < 12) y = (r.bottom - sr.top) / k + 14
+      x = Math.max(12, Math.min(1920 - w - 12, x))
+      tip.style.left = x + 'px'; tip.style.top = y + 'px'
+      if (el.classList.contains('hot')) el.classList.add('lit')
+    })
+    el.addEventListener('mouseleave', () => { tip.classList.remove('show'); el.classList.remove('lit') })
+  })
+}
+
+// 大厅物件名牌(悬停才出现)
+const NAMES = { kingdom: [133, 34], depart: [320, 54], tavern: [76, 70], manual: [474, 52], chronicle: [413, 112], memorial: [592, 48], warehouse: [476, 184], base: [568, 170] }
+const plates = document.getElementById('plates')
+for (const [k, [x, y]] of Object.entries(NAMES))
+  plates.insertAdjacentHTML('beforeend', `<div class="nameplate${k === 'memorial' ? ' locked' : ''}" data-for="${k}" style="left:${x * 3}px;top:${y * 3 - 28}px">${TIPS[k][0]}</div>`)
+document.querySelectorAll('#hall .hot').forEach(el => {
+  const np = plates.querySelector(`[data-for="${el.dataset.t}"]`)
+  el.addEventListener('mouseenter', () => np && np.classList.add('on'))
+  el.addEventListener('mouseleave', () => np && np.classList.remove('on'))
+})
+
+// 副本地图:分层节点(杀戮尖塔式手绘卷轴),迷雾遮住前方三层
+const ICON = {
+  battle: '<path d="M-9 9 L7 -7 M-5 -9 L9 5 M4 -10 L10 -4 M-10 4 L-4 10" stroke="#3b2a1a" stroke-width="3" stroke-linecap="round"/>',
+  elite: '<path d="M0 -12 L4 -4 L12 -3 L6 3 L8 12 L0 7 L-8 12 L-6 3 L-12 -3 L-4 -4 Z" fill="#7e2a1c"/>',
+  event: '<text x="0" y="8" text-anchor="middle" font-family="GSerif" font-size="24" fill="#3b2a1a">?</text>',
+  rest: '<path d="M-10 8 L0 -10 L10 8 Z" fill="none" stroke="#3b2a1a" stroke-width="2.5"/><path d="M-3 8 Q0 0 3 8" fill="#c0702f"/>',
+  treasure: '<rect x="-10" y="-4" width="20" height="13" fill="#7a5a2e" stroke="#3b2a1a" stroke-width="2"/><path d="M-10 -4 Q0 -14 10 -4" fill="#8e6a36" stroke="#3b2a1a" stroke-width="2"/><rect x="-2" y="0" width="4" height="5" fill="#d9b979"/>',
+  boss: '<path d="M-16 6 Q-14 -10 0 -14 Q14 -10 16 6 L10 4 L8 14 L0 8 L-8 14 L-10 4 Z" fill="#5e170c"/><circle cx="-5" cy="-3" r="2.5" fill="#e7a33e"/><circle cx="5" cy="-3" r="2.5" fill="#e7a33e"/>',
+  fog: '<text x="0" y="7" text-anchor="middle" font-family="GSerif" font-size="20" fill="#a8977a">?</text>',
+}
+const TER = { water: '水域', wild: '林野', road: '道路', camp: '营地', grave: '墓地' }
+const L = [
+  [{ k: 'battle', t: 'road' }],
+  [{ k: 'battle', t: 'water' }, { k: 'event', t: 'wild' }, { k: 'battle', t: 'road' }],
+  [{ k: 'rest', t: 'camp' }, { k: 'battle', t: 'water', now: 1 }, { k: 'elite', t: 'wild' }],
+  [{ k: 'battle', t: 'water' }, { k: 'treasure', t: 'road' }, { k: 'event', t: 'camp' }],
+  [{ k: 'elite', t: 'grave' }, { k: 'battle', t: 'wild' }],
+  [{ k: 'rest', t: 'camp' }, { k: 'battle', t: 'water' }, { k: 'event', t: 'road' }],
+  [{ k: 'boss' }],
+]
+const E = [[0,0,1,0],[0,0,1,1],[0,0,1,2],[1,0,2,0],[1,1,2,1],[1,2,2,1],[1,2,2,2],[2,1,3,0],[2,1,3,1],[2,1,3,2],[2,0,3,0],[2,2,3,2],[3,0,4,0],[3,1,4,0],[3,1,4,1],[3,2,4,1],[4,0,5,0],[4,0,5,1],[4,1,5,1],[4,1,5,2],[5,0,6,0],[5,1,6,0],[5,2,6,0]]
+const PATH = [[0,0],[1,0],[2,1]]
+const pos = (li, ni) => {
+  const n = L[li].length, y = 900 - li * 128
+  const jitter = [[0, 0], [-14, 8], [10, -6], [-6, 10], [12, -8], [-10, 4], [0, 0]][li]
+  const x = 500 + (ni - (n - 1) / 2) * 230 + jitter[ni % 2] + (ni === 1 ? jitter[1] : 0)
+  return [x, y]
+}
+const svg = document.getElementById('mapsvg')
+let h = ''
+// 地形底纹(水洼、树丛),手绘感
+h += '<g opacity=".35" fill="none" stroke="#5a4024" stroke-width="1.4">'
+for (let i = 0; i < 26; i++) { const x = 60 + (i * 137) % 880, y = 120 + (i * 241) % 820; h += `<path d="M${x} ${y} q12 -10 24 0 t24 0" />` }
+h += '</g>'
+const isPath = (a, b, c, d) => PATH.some((p, i) => PATH[i + 1] && p[0] === a && p[1] === b && PATH[i + 1][0] === c && PATH[i + 1][1] === d)
+for (const [a, b, c, d] of E) {
+  const [x1, y1] = pos(a, b), [x2, y2] = pos(c, d)
+  const walked = isPath(a, b, c, d), next = a === 2 && b === 1
+  const mx = (x1 + x2) / 2 + (b - d) * 18, my = (y1 + y2) / 2
+  h += `<path d="M${x1} ${y1 - 26} Q${mx} ${my} ${x2} ${y2 + 26}" fill="none" stroke="${walked ? '#7e2a1c' : '#5a4024'}" stroke-width="${walked ? 4 : 2}" stroke-dasharray="${walked ? '' : '2 9'}" stroke-linecap="round" opacity="${walked || next ? 1 : .6}"/>`
+}
+L.forEach((layer, li) => layer.forEach((nd, ni) => {
+  const [x, y] = pos(li, ni)
+  const past = PATH.some(p => p[0] === li && p[1] === ni) && !nd.now
+  const fog = li >= 4 && nd.k !== 'boss'
+  const next = li === 3
+  const reveal = li === 3 ? 'kind' : fog ? 'fog' : 'full'
+  const icon = fog ? ICON.fog : ICON[nd.k]
+  const r = nd.k === 'boss' ? 40 : 28
+  h += `<g class="node${past ? ' past' : ''}${next ? ' next' : ''}${fog ? ' lock' : ''}" data-t="n${li}_${ni}" transform="translate(${x} ${y})">
+    ${next ? `<circle class="halo" r="${r + 8}"/>` : ''}
+    <circle class="disc" r="${r}" fill="${nd.now ? '#d9b979' : fog ? '#7d6a50' : '#cbb88c'}" stroke="${nd.now ? '#7e2a1c' : '#3b2a1a'}" stroke-width="${nd.now ? 4 : 2}"/>
+    ${nd.k === 'boss' ? '<circle r="34" fill="none" stroke="#3b2a1a" stroke-width="1.5"/>' : ''}
+    ${icon}
+    ${nd.t && !fog ? `<text y="${r + 20}" text-anchor="middle" font-family="GSans" font-size="13" fill="#5a4024">${TER[nd.t]}</text>` : ''}
+  </g>`
+  const KIND = { battle: '战斗', elite: '精英', event: '事件', rest: '营地', treasure: '宝箱', boss: '首领' }
+  const RISK = { water: ['湿透', '掉落率 ×1.5'], wild: ['迷途', '熟练度 ×2'], camp: ['暴露', '回复 15% 生命'], grave: ['阴寒', '祝福 +2'], road: ['', ''] }
+  TIPS[`n${li}_${ni}`] = nd.k === 'boss' ? ['沼泽食人魔 格鲁什', '首领', '<p>连战两场：格鲁什，然后是深渊狂信 塔尔玛。</p><p class="r">第二场开局即狂暴</p>', '']
+    : fog ? ['未知岔路', '迷雾', '<p class="d">熟练度不够，看不清这里有什么。</p>', '']
+    : [KIND[nd.k], TER[nd.t] || '', (RISK[nd.t][0] ? `<p class="g">${RISK[nd.t][1]}</p><p class="r">可能：${RISK[nd.t][0]}</p>` : '<p class="d">没有路况</p>') + (nd.now ? '<p class="d">你在这里</p>' : ''), '']
+}))
+svg.innerHTML = h
+document.getElementById('legend').innerHTML = [['battle', '战斗', ''], ['elite', '精英', '回报翻倍'], ['event', '事件', ''], ['rest', '营地', '回复生命'], ['treasure', '宝箱', ''], ['boss', '首领', '']]
+  .map(([k, n, s]) => `<div class="li"><svg viewBox="-17 -17 34 34"><circle r="15" fill="#cbb88c" stroke="#3b2a1a" stroke-width="1.5"/><g transform="scale(.7)">${ICON[k]}</g></svg>${n}<span>${s}</span></div>`).join('')
+
+for (const id of ['hall', 'map', 'battle', 'result']) bindTips(document.getElementById(id), document.getElementById('tip-' + id))
+
+// 页面切换与快捷键
+const journal = document.getElementById('journal')
+let view = 'hall'
+function show(v) {
+  view = v
+  journal.classList.toggle('open', v === 'journal')
+  const base = v === 'journal' ? 'hall' : v
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === base))
+  document.querySelectorAll('#mocknav button').forEach(b => b.classList.toggle('on', b.dataset.v === v))
+}
+document.querySelectorAll('#mocknav button').forEach(b => b.onclick = () => show(b.dataset.v))
+document.querySelector('#hall .hot[data-t=kingdom]').addEventListener('click', () => show('journal'))
+document.querySelector('#hall .hot[data-t=depart]').addEventListener('click', () => show('map'))
+document.getElementById('departBtn').onclick = () => show('map')
+document.getElementById('jclose').onclick = () => show('hall')
+document.getElementById('backHall').onclick = () => show('hall')
+document.querySelectorAll('#mapsvg .node.next').forEach(n => n.addEventListener('click', () => show('battle')))
+addEventListener('contextmenu', e => e.preventDefault())
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase()
+  if (k === 'escape') return show(view === 'battle' ? 'map' : 'hall')
+  if (view === 'hall' && k === 'enter') return show('map')
+  if (view === 'hall' && k === 'q') return show('journal')
+  if (view === 'result' && k === 'enter') return show('hall')
+  if (view === 'battle' && '12345'.includes(k)) {
+    const el = document.querySelectorAll('#battle .slot')[+k - 1]
+    el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 140)
+  }
+  if (view === 'battle' && k === 'enter') return show('result')
+})
+show(new URLSearchParams(location.search).get('view') || 'hall')
+</script>
+</body>
+</html>

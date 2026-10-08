@@ -1,0 +1,526 @@
+<style>
+/* ================= 王国来函(巫师 3 任务日志式) ================= */
+.journal { position: absolute; inset: 0; z-index: 40; display: none; }
+.journal.open { display: block; }
+.journal .veil { position: absolute; inset: 0; background: rgba(4,4,6,.66); backdrop-filter: blur(6px) brightness(.6); }
+.journal .top { position: absolute; left: 0; right: 0; top: 0; height: 84px; display: flex; align-items: center; padding: 0 64px; gap: 44px;
+  background: linear-gradient(180deg, rgba(6,6,8,.92), rgba(6,6,8,0)); }
+.journal .top h2 { font-family: 'GSerif', serif; font-size: 30px; color: var(--gold); letter-spacing: .06em; }
+.tabs { display: flex; gap: 34px; margin-left: 30px; }
+.tabs button { font-family: 'GSerif', serif; font-size: 18px; color: var(--ink-3); padding: 6px 0; position: relative; }
+.tabs button.on { color: var(--ink); }
+.tabs button.on::after { content: ''; position: absolute; left: -6px; right: -6px; bottom: -4px; height: 2px; background: var(--gold); box-shadow: 0 0 8px rgba(217,185,121,.6); }
+.tabs button:hover { color: var(--ink); }
+.journal .close { margin-left: auto; color: var(--ink-2); font-size: 14px; display: flex; gap: 8px; align-items: center; }
+.qlist { position: absolute; left: 64px; top: 128px; width: 470px; }
+.qlist h4 { font-family: 'GSerif', serif; font-size: 15px; color: var(--gold-2); margin: 18px 0 8px; display: flex; align-items: center; gap: 12px; }
+.qlist h4::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(156,123,69,.6), rgba(156,123,69,0)); }
+.qitem { display: flex; gap: 14px; align-items: center; width: 100%; padding: 10px 14px; text-align: left; position: relative; }
+.qitem:hover { background: rgba(255,255,255,.035); }
+.qitem.on { background: linear-gradient(90deg, rgba(217,185,121,.16), rgba(217,185,121,0)); }
+.qitem.on::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; background: var(--gold); }
+.qitem .seal { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border: 1px solid var(--gold-3); transform: rotate(45deg); }
+.qitem .seal i { width: 14px; height: 14px; background: var(--gold-2); transform: rotate(0); display: block; }
+.qitem.new .seal i { background: #a33b26; box-shadow: 0 0 8px rgba(200,70,40,.6); }
+.qitem.done { opacity: .5; }
+.qitem b { display: block; font-weight: 700; font-size: 16px; }
+.qitem span { display: block; font-size: 13px; color: var(--ink-2); }
+.qitem em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--ink-3); }
+.trust { position: absolute; left: 64px; bottom: 64px; width: 470px; }
+.trust .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+.trust .row b { font-family: 'GSerif', serif; color: var(--gold); font-size: 16px; }
+.trust .bar { height: 8px; }
+.trust p { margin-top: 8px; font-size: 13px; color: var(--ink-3); }
+.letter { position: absolute; left: 640px; top: 120px; width: 820px; height: 800px; padding: 64px 84px 0; color: var(--ink-brown);
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 40%, rgba(255,250,232,.18), rgba(0,0,0,0) 60%),
+    radial-gradient(ellipse 140% 120% at 50% 50%, rgba(0,0,0,0) 55%, rgba(80,52,22,.55) 100%),
+    var(--parch);
+  box-shadow: 0 30px 80px rgba(0,0,0,.75), inset 0 0 60px rgba(90,60,28,.35); }
+.letter::before { content: ''; position: absolute; inset: 0; pointer-events: none; filter: url(#paper); opacity: .55; background: var(--parch-2); mix-blend-mode: multiply; }
+.letter > * { position: relative; }
+.letter .from { font-size: 14px; color: #6d5536; display: flex; justify-content: space-between; }
+.letter h3 { font-family: 'GSerif', serif; font-size: 36px; line-height: 1.25; color: #2a1c10; margin: 10px 0 6px; letter-spacing: .03em; }
+.letter .ornament { height: 14px; margin: 6px 0 22px; position: relative; }
+.letter .ornament::before { content: ''; position: absolute; left: 0; right: 0; top: 7px; height: 1px; background: linear-gradient(90deg, rgba(59,42,26,0), rgba(59,42,26,.55) 20%, rgba(59,42,26,.55) 80%, rgba(59,42,26,0)); }
+.letter .ornament::after { content: ''; position: absolute; left: 50%; top: 2px; width: 10px; height: 10px; margin-left: -5px; transform: rotate(45deg); background: var(--parch); border: 1px solid rgba(59,42,26,.7); }
+.letter .body { font-family: 'GSerif', serif; font-size: 18px; line-height: 2; color: #3b2a1a; max-width: 34em; }
+.letter .body p + p { margin-top: 10px; }
+.letter .sec { font-family: 'GSerif', serif; font-size: 16px; color: #6d4a26; margin: 30px 0 10px; }
+.obj { display: flex; align-items: center; gap: 14px; font-size: 16px; color: #3b2a1a; margin-bottom: 8px; }
+.obj i { width: 16px; height: 16px; border: 1.5px solid #5a4024; flex: none; position: relative; }
+.obj.ok i::after { content: ''; position: absolute; left: 4px; top: -2px; width: 5px; height: 12px; border: solid #7e2a1c; border-width: 0 2.5px 2.5px 0; transform: rotate(40deg); }
+.obj.ok { color: #6d5536; }
+.obj small { margin-left: auto; color: #6d5536; font-size: 14px; }
+.rewards { display: flex; gap: 14px; }
+.rw { display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 8px; background: rgba(59,42,26,.08); border: 1px solid rgba(59,42,26,.25); font-size: 15px; color: #3b2a1a; }
+.rw .ic { width: 44px; height: 44px; background: #17181b; border: 1px solid #000; box-shadow: inset 0 0 0 1px #4a4a4a; position: relative; }
+.rw .ic img { position: absolute; left: 6px; top: 6px; width: 32px; height: 32px; image-rendering: pixelated; }
+.rw.epic .ic { box-shadow: inset 0 0 0 1px var(--q-epic), 0 0 10px rgba(163,116,222,.4); }
+.rw.epic b { color: #5b2f8c; }
+.rw b { display: block; font-weight: 700; }
+.rw span { display: block; font-size: 12px; color: #6d5536; }
+.wax { position: absolute; right: 70px; bottom: 70px; width: 96px; height: 96px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #c2523a, #8e2a19 55%, #5e170c); box-shadow: 0 4px 0 rgba(0,0,0,.18), inset 0 -4px 10px rgba(0,0,0,.35), inset 0 3px 6px rgba(255,180,150,.35);
+  display: grid; place-items: center; transform: rotate(-8deg); }
+.wax::before { content: ''; position: absolute; inset: 12px; border-radius: 50%; border: 2px solid rgba(60,10,4,.45); }
+.wax span { font-family: 'GSerif', serif; font-size: 34px; color: rgba(60,10,4,.62); text-shadow: 0 1px 0 rgba(255,170,140,.35); }
+.letter-actions { position: absolute; left: 640px; top: 944px; width: 820px; display: flex; gap: 14px; justify-content: center; }
+
+/* ================= 副本地图(杀戮尖塔式手绘卷轴) ================= */
+.mapwrap { position: absolute; inset: 0; background: #0b0a09; }
+.mapwrap .veil { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 80% at 50% 50%, rgba(40,30,18,.35), rgba(4,4,5,.95)); }
+.scroll { position: absolute; left: 460px; top: 40px; width: 1000px; height: 960px; overflow: hidden;
+  background: radial-gradient(ellipse 120% 100% at 50% 50%, rgba(255,248,226,.16), rgba(0,0,0,0) 55%),
+    radial-gradient(ellipse 110% 110% at 50% 50%, rgba(0,0,0,0) 58%, rgba(70,44,18,.62) 100%), var(--parch);
+  box-shadow: 0 30px 90px rgba(0,0,0,.8); }
+.scroll::before { content: ''; position: absolute; inset: 0; filter: url(#paper); opacity: .6; background: var(--parch-2); mix-blend-mode: multiply; pointer-events: none; }
+.scroll svg { position: absolute; inset: 0; }
+.scroll .fog { position: absolute; left: 0; right: 0; top: 0; height: 430px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(32,26,20,.82) 0, rgba(44,36,26,.62) 55%, rgba(60,46,30,0) 100%); }
+.scroll .title { position: absolute; left: 0; right: 0; top: 26px; text-align: center; font-family: 'GSerif', serif; font-size: 34px; color: #e6d7b0;
+  text-shadow: 0 2px 6px rgba(0,0,0,.8); letter-spacing: .1em; }
+.scroll .title small { display: block; font-size: 15px; color: #b9a67c; letter-spacing: .04em; margin-top: 2px; }
+.node { cursor: pointer; }
+.node .halo { fill: none; stroke: #7e2a1c; stroke-width: 2; opacity: 0; }
+.node.next .halo { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) { .node.next .halo { animation: halo 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes halo { 0%,100% { transform: scale(1); opacity: .9 } 50% { transform: scale(1.18); opacity: .35 } } }
+.node:hover .disc { stroke-width: 3; }
+.node.past { opacity: .55; }
+.node.lock { cursor: default; }
+.legend { position: absolute; right: 70px; top: 230px; width: 330px; }
+.legend h3 { font-family: 'GSerif', serif; font-size: 20px; color: var(--gold); margin-bottom: 14px; }
+.legend .li { display: flex; align-items: center; gap: 14px; font-size: 15px; margin-bottom: 10px; }
+.legend .li svg { width: 34px; height: 34px; flex: none; }
+.legend .li span { color: var(--ink-3); font-size: 13px; margin-left: auto; }
+.legend p { margin-top: 18px; font-size: 13px; color: var(--ink-2); line-height: 1.7; }
+.legend .mastery { margin-top: 26px; }
+.legend .mastery .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+.legend .mastery .row b { color: var(--ink); font-weight: 700; }
+.legend .mastery .bar { height: 6px; }
+.squad { position: absolute; left: 70px; top: 230px; width: 330px; }
+.squad h3 { font-family: 'GSerif', serif; font-size: 20px; color: var(--gold); margin-bottom: 14px; }
+.sq { display: flex; gap: 12px; margin-bottom: 14px; align-items: center; }
+.sq .face { width: 56px; height: 56px; position: relative; overflow: hidden; background: #111214; border: 1px solid #000; box-shadow: inset 0 0 0 1px #3b3c40; flex: none; }
+.sq .face img { position: absolute; left: -12px; top: -4px; width: 80px; height: 80px; image-rendering: pixelated; }
+.sq .info { flex: 1; }
+.sq .info .nm { display: flex; justify-content: space-between; font-size: 14px; }
+.sq .info .nm small { color: var(--ink-3); font-size: 12px; }
+.sq .bar { height: 8px; margin-top: 4px; }
+.sq .bar.st { height: 4px; margin-top: 2px; }
+.conds2 { margin-top: 22px; }
+.conds2 h4 { font-family: 'GSerif', serif; font-size: 16px; color: var(--ink-2); margin-bottom: 8px; }
+.cnd { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; background: rgba(79,141,179,.1); border: 1px solid rgba(79,141,179,.35); }
+.cnd svg { width: 28px; height: 28px; flex: none; }
+.cnd b { display: block; color: #bfe0f2; font-weight: 700; }
+.cnd span { display: block; font-size: 13px; color: var(--ink-2); }
+.cnd span.g { color: var(--good); }
+.maphint { position: absolute; left: 0; right: 0; bottom: 34px; text-align: center; font-size: 14px; color: var(--ink-3); }
+
+/* ================= 战斗 HUD(魔兽式) ================= */
+.uframe { left: 28px; width: 330px; height: 70px; padding: 8px 12px 8px 82px; }
+.uframe .face { position: absolute; left: 8px; top: 8px; width: 54px; height: 54px; overflow: hidden; background: #111214; border: 1px solid #000; box-shadow: inset 0 0 0 1px #3b3c40; }
+.uframe .face img { position: absolute; left: -15px; top: -4px; width: 84px; height: 84px; image-rendering: pixelated; }
+.uframe .lv { position: absolute; left: 54px; top: 50px; min-width: 20px; height: 18px; line-height: 16px; text-align: center; font-size: 11px; font-weight: 700; background: #0c0d0f; border: 1px solid var(--gold-2); color: var(--gold); }
+.uframe .nm { display: flex; justify-content: space-between; font-size: 15px; line-height: 18px; }
+.uframe .nm b { font-weight: 700; }
+.uframe .nm small { color: var(--ink-3); font-size: 12px; }
+.uframe .bar { height: 18px; margin-top: 4px; }
+.uframe .bar.st { height: 6px; margin-top: 3px; }
+.uframe.hurt .bar:not(.st) > i { background: linear-gradient(180deg, #e1bd55, #b88f25 45%, #6e540f); }
+.uframe .buffs { position: absolute; left: 338px; top: 10px; display: flex; gap: 4px; }
+.uframe .buffs i { width: 26px; height: 26px; border: 1px solid #000; display: block; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.bossf { left: 50%; top: 22px; width: 720px; margin-left: -360px; text-align: center; }
+.bossf .title { font-family: 'GSerif', serif; font-size: 26px; color: #f1d7a4; text-shadow: 0 2px 6px #000, 0 0 14px rgba(0,0,0,.9); letter-spacing: .04em; }
+.bossf .title small { font-family: 'GSans', sans-serif; font-weight: 700; font-size: 13px; color: var(--bad); margin-left: 10px; vertical-align: 3px; }
+.bossf .bar.foe { height: 24px; margin-top: 6px; box-shadow: 0 0 0 1px #3d2c1a, 0 6px 18px rgba(0,0,0,.6); }
+.bossf .bar.foe > span { font-size: 13px; }
+.bossf .phase { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(0,0,0,.75); }
+.castw { width: 460px; margin: 12px auto 0; }
+.castw .bar.cast { height: 22px; }
+.castw .bar.cast > span { justify-content: space-between; padding: 0 10px; font-size: 13px; }
+.castw .how { margin-top: 6px; font-size: 15px; color: #f0c98a; text-shadow: 0 1px 2px #000; }
+.castw .how b { color: #fff; }
+@media (prefers-reduced-motion: no-preference) { .castw .bar.cast > i { animation: castan 5.5s linear infinite; } @keyframes castan { from { width: 4% } to { width: 100% } } }
+.routef { right: 28px; top: 22px; width: 300px; padding: 14px 18px 16px; }
+.routef h3 { font-family: 'GSerif', serif; font-size: 18px; color: var(--gold); display: flex; justify-content: space-between; align-items: baseline; }
+.routef h3 small { font-family: 'GSans', sans-serif; font-weight: 400; color: var(--ink-2); font-size: 13px; }
+.layers { display: flex; align-items: center; margin: 14px 2px 4px; }
+.layers i { width: 14px; height: 14px; transform: rotate(45deg); border: 1px solid #000; background: #2a2b2f; flex: none; }
+.layers i.done { background: var(--gold-2); }
+.layers i.now { background: var(--gold); box-shadow: 0 0 0 3px rgba(217,185,121,.25), 0 0 10px rgba(217,185,121,.6); }
+.layers i.boss { width: 20px; height: 20px; background: #5a1f17; box-shadow: inset 0 0 0 1px #a33b26; }
+.layers b { flex: 1; height: 2px; background: #2a2b2f; }
+.layers b.done { background: var(--gold-2); }
+.chips { display: flex; gap: 8px; margin-top: 12px; }
+.chip { display: flex; gap: 6px; align-items: center; font-size: 13px; padding: 3px 10px 3px 4px; background: rgba(79,141,179,.14); border: 1px solid rgba(79,141,179,.45); color: #bfe0f2; }
+.chip svg { width: 20px; height: 20px; }
+.speedf { right: 28px; top: 186px; display: flex; gap: 4px; }
+.sb { width: 46px; height: 32px; border: 1px solid #000; background: rgba(22,23,27,.9); box-shadow: inset 0 0 0 1px rgba(217,185,121,.14); font-size: 14px; color: var(--ink-2); }
+.sb.on { color: #1a1206; background: linear-gradient(180deg, #e2c58a, #a8864e); }
+.sb:hover { color: var(--ink); }
+.actionb { left: 50%; bottom: 30px; transform: translateX(-50%); padding: 12px 16px; display: flex; gap: 10px; align-items: center; }
+.slot { width: 76px; height: 76px; position: relative; overflow: hidden; border: 1px solid #000; background: radial-gradient(circle at 50% 30%, #2b2d33, #0d0e10); box-shadow: inset 0 0 0 1px #46474c; }
+.slot img { position: absolute; left: 6px; top: 6px; width: 64px; height: 64px; image-rendering: pixelated; }
+.slot img.face { left: -14px; top: -6px; width: 104px; height: 104px; }
+.slot .k { position: absolute; right: 5px; top: 3px; font-size: 13px; font-weight: 700; color: #fff; text-shadow: 0 1px 1px #000, 0 0 3px #000; }
+.slot .c { position: absolute; right: 5px; bottom: 3px; font-size: 15px; font-weight: 700; color: #fff; text-shadow: 0 1px 1px #000, 0 0 3px #000; }
+.slot .n { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 0; text-align: center; font-size: 11px; background: linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0)); color: var(--ink); }
+.slot.ready { box-shadow: inset 0 0 0 1px var(--gold), 0 0 16px rgba(217,185,121,.45); }
+.slot.ready::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 18px rgba(255,210,130,.32); }
+.slot .cd { position: absolute; inset: 0; background: conic-gradient(rgba(0,0,0,0) 0 var(--p), rgba(0,0,0,.68) var(--p) 100%); }
+.slot .cdn { position: absolute; inset: 0; display: grid; place-items: center; font-size: 26px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; }
+.slot:hover { box-shadow: inset 0 0 0 1px #f2e2b8; }
+.slot.flash { filter: brightness(1.6); }
+.sep { width: 1px; height: 54px; background: linear-gradient(180deg, rgba(217,185,121,0), rgba(217,185,121,.35), rgba(217,185,121,0)); margin: 0 6px; }
+.tg { height: 32px; padding: 0 12px; border: 1px solid #000; background: rgba(22,23,27,.9); box-shadow: inset 0 0 0 1px rgba(217,185,121,.14); font-size: 13px; color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
+.tg.on { color: var(--good); box-shadow: inset 0 0 0 1px rgba(143,191,92,.45); }
+.tg:hover { color: var(--ink); }
+.vstack { display: flex; flex-direction: column; gap: 6px; }
+.logf { left: 28px; bottom: 30px; width: 480px; height: 196px; padding: 12px 16px; background: rgba(6,7,9,.62); border: 1px solid rgba(255,255,255,.05); font-size: 14px; line-height: 1.65; }
+.logf .tabs2 { position: absolute; left: -1px; top: -30px; display: flex; gap: 2px; }
+.logf .tabs2 span { padding: 4px 14px; font-size: 13px; background: rgba(6,7,9,.62); border: 1px solid rgba(255,255,255,.05); border-bottom: 0; color: var(--ink-3); }
+.logf .tabs2 span.on { color: var(--gold); }
+.logf p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.logf .me { color: #8fcff7; } .logf .foe { color: #ff9a84; } .logf .heal { color: var(--good); } .logf .warn { color: var(--cast); }
+.hp { position: absolute; transform: translateX(-50%); width: 92px; pointer-events: none; }
+.hp .bar { height: 7px; }
+.hp .n { text-align: center; font-size: 13px; color: #ffb3a3; white-space: nowrap; text-shadow: 0 1px 2px #000, 0 0 4px #000; margin-bottom: 3px; }
+.ring { position: absolute; transform: translate(-50%,-50%); border-radius: 50%; pointer-events: none; border: 2px solid rgba(225,82,58,.9); box-shadow: 0 0 12px rgba(225,82,58,.5), inset 0 0 10px rgba(225,82,58,.3); }
+.fct { position: absolute; transform: translateX(-50%); font-weight: 700; font-size: 30px; color: #fff; pointer-events: none;
+  text-shadow: 0 2px 0 #000, 0 0 5px #000, 1px 1px 0 #000, -1px -1px 0 #000; }
+.fct.crit { font-size: 42px; color: #ffd36b; }
+.fct.heal { color: #a8f07a; font-size: 24px; }
+@media (prefers-reduced-motion: no-preference) { .fct { animation: rise 1.7s ease-out infinite; } .fct.b { animation-delay: .6s } .fct.c { animation-delay: 1.1s }
+  @keyframes rise { 0% { opacity: 0; translate: 0 8px } 12% { opacity: 1 } 70% { opacity: 1 } 100% { opacity: 0; translate: 0 -46px } } }
+
+/* ================= 结算(怪猎「任务完成」+ 暗黑地牢队员回顾) ================= */
+.result .veil { position: absolute; inset: 0; background: rgba(5,5,7,.72); backdrop-filter: blur(8px) brightness(.55); }
+.banner { position: absolute; left: 0; right: 0; top: 70px; text-align: center; }
+.banner h2 { font-family: 'GSerif', serif; font-size: 76px; line-height: 1.1; color: var(--gold); letter-spacing: .26em; text-indent: .26em;
+  text-shadow: 0 4px 12px #000, 0 0 40px rgba(217,185,121,.25); }
+.banner .wings { display: flex; align-items: center; justify-content: center; gap: 28px; margin-top: 12px; }
+.banner .wings i { width: 360px; height: 1px; background: linear-gradient(90deg, rgba(217,185,121,0), rgba(217,185,121,.7)); }
+.banner .wings i:last-child { transform: scaleX(-1); }
+.banner .wings span { font-size: 17px; color: var(--ink); white-space: nowrap; }
+.banner .wings span b { color: var(--gold); font-weight: 700; }
+.stamp { position: absolute; left: 50%; top: 40px; margin-left: 380px; width: 128px; height: 128px; border: 4px solid rgba(190,60,38,.88); border-radius: 50%;
+  display: grid; place-items: center; transform: rotate(-14deg); color: rgba(206,72,48,.92); font-family: 'GSerif', serif; font-size: 40px;
+  box-shadow: inset 0 0 0 3px rgba(190,60,38,.35); }
+.stamp::before { content: ''; position: absolute; inset: 8px; border: 1.5px solid rgba(190,60,38,.6); border-radius: 50%; }
+.stamp small { position: absolute; bottom: 20px; font-size: 13px; letter-spacing: .1em; }
+@media (prefers-reduced-motion: no-preference) {
+  .result.on .stamp { animation: stamp .42s cubic-bezier(.2,1.4,.4,1) .55s both; }
+  @keyframes stamp { from { transform: rotate(-14deg) scale(2.4); opacity: 0 } to { transform: rotate(-14deg) scale(1); opacity: 1 } }
+  .result.on .gain { animation: grow 1.1s ease-out .9s both; }
+  @keyframes grow { from { width: 0 !important } }
+}
+.rcol { position: absolute; top: 260px; }
+.rcol h3 { font-family: 'GSerif', serif; font-size: 20px; color: var(--gold); margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+.rcol h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(156,123,69,.6), rgba(156,123,69,0)); }
+.hero-r { display: flex; gap: 18px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+.hero-r .face { width: 104px; height: 104px; position: relative; overflow: hidden; background: radial-gradient(circle at 50% 30%, #2b2d33, #0d0e10); border: 1px solid #000; box-shadow: inset 0 0 0 1px #3b3c40; flex: none; }
+.hero-r .face img { position: absolute; left: -10px; top: -2px; width: 124px; height: 124px; image-rendering: pixelated; }
+.hero-r .face .lvup { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 12px; font-weight: 700; color: #1a1206; background: linear-gradient(180deg, #e9cf92, #b38e52); }
+.hero-r .info { flex: 1; }
+.hero-r .info .nm { display: flex; align-items: baseline; gap: 12px; }
+.hero-r .info .nm b { font-family: 'GSerif', serif; font-size: 22px; }
+.hero-r .info .nm small { color: var(--ink-3); font-size: 13px; }
+.hero-r .xpline { display: flex; align-items: center; gap: 12px; margin: 8px 0 8px; font-size: 13px; color: var(--ink-2); }
+.hero-r .xpline .bar { flex: 1; height: 10px; }
+.hero-r .xpline .bar > i { background: linear-gradient(180deg, #e2c98a, #b08a4e 45%, #5e4520); }
+.notes { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; }
+.notes .g { color: var(--good); } .notes .r { color: var(--bad); } .notes .b { color: #9dcbe8; } .notes .d { color: var(--ink-2); }
+.loot { display: grid; grid-template-columns: repeat(4, 88px); gap: 12px; }
+.lslot { width: 88px; height: 88px; position: relative; background: radial-gradient(circle at 50% 30%, #25272c, #0c0d0f); border: 1px solid #000; box-shadow: inset 0 0 0 1px #46474c; }
+.lslot img { position: absolute; left: 12px; top: 10px; width: 64px; height: 64px; image-rendering: pixelated; }
+.lslot .c { position: absolute; right: 6px; bottom: 4px; font-size: 14px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+.lslot.green { box-shadow: inset 0 0 0 1px var(--q-green), inset 0 0 18px rgba(111,174,74,.18); }
+.lslot.epic { box-shadow: inset 0 0 0 1px var(--q-epic), inset 0 0 22px rgba(163,116,222,.3), 0 0 16px rgba(163,116,222,.35); }
+.lslot.empty { opacity: .35; }
+.lslot:hover { filter: brightness(1.2); }
+.lname { margin-top: 14px; font-size: 14px; color: var(--ink-2); }
+.lname b { font-weight: 700; } .lname .e { color: var(--q-epic); } .lname .gn { color: var(--q-green); }
+.tally { margin-top: 26px; }
+.tally .ln { display: flex; justify-content: space-between; font-size: 15px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+.tally .ln span { color: var(--ink-2); }
+.tally .ln.tot { border-bottom: 0; font-size: 18px; padding-top: 12px; }
+.tally .ln.tot b { color: var(--gold); font-family: 'GSerif', serif; font-size: 22px; }
+.tally .ln .neg { color: var(--bad); }
+.story { position: absolute; left: 50%; bottom: 128px; width: 1060px; margin-left: -530px; text-align: center; }
+.story p { font-family: 'GSerif', serif; font-size: 22px; line-height: 1.8; color: #d8ccaa; }
+.story small { display: block; margin-top: 8px; font-size: 13px; color: var(--ink-3); }
+.ractions { position: absolute; left: 0; right: 0; bottom: 48px; display: flex; justify-content: center; gap: 16px; }
+.ractions .btn.primary { width: 300px; justify-content: center; height: 52px; font-size: 20px; }
+.ractions .btn { height: 52px; }
+
+.mocknav { position: absolute; z-index: 99; left: 50%; transform: translateX(-50%); top: 6px; display: flex; gap: 2px; padding: 3px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.08); opacity: .35; }
+.mocknav:hover { opacity: 1; }
+.mocknav button { font-size: 12px; padding: 2px 12px; color: var(--ink-2); }
+.mocknav button.on { color: #111; background: var(--gold); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="paper"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" seed="4"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.4 1.1"/></filter></svg>
+<div id="stage" role="application" aria-label="黑苔公会界面样稿">
+
+<!-- ============================== 大厅 ============================== -->
+<section class="screen on" id="hall" aria-label="公会大厅">
+  <div class="world" style="width:640px;height:360px;transform:scale(3)">
+    <img src="{{hall_bg}}" style="left:0;top:0" alt="">
+    <img src="{{banner}}" style="left:236px;top:24px" alt="">
+    <img src="{{banner}}" style="left:384px;top:24px" alt="">
+    <img src="{{torch}}" style="left:252px;top:66px" alt="">
+    <img src="{{torch}}" style="left:356px;top:66px" alt="">
+    <div class="hot abs" data-t="kingdom" data-k="q" style="left:108px;top:40px"><img src="{{board}}" style="position:static" alt="王国来函"></div>
+    <div class="hot abs" data-t="depart" style="left:284px;top:60px"><img src="{{gate}}" style="position:static" alt="出征之门"></div>
+    <div class="hot abs" data-t="tavern" data-k="t" style="left:16px;top:76px"><img src="{{fireplace}}" style="position:static" alt="酒馆壁炉"></div>
+    <div class="hot abs" data-t="tavern" data-k="t" style="left:30px;top:196px"><img src="{{tavern}}" style="position:static" alt="酒馆吧台"></div>
+    <div class="hot abs" data-t="manual" data-k="k" style="left:452px;top:58px"><img src="{{shelf}}" style="position:static" alt="手册"></div>
+    <div class="hot abs" data-t="chronicle" data-k="j" style="left:400px;top:118px"><img src="{{lectern}}" style="position:static" alt="大事记"></div>
+    <div class="hot abs locked" data-t="memorial" style="left:560px;top:54px"><img src="{{memorial}}" style="position:static" alt="名人堂"></div>
+    <div class="hot abs" data-t="warehouse" data-k="b" style="left:440px;top:190px"><img src="{{storage}}" style="position:static" alt="仓库"></div>
+    <div class="hot abs" data-t="base" data-k="n" style="left:520px;top:176px"><img src="{{base}}" style="position:static" alt="训练场"></div>
+    <img src="{{table}}" style="left:170px;top:232px" alt="">
+    <div class="px" style="left:226px;top:202px;width:22px;height:5px;border-radius:50%;background:#000;opacity:.4"></div><img src="{{hero_guard}}" style="left:221px;top:174px" alt="">
+    <div class="px" style="left:262px;top:226px;width:22px;height:5px;border-radius:50%;background:#000;opacity:.4"></div><img src="{{hero_priest}}" style="left:257px;top:198px" alt="">
+    <div class="px" style="left:344px;top:206px;width:22px;height:5px;border-radius:50%;background:#000;opacity:.4"></div><img src="{{hero_ranger}}" style="left:339px;top:178px;transform:scaleX(-1)" alt="">
+    <div class="px" style="left:378px;top:238px;width:22px;height:5px;border-radius:50%;background:#000;opacity:.4"></div><img src="{{hero_warrior}}" style="left:373px;top:210px;transform:scaleX(-1)" alt="">
+    <div class="px" style="left:182px;top:254px;width:22px;height:5px;border-radius:50%;background:#000;opacity:.4"></div><img src="{{hero_mage}}" style="left:177px;top:226px" alt="">
+  </div>
+  <div class="ambient"></div>
+  <div class="light flicker" style="left:-60px;top:160px;width:400px;height:400px"></div>
+  <div class="light flicker" style="left:660px;top:110px;width:300px;height:300px"></div>
+  <div class="light flicker" style="left:970px;top:110px;width:300px;height:300px"></div>
+  <div class="light" style="left:80px;top:500px;width:380px;height:300px;opacity:.55"></div>
+  <div class="light cool" style="left:360px;top:-60px;width:280px;height:340px"></div>
+  <div class="light cool" style="left:1330px;top:-60px;width:280px;height:340px"></div>
+  <div class="vignette"></div>
+  <div class="floorfade"></div>
+  <div id="plates"></div>
+
+  <div class="abs crest">
+    <svg width="56" height="68" viewBox="0 0 56 68" aria-hidden="true"><path d="M4 4h48v34c0 14-12 22-24 27C16 60 4 52 4 38z" fill="#2b3a22" stroke="#9c7b45" stroke-width="2"/><path d="M28 14l10 14-10 14-10-14z" fill="#8d9b62"/><path d="M28 22l4 6-4 6-4-6z" fill="#263527"/></svg>
+    <div><h1>黑苔公会</h1><div class="sub">铁牌公会 <b>第 7 天</b> 黄昏</div></div>
+  </div>
+  <div class="abs resline">
+    <div class="res" data-t="gold"><img src="{{coins}}" alt=""><b>150</b><small>金币</small></div>
+    <div class="res" data-t="bless"><svg width="24" height="26" viewBox="0 0 20 22" aria-hidden="true"><path d="M10 2c2.4 3.4 4.6 4.8 4.6 8a4.6 4.6 0 0 1-9.2 0c0-3.2 2.2-4.6 4.6-8z" fill="#d9b979"/><path d="M10 8c1 1.6 2 2.3 2 3.8a2 2 0 0 1-4 0C8 10.3 9 9.6 10 8z" fill="#fff2d2"/><rect x="6.5" y="16" width="7" height="4" fill="#7a5f36"/></svg><b>3</b><small>祝福</small></div>
+    <div class="res" data-t="potion"><img src="{{potion}}" alt=""><b>3</b><small>治疗药</small></div>
+    <button class="sysbtn" data-t="manual">手册 <span class="key">K</span></button>
+    <button class="sysbtn">菜单 <span class="key">Esc</span></button>
+  </div>
+  <div class="abs tracker shadowtext">
+    <h3>当前目标</h3>
+    <div class="q"><b>首杀沼泽食人魔 格鲁什</b><span>拿下即可晋升铜牌公会</span></div>
+    <div class="q"><b>王国委托 清理黑苔商道</b><span class="done">沼泽战斗胜利 2 / 3</span></div>
+    <div class="q"><b>黑苔沼泽 熟练度 12</b><span>到 35 就能记住岔路的名字</span></div>
+  </div>
+  <div class="abs company" id="company">
+    <div class="hd"><h3>出征小队</h3><span>3 / 3 已编入  点击头像编入或换下</span></div>
+    <div class="row" id="mercs"></div>
+  </div>
+  <div class="abs depart">
+    <div class="dest">黑苔沼泽</div>
+    <div class="meta">三人副本  建议等级 <b>5</b>  每趟地图都不一样</div>
+    <button class="btn primary" id="departBtn">出征 <span class="key" style="background:rgba(0,0,0,.3);border-color:rgba(255,210,170,.3);color:#f6e2c0">Enter</span></button>
+    <div class="alt"><button data-t="pick">换个副本</button><button data-t="supply">出征补给 约 36 金</button></div>
+  </div>
+  <div class="tip" id="tip-hall"></div>
+</section>
+
+<!-- ============================== 王国来函 ============================== -->
+<section class="journal" id="journal" aria-label="王国来函">
+  <div class="veil"></div>
+  <div class="top">
+    <h2>王国来函</h2>
+    <nav class="tabs"><button class="on">委托</button><button>信件</button><button>王国货架</button></nav>
+    <button class="close" id="jclose">返回大厅 <span class="key">Esc</span></button>
+  </div>
+  <div class="qlist">
+    <h4>在办</h4>
+    <button class="qitem"><span class="seal"><i></i></span><div><b>清理黑苔商道</b><span>沼泽战斗胜利 2 / 3</span></div><em>剩 4 天</em></button>
+    <h4>新来函</h4>
+    <button class="qitem on new"><span class="seal"><i></i></span><div><b>格鲁什的獠牙</b><span>灰冠教区 随军医师办事处</span></div><em>今天</em></button>
+    <button class="qitem new"><span class="seal"><i></i></span><div><b>训练场的空地</b><span>灰冠王国 军需官</span></div><em>第 6 天</em></button>
+    <h4>已结案</h4>
+    <button class="qitem done"><span class="seal"><i></i></span><div><b>会长的第一封信</b><span>王国信任 +10</span></div><em>第 2 天</em></button>
+  </div>
+  <div class="trust">
+    <div class="row"><span>王国信任</span><b>30 / 50</b></div>
+    <div class="bar lo"><i style="width:60%"></i></div>
+    <p>到 50 换上银印：王国货架会多一排货</p>
+  </div>
+  <article class="letter">
+    <div class="from"><span>灰冠教区 随军医师办事处</span><span>第 7 天 傍晚送达</span></div>
+    <h3>格鲁什的獠牙</h3>
+    <div class="ornament"></div>
+    <div class="body">
+      <p>致黑苔公会会长：</p>
+      <p>商路是通了，可沼泽深处那头食人魔还在。上个月它拖走了我们两名送药的修士，只还回来一只鞋。</p>
+      <p>把它的獠牙带回来。作为回报，教区会派一名随军医师常驻贵会。她脾气不好，但缝得很快。</p>
+    </div>
+    <div class="sec">要做的事</div>
+    <div class="obj ok"><i></i>清理黑苔商道<small>已完成</small></div>
+    <div class="obj"><i></i>在黑苔沼泽击败沼泽食人魔 格鲁什<small>0 / 1</small></div>
+    <div class="sec">报酬</div>
+    <div class="rewards">
+      <div class="rw"><div class="ic"><img src="{{coins}}" alt=""></div><div><b>100 金</b><span>交付时付清</span></div></div>
+      <div class="rw epic"><div class="ic"><img src="{{it_medic}}" alt=""></div><div><b>军医的药囊</b><span>史诗饰品</span></div></div>
+      <div class="rw"><div class="ic"><img src="{{hero_priest}}" alt=""></div><div><b>随军医师 加入</b><span>牧师 Lv6</span></div></div>
+    </div>
+    <div class="wax"><span>灰</span></div>
+  </article>
+  <div class="letter-actions"><button class="btn primary" style="width:260px;justify-content:center;height:48px">接下委托</button><button class="btn" style="height:48px">先放着</button></div>
+</section>
+
+<!-- ============================== 副本地图 ============================== -->
+<section class="screen" id="map" aria-label="副本地图">
+  <div class="mapwrap"><div class="veil"></div></div>
+  <div class="squad">
+    <h3>小队</h3>
+    <div class="sq"><div class="face"><img src="{{hero_guard}}" alt=""></div><div class="info"><div class="nm"><span>莫达娜</span><small>227 / 270</small></div><div class="bar"><i style="width:84%"></i></div><div class="bar st"><i style="width:62%"></i></div></div></div>
+    <div class="sq"><div class="face"><img src="{{hero_priest}}" alt=""></div><div class="info"><div class="nm"><span>巴尔德</span><small>81 / 183</small></div><div class="bar lo"><i style="width:44%"></i></div><div class="bar st"><i style="width:48%"></i></div></div></div>
+    <div class="sq"><div class="face"><img src="{{hero_ranger}}" alt=""></div><div class="info"><div class="nm"><span>托尔文</span><small>199 / 214</small></div><div class="bar"><i style="width:93%"></i></div><div class="bar st"><i style="width:70%"></i></div></div></div>
+    <div class="conds2">
+      <h4>路况</h4>
+      <div class="cnd"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2c3 4 5 6 5 9a5 5 0 0 1-10 0c0-3 2-5 5-9z" fill="#4f8db3"/><path d="M7 11a2 2 0 0 0 2 2" stroke="#d6eefa" stroke-width="1.4" fill="none"/></svg>
+        <div><b>湿透</b><span>受疗降低一成</span><span class="g">火抗提高 15%</span><span>走到营地烤干</span></div></div>
+    </div>
+  </div>
+  <div class="scroll" id="scroll">
+    <svg id="mapsvg" viewBox="0 0 1000 1000" aria-label="副本地图"></svg>
+    <div class="fog"></div>
+    <div class="title">黑苔沼泽<small>第 3 层 共 6 层  熟练度 12</small></div>
+  </div>
+  <div class="legend">
+    <h3>图例</h3>
+    <div id="legend"></div>
+    <p>迷雾里的岔路只能看见地形。熟练度到 35，就能认出路名和节点类型；到 60，还能看清每条路会带来什么路况。</p>
+    <div class="mastery"><div class="row"><span>黑苔沼泽 熟练度</span><b>12 / 35</b></div><div class="bar xp"><i style="width:34%"></i></div></div>
+  </div>
+  <div class="maphint">点亮的岔路可以走  悬停看详情  <span class="key">R</span> 撤退回城</div>
+  <div class="tip" id="tip-map"></div>
+</section>
+
+<!-- ============================== 战斗 ============================== -->
+<section class="screen" id="battle" aria-label="战斗">
+  <div class="world" style="width:480px;height:270px;transform:scale(4)">
+    <img src="{{battle_bg}}" style="left:0;top:0" alt="">
+    <img src="{{hero_priest}}" style="left:120px;top:96px" alt="巴尔德">
+    <img src="{{hero_guard}}" style="left:182px;top:124px" alt="莫达娜">
+    <img src="{{hero_ranger}}" style="left:120px;top:164px" alt="托尔文">
+    <img src="{{mon_frog}}" style="left:286px;top:104px;transform:scaleX(-1)" alt="沼泽蛙人">
+    <img src="{{mon_frog}}" style="left:286px;top:170px;transform:scaleX(-1)" alt="沼泽蛙人">
+    <img src="{{mon_talma}}" style="left:352px;top:110px;width:64px;height:64px;transform:scaleX(-1)" alt="深渊祭司 塔尔玛">
+  </div>
+  <div class="ambient" style="background:rgba(14,28,30,.34)"></div>
+  <div class="light cool" style="left:1270px;top:330px;width:520px;height:520px;background:radial-gradient(circle, rgba(170,110,230,.32) 0, rgba(140,80,210,.1) 40%, rgba(0,0,0,0) 70%)"></div>
+  <div class="light" style="left:540px;top:400px;width:440px;height:440px;opacity:.45"></div>
+  <div class="vignette"></div>
+
+  <div class="ring" style="left:1209px;top:796px;width:140px;height:44px"></div>
+  <div class="hp" style="left:1209px;top:668px"><div class="n">沼泽蛙人</div><div class="bar foe"><i style="width:58%"></i></div></div>
+  <div class="hp" style="left:1209px;top:404px"><div class="bar foe"><i style="width:34%"></i></div></div>
+  <div class="fct crit" style="left:1212px;top:640px">124</div>
+  <div class="fct b" style="left:1540px;top:380px">31</div>
+  <div class="fct heal c" style="left:794px;top:470px">+48</div>
+
+  <div class="plate abs uframe" style="top:24px"><div class="face"><img src="{{hero_guard}}" alt=""></div><span class="lv">7</span>
+    <div class="nm"><b>莫达娜</b><small>守卫</small></div><div class="bar"><i style="width:84%"></i><span>227 / 270</span></div><div class="bar st"><i style="width:62%"></i></div>
+    <div class="buffs"><i style="background:linear-gradient(135deg,#8d9b62,#3e5138)" data-t="buff1"></i></div></div>
+  <div class="plate abs uframe hurt" style="top:104px"><div class="face"><img src="{{hero_priest}}" alt=""></div><span class="lv">6</span>
+    <div class="nm"><b>巴尔德</b><small>牧师</small></div><div class="bar"><i style="width:44%"></i><span>81 / 183</span></div><div class="bar st"><i style="width:48%"></i></div></div>
+  <div class="plate abs uframe" style="top:184px"><div class="face"><img src="{{hero_ranger}}" alt=""></div><span class="lv">7</span>
+    <div class="nm"><b>托尔文</b><small>游侠</small></div><div class="bar"><i style="width:93%"></i><span>199 / 214</span></div><div class="bar st"><i style="width:70%"></i></div></div>
+
+  <div class="abs bossf">
+    <div class="title">深渊祭司 塔尔玛<small>首领</small></div>
+    <div class="bar foe"><i style="width:72%"></i><b class="phase" style="left:50%"></b><b class="phase" style="left:25%"></b><span>2146 / 2980</span></div>
+    <div class="castw"><div class="bar cast"><i style="width:62%"></i><span><b>渊底低语</b><b>2.1</b></span></div>
+      <div class="how">打断它：<b>锤斧</b>的伤害全额计入，其他伤害只算四分之一</div></div>
+  </div>
+  <div class="plate abs routef">
+    <h3>黑苔沼泽 <small>第 3 层 共 6 层</small></h3>
+    <div class="layers"><i class="done"></i><b class="done"></b><i class="done"></i><b class="done"></b><i class="now"></i><b></b><i></i><b></b><i></i><b></b><i></i><b></b><i class="boss"></i></div>
+    <div class="chips"><span class="chip" data-t="soaked"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2c3 4 5 6 5 9a5 5 0 0 1-10 0c0-3 2-5 5-9z" fill="#4f8db3"/><path d="M7 11a2 2 0 0 0 2 2" stroke="#d6eefa" stroke-width="1.4" fill="none"/></svg>湿透</span></div>
+  </div>
+  <div class="abs speedf"><button class="sb" aria-label="暂停">‖</button><button class="sb on">1×</button><button class="sb">2×</button><button class="sb">3×</button></div>
+
+  <div class="abs logf" aria-live="polite">
+    <div class="tabs2"><span class="on">战报</span><span>全部</span></div>
+    <p><span class="warn">塔尔玛开始咏唱 渊底低语</span></p>
+    <p><span class="me">托尔文</span> 的贯甲狙击暴击 <span class="foe">沼泽蛙人</span> 124</p>
+    <p><span class="me">巴尔德</span> 的圣光术治疗 <span class="me">莫达娜</span> <span class="heal">+48</span></p>
+    <p><span class="foe">沼泽蛙人</span> 撕咬 <span class="me">莫达娜</span> 17</p>
+    <p><span class="me">莫达娜</span> 威吓了所有敌人</p>
+    <p>进入沼腹深处 <span class="warn">湿透：受疗降低，火抗提高</span></p>
+  </div>
+  <div class="plate abs actionb">
+    <div class="vstack"><button class="tg on" data-t="auto">挂机 <span class="key">A</span></button><button class="tg" data-t="focus">集火 <span class="key">F</span></button></div>
+    <div class="sep"></div>
+    <button class="slot ready" data-t="s1"><img class="face" src="{{hero_guard}}" alt=""><span class="k">1</span><span class="n">破咒盾击</span></button>
+    <button class="slot" data-t="s2"><img class="face" src="{{hero_priest}}" alt=""><div class="cd" style="--p:40%"></div><div class="cdn">6</div><span class="k">2</span><span class="n">圣疗</span></button>
+    <button class="slot ready" data-t="s3"><img class="face" src="{{hero_ranger}}" alt=""><span class="k">3</span><span class="n">贯甲狙击</span></button>
+    <div class="sep"></div>
+    <button class="slot" data-t="p1"><img src="{{potion}}" alt=""><span class="k">4</span><span class="c">3</span></button>
+    <button class="slot" data-t="p2"><img src="{{potion_fury}}" alt=""><span class="k">5</span><span class="c">3</span></button>
+    <div class="sep"></div>
+    <div class="vstack"><button class="tg" data-t="formation">阵型 <span class="key">G</span></button><button class="tg" data-t="retreat">撤退 <span class="key">R</span></button></div>
+  </div>
+  <div class="tip" id="tip-battle"></div>
+</section>
+
+<!-- ============================== 结算 ============================== -->
+<section class="screen result" id="result" aria-label="远征结算">
+  <div class="world" style="width:480px;height:270px;transform:scale(4)"><img src="{{battle_bg}}" style="left:0;top:0" alt=""></div>
+  <div class="veil"></div>
+  <div class="banner">
+    <h2>讨伐完成</h2>
+    <div class="wings"><i></i><span>黑苔沼泽  击败 <b>沼泽食人魔 格鲁什</b>  第 7 天  用时 6 分 12 秒</span><i></i></div>
+  </div>
+  <div class="stamp">首杀<small>铜牌晋升</small></div>
+
+  <div class="rcol" style="left:150px;width:820px">
+    <h3>小队</h3>
+    <div class="hero-r"><div class="face"><img src="{{hero_guard}}" alt=""><span class="lvup">升到 Lv8</span></div>
+      <div class="info"><div class="nm"><b>莫达娜</b><small>守卫 铁壁卫士</small></div>
+        <div class="xpline"><div class="bar"><i style="width:18%"></i></div><span>+148 经验</span></div>
+        <div class="notes"><span class="g">升到 Lv8：生命 +18</span><span class="b">与托尔文默契升到 ★★★</span><span class="d">破咒盾击打断了 3 次读条</span></div></div></div>
+    <div class="hero-r"><div class="face"><img src="{{hero_priest}}" alt=""></div>
+      <div class="info"><div class="nm"><b>巴尔德</b><small>牧师 圣光祭司</small></div>
+        <div class="xpline"><div class="bar"><i style="width:52%"></i><b class="gain" style="left:30%;width:22%"></b></div><span>+148 经验</span></div>
+        <div class="notes"><span class="r">新伤疤：脑子里总有声音挥之不去  智力 −1</span><span class="d">治疗量全队第一</span></div></div></div>
+    <div class="hero-r"><div class="face"><img src="{{hero_ranger}}" alt=""></div>
+      <div class="info"><div class="nm"><b>托尔文</b><small>游侠 鹰眼神射</small></div>
+        <div class="xpline"><div class="bar"><i style="width:71%"></i><b class="gain" style="left:49%;width:22%"></b></div><span>+148 经验</span></div>
+        <div class="notes"><span class="g">心愿达成：亲手射倒一头首领</span><span class="b">与莫达娜默契升到 ★★★</span></div></div></div>
+  </div>
+  <div class="rcol" style="left:1090px;width:680px">
+    <h3>战利品</h3>
+    <div class="loot">
+      <div class="lslot epic" data-t="i1"><img src="{{it_frogeye}}" alt="蛙神之眼"></div>
+      <div class="lslot green" data-t="i2"><img src="{{it_bow}}" alt="逐风者的长弓"></div>
+      <div class="lslot green" data-t="i3"><img src="{{it_plate}}" alt="泽地重铠"></div>
+      <div class="lslot" data-t="i4"><img src="{{it_charm}}" alt="行路平安符"></div>
+      <div class="lslot" data-t="gold"><img src="{{coins}}" alt=""><span class="c">330</span></div>
+      <div class="lslot" data-t="potion"><img src="{{potion}}" alt=""><span class="c">1</span></div>
+      <div class="lslot empty"></div><div class="lslot empty"></div>
+    </div>
+    <div class="lname"><b class="e">蛙神之眼</b>  首杀必得的史诗饰品</div>
+    <div class="tally">
+      <div class="ln"><span>战斗报酬</span><b>230 金</b></div>
+      <div class="ln"><span>通关奖励</span><b>100 金</b></div>
+      <div class="ln"><span>出征补给</span><b class="neg">−36 金</b></div>
+      <div class="ln"><span>王国委托 清理黑苔商道</span><b style="color:var(--good)">3 / 3 可交付</b></div>
+      <div class="ln tot"><span>本趟净收入</span><b>294 金</b></div>
+    </div>
+  </div>
+  <div class="story"><p>第一个击倒格鲁什的公会会被传颂。为此留下伤疤的巴尔德，会被遗忘得慢一些。</p><small>已记入大事记</small></div>
+  <div class="ractions"><button class="btn primary" id="backHall">返回公会 <span class="key" style="background:rgba(0,0,0,.3);border-color:rgba(255,210,170,.3);color:#f6e2c0">Enter</span></button><button class="btn">查看大事记 <span class="key">J</span></button></div>
+  <div class="tip" id="tip-result"></div>
+</section>
+
+<nav class="mocknav" id="mocknav" aria-label="样稿页面切换"><button data-v="hall">大厅</button><button data-v="journal">王国来函</button><button data-v="map">副本地图</button><button data-v="battle">战斗</button><button data-v="result">结算</button></nav>
+</div>
