@@ -1,4 +1,4 @@
-> 2026-10-08 当前交付：SYS-0/1/2、熟练度迷雾、旧档兼容及人物装备重接已在 `codex/character-system-integration` 完成；D1 按至少一战后于通关/失败/撤退验真。最终完整 verify 退出 0（329 Vitest、27 试玩），正在推送/开 PR。以下“待答复/尚未推送”为历史记录，交付链接与下一步见 HANDOFF 当前工单；后续 SYS-3 尚未施工。
+> 2026-10-08 当前交付：SYS-0/1/2、熟练度迷雾、旧档兼容及人物装备重接已在 `codex/character-system-integration` 完成；D1 按至少一战后于通关/失败/撤退验真。最终完整 verify 退出 0（329 Vitest、27 试玩），已推送并创建 [PR #7](https://github.com/Eatmy6ss/guild-of-blackmoss/pull/7)，未合并/部署。以下“待答复/尚未推送”为历史记录，细节与下一步见 HANDOFF 当前工单；后续 SYS-3 尚未施工。
 
 # 开发任务清单
 
