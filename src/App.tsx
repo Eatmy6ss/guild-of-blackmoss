@@ -1094,6 +1094,7 @@ export default function App() {
           {/* 舞台常驻：渲染器挂载一次，非战斗阶段隐藏（避免 ref 为 null 导致挂载失败） */}
           <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }} />
           {!run && !towerRun && <ExpeditionBoard dungeonId={dungeonId} manual={manual}
+            activeDungeon={activeDungeon} gold={gold}
             expeditionCount={expedition.length} activeDungeonSize={activeDungeon.size} activeDungeonName={activeDungeon.name}
             canExpedition={canExpedition} busy={!!run || !!towerRun} playtestMode={!!__PLAYTEST__}
             bountyClauses={bountyClauses} onToggleClause={(id) => setBountyClauses((q) => q.includes(id) ? q.filter((x) => x !== id) : [...q, id])}

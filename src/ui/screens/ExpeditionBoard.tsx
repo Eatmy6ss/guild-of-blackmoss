@@ -4,9 +4,14 @@ import { REGIONS, dungeonLock, nextRegionLocked } from '../../data/regions'
 import { playtestAllows } from '../../data/regions'
 import { DUNGEONS } from '../../data/dungeons'
 import { BOUNTY_CLAUSES, clauseRewardMult } from '../../sim/bounty-clause'
+import { rationCost } from '../../sim/supply'
+import { plannedLayers } from '../../sim/dungeon-map'
 
 interface ExpeditionBoardProps {
   dungeonId: string
+  /** #7.2 反馈:出征补给预告(制作人拍板——扣钱之前先让玩家知道这轮口粮多少) */
+  activeDungeon: import('../../sim/types').DungeonDef
+  gold: number
   manual: string[]
   expeditionCount: number
   activeDungeonSize: number
@@ -22,7 +27,10 @@ interface ExpeditionBoardProps {
 }
 
 export function ExpeditionBoard(props: ExpeditionBoardProps) {
-  const { dungeonId, manual, expeditionCount, activeDungeonSize, activeDungeonName, canExpedition, busy, playtestMode, bountyClauses } = props
+  const { dungeonId, manual, expeditionCount, activeDungeonSize, activeDungeonName, canExpedition, busy, playtestMode, bountyClauses, activeDungeon, gold } = props
+  // #7.2 口粮预告:与 startExpedition 同一计算函数,人数/副本一变即刷新
+  const ration = rationCost(expeditionCount, plannedLayers(activeDungeon))
+  const rationShort = gold < ration
   const mult = clauseRewardMult(bountyClauses)
   return (
     <>
@@ -83,6 +91,11 @@ export function ExpeditionBoard(props: ExpeditionBoardProps) {
           )
         })}
       </div>
+      {/* #7.2 出征补给预告:扣款前可见;不足时红色预警(出发照常,但会饿肚子) */}
+      <p className="hint" style={{ margin: '8px 0 4px' }}>
+        🍞 出征补给:口粮 <b style={{ color: rationShort ? '#d48f8f' : '#dcba87' }}>{ration} 金</b>（{expeditionCount} 人 × {plannedLayers(activeDungeon)} 层）
+        {rationShort && <span style={{ color: '#d48f8f' }}>——金币不足,队伍将饿着肚子出征（全员士气 −8）</span>}
+      </p>
       <button
         className="branch-btn primary"
         disabled={!canExpedition}
