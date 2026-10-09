@@ -239,7 +239,15 @@ export function generateMap(dungeon: DungeonDef, seed: number): DungeonMap {
   // 铺点/assignKind/兜底都可能把 L0 全改写为 rest/treasure/event,玩家开局将无怪可打。必须排在全部改写之后。
   if (!layers[0]!.some((n) => n.kind === 'battle' && canBattle(n))) {
     const fix = layers[0]!.find((n) => canBattle(n) && n.kind !== 'elite') // 不吃掉全图唯一的精英
-    if (fix) { fix.kind = 'battle'; fix.encounterId = dungeon.terrains[fix.terrain]!.encounters[0] }
+      ?? layers[0]!.find((n) => n.kind !== 'elite' && n.kind !== 'boss')
+    if (fix) {
+      if (!canBattle(fix)) {
+        // 第 0 层可能全是无遭遇地形(如全 camp)——借任意可战斗地形起战
+        const t = (Object.entries(dungeon.terrains) as [TerrainId, { weight: number; encounters: string[] }][]).find(([, td]) => td.encounters.length > 0)
+        if (t) { fix.terrain = t[0]; fix.encounterId = t[1].encounters[0] }
+      } else fix.encounterId = dungeon.terrains[fix.terrain]!.encounters[0]
+      fix.kind = 'battle'
+    }
   }
   // —— 连边:每节点 1–2 条出边;暗道跳层;下一层每节点 ≥1 入边;末层无出边 ——
   const edges: [string, string][] = []

@@ -6,6 +6,8 @@ import { grantExp, xpNeeded } from './gen'
 import { createRunCore, runDungeon, runMembers, syncRunParty, type RunCore } from './run-core'
 import { generateMap, nodeById, nextOptions, type DungeonMap, type MapNode } from './dungeon-map'
 import { enterNodeConditions, triggerAfterElite, conditionBattleMods, expireConditions } from './conditions'
+import { rollMonsterAffixes, MONSTER_AFFIXES, affixedName } from './monster-affix'
+import { createLootRng } from './loot'
 
 // 远征状态机(U27① 改版):分层地图 → 逐节点选择 → 血量延续 → 战间歇整 → 通关/团灭/撤退。
 // 每战之后在地图上选一条出边才能前进;没有「继续深入」。D11:战斗死亡 = 永久死亡。
@@ -180,10 +182,43 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0, roster
       if (mult) mods.atk = (mods.atk ?? 1) * mult
     }
   }
+  // #7.3b(U40)副本词缀 roll:wave 遭遇按副本 rating 定基础概率(第一图也有词条怪但压力别大,C4);
+  // 不设防条款=必带+密度上限 +1(塔的 rollMonsterAffixes 同一入口);确定性 rng(同 seed 同词缀)。
+  // 只改写本场遭遇的敌人定义(浅拷贝链,不碰全局 DUNGEONS);名字带后缀=死因词缀/图鉴自动工作。
+  let dungeonDef = runDungeon(run)
+  const encDef = dungeonDef.encounters.find((e) => e.id === encounterId)!
+  if (encDef.kind === 'wave' && encDef.enemyGroupIds.length > 0) {
+    const noQuarter = run.bountyClauses?.includes('noquarter') ?? false
+    const chance = noQuarter ? 1 : Math.min(0.7, 0.2 + dungeonDef.rating * 0.1)
+    const affixRng = createLootRng(((seed >>> 0) * 31 + 7) >>> 0)
+    if (affixRng() < chance) {
+      const flat: { gid: string; idx: number }[] = []
+      for (const gid of encDef.enemyGroupIds) (dungeonDef.enemyGroups[gid] ?? []).forEach((_, i) => flat.push({ gid, idx: i }))
+      const rolls = rollMonsterAffixes(flat.length, noQuarter, () => affixRng())
+      if (rolls.length) {
+        run.monsterAffixes = { ...(run.monsterAffixes ?? {}), [node.id]: rolls.map((r) => r.affixId) }
+        const touched = new Set<string>()
+        const groupsCopy: DungeonDef['enemyGroups'] = {}
+        for (const roll of rolls) {
+          const loc = flat[roll.enemyIndex]
+          if (!loc) continue
+          if (!touched.has(loc.gid)) { groupsCopy[loc.gid] = [...(dungeonDef.enemyGroups[loc.gid] ?? [])]; touched.add(loc.gid) }
+          const def = MONSTER_AFFIXES[roll.affixId]
+          const base = groupsCopy[loc.gid]![loc.idx]!
+          groupsCopy[loc.gid]![loc.idx] = {
+            ...base,
+            name: affixedName(base.name, [roll.affixId]),
+            mechanics: [...(base.mechanics ?? []), { id: `affix-${def.id}`, kind: def.kind, name: def.name, params: def.params as Record<string, number | string> }],
+          }
+        }
+        dungeonDef = { ...dungeonDef, enemyGroups: { ...dungeonDef.enemyGroups, ...groupsCopy } }
+      }
+    }
+  }
   run.battlesFought++
   run.battle = createBattle(
     runMembers(run, roster).filter((m) => m.alive),
-    runDungeon(run),
+    dungeonDef,
     encounterId,
     seed,
     run.auraBonus,
