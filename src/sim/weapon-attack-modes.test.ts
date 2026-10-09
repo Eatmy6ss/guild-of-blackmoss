@@ -75,6 +75,7 @@ describe('长柄越线打后排(实战单测)', () => {
     lancer.level = 8
     lancer.hp = 9999
     const state = createBattle([lancer], BLACKMOSS, 'enc-frogs', 4242)
+    state.commands.autoMode = true // U41 手动模式适配:托管语义
     const shaman = state.combatants.find((c) => c.team === 'enemy' && c.position === 'back')
     expect(shaman, 'enc-frogs 应有后排单位').toBeTruthy()
     // 集火后排:guild 侧目标选择优先 focusId

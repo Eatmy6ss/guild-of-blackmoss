@@ -860,6 +860,21 @@ function actWith(c: Combatant, state: BattleState): void {
   const allies = aliveOf(state, c.team)
   const foes = aliveOf(state, c.team === 'guild' ? 'enemy' : 'guild')
   if (foes.length === 0) return
+  // U41 操作层(制作人拍板「取消自动攻击」):手动模式(非挂机)下我方单位**完全听指令**——
+  // 不自动索敌、不自动追击、不代放技能;只执行玩家下达的攻击指令(右键敌人)/移动(右键地面)/手动技能。
+  // 挂机(autoMode)=显式交还 AI(托管),一切照旧。
+  if (!state.commands.autoMode && c.team === 'guild') {
+    const at = c.attackTargetId ? state.combatants.find((x) => x.id === c.attackTargetId && x.alive) : undefined
+    if (!at) { c.attackTargetId = undefined; return } // 无攻击指令:待机(移动由 moveTarget 驱动)
+    if (c.pos && at.pos) {
+      const d = dist(c.pos, at.pos)
+      const range = c.range === 'melee' ? MELEE_RANGE : RANGED_RANGE
+      if (d > range) { c.moveTarget = { x: at.pos.x, y: at.pos.y }; return } // 追击指令目标
+      c.moveTarget = undefined
+    }
+    dealDamage(state, c, at, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
+    return
+  }
   const pool = allowedPool(c, foes)
 
   // AI 多技能择优:逆序逐个尝试(情境技/精进技优先,基础输出压轴),条件不满足则回落

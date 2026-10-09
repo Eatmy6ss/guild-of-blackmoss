@@ -918,8 +918,12 @@ export function createAppControllers(deps: ControllerDeps) {
       syncAll()
       return
     }
+    // U41 手动模式:「跑到结束」=临时托管打完这一场(否则手动模式下无自动输出,快进无效);终局恢复原状
+    const wasAuto = b.commands.autoMode
+    b.commands.autoMode = true
     let guard = 0
     while (b.status === 'running' && guard++ < 20000) stepBattle(b)
+    b.commands.autoMode = wasAuto
     settleBattleEnd(r)
     syncAll()
   }

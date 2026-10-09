@@ -22,6 +22,7 @@ function probe(equipment: Member['equipment'] = {}, healer = false) {
   allyMember.spec = undefined
   allyMember.equipment = {}
   const state = createBattle([member, allyMember], BLACKMOSS, 'enc-wolves', 71)
+  state.commands.autoMode = true // U41 手动模式探针适配:系统级数值测试验证的是托管战斗
   const host = state.combatants.find(c => c.memberId === member.id)!
   const ally = state.combatants.find(c => c.memberId === allyMember.id)!
   const enemy = state.combatants.find(c => c.team === 'enemy')!

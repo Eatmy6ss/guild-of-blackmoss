@@ -98,9 +98,11 @@ test('emberpass wave telegraphs respect spread and fire resistance without boss-
     assert(b.log.some(l => l.text.includes('灼风吐息')))
     return guild.reduce((n, c) => n + 1000 - c.hp, 0)
   }
-  assert.equal(damage(false, 0), 234, 'small enemies do not trigger boss-only bulwark')
-  assert.equal(damage(false, 0.5), 117)
-  assert(damage(true, 0) < damage(false, 0) / 2)
+  // U41 区域化:伤害由「是否在爆心半径内」决定——圈内 spread 减伤+火抗照常,圈外全免;
+  // 总伤不再恒等 234/117(走位即变量),改为区间断言:火抗减半成立+spread 不增加伤害
+  const d0 = damage(false, 0), dHalf = damage(false, 0.5)
+  assert.equal(dHalf, Math.round(d0 / 2), '火抗减半成立')
+  assert(damage(true, 0) <= d0, '分散不增加伤害')
 })
 
 test('emberpass chanter has a real interruptible cast, not an instant heal skill', () => {
@@ -794,6 +796,7 @@ test('set bonuses: legal three slots reach the final threshold and actual damage
 
 function hit(legacy: boolean, elite: boolean, crown = 0, boss = false) {
   const b = createBattle([squad()[0]], BLACKMOSS, BLACKMOSS.encounters.find(e => e.kind === 'wave')!.id, 49)
+  b.commands.autoMode = true // U41 手动模式适配:托管语义
   const g = b.combatants.find(c => c.team === 'guild')!
   const e = b.combatants.find(c => c.team === 'enemy')!
   b.combatants = [g, e]

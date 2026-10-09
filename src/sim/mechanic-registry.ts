@@ -114,7 +114,7 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
     kind: 'telegraph-aoe',
     label: '读条范围技',
     counter: '看到读条切【分散】站位,伤害大幅降低',
-    defaults: { everyTicks: 150, damage: 40, firstTick: 100, telegraphTicks: 30 },
+    defaults: { everyTicks: 150, damage: 40, firstTick: 100, telegraphTicks: 30, radius: 90 },
     describe(m) {
       const dmg = mechanicParam(m, 'damage')
       const tele = mechanicParam(m, 'telegraphTicks')
@@ -127,7 +127,7 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
           delete rt.until
           rt.next = state.tick + mechanicParam(m, 'everyTicks')
           rt.resolvedAt = state.tick
-          resolveSlam(state, c, mechanicParam(m, 'damage'), m.name, m.params.damageType === 'fire')
+          resolveSlam(state, c, mechanicParam(m, 'damage'), m.name, m.params.damageType === 'fire', rt.slamCenter as { x: number; y: number } | undefined, mechanicParam(m, 'radius'))
         }
       } else if ((rt.next ?? mechanicParam(m, 'firstTick')) <= state.tick) {
         rt.until = state.tick + mechanicParam(m, 'telegraphTicks')
@@ -451,23 +451,27 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
   }),
 }
 
-/** 震地猛击结算：分散阵型下每人只受 30%，其中一人承伤一半（风险分摊） */
-function resolveSlam(state: BattleState, boss: Combatant, damage: number, name: string, fire = false): void {
+/** 震地猛击结算(M-b 区域化,U41):爆心半径内才挨打——读条期间跑出预警圈=完全免伤;spread 阵型保留为圈内减伤保险 */
+function resolveSlam(state: BattleState, boss: Combatant, damage: number, name: string, fire = false, center?: { x: number; y: number }, radius = 90): void {
   const spread = state.commands.stance === 'spread'
   const members = state.combatants.filter((x) => x.alive && x.team === 'guild')
   if (members.length === 0) return
+  const inRange = (m: typeof members[number]) => !center || !m.pos || Math.hypot(m.pos.x - center.x, m.pos.y - center.y) <= radius
   const tankIdx = Math.floor(battleRandom(state) * members.length)
+  let hitCount = 0
   for (let i = 0; i < members.length; i++) {
+    if (!inRange(members[i])) continue
+    hitCount++
     const resistance = fire ? 1 - Math.min(0.75, Math.max(0, members[i].fireResist ?? 0)) : 1
-    const dmg = Math.max(1, Math.round(damage * resistance * (spread ? (i === tankIdx ? 0.5 : 0.1) : 1)))
+    const dmg = Math.max(1, Math.round(damage * resistance * (spread ? (i === tankIdx ? 0.5 : 0.35) : 1)))
     applyHit(state, boss, members[i], dmg, `${name}命中`)
   }
-  // 指挥 payoff 事件:减伤与否必须让演出层看见——这是「我的指令救了全队」的可见回报
-  state.events.push({ tick: state.tick, type: 'slam', targetId: boss.id, amount: damage, mitigated: spread })
+  // 指挥 payoff 事件:躲避结果让演出层看见——这是「我的走位救了全队」的可见回报
+  state.events.push({ tick: state.tick, type: 'slam', targetId: boss.id, amount: damage, mitigated: spread || hitCount < members.length })
   pushLog(
     state,
     'enemy',
-    spread ? `【${name}】落下——分散阵型大幅减伤！` : `【${name}】命中全队！`,
+    hitCount === 0 ? `【${name}】轰然砸下——全员跑出了范围,毫发无伤!` : spread ? `【${name}】落下——${hitCount} 人在范围内,分散阵型大幅减伤!` : `【${name}】命中 ${hitCount} 人!`,
   )
 }
 

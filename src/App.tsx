@@ -401,6 +401,12 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const selectedIdsRef = useRef<string[]>([])
   selectedIdsRef.current = selectedIds
+  // 选中集同步进 battle.commands(actWith 停火判定读这里;下一渲染周期由 syncAll 持久化)
+  const syncSelected = (ids: string[]) => {
+    const b = towerRunRef.current?.battle ?? runRef.current?.battle
+    if (b) b.commands.selectedIds = ids
+  }
+  const pickSelected = (ids: string[]) => { setSelectedIds(ids); syncSelected(ids) }
   const manualCmdRef: { current: null | ((fn: (b: import('./sim/types').BattleState) => void) => void) } = { current: null }
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
@@ -460,26 +466,33 @@ export default function App() {
     renderer.onUnitClick = (c) => {
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
       if (!b || b.status !== 'running') return
-      // U41 操作层:左键点我方=单选;左键点敌方=集火(原指挥台语义)
-      if (c.team === 'guild' && c.alive && c.memberId) { setSelectedIds([c.memberId]); return }
+      // U41 操作层:左键点我方=单选;左键点敌方=集火(保留指挥台语义)
+      if (c.team === 'guild' && c.alive && c.memberId) { pickSelected([c.memberId]); return }
       if (c.team !== 'enemy' || !c.alive) return
       setFocus(b, c.id)
       drainAndSync(b)
     }
-    renderer.onBoxSelect = (ids) => setSelectedIds(ids) // 框选(RTS 多选;空框=取消全选)
+    renderer.onBoxSelect = (ids) => pickSelected(ids) // 框选(RTS 多选;空框=取消全选)
     renderer.onUnitRightClick = (c) => {
       if (c.team !== 'enemy' || !c.alive) return
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
+      const ids = selectedIdsRef.current
       if (!b || b.status !== 'running') return
-      setFocus(b, c.id) // 右键点敌人=集火攻击(RTS 语境)
+      // 右键点敌人=**攻击指令**:所选单位追击并攻击该敌(手动模式下这是唯一攻击来源);同时保留集火 UI
+      setFocus(b, c.id)
+      manualCmdRef.current?.((bb) => { for (const mid of ids) { const u = bb.combatants.find((x) => x.memberId === mid && x.alive); if (u) u.attackTargetId = c.id } })
       drainAndSync(b)
     }
     renderer.onRightClick = (x, y) => {
-      // 右键点地面=所选单位集体移动(围绕点击点网格散开,不叠一点)
+      // 右键点地面=所选单位集体移动(围绕点击点网格散开,不叠一点);移动指令清攻击目标(移动优先)
       const ids = selectedIdsRef.current
       if (!ids.length) return
       manualCmdRef.current?.((bb) => {
-        ids.forEach((mid, i) => setMoveTarget(bb, mid, x + (i % 3) * 36 - 36, y + Math.floor(i / 3) * 40 - 40))
+        ids.forEach((mid, i) => {
+          const u = bb.combatants.find((x) => x.memberId === mid && x.alive)
+          if (u) u.attackTargetId = undefined
+          setMoveTarget(bb, mid, x + (i % 3) * 36 - 36, y + Math.floor(i / 3) * 40 - 40)
+        })
       })
     }
     // 开发架调试钩子：透视 Pixi 舞台用

@@ -299,6 +299,8 @@ export interface Combatant {
   pos?: { x: number; y: number }
   /** 玩家点地面下达的移动目标;存在时移动优先于普攻 */
   moveTarget?: { x: number; y: number }
+  /** U41 操作层:玩家右键敌人下达的攻击指令——手动模式下单位只追击并攻击该目标(取消自动索敌) */
+  attackTargetId?: string
   range: AttackRange
   /** 仅我方有职业角色（敌我判别辅助协同判定） */
   role?: Role
@@ -508,6 +510,8 @@ export interface BattleCommands {
   stance: Stance
   /** 集火目标：全队优先攻击（配合集火加成可打断咏唱） */
   focusId?: string
+  /** U41 操作层:手动模式下的选中单位集(完全听指令,停火不索敌;App 选中时同步) */
+  selectedIds?: string[]
   healStock: number
   furyStock: number
   healCd: number

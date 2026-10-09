@@ -252,6 +252,7 @@ export class BattleRenderer {
     this.app = app
     this.host = container
     container.appendChild(app.canvas)
+    container.addEventListener('contextmenu', (e) => e.preventDefault()) // RTS 右键指令,禁浏览器菜单
     await preloadUrlSprites() // 素材包 PNG 预加载(失败静默降级)
     if (this.disposed) return
     this.ready = true

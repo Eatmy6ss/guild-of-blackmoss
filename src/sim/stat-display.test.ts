@@ -75,6 +75,7 @@ test('套装说明与实际暴击、普攻收益一致；零/一件不激活，�
   // 走真实普攻，隔离其他乘区，用同随机种子比较灰冠伤害。
   function attackDamage(count: number) {
     const battle = createBattle([member], BLACKMOSS, BLACKMOSS.encounters[0].id, 708)
+    battle.commands.autoMode = true // U41 手动模式适配:托管语义
     const attacker = battle.combatants.find(c => c.team === 'guild')!
     attacker.skills = []
     attacker.attack = 10000

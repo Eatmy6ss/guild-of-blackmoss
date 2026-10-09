@@ -82,6 +82,7 @@ function settle(s: GuildSave): GuildSave {
 
 function finishBattle(s: GuildSave) {
   const b = s.runState.activeRun!.battle!
+  b.commands.autoMode = true // U41 手动模式适配:跨刷新一致性验证的是托管战斗
   while (b.status === 'running' && b.tick < 6000) stepBattle(b)
   expect(b.status).not.toBe('running')
   return settle(s)
@@ -139,6 +140,7 @@ test('副本实战：暂停指令、选路与各场奖励跨刷新保持逐字�
       if (plain.runState.activeRun!.phase === 'battle') {
         for (const s of [plain, resumed]) {
           const b = s.runState.activeRun!.battle!
+          b.commands.autoMode = true // U41 适配
           for (let tick = 0; tick < 18 && b.status === 'running'; tick++) stepBattle(b)
           useFuryPotion(b); useHealPotion(b); setStance(b, 'spread')
         }
@@ -186,6 +188,7 @@ test('高塔实战：已到账金币、保险、携带药水、Boss 掉落跨三
   for (let floor = 1; floor <= 3; floor++) {
     for (const s of [plain, resumed]) {
       const b = s.runState.activeRun!.battle!
+      b.commands.autoMode = true // U41 适配
       for (let tick = 0; tick < 15 && b.status === 'running'; tick++) stepBattle(b)
       useFuryPotion(b); setStance(b, 'tighten')
     }
@@ -228,6 +231,7 @@ test('召唤宠物、Boss 增援与临终呼援的单位编号不依赖模块生
   const d = DUNGEONS.find(d => d.bosses && Object.values(d.bosses).some(b => b.mechanics.some(m => m.kind === 'summon')))!
   const enc = d.encounters.find(e => e.bossId && d.bosses[e.bossId].mechanics.some(m => m.kind === 'summon'))!
   const a = createBattle(members, d, enc.id, 53, 0, 0, false)
+  a.commands.autoMode = true // U41 手动模式适配
   // 给机制留够时间；只改变本条测试的探针状态，不变更数据表/生产伤害规则。
   a.combatants.forEach(c => { c.attack = 1; c.hp = c.maxHp = 100000 })
   const b = JSON.parse(JSON.stringify(a))
@@ -305,6 +309,7 @@ test('旧人物分支 v23 回城/steps 途中档迁移保留资产；失效路�
       Object.assign(r, { steps: BLACKMOSS.encounters.map(e => e.id), stepIdx: 0,
         routeTaken: ['shortcut'], nodeIds: [], eliteAt: [], phase: 'battle',
         battle: createBattle(resolved(data), BLACKMOSS, BLACKMOSS.encounters[0].id, 53) })
+      r.battle.commands.autoMode = true // U41 手动模式适配(r 引用)
       r.battle.commands.healStock = 2; r.battle.commands.furyStock = 1
       data.runState.activeRun = r; data.runState.playing = true; data.runState.autoLoop = true
     }

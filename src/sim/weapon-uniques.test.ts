@@ -24,6 +24,7 @@ describe('R5.3b 刃·暴击流血', () => {
     const run = createRun([mk('warrior', 'wpn-t1-sword')], BLACKMOSS, 601)
     beginBattle(run, 601)
     const state = run.battle!
+    state.commands.autoMode = true // U41 手动模式适配(流血 DOT 结算随单位行动循环)
     const blade = state.combatants.find((c) => c.team === 'guild')!
     const foe = state.combatants.find((c) => c.team === 'enemy')!
     foe.maxHp = 500; foe.hp = 500
@@ -117,6 +118,7 @@ describe('R5.3c 打断累积倍率', () => {
     const bladeM = mk('warrior', 'wpn-t1-sword'); bladeM.id = 'm-blade'
     // 直连格鲁什 boss(咏唱机制载体;杂兵战没有读条)
     const state = createBattle([axeM, bladeM], BLACKMOSS, 'enc-talma', 604)
+    state.commands.autoMode = true // U41 手动模式适配
     const foe = state.combatants.find((c) => c.team === 'enemy' && c.bossMechanics)!
     const axe = state.combatants.find((c) => c.memberId === axeM.id)!
     const blade = state.combatants.find((c) => c.memberId === bladeM.id)!
