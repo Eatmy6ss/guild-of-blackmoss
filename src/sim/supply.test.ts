@@ -12,8 +12,8 @@ describe('#4.2 出征补给', () => {
     expect(rationCost(3, 0)).toBe(0)
   })
 
-  it('plannedLayers:与 generateMap 层数规则同源(3 人本 6 层/5 人本 7 层)', () => {
-    expect(plannedLayers(BLACKMOSS)).toBe(6)
+  it('plannedLayers:与 generateMap 层数规则同源(#7.2 加长后 3 人本 8 层/5 人本 10 层)', () => {
+    expect(plannedLayers(BLACKMOSS)).toBe(8)
   })
 
   it('maintenanceCost:场数×幸存者×单价,铁匠铺每级 −15%;团灭(0 幸存)为 0', () => {

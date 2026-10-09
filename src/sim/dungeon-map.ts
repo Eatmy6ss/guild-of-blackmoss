@@ -126,13 +126,13 @@ interface GenNode extends MapNode {
 
 /** 预计行程层(主体层+Boss 层;与 generateMap 的层数规则同源——口粮计价/#4.6 时间口径共用) */
 export function plannedLayers(dungeon: DungeonDef): number {
-  return (dungeon.size === 3 ? 5 : 6) + 1
+  return (dungeon.size === 3 ? 7 : 9) + 1
 }
 
 /** 生成一张分层地图。同 seed 同图;保证项由确定性收尾补丁落实。 */
 export function generateMap(dungeon: DungeonDef, seed: number): DungeonMap {
   const rng = createRng(seed >>> 0)
-  const bodyLayers = dungeon.size === 3 ? 5 : 6
+  const bodyLayers = dungeon.size === 3 ? 7 : 9 // #7.2 副本加长(C4)
   const bossSeq = dungeon.encounters.filter((e) => e.kind === 'boss')
   const bossEnc = bossSeq[0]?.id ?? dungeon.encounters[dungeon.encounters.length - 1]!.id
   const layers: GenNode[][] = []
@@ -235,6 +235,12 @@ export function generateMap(dungeon: DungeonDef, seed: number): DungeonMap {
     if (b) { b.kind = 'rest'; b.encounterId = undefined }
   }
 
+  // —— 开局护栏(#7.2 加长后暴露的存量炸弹):第 0 层必须至少 1 个可战斗节点——
+  // 铺点/assignKind/兜底都可能把 L0 全改写为 rest/treasure/event,玩家开局将无怪可打。必须排在全部改写之后。
+  if (!layers[0]!.some((n) => n.kind === 'battle' && canBattle(n))) {
+    const fix = layers[0]!.find((n) => canBattle(n) && n.kind !== 'elite') // 不吃掉全图唯一的精英
+    if (fix) { fix.kind = 'battle'; fix.encounterId = dungeon.terrains[fix.terrain]!.encounters[0] }
+  }
   // —— 连边:每节点 1–2 条出边;暗道跳层;下一层每节点 ≥1 入边;末层无出边 ——
   const edges: [string, string][] = []
   const outOf = new Map<string, string[]>()

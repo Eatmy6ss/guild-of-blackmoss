@@ -30,7 +30,7 @@ describe('R1.1 generateMap 结构验收', () => {
       for (let i = 0; i < 200; i++) {
         const seed = 1000 + i * 7919
         const map = generateMap(dungeon, seed)
-        const bodyLayers = dungeon.size === 3 ? 5 : 6
+        const bodyLayers = dungeon.size === 3 ? 7 : 9 // #7.2 副本加长(U39)
         expect(map.layers.length, `${dungeon.id}#${seed}`).toBe(bodyLayers + 1)
         const bossLayer = map.layers[map.layers.length - 1]!
         expect(bossLayer).toHaveLength(1)

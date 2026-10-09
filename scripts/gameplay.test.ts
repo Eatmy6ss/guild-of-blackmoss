@@ -1628,6 +1628,7 @@ test('actual route treasure handler draws only the map tier and exposes rewards 
         logChronicle: () => { chronicleCount++ }, setRun: () => { updates++ },
         changeProgress: (p: { lastNodeResult?: string | null }) => { if (p.lastNodeResult !== undefined) nodeResult = p.lastNodeResult },
         applyRestMorale: () => {}, manual: [], startStep: () => {},
+        setBlessing: () => {}, setScarNotices: () => {}, restHealMult: () => 1, // #7.2 层数加长后 seed 404 路径漂移,路况/事件分支可能引用这些(垫片随行)
         seedRef: { current: 1 }, SEED_BASE: 7, setRunning: () => {}, syncAll: () => {},
       })
       open(node.id)
