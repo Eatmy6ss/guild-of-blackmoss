@@ -176,7 +176,7 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
     // 必须在推进索引前捕获遭遇奖励/委托；先推进再登记死亡保持副本旧顺序。
     // R5.1b:经验/掉落倍率要在 advanceRun 消退状态前捕获;消退的状态写成可见提示。
     const condsBeforeSettle = [...(r.conditions ?? [])]
-    expMultCond = conditionExpMult(r) * clauseMult * laneMult
+    expMultCond = conditionExpMult(r) * clauseRewardMult(r.bountyClauses?.filter((id) => id !== 'greenhorn') ?? [], greenhornDown) * laneMult
     advanceRun(r, guild.members)
     for (const name of (r.conditions ?? []).length < condsBeforeSettle.length
       ? condsBeforeSettle.filter((id) => !(r.conditions ?? []).includes(id)).map((id) => CONDITION_BY_ID[id]?.name ?? id)
@@ -305,7 +305,16 @@ export function settleEncounter(input: EncounterInput, rng?: Rng): EncounterOutc
         appendFact(guild.factLedger, day, { kind: 'tower-record', actors: [], refs: { floor: guild.towerBest } })
       }
     }
-  } else c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run), elite: dungeonElite }, effects.expMult * expMultCond)
+  } else {
+    c.growth = settleGrowth({ ...outcome.run, members, dungeon: runDungeon(outcome.run), elite: dungeonElite }, effects.expMult * expMultCond)
+    // #7.3 带新人修正(U39 反馈①):计划原文「该员双倍经验」——新人自己的经验条目翻倍(不再全队 ×1.5)
+    // (此处在 tower/dungeon 分支的 else 里,r/greenhornDown 是 dungeon 大分支局部——用 outcome.run 重读)
+    const ghId = outcome.run.greenhornId
+    const ghAlive = ghId ? members.find((m) => m.id === ghId)?.alive : undefined
+    if (ghId && ghAlive) {
+      for (const e of c.growth.experience) if (e.memberId === ghId) e.amount *= 2
+    }
+  }
 
   // R4.2b 训练场替补追赶(redesign §6 设施各管玩法):训练场 2 级起,未出征的存活成员
   // 按出征人均实发经验 ×0.5(C4 占位)跟着操练——替补也有成长线

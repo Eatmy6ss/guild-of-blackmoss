@@ -171,6 +171,15 @@ export function startStep(run: DungeonRun, seed: number, manualBonus = 0, roster
     const key = k as 'atk' | 'def' | 'hp' | 'heal'
     mods[key] = (mods[key] ?? 1) * (v as number)
   }
+  // #7.3(U39)条款转化为副本难度:开启的条款让**敌人**按档变强(乘进既有 enemyMods 通道,零新系统;C4)——
+  // 「难度点」看得见:急行军=敌更凶 ×1.15/轻装=敌更耐 ×1.15(没药水)/深潜=敌更硬 ×1.15(逐层推进)/带新人=敌减凶 ×0.9(新人安全化,奖励修正为该员双倍经验)
+  if (run.bountyClauses?.length) {
+    const cm: Record<string, number> = { haste: 1.15, lightload: 1.15, deepdive: 1.15, greenhorn: 0.9 }
+    for (const id of run.bountyClauses) {
+      const mult = cm[id]
+      if (mult) mods.atk = (mods.atk ?? 1) * mult
+    }
+  }
   run.battlesFought++
   run.battle = createBattle(
     runMembers(run, roster).filter((m) => m.alive),
