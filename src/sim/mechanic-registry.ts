@@ -131,6 +131,12 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
         }
       } else if ((rt.next ?? mechanicParam(m, 'firstTick')) <= state.tick) {
         rt.until = state.tick + mechanicParam(m, 'telegraphTicks')
+        // M-b 区域化(U41):读条开始锁定爆心=当前仇恨最高者所在位置(读条期间跑出圈=免伤)
+        const targets = state.combatants.filter((x) => x.alive && x.team === 'guild' && x.pos)
+        if (targets.length > 0) {
+          const cen = targets.reduce((a, b) => ((b.threat[c.id] ?? 0) > (a.threat[c.id] ?? 0) ? b : a))
+          rt.slamCenter = { ...(cen.pos as { x: number; y: number }) }
+        }
         state.events.push({
           tick: state.tick,
           type: 'telegraph',

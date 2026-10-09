@@ -320,7 +320,7 @@ export interface Combatant {
   /** 召唤机制的增援池（从副本 enemyGroups 解析） */
   summonPool?: EnemyDef[]
   /** 机制运行时状态：按机制 kind 存 until/next/taken/fired;brokenBy=A3 招牌技打断出处 */
-  mech?: Record<string, { until?: number; next?: number; taken?: number; fired?: number; resolvedAt?: number; brokenBy?: string }>
+  mech?: Record<string, { until?: number; next?: number; taken?: number; fired?: number; resolvedAt?: number; brokenBy?: string; slamCenter?: { x: number; y: number } }>
   /** 咏唱成功获得的临时攻击加成 */
   buffAttack?: number
   buffUntil?: number

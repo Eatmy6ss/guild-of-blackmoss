@@ -842,9 +842,18 @@ export class BattleRenderer {
       bar.roundRect(-width / 2, barY, width * (1 - window.progress), 4, 2).fill({ color, alpha: 0.95 })
       if (window.dangerCircle) {
         if (!ring || ring.destroyed) { ring = new Graphics(); this.root.addChild(ring); this.warningRings.set(id, ring) }
-        ring.clear().ellipse(0, 8, 40 * u.baseScale, 15 * u.baseScale)
-          .fill({ color, alpha: 0.25 }).stroke({ width: 2, color, alpha: 0.7 })
-        ring.position.copyFrom(u.container.position)
+        // M-b 区域化(U41):有锁定爆心的机制画真实半径预警圈(画布坐标=逻辑×scale);否则脚下椭圆(旧机制兼容)
+        const scale = this.width / ARENA.width
+        if (window.slamCenter) {
+          const cx = window.slamCenter.x * scale, cy = 58 + window.slamCenter.y * (this.height - 72) / ARENA.height
+          const rr = (window.slamRadius ?? 90) * scale
+          ring.clear().circle(cx, cy, rr).fill({ color, alpha: 0.18 }).stroke({ width: 2, color, alpha: 0.75 })
+          ring.position.set(0, 0)
+        } else {
+          ring.clear().ellipse(0, 8, 40 * u.baseScale, 15 * u.baseScale)
+            .fill({ color, alpha: 0.25 }).stroke({ width: 2, color, alpha: 0.7 })
+          ring.position.copyFrom(u.container.position)
+        }
         ring.alpha = window.progress >= 0.66 ? 1 : 0.7
       } else if (ring) {
         ring.removeFromParent(); ring.destroy(); this.warningRings.delete(id)

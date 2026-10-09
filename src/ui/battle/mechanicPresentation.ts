@@ -16,7 +16,8 @@ export function mechanicWindows(battle: BattleState, unit: Combatant) {
     return [{ kind: def.kind, name: def.name, counter: spec.counter, remaining, total,
       progress: Math.max(0, Math.min(1, 1 - remaining / total)),
       dangerCircle: intent.type === 'telegraph' || def.kind === 'breath-charge', interruptible,
-      breakDamage: interruptible ? intent.breakDamage : undefined, taken: interruptible ? intent.taken : undefined }]
+      breakDamage: interruptible ? intent.breakDamage : undefined, taken: interruptible ? intent.taken : undefined,
+      slamCenter: rt.slamCenter, slamRadius: optionalMechanicParam(def, 'radius') }]
   }).sort((a, b) => a.remaining - b.remaining)
 }
 
