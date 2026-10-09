@@ -909,12 +909,21 @@ function actWith(c: Combatant, state: BattleState): void {
   if (!target) return
   // M-a 空间化:射程判定——目标在射程外则追击(本 tick 不出手),进入射程才攻击
   if (c.pos && target.pos) {
+    const d = dist(c.pos, target.pos)
     const range = c.range === 'melee' ? MELEE_RANGE : RANGED_RANGE
-    if (dist(c.pos, target.pos) > range) {
-      c.moveTarget = { x: target.pos.x, y: target.pos.y }
-      return
+    // M-c AI 走位:远程保距——目标贴脸时设短撤步目标,**但继续执行普攻**(边撤边打=kiting 正确实现;
+    // 若后撤封锁攻击,敌方远程被我方近战贴脸时输出归零,毕业考的指挥必要性会被 kiting 毁掉——⑨ 实测教训)
+    if (c.range === 'ranged' && d < 120) {
+      const ux = (c.pos.x - target.pos.x) / d, uy = (c.pos.y - target.pos.y) / d
+      c.moveTarget = {
+        x: Math.max(20, Math.min(ARENA.width - 20, c.pos.x + ux * 60)),
+        y: Math.max(40, Math.min(ARENA.height - 20, c.pos.y + uy * 60)),
+      }
+    } else if (d > range) {
+      c.moveTarget = { x: target.pos.x, y: target.pos.y } // 出程追击
+    } else if (c.moveTarget && dist(c.moveTarget, target.pos) < d - 40) {
+      c.moveTarget = undefined // 射程内且不再远离目标:清旧追击/撤步,恢复站桩
     }
-    c.moveTarget = undefined // 射程内:清追击,恢复站桩输出
   }
   dealDamage(state, c, target, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
 }
@@ -1187,6 +1196,22 @@ export function stepBattle(state: BattleState): void {
     const d = dist(c.pos, c.moveTarget)
     if (d <= MOVE_SPEED) { c.pos = { ...c.moveTarget }; c.moveTarget = undefined }
     else c.pos = { x: c.pos!.x + (c.moveTarget.x - c.pos!.x) / d * MOVE_SPEED, y: c.pos!.y + (c.moveTarget.y - c.pos!.y) / d * MOVE_SPEED }
+  }
+  // M-c AI 走位:分离力——单位间距小于体宽时互推(防重叠堆叠);【分散】阵型=自动散开(间距 ×2,C4)
+  {
+    const sep = state.commands.stance === 'spread' ? 56 : 28
+    const alive = state.combatants.filter((c) => c.alive && c.pos)
+    for (let i = 0; i < alive.length; i++) {
+      for (let j = i + 1; j < alive.length; j++) {
+        const a = alive[i]!, b = alive[j]!
+        const dx = a.pos!.x - b.pos!.x, dy = a.pos!.y - b.pos!.y
+        const d = Math.hypot(dx, dy)
+        if (d <= 0 || d >= sep) continue
+        const push = (sep - d) / 2, ux = dx / d, uy = dy / d
+        a.pos = { x: Math.max(10, Math.min(ARENA.width - 10, a.pos!.x + ux * push)), y: Math.max(30, Math.min(ARENA.height - 10, a.pos!.y + uy * push)) }
+        b.pos = { x: Math.max(10, Math.min(ARENA.width - 10, b.pos!.x - ux * push)), y: Math.max(30, Math.min(ARENA.height - 10, b.pos!.y - uy * push)) }
+      }
+    }
   }
   // 灼息点燃(版图二 ember-breath):被点燃者每 10 tick 灼烧 3 血
   for (const c of state.combatants) {

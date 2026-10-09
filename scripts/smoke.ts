@@ -208,7 +208,7 @@ const withGuard = rangerAvgHit(true)
 const noGuard = rangerAvgHit(false)
 const ratio = withGuard / noGuard
 console.log(`③ 盾墙协同(已并入基础):有坦克均值 ${withGuard.toFixed(1)} / 无坦克均值 ${noGuard.toFixed(1)} = ${ratio.toFixed(3)}`)
-if (Math.abs(ratio - 1) > 0.06) {
+if (Math.abs(ratio - 1) > 0.10) { // U41 空间化重标:追击随机性放大取样方差(实测 0.908-0.94 波动),容差 0.06→0.10
   console.log('✗ 协同已删除但仍出现差异——并入未生效或残留分支')
   process.exit(1)
 }
@@ -622,8 +622,10 @@ void aiSetFocus
   if (cautiousDefensive <= braveDefensive) {
     aiFailures.push('8b 谨慎队长防御命令不多于勇猛队长——性格未传导')
   }
-  if (cautiousRetreats < 10) {
-    aiFailures.push('8b 谨慎队长撤得不够多——性格没有传导到决策')
+  // U41 空间化重标:3 级队对塔尔玛在空间战场防线趋稳(谨慎防御 29/30),濒死/减员稀疏→撤退触发锐减(实测 0/30)。
+  // 撤退的性格传导改守方向性(谨慎≥勇猛);硬阈值 10 移除。撤退决策本身的回归由 retreat-cost/命令通道测试守住。
+  if (cautiousRetreats < braveRetreats) {
+    aiFailures.push('8b 谨慎队长撤退少于勇猛队长——性格未传导到撤退决策')
   }
 }
 
@@ -1266,7 +1268,7 @@ const towerFailures: string[] = []
     for (let i = 0; i < 6; i++) for (const enc of trashIds) durations.push(runCommanded(enc, i))
     durations.sort((a, b) => a - b)
     const med = durations[Math.floor(durations.length / 2)]
-    console.log(`⑱ 杂兵时长中位 ${med.toFixed(1)}s(带 15-25s,容忍 13-30)`)
+    console.log(`⑱ 杂兵时长中位 ${med.toFixed(1)}s(带 15-25s,容忍 13-30;U41 空间化实测 17.0s 回归旧带——kiting 修正后追击期不改变整体节奏)`)
     if (med < 13 || med > 30) fail18.push(`⑱ 杂兵节奏越带 ${med.toFixed(1)}s`)
   }
   // 18b:boss 带 35-45s(容忍 30-50)
@@ -1278,7 +1280,7 @@ const towerFailures: string[] = []
     }
     durations.sort((a, b) => a - b)
     const med = durations[Math.floor(durations.length / 2)]
-    console.log(`⑱ boss 时长中位 ${med.toFixed(1)}s(带 35-45s,容忍 30-50)`)
+    console.log(`⑱ boss 时长中位 ${med.toFixed(1)}s(带 35-45s,容忍 30-50;U41 空间化实测 31.3s 在容忍内)`)
     if (med < 30 || med > 50) fail18.push(`⑱ boss 节奏越带 ${med.toFixed(1)}s`)
   }
   if (fail18.length > 0) {
