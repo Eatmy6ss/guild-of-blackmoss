@@ -397,10 +397,10 @@ export default function App() {
   const [pendingAttr, setPendingAttr] = useState<{ amount: number } | null>(null)
   // #5.1 悬赏加码条款:出征界面勾选,出发时锁定进 run(保留勾选方便连刷,每趟重新校验)
   const [bountyClauses, setBountyClauses] = useState<string[]>(() => [])
-  // U41/M-a 空间化:点选的我方角色(renderer 画布点选与作战面板小队条共用一个选中态)
-  const [selectedAlly, setSelectedAlly] = useState<string | null>(null)
-  const selectedAllyRef = useRef<string | null>(null)
-  selectedAllyRef.current = selectedAlly
+  // U41/M-a 空间化+操作层修订:框选/点选的我方角色集(RTS 多选;renderer/小队条/技能面板共用)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const selectedIdsRef = useRef<string[]>([])
+  selectedIdsRef.current = selectedIds
   const manualCmdRef: { current: null | ((fn: (b: import('./sim/types').BattleState) => void) => void) } = { current: null }
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
@@ -460,17 +460,27 @@ export default function App() {
     renderer.onUnitClick = (c) => {
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
       if (!b || b.status !== 'running') return
-      // M-a 空间化:点我方=选中(联动小队条/技能面板);点敌方=集火(原指挥台语义)
-      if (c.team === 'guild' && c.alive && c.memberId) { setSelectedAlly(c.memberId); return }
+      // U41 操作层:左键点我方=单选;左键点敌方=集火(原指挥台语义)
+      if (c.team === 'guild' && c.alive && c.memberId) { setSelectedIds([c.memberId]); return }
       if (c.team !== 'enemy' || !c.alive) return
       setFocus(b, c.id)
       drainAndSync(b)
     }
-    renderer.onGroundClick = (x, y) => {
+    renderer.onBoxSelect = (ids) => setSelectedIds(ids) // 框选(RTS 多选;空框=取消全选)
+    renderer.onUnitRightClick = (c) => {
+      if (c.team !== 'enemy' || !c.alive) return
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
-      const mid = selectedAllyRef.current
-      if (!b || b.status !== 'running' || !mid) return
-      manualCmdRef.current?.((bb) => setMoveTarget(bb, mid, x, y))
+      if (!b || b.status !== 'running') return
+      setFocus(b, c.id) // 右键点敌人=集火攻击(RTS 语境)
+      drainAndSync(b)
+    }
+    renderer.onRightClick = (x, y) => {
+      // 右键点地面=所选单位集体移动(围绕点击点网格散开,不叠一点)
+      const ids = selectedIdsRef.current
+      if (!ids.length) return
+      manualCmdRef.current?.((bb) => {
+        ids.forEach((mid, i) => setMoveTarget(bb, mid, x + (i % 3) * 36 - 36, y + Math.floor(i / 3) * 40 - 40))
+      })
     }
     // 开发架调试钩子：透视 Pixi 舞台用
     ;(window as unknown as Record<string, unknown>).__br = renderer
@@ -1139,7 +1149,7 @@ export default function App() {
               onSignatureUse={() => setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))}
               useSignatureCmd={(b, mid, tid) => useSignature(b, mid, tid)}
               members={membersRef.current} onManualCast={(b, mid, sid, tid) => { castSkillManually(b, mid, sid, tid); drainAndSync(b) }}
-              selId={selectedAlly} onSelectAlly={setSelectedAlly}
+              selIds={selectedIds} onSelectAlly={(id) => setSelectedIds(id ? [id] : [])}
               logBoxRef={logBoxRef} logPinnedRef={logPinnedRef} retreat={retreat}
             />
           )}

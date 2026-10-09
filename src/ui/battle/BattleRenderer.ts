@@ -212,6 +212,11 @@ export class BattleRenderer {
   onUnitClick?: (c: Combatant) => void
   /** M-a 空间化:点战场空白处=选中角色移动到该点(逻辑 640×360 坐标) */
   onGroundClick?: (x: number, y: number) => void
+  /** U41 操作层修订:左键拖框=框选我方单位(逻辑坐标矩形) */
+  onBoxSelect?: (ids: string[]) => void
+  /** U41 操作层修订:右键点地面=所选集体移动 / 右键点单位由 onUnitRightClick 分发 */
+  onRightClick?: (x: number, y: number) => void
+  onUnitRightClick?: (c: Combatant) => void
   private focusMarker: Text | null = null
   /** 阵型变化横幅（D14 反馈：阵型切换要有直观感受）——追踪上一帧阵型 */
   private lastStance: string | null = null
@@ -260,12 +265,43 @@ export class BattleRenderer {
     // M-a 空间化:地面点击(点空白处=移动指令;坐标换算 画布→逻辑 640×360)
     app.stage.eventMode = 'static'
     app.stage.hitArea = { contains: () => true } as never
-    app.stage.on('pointerdown', (e: { global: { x: number; y: number } }) => {
-      if (!this.onGroundClick) return
+    // U41 操作层:左键拖框(RTS 框选)/右键=指令。坐标统一画布→逻辑 640×360。
+    const toLogical = (e: { global: { x: number; y: number } }) => {
       const rect = app.canvas.getBoundingClientRect()
-      const w = rect.width || 1
-      const scale = ARENA.width / w
-      this.onGroundClick(e.global.x * scale, e.global.y * scale)
+      const w = rect.width || 1, h = rect.height || 1
+      return { x: e.global.x * (ARENA.width / w), y: e.global.y * (ARENA.height / h) }
+    }
+    let dragStart: { x: number; y: number } | null = null
+    app.stage.on('pointerdown', (e: { button: number; global: { x: number; y: number } }) => {
+      const p = toLogical(e)
+      if (e.button === 2) { this.onRightClick?.(p.x, p.y); return }
+      if (e.button === 0) dragStart = p
+    })
+    app.stage.on('pointermove', (e: { global: { x: number; y: number } }) => {
+      if (!dragStart) return
+      const p = toLogical(e)
+      this.drawSelectionBox(dragStart, p)
+    })
+    app.stage.on('pointerup', (e: { button: number; global: { x: number; y: number } }) => {
+      if (e.button !== 0 || !dragStart) return
+      const p = toLogical(e)
+      const start = dragStart
+      dragStart = null
+      this.clearSelectionBox()
+      const moved = Math.abs(p.x - start.x) > 8 || Math.abs(p.y - start.y) > 8
+      if (moved && this.onBoxSelect) {
+        // 框选:逻辑矩形内我方存活单位
+        const x0 = Math.min(start.x, p.x), x1 = Math.max(start.x, p.x)
+        const y0 = Math.min(start.y, p.y), y1 = Math.max(start.y, p.y)
+        const ids = (this.battle?.combatants ?? [])
+          .filter((c) => c.team === 'guild' && c.alive && c.pos)
+          .filter((c) => c.pos!.x >= x0 && c.pos!.x <= x1 && c.pos!.y >= y0 && c.pos!.y <= y1)
+          .map((c) => c.memberId!)
+          .filter(Boolean)
+        this.onBoxSelect(ids)
+      } else if (!moved) {
+        this.onGroundClick?.(p.x, p.y) // 原地点击(无拖动)=取消选择/留接口
+      }
     })
     this.drawBackdrop(this.theme)
     app.ticker.add((t) => this.tick(t.deltaMS))
@@ -462,6 +498,7 @@ export class BattleRenderer {
         const petSprite = caster ? caster.specId?.includes('warlock') ? '/assets/mon/imp.png' : 'mon-wolf' : undefined
         u = new UnitView(c, slot.x, slot.y, layers, layout.bodyScale, layout.labelChars, petSprite)
         u.onClick = combatant => this.onUnitClick?.(combatant)
+        u.container.on('rightdown', (e: { stopPropagation: () => void }) => { e.stopPropagation(); this.onUnitRightClick?.(c) })
         this.units.set(c.id, u); this.root.addChild(u.container)
       }
       u.combatant = c; u.slot = slot
@@ -859,6 +896,20 @@ export class BattleRenderer {
         ring.removeFromParent(); ring.destroy(); this.warningRings.delete(id)
       }
     }
+  }
+
+  private selectionG: Graphics | null = null
+  /** U41 操作层:框选矩形(逻辑坐标→画布) */
+  private drawSelectionBox(a: { x: number; y: number }, b: { x: number; y: number }) {
+    if (!this.selectionG) { this.selectionG = new Graphics(); this.root.addChild(this.selectionG) }
+    const scale = this.width / ARENA.width
+    const yOff = 58, yScale = (this.height - 72) / ARENA.height
+    this.selectionG.clear()
+      .rect(a.x * scale, yOff + a.y * yScale, (b.x - a.x) * scale, (b.y - a.y) * yScale)
+      .fill({ color: 0xdcba87, alpha: 0.08 }).stroke({ width: 1, color: 0xdcba87, alpha: 0.9 })
+  }
+  private clearSelectionBox() {
+    this.selectionG?.clear()
   }
 
   /** 打断演出:咏唱条胀大淡出「碎裂」(interrupted 事件调用,配合白闪/hit-stop) */
