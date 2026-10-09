@@ -1,5 +1,6 @@
-import type { BattleState, Stance } from '../../sim/types'
-import { STANCE_NAME, setStance, setFocus, useHealPotion, useFuryPotion } from '../../sim/combat'
+import { useState } from 'react'
+import type { BattleState, Stance, Member } from '../../sim/types'
+import { STANCE_NAME, setStance, setFocus, useHealPotion, useFuryPotion, castSkillManually } from '../../sim/combat'
 import type { DungeonRun } from '../../sim/run'
 
 // R5.2c(U33⑦):战场区(指挥台/节奏条/招牌技栏/战报/日志)自 App.tsx 迁出——行为零变,处理器留 App。
@@ -26,11 +27,19 @@ export function BattleScreen(props: {
   dismissHint: (id: string) => void
   onSignatureUse: () => void
   useSignatureCmd: (battle: BattleState, memberId: string, targetId?: string) => void
+  /** #7.1(U39)RTS 式点选施法:花名册(选人/选目标用名字与血量) */
+  members: Member[]
+  onManualCast: (b: BattleState, memberId: string, skillId: string, targetId?: string) => void
   logBoxRef: React.RefObject<HTMLDivElement>
   logPinnedRef: { current: boolean }
   retreat: () => void
 }) {
   const { run, battle, battleOver, running, battleSpeed, intents, lastSummary } = props
+  // #7.1(U39)RTS 式点选施法:点我方角色→技能面板→点目标施放。状态是纯 UI 选择,施放走 cmd(经挂机守卫)。
+  const [selId, setSelId] = useState<string | null>(null)
+  const [aimSkill, setAimSkill] = useState<string | null>(null)
+  const selUnit = battle.combatants.find((c) => c.team === 'guild' && c.memberId === selId && c.alive)
+  const nameOf = (id: string) => props.members.find((m) => m.id === id)?.name ?? id
   if (!battle) return null
   return (
     <>
@@ -150,6 +159,55 @@ export function BattleScreen(props: {
               🏳 撤退令
             </button>
           )}
+        </div>
+      )}
+      {/* ===== #7.1(U39)RTS 式点选施法:点选我方角色→技能面板→点目标。挂机中禁用(挂机=队长代打) ===== */}
+      {battle.status === 'running' && !battle.commands.autoMode && (
+        <div className="squad-strip" role="group" aria-label="点选角色">
+          {battle.combatants.filter((c) => c.team === 'guild' && c.alive).map((c) => (
+            <button
+              key={c.id}
+              className={selId === c.memberId ? 'active' : ''}
+              onClick={() => { const mid = c.memberId ?? null; setSelId(selId === mid ? null : mid); setAimSkill(null) }}
+            >
+              {nameOf(c.memberId ?? '')} {Math.round((c.hp / c.maxHp) * 100)}%
+            </button>
+          ))}
+          <span className="cmd-label">← 点选角色手动放技能</span>
+        </div>
+      )}
+      {battle.status === 'running' && selUnit && !battle.commands.autoMode && (
+        <div className="skill-strip" role="group" aria-label="技能面板">
+          <span className="cmd-label">{nameOf(selUnit.memberId ?? '')}的技能:</span>
+          {selUnit.skills.map((r) => (
+            <button
+              key={r.def.id}
+              className={aimSkill === r.def.id ? 'active' : ''}
+              disabled={r.cooldownLeft > 0}
+              title={r.def.effect}
+              onClick={() => setAimSkill(aimSkill === r.def.id ? null : r.def.id)}
+            >
+              ⚡ {r.def.name}{r.cooldownLeft > 0 ? `(${Math.ceil(r.cooldownLeft / 10)}s)` : ''}
+            </button>
+          ))}
+          {selUnit.skills.length === 0 && <span className="hint">该角色没有主动技能(普攻型)——招牌技走下方招牌栏</span>}
+          {aimSkill && (() => {
+            const def = selUnit.skills.find((r) => r.def.id === aimSkill)!.def
+            const allySkill = def.target === 'ally'
+            const targets = battle.combatants.filter((c) => c.alive && (allySkill ? c.team === 'guild' : c.team === 'enemy'))
+            return (
+              <span className="cmd-label">
+                {' '}选目标:
+                {def.target !== 'ally' && def.target !== 'enemy' ? (
+                  <button onClick={() => { props.cmd((b) => { castSkillManually(b, selUnit.memberId!, aimSkill) }); setAimSkill(null); props.sfxCmd() }}>释放(无指定目标)</button>
+                ) : targets.map((t) => (
+                  <button key={t.id} onClick={() => { props.cmd((b) => { castSkillManually(b, selUnit.memberId!, aimSkill, t.id) }); setAimSkill(null); props.sfxCmd() }}>
+                    {allySkill ? nameOf(t.memberId ?? '') : t.name}
+                  </button>
+                ))}
+              </span>
+            )
+          })()}
         </div>
       )}
       <div className="enc-row">

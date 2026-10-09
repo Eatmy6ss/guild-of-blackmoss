@@ -18,7 +18,7 @@ import { applyFeast } from './sim/morale'
 import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import { appendBio } from './sim/bio'
 import { INTEL_TIERS, INTEL_STOCK_CAP, intelDungeonFull, rollIntel, type IntelEntry, type IntelKind } from './sim/intel'
-import { TICK_MS, stepBattle, setFocus, useSignature } from './sim/combat'
+import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually } from './sim/combat'
 import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { WEAPON_FAMILIES } from './data/weapon-families'
@@ -1124,6 +1124,7 @@ export default function App() {
               setBattleSpeed={setBattleSpeed} dismissHint={dismissHint}
               onSignatureUse={() => setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))}
               useSignatureCmd={(b, mid, tid) => useSignature(b, mid, tid)}
+              members={membersRef.current} onManualCast={(b, mid, sid, tid) => { castSkillManually(b, mid, sid, tid); drainAndSync(b) }}
               logBoxRef={logBoxRef} logPinnedRef={logPinnedRef} retreat={retreat}
             />
           )}

@@ -906,14 +906,22 @@ function useSkill(
   allies: Combatant[],
   pool: Combatant[],
   state: BattleState,
+  forcedTarget?: Combatant, // #7.1(U39)RTS 式点选施法:玩家指定的目标优先(仅单体效果尊重;AOE/召唤无视)
 ): boolean {
   switch (skill.effect) {
     case 'heavy-strike': {
-      const target = pool.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
+      const target = forcedTarget && pool.includes(forcedTarget) ? forcedTarget : pool.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
       dealDamage(state, c, target, 1.8, `释放【${skill.name}】命中`)
       return true
     }
     case 'heal-lowest': {
+      if (forcedTarget && allies.includes(forcedTarget)) {
+        const amount = computeHeal(c, forcedTarget, Math.round(c.attack * 4.5), 'skill')
+        forcedTarget.hp = Math.min(forcedTarget.maxHp, forcedTarget.hp + amount)
+        state.events.push({ tick: state.tick, type: 'heal', attackerId: c.id, targetId: forcedTarget.id, amount })
+        pushLog(state, 'guild', `${c.name} 释放【${skill.name}】，为 ${forcedTarget.name} 恢复 ${amount} 点生命`)
+        return true
+      }
       const hurt = allies.filter((a) => a.hp / a.maxHp < 0.75)
       if (hurt.length === 0) return false
       const target = hurt.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
@@ -968,7 +976,7 @@ function useSkill(
     case 'shield-ally': {
       // 真言盾:给最脆的人上吸收盾;全队 >75% 时不施放(时机条件——AI 不再满血乱交盾)
       if (allies.every((a) => a.hp / a.maxHp > 0.75)) return false
-      const target = allies.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
+      const target = forcedTarget && allies.includes(forcedTarget) ? forcedTarget : allies.reduce((a, b) => (a.hp / a.maxHp <= b.hp / b.maxHp ? a : b))
       const shield = Math.round(c.attack * 6)
       target.absorbShield = (target.absorbShield ?? 0) + shield
       state.events.push({ tick: state.tick, type: 'shielded', targetId: target.id, amount: shield })
@@ -977,7 +985,7 @@ function useSkill(
     }
     case 'curse-mark': {
       // 痛苦诅咒:目标受伤 +25%,持续 12s
-      const target = pool.reduce((a, b) => (a.maxHp >= b.maxHp ? a : b))
+      const target = forcedTarget && pool.includes(forcedTarget) ? forcedTarget : pool.reduce((a, b) => (a.maxHp >= b.maxHp ? a : b))
       target.vulnUntilTick = state.tick + 120
       target.vulnMult = 1.25
       state.events.push({ tick: state.tick, type: 'cursed', targetId: target.id })
@@ -1414,6 +1422,29 @@ function resolveSignatureEnemy(state: BattleState, targetId?: string): Combatant
 }
 
 /** 消费招牌技指令:打断走 stepCastWindow 既有管线(置 taken=阈值,brokenBy 归属),二段效果复用既有字段 */
+/** #7.1(U39)RTS 式点选施法:玩家点选我方角色→选技能→选目标。校验冷却/存活/族门槛;冷却与 AI 同池(玩家放了 AI 不重复放)。 */
+export function castSkillManually(
+  state: BattleState,
+  memberId: string,
+  skillId: string,
+  targetId?: string,
+): { ok: boolean; reason?: string } {
+  if (state.status !== 'running') return { ok: false, reason: '战斗已结束' }
+  const caster = state.combatants.find((c) => c.team === 'guild' && c.memberId === memberId && c.alive)
+  if (!caster) return { ok: false, reason: '该角色不在战场或已倒下' }
+  if (caster.skills.length === 0) return { ok: false, reason: '该角色没有主动技能' }
+  const ready = caster.skills.find((r) => r.def.id === skillId)
+  if (!ready) return { ok: false, reason: '该角色没有这个技能' }
+  if (ready.cooldownLeft > 0) return { ok: false, reason: `【${ready.def.name}】冷却中` }
+  if (skillFamilyBlocked(caster, ready.def.weaponFamily)) return { ok: false, reason: '武器族不合,放不出来' }
+  const allies = aliveOf(state, 'guild')
+  const pool = aliveOf(state, 'enemy')
+  const forced = targetId ? [...allies, ...pool].find((c) => c.id === targetId && c.alive) : undefined
+  const ok = useSkill(caster, ready.def, allies, pool, state, forced)
+  if (ok) ready.cooldownLeft = skillCooldownTicks(ready.def.cooldownTicks, caster)
+  return ok ? { ok: true } : { ok: false, reason: '施放条件不满足(如全队血量健康/无有效目标)' }
+}
+
 export function executeSignature(state: BattleState, cmd: { memberId: string; skillId: string; targetId?: string }): void {
   const skill = Object.values(SIGNATURE_SKILLS).find((s) => s.id === cmd.skillId)
   if (!skill) return
