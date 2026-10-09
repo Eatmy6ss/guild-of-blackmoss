@@ -18,7 +18,7 @@ import { applyFeast } from './sim/morale'
 import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import { appendBio } from './sim/bio'
 import { INTEL_TIERS, INTEL_STOCK_CAP, intelDungeonFull, rollIntel, type IntelEntry, type IntelKind } from './sim/intel'
-import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually } from './sim/combat'
+import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget } from './sim/combat'
 import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { WEAPON_FAMILIES } from './data/weapon-families'
@@ -397,6 +397,11 @@ export default function App() {
   const [pendingAttr, setPendingAttr] = useState<{ amount: number } | null>(null)
   // #5.1 悬赏加码条款:出征界面勾选,出发时锁定进 run(保留勾选方便连刷,每趟重新校验)
   const [bountyClauses, setBountyClauses] = useState<string[]>(() => [])
+  // U41/M-a 空间化:点选的我方角色(renderer 画布点选与作战面板小队条共用一个选中态)
+  const [selectedAlly, setSelectedAlly] = useState<string | null>(null)
+  const selectedAllyRef = useRef<string | null>(null)
+  selectedAllyRef.current = selectedAlly
+  const manualCmdRef: { current: null | ((fn: (b: import('./sim/types').BattleState) => void) => void) } = { current: null }
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   // 药水库存(经济改造):出征携带/战斗消耗/回城退回,仓库补货
@@ -453,11 +458,19 @@ export default function App() {
     renderer.mount(stageRef.current!).catch(() => {})
     // 指挥台：点击场上敌人 = 集火
     renderer.onUnitClick = (c) => {
-      if (c.team !== 'enemy' || !c.alive) return
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
       if (!b || b.status !== 'running') return
+      // M-a 空间化:点我方=选中(联动小队条/技能面板);点敌方=集火(原指挥台语义)
+      if (c.team === 'guild' && c.alive && c.memberId) { setSelectedAlly(c.memberId); return }
+      if (c.team !== 'enemy' || !c.alive) return
       setFocus(b, c.id)
       drainAndSync(b)
+    }
+    renderer.onGroundClick = (x, y) => {
+      const b = towerRunRef.current?.battle ?? runRef.current?.battle
+      const mid = selectedAllyRef.current
+      if (!b || b.status !== 'running' || !mid) return
+      manualCmdRef.current?.((bb) => setMoveTarget(bb, mid, x, y))
     }
     // 开发架调试钩子：透视 Pixi 舞台用
     ;(window as unknown as Record<string, unknown>).__br = renderer
@@ -589,6 +602,7 @@ export default function App() {
     enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood, toggleLock, bulkDismantle, upgradeRoll, refineQuality } = ctl
   applyRetreatDeductionRef.current = applyRetreatDeduction
   startExpeditionRef.current = startExpedition
+  manualCmdRef.current = cmd // U41/M-a:renderer 地面点击(挂在 mount effect 作用域)经此间接调 cmd
   continueDeepRef.current = chooseNode
   retreatRef.current = retreat
   backToGuildRef.current = backToGuild
@@ -1125,6 +1139,7 @@ export default function App() {
               onSignatureUse={() => setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))}
               useSignatureCmd={(b, mid, tid) => useSignature(b, mid, tid)}
               members={membersRef.current} onManualCast={(b, mid, sid, tid) => { castSkillManually(b, mid, sid, tid); drainAndSync(b) }}
+              selId={selectedAlly} onSelectAlly={setSelectedAlly}
               logBoxRef={logBoxRef} logPinnedRef={logPinnedRef} retreat={retreat}
             />
           )}

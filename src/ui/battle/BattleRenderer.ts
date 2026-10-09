@@ -5,6 +5,7 @@ import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { mechanicWindows } from './mechanicPresentation'
 import { heroLayers, sceneArt, type Appearance } from '../art/catalog'
 import { battleLayout } from '../art/battleLayout'
+import { ARENA } from '../../sim/combat'
 import { paintScene } from '../art/scene'
 
 // 演出层（D5-6）：模拟是唯一事实源，这里只消费 BattleState + BattleEvent 播动画。
@@ -209,6 +210,8 @@ export class BattleRenderer {
   private static MAX_EFFECTS = 150
   /** 指挥台回调：点击场上单位 */
   onUnitClick?: (c: Combatant) => void
+  /** M-a 空间化:点战场空白处=选中角色移动到该点(逻辑 640×360 坐标) */
+  onGroundClick?: (x: number, y: number) => void
   private focusMarker: Text | null = null
   /** 阵型变化横幅（D14 反馈：阵型切换要有直观感受）——追踪上一帧阵型 */
   private lastStance: string | null = null
@@ -254,6 +257,16 @@ export class BattleRenderer {
     this.observer.observe(container)
     this.fit()
     app.stage.addChild(this.root)
+    // M-a 空间化:地面点击(点空白处=移动指令;坐标换算 画布→逻辑 640×360)
+    app.stage.eventMode = 'static'
+    app.stage.hitArea = { contains: () => true } as never
+    app.stage.on('pointerdown', (e: { global: { x: number; y: number } }) => {
+      if (!this.onGroundClick) return
+      const rect = app.canvas.getBoundingClientRect()
+      const w = rect.width || 1
+      const scale = ARENA.width / w
+      this.onGroundClick(e.global.x * scale, e.global.y * scale)
+    })
     this.drawBackdrop(this.theme)
     app.ticker.add((t) => this.tick(t.deltaMS))
     if (this.battle) {

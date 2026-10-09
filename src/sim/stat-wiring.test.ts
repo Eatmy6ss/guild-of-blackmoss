@@ -41,8 +41,12 @@ type Probe = ReturnType<typeof probe>
 function attack(p: Probe, attacker = p.host) {
   attacker.skills = []
   attacker.cooldownLeft = 0
-  stepBattle(p.state)
-  const event = [...p.state.events].reverse().find(e => e.type === 'damage' && e.attackerId === attacker.id)
+  // M-a 空间化:开局两军相距 340px,首 tick 在追击——循环至该攻击者实际命中(上限 200 tick)
+  let event: { type: string; amount?: number } | undefined
+  for (let i = 0; i < 200 && !event; i++) {
+    stepBattle(p.state)
+    event = [...p.state.events].reverse().find(e => e.type === 'damage' && e.attackerId === attacker.id)
+  }
   expect(event, '场景必须实际命中').toBeDefined()
   return event!.amount!
 }

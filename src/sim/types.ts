@@ -295,6 +295,10 @@ export interface Combatant {
   taunterId?: string
   // ---- D3-4 深化 ----
   position: Position
+  /** #7.1b/M-a(U41)战斗空间化:战场坐标(逻辑 640×360);可选=旧断点兼容,createBattle 时初始化 */
+  pos?: { x: number; y: number }
+  /** 玩家点地面下达的移动目标;存在时移动优先于普攻 */
+  moveTarget?: { x: number; y: number }
   range: AttackRange
   /** 仅我方有职业角色（敌我判别辅助协同判定） */
   role?: Role

@@ -429,6 +429,15 @@ export function createBattle(
     state.envHeat = { everyTicks: 150, damage: 8, next: 150 }
     pushLog(state, 'system', '地面滚烫,热浪灼人——没有火抗的队伍会一直流血汗。')
   }
+  // M-a 空间化(U41):初始摆位——我方左半场/敌方右半场,y 按序展开(前后排语义保留为摆位偏好,坐标才是判定)
+  {
+    let gi = 0, ei = 0
+    for (const c of state.combatants) {
+      if (!c.alive) continue
+      if (c.team === 'guild') { c.pos = { x: 150 - (gi % 2) * 50, y: 110 + gi * 70 }; gi++ }
+      else { c.pos = { x: 490 + (ei % 2) * 50, y: 110 + ei * 70 }; ei++ }
+    }
+  }
   pushLog(state, 'system', `—— ${enc.name} 战斗开始 ——`)
   if (enc.variant) {
     pushLog(state, 'system', `⚠ 眼前的 ${enc.variant?.name ?? enc.name} 与传闻中的同类不同——一现身就已在狂怒。`)
@@ -897,7 +906,17 @@ function actWith(c: Combatant, state: BattleState): void {
     if (bowPick) dealDamage(state, c, bowPick, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
     return
   }
-  if (target) dealDamage(state, c, target, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
+  if (!target) return
+  // M-a 空间化:射程判定——目标在射程外则追击(本 tick 不出手),进入射程才攻击
+  if (c.pos && target.pos) {
+    const range = c.range === 'melee' ? MELEE_RANGE : RANGED_RANGE
+    if (dist(c.pos, target.pos) > range) {
+      c.moveTarget = { x: target.pos.x, y: target.pos.y }
+      return
+    }
+    c.moveTarget = undefined // 射程内:清追击,恢复站桩输出
+  }
+  dealDamage(state, c, target, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
 }
 
 function useSkill(
@@ -1162,6 +1181,13 @@ export function stepBattle(state: BattleState): void {
     }
     if (state.tick % 300 === 0) pushLog(state, 'system', '🔥 热浪翻涌,队伍在灼热的地面上持续失血!')
   }
+  // M-a 空间化(U41):移动推进——有 moveTarget 的单位朝目标走(移动优先于普攻),到达即清
+  for (const c of state.combatants) {
+    if (!c.alive || !c.pos || !c.moveTarget) continue
+    const d = dist(c.pos, c.moveTarget)
+    if (d <= MOVE_SPEED) { c.pos = { ...c.moveTarget }; c.moveTarget = undefined }
+    else c.pos = { x: c.pos!.x + (c.moveTarget.x - c.pos!.x) / d * MOVE_SPEED, y: c.pos!.y + (c.moveTarget.y - c.pos!.y) / d * MOVE_SPEED }
+  }
   // 灼息点燃(版图二 ember-breath):被点燃者每 10 tick 灼烧 3 血
   for (const c of state.combatants) {
     if (!c.alive || !c.burnUntilTick || state.tick >= c.burnUntilTick) continue
@@ -1422,6 +1448,20 @@ function resolveSignatureEnemy(state: BattleState, targetId?: string): Combatant
 }
 
 /** 消费招牌技指令:打断走 stepCastWindow 既有管线(置 taken=阈值,brokenBy 归属),二段效果复用既有字段 */
+// ===== M-a 战斗空间化(U41):战场坐标/移动/射程。数值全部 C4 占位。 =====
+export const ARENA = { width: 640, height: 360 } as const
+export const MELEE_RANGE = 70
+export const RANGED_RANGE = 230
+export const MOVE_SPEED = 2.2 // px/tick
+const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y)
+
+/** 玩家点地面:指定我方角色移动(移动优先于普攻;到达后自动恢复攻击) */
+export function setMoveTarget(state: BattleState, memberId: string, x: number, y: number): void {
+  const c = state.combatants.find((u) => u.team === 'guild' && u.memberId === memberId && u.alive)
+  if (!c || !c.pos) return
+  c.moveTarget = { x: Math.max(20, Math.min(ARENA.width - 20, x)), y: Math.max(40, Math.min(ARENA.height - 20, y)) }
+}
+
 /** #7.1(U39)RTS 式点选施法:玩家点选我方角色→选技能→选目标。校验冷却/存活/族门槛;冷却与 AI 同池(玩家放了 AI 不重复放)。 */
 export function castSkillManually(
   state: BattleState,

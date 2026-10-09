@@ -799,7 +799,8 @@ function hit(legacy: boolean, elite: boolean, crown = 0, boss = false) {
   b.combatants = [g, e]
   g.skills = []; g.critChance = 0; g.attack = 100; g.cooldownLeft = 0; g.legacyElitewarden = legacy; g.setCrown = crown
   e.skills = []; e.traits = []; e.defense = 0; e.hp = e.maxHp = 10000; e.cooldownLeft = 100; e.elite = elite; e.boss = boss
-  stepBattle(b)
+  // M-a 空间化:开局相距 340px 首 tick 追击——循环至实际命中(上限 200 tick)
+  for (let i = 0; i < 200 && 10000 - e.hp === 0; i++) stepBattle(b)
   return 10000 - e.hp
 }
 

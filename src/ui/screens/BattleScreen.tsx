@@ -30,13 +30,17 @@ export function BattleScreen(props: {
   /** #7.1(U39)RTS 式点选施法:花名册(选人/选目标用名字与血量) */
   members: Member[]
   onManualCast: (b: BattleState, memberId: string, skillId: string, targetId?: string) => void
+  /** U41/M-a:选中我方角色(renderer 画布点选与小队条共用) */
+  selId: string | null
+  onSelectAlly: (id: string | null) => void
   logBoxRef: React.RefObject<HTMLDivElement>
   logPinnedRef: { current: boolean }
   retreat: () => void
 }) {
   const { run, battle, battleOver, running, battleSpeed, intents, lastSummary } = props
   // #7.1(U39)RTS 式点选施法:点我方角色→技能面板→点目标施放。状态是纯 UI 选择,施放走 cmd(经挂机守卫)。
-  const [selId, setSelId] = useState<string | null>(null)
+  const { selId, onSelectAlly } = props
+  const setSelId = onSelectAlly
   const [aimSkill, setAimSkill] = useState<string | null>(null)
   const selUnit = battle.combatants.find((c) => c.team === 'guild' && c.memberId === selId && c.alive)
   const nameOf = (id: string) => props.members.find((m) => m.id === id)?.name ?? id
