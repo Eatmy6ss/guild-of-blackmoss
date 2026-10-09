@@ -212,6 +212,8 @@ export class BattleRenderer {
   onUnitClick?: (c: Combatant) => void
   /** M-a 空间化:点战场空白处=选中角色移动到该点(逻辑 640×360 坐标) */
   onGroundClick?: (x: number, y: number) => void
+  /** U41 操作层:选中我方单位集——syncUnits 画选中金圈(可见反馈:点了必须看得见) */
+  selectedIdsRef: { current: string[] } = { current: [] }
   /** U41 操作层修订:左键拖框=框选我方单位(逻辑坐标矩形) */
   onBoxSelect?: (ids: string[]) => void
   /** U41 操作层修订:右键点地面=所选集体移动 / 右键点单位由 onUnitRightClick 分发 */
@@ -223,6 +225,7 @@ export class BattleRenderer {
   /** boss 咏唱条（bossId → 条对象）：打断时找条做「碎裂」演出 */
   private castBars = new Map<string, Graphics>()
   private warningRings = new Map<string, Graphics>()
+  private selectionRings = new Map<string, Graphics>()
 
   private static STANCE_BANNER: Record<string, { text: string; color: number }> = {
     advance: { text: '推进阵型 · 输出↑ 防御↓', color: 0xe8a04d },
@@ -484,6 +487,8 @@ export class BattleRenderer {
     for (const child of [...this.root.children]) if (child !== this.backdrop) { child.removeFromParent(); child.destroy({ children: true }) }
     this.units.clear(); this.effects = []
     this.focusMarker = null; this.castBars.clear(); this.warningRings.clear()
+    for (const r of this.selectionRings.values()) r.destroy({ children: true })
+    this.selectionRings.clear()
     this.trauma = 0; this.root.position.set(0)
   }
 
@@ -503,6 +508,20 @@ export class BattleRenderer {
         this.units.set(c.id, u); this.root.addChild(u.container)
       }
       u.combatant = c; u.slot = slot
+      // U41 操作层:选中单位画金圈脚环(点击/框选的可见反馈——点了必须看得见)
+      {
+        let ring = this.selectionRings.get(c.id)
+        if (!ring || ring.destroyed) { ring = new Graphics(); this.root.addChild(ring); this.selectionRings.set(c.id, ring) }
+        if (c.alive && this.selectedIdsRef.current.includes(c.memberId ?? '')) {
+          const rr = 22 * layout.bodyScale
+          ring.clear().ellipse(0, 10, rr, rr * 0.42)
+            .fill({ color: 0xdcba87, alpha: 0.12 }).stroke({ width: 2, color: 0xdcba87, alpha: 0.9 })
+          ring.position.copyFrom(u.container.position)
+          ring.visible = true
+        } else {
+          ring.visible = false
+        }
+      }
       if (!c.alive && u.lockCount === 0) u.container.position.set(slot.x, slot.y + 6)
       if (layers) u.updateAppearance(layers)
       u.resize(layout.bodyScale, layout.labelChars)

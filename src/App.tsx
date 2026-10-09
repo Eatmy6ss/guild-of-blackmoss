@@ -472,7 +472,17 @@ export default function App() {
       setFocus(b, c.id)
       drainAndSync(b)
     }
+    renderer.selectedIdsRef = selectedIdsRef
     renderer.onBoxSelect = (ids) => pickSelected(ids) // 框选(RTS 多选;空框=取消全选)
+    // 左键点空白=取消全选;选中单位时点地面=移动到该点(M-a 语义)
+    renderer.onGroundClick = (x, y) => {
+      const b = towerRunRef.current?.battle ?? runRef.current?.battle
+      const ids = selectedIdsRef.current
+      if (!b || b.status !== 'running' || !ids.length) return
+      manualCmdRef.current?.((bb) => {
+        ids.forEach((mid, i) => setMoveTarget(bb, mid, x + (i % 3) * 36 - 36, y + Math.floor(i / 3) * 40 - 40))
+      })
+    }
     renderer.onUnitRightClick = (c) => {
       if (c.team !== 'enemy' || !c.alive) return
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
