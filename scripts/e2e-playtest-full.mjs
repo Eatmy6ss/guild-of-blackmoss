@@ -506,6 +506,17 @@ async function phaseEnding() {
         })()`)
         check('Q1', 'Q 瞄准→点目标施放→技能进入冷却', picked && cast && !cast.fail && cast.cooled ? 'PASS' : 'FAIL', JSON.stringify({ picked, ...cast }))
       }
+      // U42 #9.6①:左键点地面=清选择(RTS 语义:左键只选,右键才下令)
+      {
+        await b.evalJs(`[...document.querySelectorAll('.squad-strip button')][0]?.click()`); await sleep(150)
+        const before = await b.evalJs(`!!document.querySelector('.squad-strip button.active')`)
+        const rect = await b.evalJs(`(()=>{const r=document.querySelector('.stage canvas').getBoundingClientRect();return {x:Math.round(r.left),y:Math.round(r.top)}})()`)
+        await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: rect.x + 40, y: rect.y + 40, button: 'left', clickCount: 1 })
+        await b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: rect.x + 40, y: rect.y + 40, button: 'left', clickCount: 1 })
+        await sleep(250)
+        const after = await b.evalJs(`!!document.querySelector('.squad-strip button.active')`)
+        check('LB1', '左键点地面=清选择', before && !after ? 'PASS' : 'FAIL', `before=${before},after=${after}`)
+      }
       // 撤退离场(防胜利抢跑:先下撤退令再恢复实时;轮询归城,rest 相走地图撤退兜底)
       await clickText(b, '🏳 撤退令')
       await clickText(b, '⏵ 继续')

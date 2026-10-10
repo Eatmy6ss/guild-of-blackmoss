@@ -514,22 +514,21 @@ export default function App() {
     }
     renderer.selectedIdsRef = selectedIdsRef
     renderer.onBoxSelect = (ids, additive) => pickSelected(additive ? [...new Set([...selectedIdsRef.current, ...ids])] : ids) // 框选(RTS 多选;空框=取消全选;Shift=加选)
-    // 左键点空白=取消全选;选中单位时点地面=移动到该点(M-a 语义);A 键瞄准后=攻击移动(#9.3)
+    // U42 #9.6①:左键点地面=清选择(RTS 惯例:左键只选,右键才下令);A 键瞄准后=攻击移动
     renderer.onGroundClick = (x, y) => {
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
+      if (!b || b.status !== 'running') return
       const ids = selectedIdsRef.current
-      if (!b || b.status !== 'running' || !ids.length) return
       if (attackMoveArmedRef.current) {
         attackMoveArmedRef.current = false
         rendererRef.current?.setAttackMoveArmed(false)
+        if (!ids.length) return
         manualCmdRef.current?.((bb) => {
           ids.forEach((mid, i) => setAttackMove(bb, mid, x + (i % 3) * 36 - 36, y + Math.floor(i / 3) * 40 - 40))
         })
         return
       }
-      manualCmdRef.current?.((bb) => {
-        ids.forEach((mid, i) => setMoveTarget(bb, mid, x + (i % 3) * 36 - 36, y + Math.floor(i / 3) * 40 - 40))
-      })
+      pickSelected([])
     }
     renderer.onUnitRightClick = (c) => {
       // U42 #9.4:瞄准态下右键=取消瞄准(不下攻击令)
@@ -949,6 +948,18 @@ export default function App() {
     setAutoPausePrefs(defaultAutoPause(tb.combatants.some((c) => c.team === 'enemy' && c.alive && (c.boss || c.elite))))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [towerRun?.battle, battle])
+  // U42 #9.6④:换场清选中;阵亡/离场单位随时移出选中(渲染金圈与小队条不再挂尸体)
+  useEffect(() => {
+    if (selectedIdsRef.current.length) pickSelected([])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [towerRun?.battle, battle])
+  useEffect(() => {
+    const b = towerRun?.battle ?? battle
+    if (!b || !selectedIds.length) return
+    const alive = new Set(b.combatants.filter((c) => c.alive && c.memberId).map((c) => c.memberId!))
+    if (selectedIds.some((id) => !alive.has(id))) pickSelected(selectedIds.filter((id) => alive.has(id)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  })
   useEffect(() => {
     setMusicMood(screen === 'memorial' || battle?.status === 'guild-wipe' ? 'mourning'
       : (inBattle || inTowerBattle) && battle?.status === 'running' ? hasBoss ? 'boss' : 'battle'
@@ -1358,7 +1369,7 @@ export default function App() {
               onSignatureUse={() => setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))}
               useSignatureCmd={(b, mid, tid) => useSignature(b, mid, tid)}
               members={membersRef.current} onManualCast={(b, mid, sid, tid) => { castSkillManually(b, mid, sid, tid); drainAndSync(b) }}
-              selIds={selectedIds} onSelectAlly={(id) => setSelectedIds(id ? [id] : [])}
+              selIds={selectedIds} onSelectAlly={(id) => pickSelected(id ? [id] : [])}
               aim={aimCast} onAim={setAimCast}
               autoPausePrefs={autoPausePrefs} onToggleAutoPausePref={toggleAutoPausePref}
               speedCapped={speedCapped}

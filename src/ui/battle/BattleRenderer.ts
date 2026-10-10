@@ -299,12 +299,12 @@ export class BattleRenderer {
       this.clearSelectionBox()
       const moved = Math.abs(p.x - start.x) > 8 || Math.abs(p.y - start.y) > 8
       if (moved && this.onBoxSelect) {
-        // 框选:逻辑矩形内我方存活单位
+        // 框选:矩形与精灵外框相交即命中(U42 #9.6⑤,不再只认中心点);逻辑半宽 14/半高 18(C4)
         const x0 = Math.min(start.x, p.x), x1 = Math.max(start.x, p.x)
         const y0 = Math.min(start.y, p.y), y1 = Math.max(start.y, p.y)
         const ids = (this.battle?.combatants ?? [])
           .filter((c) => c.team === 'guild' && c.alive && c.pos)
-          .filter((c) => c.pos!.x >= x0 && c.pos!.x <= x1 && c.pos!.y >= y0 && c.pos!.y <= y1)
+          .filter((c) => c.pos!.x + 14 >= x0 && c.pos!.x - 14 <= x1 && c.pos!.y + 18 >= y0 && c.pos!.y - 18 <= y1)
           .map((c) => c.memberId!)
           .filter(Boolean)
         this.onBoxSelect(ids, e.shiftKey === true)

@@ -991,10 +991,9 @@ function actWith(c: Combatant, state: BattleState): void {
   }
   // R3/W4:普攻吃武器族伤害乘区(锤斧 ×1.15/长柄 ×0.92);技能不吃,族内技能另有门槛
   // R5.3b(U33⑤)弓·独有用处:优先射击正在读条的后排;无读条者打残血(改写默认威胁/集火逻辑)
+  // U42 #9.6③:弓手同样走下方空间判定(旧分支在这里直接出手=挂机时站桩打全场,绕过射程)
   if (c.weaponFamily === 'bow') {
-    const bowPick = pickBowTarget(state, pool)
-    if (bowPick) dealDamage(state, c, bowPick, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
-    return
+    target = pickBowTarget(state, pool) ?? target
   }
   if (!target) return
   // M-a 空间化:射程判定——目标在射程外则追击(本 tick 不出手),进入射程才攻击
