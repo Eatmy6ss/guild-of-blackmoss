@@ -11,13 +11,13 @@
 - **证据**：本机完整日志 `%TEMP%/blackmoss-d1-verify.log`；试玩报告 `%TEMP%/guild-e2e-a3AFGD/report.json`；下方截图已入库。内置浏览器访问预览因“saved browser permissions could not be verified”受阻；实机证据来自仓库既有的 file:// 独立 profile 试玩流程，未写用户真实存档。
 - **未完成/下一步**：D1 为实现和自验完成，按工单要求的 Claude/zcode 外部截图复审尚待进行。现有字体/按钮/信息密度还不是最终视觉，右侧指令区是 D3 前的过渡布局；下一包 D2 接思源宋体/黑体和黑铁细金线组件，再按 U42 改 D3。手机仍按完整桌面画幅缩小，只保证打开/操作，不声称手机阅读体验；窄屏旧 280px 档案断言改为逻辑宽度保持 922px、无横向溢出与同页操作。
 - **撞车提示**：本轮涉及 `main/App/index.css`、GameViewport/viewport、`ui/art/{art.css,battleLayout,scene}`、`ui/battle/{BattleRenderer,WorldLighting}`、`testing/viewport.test.ts`、既有试玩 E2E、桌面规格/截图/HANDOFF。改同区前先比较本分支；模拟器/存档文件未动。D3 以此投影基础和 U42 交互为准。
-- **提交/PR 状态**：实现已自验，准备提交并推送独立分支；未创建本轮 PR、未合并 main、未部署。收尾记录中补代码提交号与实际推送结果。
+- **提交/PR 状态**：代码与截图提交 `599a6d6`（界面：搭建桌面舞台并统一战场缩放与指令坐标）已推送 `origin/codex/ui-desktop-d1`；本记录随后以纯文档提交同步。未创建本轮 PR、未合并 main、未部署；下一步 D2 与外部截图复审。
 
 | U38 最终战斗样稿（D2/D3 待落地） | D1 当前实机 · 1920×1080 |
 |---|---|
 | ![最终样稿](ui-desktop-2026-10-08/battle.jpg) | ![D1 战斗](ui-desktop-2026-10-08/d1-battle-1920.png) |
 
-[2560×1440 战斗](ui-desktop-2026-10-08/d1-battle-2560.png) · [大厅画幅](ui-desktop-2026-10-08/d1-hall-1920.png) · [人物档案](ui-desktop-2026-10-08/d1-profile-1920.png) · [390px 缩小画幅](ui-desktop-2026-10-08/d1-profile-narrow.png)。对照结论：D1 画幅/两层渲染已落实；字体、黑铁组件和边缘 HUD 布局应在 D2/D3 达到右图所参照的最终样稿标准，不能把基础包宣称为完整换皮完成。
+[2560×1440 战斗](ui-desktop-2026-10-08/d1-battle-2560.png) · [大厅画幅](ui-desktop-2026-10-08/d1-hall-1920.png) · [人物档案](ui-desktop-2026-10-08/d1-profile-1920.png) · [390px 缩小画幅](ui-desktop-2026-10-08/d1-profile-narrow.png)。对照结论：D1 画幅/两层渲染已落实；字体、黑铁组件和边缘 HUD 布局应在 D2/D3 达到最终样稿标准，不能把基础包宣称为完整换皮完成。
 
 ## 前置同步记录（2026-10-11，本轮施工前）
 
