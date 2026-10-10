@@ -633,9 +633,13 @@ export default function App() {
   }
   const aliveCount = () => membersRef.current.filter((m) => m.alive).length
 
-  const continueScreen = (): Screen => towerRunRef.current
-    ? 'tower'
-    : runRef.current ? (runRef.current.phase === 'battle' ? 'battle' : 'map') : 'hall'
+  const continueScreen = (): Screen => {
+    if (towerRunRef.current) return 'tower'
+    const active = runRef.current
+    if (!active) return 'hall'
+    if (active.phase === 'battle') return 'battle'
+    return active.phase === 'rest' ? 'map' : 'result'
+  }
 
   const lastRetreatRunRef = useRef<string | null>(null)
   const retreatRef = useRef<() => void>(() => {})
@@ -1365,16 +1369,22 @@ export default function App() {
             />
           )}
 
-          {/* U33 自测反馈②:结算=独立弹层(石框鎏金 overlay,压过事件弹层),不再整页替换 */}
+          {/* D4：完整画幅结算，继续使用既有回城与奖励调用链。 */}
           {screen === 'result' && finished && (
             <div className="screen-overlay result-overlay">
-              <div className="screen-panel result-modal">
+              <div className="result-modal">
                 <ResultScreen
                   run={run!}
                   dungeonName={runDungeon(run!).name}
                   members={membersRef.current}
                   snapshot={growthSnapshotRef.current}
                   drops={lastDrops}
+                  ledger={factLedger}
+                  day={day}
+                  commissions={kingdom.active.map(record => {
+                    const q = COMMISSIONS.find(entry => entry.id === record.id)!
+                    return `${q.title} · ${record.progress}/${q.objective.target}${record.progress >= q.objective.target ? ' · 已达成，返回公会交付' : ''}`
+                  })}
                   notices={progress.notices}
                   story={progress.notices.find((n) => n.startsWith('📖')) ?? null}
                   onBack={backToGuild}

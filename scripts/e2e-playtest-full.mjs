@@ -1,7 +1,7 @@
 // 试玩包全流程实机回归(G2 发包前的验收脚本):打开 file:// 单文件试玩包,按阶段跑真实玩家路径并断言已知问题。
 //
 // 用法:
-//   node scripts/e2e-playtest-full.mjs [--build] [--phase=all|build|fresh|ending|region2|hud] [--expeditions=8]
+//   node scripts/e2e-playtest-full.mjs [--build] [--phase=all|build|fresh|ending|region2|hud|result] [--expeditions=8]
 //   --build        先跑两步打包(vite build --config vite.config.playtest.ts && node scripts/inline-assets.mjs)
 //   --phase        只跑某一段(默认 all;每段都是全新浏览器配置,互不串档)
 //   --expeditions  fresh 段的远征趟数(默认 8)
@@ -242,10 +242,11 @@ async function recruit(b) {
 }
 
 /** 循环推进直到 until() 为真 / 达到 maxReturns 趟 / 超时。onReturn 在每次回城后调用(此时结算横幅已渲染)。 */
-async function drive(b, { prio, maxReturns = Infinity, timeoutMs = 160_000, onReturn, onTick }) {
+async function drive(b, { prio, maxReturns = Infinity, timeoutMs = 160_000, onReturn, onTick, stopAtResult = false }) {
   const t0 = Date.now()
   let lastProgress = Date.now(); let returns = 0
   while (Date.now() - t0 < timeoutMs) {
+    if (stopAtResult && await b.evalJs(`!!document.querySelector('.result-screen')`)) return { result: true, returns }
     const r = await b.evalJs(STEP(prio))
     if (onTick) await onTick(r)
     if (r.ending) return { ending: true, returns }
@@ -799,8 +800,121 @@ async function phaseHud() {
 }
 
 // ================= 主流程 =================
-const phases = { build: phaseBuild, fresh: phaseFresh, ending: phaseEnding, region2: phaseRegion2, hud: phaseHud }
-const order = PHASE === 'all' ? ['build', 'fresh', 'ending', 'region2', 'hud'] : PHASE.split(',')
+async function phaseResult() {
+  console.log('\n▶ result:真实通关/回城，独立极端内容夹具')
+  const save=await devSave(12)
+  save.manual=[]; save.day=12
+  const b=await openBrowser('result')
+  // 独立 headless 页面明确获得窗口焦点，键盘事件按真实聚焦页面派发。
+  await b.send('Emulation.setFocusEmulationEnabled',{enabled:true})
+  const readSave=()=>b.evalJs(`JSON.parse(localStorage.getItem('guild-game-playtest-v1'))`)
+  const restore=async fixture=>{
+    await b.send('Page.reload');await sleep(1500)
+    await importSave(b,encode(fixture));await sleep(400)
+  }
+  const frame=async(tag,n)=>{
+    const r=await b.evalJs(`(()=>{
+      const root=document.querySelector('.result-screen'),r=root?.getBoundingClientRect(),cols=document.querySelector('.rs-columns'),c=cols?.getBoundingClientRect();
+      const inside=e=>{const b=e.getBoundingClientRect();return !!r&&b.left>=r.left-.5&&b.right<=r.right+.5&&b.top>=r.top-.5&&b.bottom<=r.bottom+.5};
+      const members=[...document.querySelectorAll('.rs-member')];
+      return {n:members.length,overflow:document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth,
+        inside:!!root&&[...document.querySelectorAll('.rs-header,.rs-columns,.rs-story,.rs-actions,.rs-member,.rs-records-link')].every(inside),
+        columnFit:!!cols&&[...cols.children].every(e=>e.scrollHeight<=e.clientHeight+1),
+        storyBelow:!!c&&document.querySelector('.rs-story').getBoundingClientRect().top>=c.bottom,
+        result:root?.querySelector('h1')?.textContent,rows:members.map(e=>e.innerText),firstKill:!!document.querySelector('.rs-first-kill')};
+    })()`)
+    check('D4-frame-'+tag,'结算与回城同屏、无页面滚动、队员完整',r.n===n&&!r.overflow&&r.inside&&r.columnFit&&r.storyBelow?'PASS':'FAIL',JSON.stringify(r))
+  }
+  try {
+    await b.send('Page.navigate',{url:pathToFileURL(HTML).href});await sleep(2000)
+    await importSave(b,encode(save))
+    const result=await drive(b,{prio:['黑苔沼泽'],stopAtResult:true})
+    check('D4-real-result','真实模拟抵达远征结算',result.result?'PASS':'FAIL')
+    await sleep(650)
+    const completed=await readSave(),run=completed.runState.activeRun
+    const text=await b.evalJs(`document.querySelector('.result-screen')?.innerText`)
+    const hasKill=completed.factLedger.facts.some(f=>f.kind==='first-kill'&&f.id>=completed.factLedger.expeditionStart)
+    check('D4-real-data','首杀/掉落/经验/维护与真实存档一致',run.phase==='victory'&&hasKill&&text.includes('讨伐完成')&&text.includes(run.maintenanceDue+' 金')&&await b.evalJs(`!!document.querySelector('.rs-first-kill')`)?'PASS':'FAIL')
+    for(const [width,height,dpr] of [[1920,1080,1],[2560,1440,1],[1536,960,1.25]]) {
+      await b.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false});await sleep(300)
+      await frame('victory-'+width,3);if(width!==1536)await b.shot('victory-'+width)
+      await b.evalJs(`document.activeElement.blur();document.querySelector('.rs-loot')?.focus()`);await sleep(350)
+      const tip=await b.evalJs(`(()=>{const x=document.getElementById(document.activeElement.getAttribute('aria-describedby')),r=x?.getBoundingClientRect(),s=document.querySelector('.game-stage').getBoundingClientRect();return {active:document.activeElement.className,description:document.activeElement.getAttribute('aria-describedby'),documentFocus:document.hasFocus(),tips:document.querySelectorAll('.game-tooltip').length,text:x?.innerText,inside:!!r&&r.left>=s.left&&r.right<=s.right&&r.top>=s.top&&r.bottom<=s.bottom}})()`)
+      check('D4-item-tip-'+width,'战利品键盘说明完整且保持画幅内',tip.text?.includes('攻击')||tip.text?.includes('防御')?tip.inside?'PASS':'FAIL':'FAIL',JSON.stringify(tip))
+      await pressEscape(b)
+      check('D4-tip-escape-'+width,'Esc 关闭装备说明，不提前回城',await b.evalJs(`!!document.querySelector('.result-screen')&&!document.querySelector('.game-tooltip')`)?'PASS':'FAIL')
+      await b.evalJs(`document.activeElement.blur()`)
+    }
+    await b.send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false})
+    await b.evalJs(`document.querySelector('.rs-records-link').focus();document.activeElement.click()`);await sleep(180)
+    const record=await b.evalJs(`document.querySelector('.rs-detail')?.innerText`)
+    check('D4-notices','终局通知可完整读取，Esc 仅关闭详情并恢复焦点',record.includes(completed.runState.notices.find(n=>!n.startsWith('📖')))?'PASS':'FAIL')
+    await pressEscape(b);await sleep(100)
+    check('D4-detail-focus','关闭详情恢复入口焦点',await b.evalJs(`document.activeElement.matches('.rs-records-link')&&!!document.querySelector('.result-screen')`)?'PASS':'FAIL')
+    await b.send('Page.reload');await sleep(1800);await clickText(b,'继续旅程');await sleep(500)
+    const reloaded=await readSave()
+    check('D4-reload','结算读档不重复发奖或提前扣维护费',await b.evalJs(`!!document.querySelector('.result-screen')`)&&reloaded.gold===completed.gold&&reloaded.runState.dropIds.join()===completed.runState.dropIds.join()&&reloaded.runState.activeRun.maintenanceDue===run.maintenanceDue?'PASS':'FAIL')
+    await clickText(b,'返回公会');await sleep(600)
+    const returned=await readSave()
+    check('D4-return','回城仅扣一次维护费，并退回剩余药水',returned.runState.activeRun===null&&returned.gold===completed.gold-run.maintenanceDue&&returned.potions.heal===run.potions.heal?'PASS':'FAIL',JSON.stringify({before:completed.gold,after:returned.gold,due:run.maintenanceDue}))
+    await restore(completed)
+    await clickText(b,'再次出征');await sleep(900)
+    const again=await readSave()
+    check('D4-again','再次出征沿用原回城与出发入口',!await b.evalJs(`!!document.querySelector('.result-screen')`)&&(again.runState.activeRun?.id!==run.id||again.runState.pendingDeparture)?'PASS':'FAIL')
+    // 独立内容夹具：五人、25 件装备、长故事与通知、快照缺失。不作为自然通关证据。
+    const dense=structuredClone(completed),d=dense.runState.activeRun
+    for(const m of dense.members.filter(m=>!d.memberIds.includes(m.id)).slice(0,2)){
+      const template=structuredClone(d.battle.combatants.find(c=>c.team==='guild'))
+      template.id='u'+(++d.battle.unitSeq);template.memberId=m.id;template.name=m.name
+      d.battle.combatants.push(template);d.memberIds.push(m.id);d.party.push({memberId:m.id,hp:m.hp})
+    }
+    dense.runState.expeditionIds=[...d.memberIds];dense.runState.growthSnapshot={}
+    dense.factLedger.expeditionStart=dense.factLedger.nextId
+    const captain=dense.members.find(m=>m.id===d.memberIds[0])
+    captain.scars=[{stat:'str',value:2,text:'旧伤在雨夜隐隐作痛'},{stat:'agi',value:1,text:'脚踝留下长长的伤痕'},{stat:'int',value:1,text:'虚痕仍在',faint:true,faintSince:dense.day}]
+    dense.runState.dropIds=[]
+    const original=completed.items[completed.runState.dropIds[0]]
+    for(let i=0;i<25;i++){
+      const id='it_'+(++dense.itemSeq);dense.items[id]={...structuredClone(original),id}
+      dense.inventory.push(id);dense.runState.dropIds.push(id)
+    }
+    const longStory='📖 '+('他们走过沼泽和废墟，名字留在公会的大事记里。'.repeat(80))+'长篇记录终点。'
+    dense.runState.notices=[...completed.runState.notices.filter(n=>!n.startsWith('📖')), ...Array.from({length:18},(_,i)=>`结算通知 ${i+1}：这条测试记录必须可以读到。`),longStory]
+    await restore(dense)
+    for(const [width,height,dpr] of [[1920,1080,1],[2560,1440,1],[1536,960,1.25]]) {
+      await b.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false});await sleep(250)
+      await frame('five-'+width,5);if(width!==1536)await b.shot('five-'+width)
+    }
+    check('D4-old-snapshot','旧档缺快照仍显示五人，复刷不盖历史首杀章',await b.evalJs(`document.querySelectorAll('.rs-member').length===5&&!document.querySelector('.rs-first-kill')`)?'PASS':'FAIL')
+    await clickText(b,'下一页');await sleep(100);await clickText(b,'下一页');await sleep(100)
+    check('D4-loot-pages','25 件装备分页可达最后一件',await b.evalJs(`document.querySelectorAll('.rs-loot').length===1&&document.querySelector('.rs-loot-pages').textContent.includes('3 / 3')`)?'PASS':'FAIL')
+    await b.evalJs(`document.querySelector('.rs-story button').click()`);await sleep(150)
+    check('D4-long-story','长故事全文保留且详情独立滚动',await b.evalJs(`document.querySelector('.rs-detail-body').textContent.includes('长篇记录终点。')&&document.querySelector('.rs-detail-body').scrollHeight>document.querySelector('.rs-detail-body').clientHeight`)?'PASS':'FAIL')
+    await pressEscape(b)
+    await b.evalJs(`document.querySelector('.rs-member-head button').click()`);await sleep(150)
+    const scarText=await b.evalJs(`document.querySelector('.rs-detail-body').innerText`)
+    check('D4-scars','三条现有创伤可读且未误报为新增',scarText.includes('旧伤在雨夜')&&scarText.includes('脚踝')&&scarText.includes('虚痕，不减属性')&&!scarText.includes('本趟新伤')?'PASS':'FAIL')
+    await pressEscape(b)
+    await b.send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false})
+    const retreat=structuredClone(completed)
+    retreat.runState.activeRun.phase='retreated';retreat.runState.activeRun.battle.status='retreated'
+    retreat.runState.activeRun.retreatCost={gold:40,mastery:1,dungeonId:'blackmoss'}
+    retreat.runState.dropIds=[];retreat.runState.notices=[];retreat.factLedger.expeditionStart=retreat.factLedger.nextId
+    await restore(retreat);await frame('retreat',3);await b.shot('retreat-1920')
+    const rt=await b.evalJs(`document.querySelector('.result-screen').innerText`)
+    check('D4-retreat','撤退横幅/空掉落/已扣代价/待付维护分别可见',rt.includes('撤退归来')&&rt.includes('本趟未获得装备')&&rt.includes('−40 金 / −1 熟练度')&&rt.includes('已扣除')&&rt.includes('回城支付')?'PASS':'FAIL')
+    const defeat=structuredClone(retreat)
+    defeat.runState.activeRun.phase='defeat';defeat.runState.activeRun.battle.status='guild-wipe';defeat.runState.activeRun.maintenanceDue=0
+    for(const m of defeat.members.filter(m=>defeat.runState.activeRun.memberIds.includes(m.id))){m.alive=false;m.hp=0}
+    for(const c of defeat.runState.activeRun.battle.combatants.filter(c=>c.team==='guild')){c.alive=false;c.hp=0}
+    for(const p of defeat.runState.activeRun.party)p.hp=0
+    await restore(defeat);await frame('defeat',3);await b.shot('defeat-1920')
+    check('D4-defeat','团灭保留阵亡队员回顾，不显示再战或撤退扣款',await b.evalJs(`document.querySelectorAll('.rs-fallen').length===3&&!document.querySelector('.rs-again')&&document.querySelector('.rs-header').textContent.includes('0 人生还')&&!document.querySelector('.rs-tally').textContent.includes('撤退代价')`)?'PASS':'FAIL')
+  } finally { b.close() }
+}
+
+const phases = { build: phaseBuild, fresh: phaseFresh, ending: phaseEnding, region2: phaseRegion2, hud: phaseHud, result: phaseResult }
+const order = PHASE === 'all' ? ['build', 'fresh', 'ending', 'region2', 'hud', 'result'] : PHASE.split(',')
 let crashed = null
 try {
   for (const p of order) {
