@@ -674,6 +674,10 @@ export function applyHit(
   if (attacker.team === 'enemy' && target.team === 'guild' && target.memberId) {
     state.guildDmgTaken = { ...state.guildDmgTaken, [attacker.id]: (state.guildDmgTaken?.[attacker.id] ?? 0) + amount }
   }
+  // U42 #9.1 待命还手:被谁打了记住谁(手动待命索敌第二优先级)
+  if (attacker.team === 'enemy' && target.team === 'guild') {
+    target.lastAttackerId = attacker.id
+  }
   // A3 荆棘咆哮:反甲——击中带荆棘的守卫,部分伤害当场奉还
   if (
     target.thornsUntilTick && state.tick < target.thornsUntilTick &&
@@ -856,21 +860,50 @@ function skillCooldownTicks(base: number, caster: Combatant): number {
   return Math.round(base / (1 + (caster.cdReduction ?? 0)))
 }
 
+/** U42 #9.1 待命索敌:集火 > 最近打自己者(lastAttackerId) > 射程内最近。
+ *  坚守(holdGround)只在射程内选目标;普通待命对集火/还手目标可出程追击(玩家明确意图优先)。 */
+function acquireIdleTarget(c: Combatant, state: BattleState, foes: Combatant[]): Combatant | undefined {
+  const pool = allowedPool(c, foes)
+  if (pool.length === 0) return undefined
+  let inRange = pool
+  if (c.pos) {
+    const range = c.range === 'melee' ? MELEE_RANGE : RANGED_RANGE
+    inRange = pool.filter((f) => f.pos && dist(c.pos!, f.pos!) <= range)
+  }
+  const focus = state.commands.focusId ? pool.find((f) => f.id === state.commands.focusId) : undefined
+  if (focus && (!c.holdGround || inRange.includes(focus))) return focus
+  const attacker = c.lastAttackerId ? pool.find((f) => f.id === c.lastAttackerId) : undefined
+  if (attacker && (!c.holdGround || inRange.includes(attacker))) return attacker
+  if (inRange.length > 0 && c.pos) {
+    return inRange.reduce((a, b) => (dist(c.pos!, a.pos!) <= dist(c.pos!, b.pos!) ? a : b))
+  }
+  return undefined
+}
+
 function actWith(c: Combatant, state: BattleState): void {
   const allies = aliveOf(state, c.team)
   const foes = aliveOf(state, c.team === 'guild' ? 'enemy' : 'guild')
   if (foes.length === 0) return
-  // U41 操作层(制作人拍板「取消自动攻击」):手动模式(非挂机)下我方单位**完全听指令**——
-  // 不自动索敌、不自动追击、不代放技能;只执行玩家下达的攻击指令(右键敌人)/移动(右键地面)/手动技能。
-  // 挂机(autoMode)=显式交还 AI(托管),一切照旧。
+  // U42 #9.1 待命还手:手动模式(非挂机)下——玩家攻击指令(attackTargetId)仍最高优先;
+  // 无指令时自动还手(魔兽式「待命」):集火 > 最近打自己者 > 射程内最近。
+  // 移动指令执行期间不索敌不出手(走到后 moveTarget 被移动循环清空,回待命);坚守=只打射程内不追击。
   if (!state.commands.autoMode && c.team === 'guild') {
-    const at = c.attackTargetId ? state.combatants.find((x) => x.id === c.attackTargetId && x.alive) : undefined
-    if (!at) { c.attackTargetId = undefined; return } // 无攻击指令:待机(移动由 moveTarget 驱动)
+    if (c.moveTarget) return // 正在执行移动指令(玩家指令或追击):本 tick 不出手
+    let at = c.attackTargetId ? state.combatants.find((x) => x.id === c.attackTargetId && x.alive) : undefined
+    if (!at) {
+      c.attackTargetId = undefined
+      at = acquireIdleTarget(c, state, foes)
+      if (at) c.attackTargetId = at.id
+    }
+    if (!at) return
     if (c.pos && at.pos) {
       const d = dist(c.pos, at.pos)
       const range = c.range === 'melee' ? MELEE_RANGE : RANGED_RANGE
-      if (d > range) { c.moveTarget = { x: at.pos.x, y: at.pos.y }; return } // 追击指令目标
-      c.moveTarget = undefined
+      if (d > range) {
+        if (c.holdGround) return // 坚守:不追击
+        c.moveTarget = { x: at.pos.x, y: at.pos.y } // 追击指令目标
+        return
+      }
     }
     dealDamage(state, c, at, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
     return
@@ -1422,6 +1455,14 @@ export function setFocus(state: BattleState, targetId?: string): void {
   } else if (state.commands.focusId === undefined && targetId) {
     pushLog(state, 'guild', '集火目标已失效')
   }
+}
+
+/** U42 #9.1 坚守:切换我方成员坚守标记——只打射程内目标、不追击(#9.3 H 键接线)。 */
+export function setHoldGround(state: BattleState, memberId: string, hold: boolean): void {
+  if (state.status !== 'running') return
+  const c = state.combatants.find((u) => u.team === 'guild' && u.memberId === memberId && u.alive)
+  if (!c) return
+  c.holdGround = hold
 }
 
 // ===== A3 #1.1 招牌技能:玩家可点名释放的主动技(UI 与 ai.ts 只调 useSignature) =====

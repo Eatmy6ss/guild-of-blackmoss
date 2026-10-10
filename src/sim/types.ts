@@ -301,6 +301,10 @@ export interface Combatant {
   moveTarget?: { x: number; y: number }
   /** U41 操作层:玩家右键敌人下达的攻击指令——手动模式下单位只追击并攻击该目标(取消自动索敌) */
   attackTargetId?: string
+  /** U42 #9.1 待命还手:最近一个打自己的敌人(手动待命索敌第二优先级,applyHit 写入) */
+  lastAttackerId?: string
+  /** U42 #9.1 坚守(H 键):只攻击射程内目标,不追击 */
+  holdGround?: boolean
   range: AttackRange
   /** 仅我方有职业角色（敌我判别辅助协同判定） */
   role?: Role

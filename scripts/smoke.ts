@@ -525,8 +525,11 @@ if (legacyDmg <= plainDmg * 1.05) guildFailures.push('7b 传承加成未生效�
   // 7c 不开 autoMode:挂机下 10% 血队 20 tick 内被围殴全灭→「有活人濒危」消失→保护不触发(实测)。
   // 手动待机=判定窗口稳定;本探针测的是保护判定本身。
   bOn.commands.protectRetreat = true
-  // U41 空间化场景修正:全员残血会在撤离途中被追杀团灭(空间战场敌远程恢复输出)——改为满血队+一人濒危,
-  // 保护判定的本意(濒危触发自动撤离)不变,撤离完成才可断言。
+  // U42 #9.1 适配:待命还手后小队会真打,濒危者可能在 tick 11(保护首判)前被 boss 点名打死,
+  // 之后全员反打可在窗口内直接取胜或无人再濒危→保护永不被触发(探针前提失效)。
+  // 本探针只测「濒危→自动撤离」判定本身:boss 攻击归零(普攻仍保底 1 点/次,不影响触发窗口)。
+  const grush = bOn.combatants.find((c) => c.team === 'enemy')!
+  grush.attack = 0
   const onDanger = bOn.combatants.find((c) => c.team === 'guild')!
   onDanger.hp = Math.round(onDanger.maxHp * 0.1)
   let ticks = 0
@@ -541,6 +544,8 @@ if (legacyDmg <= plainDmg * 1.05) guildFailures.push('7b 传承加成未生效�
   const bOff = createBattle(squadOff, BLACKMOSS, 'enc-grush', 31337)
   bOff.commands.autoMode = true // U41 手动模式适配
   bOff.commands.protectRetreat = false
+  const grushOff = bOff.combatants.find((c) => c.team === 'enemy')!
+  grushOff.attack = 0
   const guardOff = bOff.combatants.find((c) => c.team === 'guild')!
   guardOff.hp = Math.round(guardOff.maxHp * 0.1)
   let offTriggered = false
