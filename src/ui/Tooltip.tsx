@@ -1,4 +1,4 @@
-import { cloneElement, useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { cloneElement, useEffect, useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 type TriggerProps = { 'aria-describedby'?: string; disabled?: boolean }
@@ -8,6 +8,10 @@ export function Tooltip({ content, children }: { content: ReactNode; children: R
   const id = useId()
   const anchor = useRef<HTMLSpanElement>(null)
   const tip = useRef<HTMLDivElement>(null)
+  const leaveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const enter = () => { clearTimeout(leaveTimer.current); setHovered(true); setDismissed(false) }
+  const leave = () => { leaveTimer.current = setTimeout(() => setHovered(false), 160) }
+  useEffect(() => () => clearTimeout(leaveTimer.current), [])
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
   const [dismissed, setDismissed] = useState(false)
@@ -50,8 +54,8 @@ export function Tooltip({ content, children }: { content: ReactNode; children: R
   return <span className="tooltip-anchor" ref={anchor}
     tabIndex={children.props.disabled ? 0 : undefined}
     aria-describedby={children.props.disabled ? describedBy : undefined}
-    onPointerEnter={() => { setHovered(true); setDismissed(false) }}
-    onPointerLeave={() => setHovered(false)}
+    onPointerEnter={enter}
+    onPointerLeave={leave}
     onFocus={() => { setFocused(true); setDismissed(false) }}
     onBlur={() => setFocused(false)}>
     {cloneElement(children, { 'aria-describedby': describedBy })}

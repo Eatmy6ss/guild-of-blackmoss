@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import './ui/viewport.css'
+import './ui/battle/hud.css'
 import { GameViewport } from './ui/GameViewport'
 
 // A2/S9:正式构建把账本断言降级为 warn(玩家侧不因数据异常炸掉);DEV 与测试保持严格

@@ -11,33 +11,10 @@ body.desktop-game { margin: 0; overflow: hidden; background: #050506; }
 .game-stage .layout { flex: 1; min-height: 0; grid-template-columns: 460px minmax(0, 1fr); align-items: stretch; }
 .game-stage .layout > .panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .game-stage .layout.battle-mode { grid-template-columns: minmax(0, 1fr); }
-.game-stage .layout.battle-mode > .battle-panel {
-  display: grid; grid-template-columns: minmax(0, 1fr) 440px; grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px; overflow: hidden; padding: 0; border: 0; box-shadow: none; background: transparent;
-}
-.game-stage .battle-panel > .battle-intel { grid-column: 1; grid-row: 1; margin: 0; }
-.game-stage .battle-panel > .battle-party { grid-column: 1; grid-row: 3; }
-.game-stage .layout.battle-mode .stage {
-  grid-column: 1; grid-row: 2; min-height: 0; height: auto; margin: 0; border: 0; box-sizing: border-box;
-}
-.game-stage .stage canvas { position: absolute; inset: 0; image-rendering: auto; }
-.game-stage .battle-controls {
-  grid-column: 2; grid-row: 1 / -1; display: flex; flex-direction: column;
-  min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px;
-  background: var(--plate); border: 1px solid var(--edge-gold);
-}
-.game-stage .battle-controls > * { flex-shrink: 0; }
-.game-stage .battle-controls h2 { order: -2; margin-top: 0; }
-.game-stage .battle-controls .cmd-bar { order: -1; }
-.game-stage .battle-controls .signature-bar { grid-template-columns: 1fr; }
-.game-stage .battle-controls .battle-party { grid-template-columns: 1fr; }
-.game-stage .battle-controls .log-box { height: 160px; }
-.game-stage .battle-controls:empty { display: none; }
 .game-stage .screen-overlay { box-sizing: border-box; overscroll-behavior: contain; }
 .game-stage .screen-panel { min-width: 0; }
 /* fixed 以带 transform 的 game-stage 为参照，跳出大厅侧栏的滚动裁剪。 */
 .game-stage .screen-overlay, .game-stage .title-overlay { position: fixed; }
-.game-stage .battle-controls .enc-row { order: -1; }
 .game-stage .credits-link { align-self: flex-end; margin-top: 12px; }
 .game-stage ::-webkit-scrollbar { width: 8px; height: 8px; }
 .game-stage ::-webkit-scrollbar-track { background: var(--panel-lo); }

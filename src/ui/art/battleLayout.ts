@@ -3,8 +3,11 @@ import { ARENA } from '../../sim/combat'
 import { worldPixelScale } from '../viewport'
 
 /** 世界、预警和鼠标共用等比投影；上方留出人物/名字，不改变模拟层 640×360。 */
-export function arenaProjection(width: number, height: number, bodyScale: number) {
-  const side = 20 * bodyScale, top = 32 * bodyScale + 32, bottom = 24
+export function arenaProjection(width: number, height: number, bodyScale: number, hudScale = 0) {
+  const side = hudScale ? 400 * hudScale : 20 * bodyScale
+  const top = hudScale ? 320 * hudScale : 32 * bodyScale + 32
+  // 现行五人开场末位 y=390，略超逻辑场地；保留其原坐标，同时给脚环和动作条留空。
+  const bottom = hudScale ? 320 * hudScale : 24
   const scale = Math.max(.01, Math.min((width - side * 2) / ARENA.width, (height - top - bottom) / ARENA.height))
   const x = (width - ARENA.width * scale) / 2
   const y = top + (height - top - bottom - ARENA.height * scale) / 2
@@ -16,10 +19,10 @@ export function arenaProjection(width: number, height: number, bodyScale: number
 }
 
 /** M-a 空间化(U41):单位有 pos(逻辑 640×360)则按比例映射画布坐标;无 pos 走旧四列摆位(旧断点兼容)。 */
-export function battleLayout(width: number, units: Pick<Combatant, 'id' | 'team' | 'position' | 'pos'>[], viewport?: { height: number; uiScale: number; dpr: number }) {
+export function battleLayout(width: number, units: Pick<Combatant, 'id' | 'team' | 'position' | 'pos'>[], viewport?: { height: number; uiScale: number; dpr: number; hud?: boolean }) {
   if (viewport) {
     const bodyScale = worldPixelScale(4, viewport.uiScale, viewport.dpr)
-    const projection = arenaProjection(width, viewport.height, bodyScale)
+    const projection = arenaProjection(width, viewport.height, bodyScale, viewport.hud ? viewport.uiScale : 0)
     const positions = Object.fromEntries(units.map(u => {
       const allies = units.filter(other => other.team === u.team)
       const pos = u.pos ?? { x: u.team === 'guild' ? (u.position === 'front' ? 230 : 120) : (u.position === 'front' ? 410 : 520), y: (allies.indexOf(u) + 1) * ARENA.height / (allies.length + 1) }

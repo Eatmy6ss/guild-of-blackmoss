@@ -1,7 +1,7 @@
 // 试玩包全流程实机回归(G2 发包前的验收脚本):打开 file:// 单文件试玩包,按阶段跑真实玩家路径并断言已知问题。
 //
 // 用法:
-//   node scripts/e2e-playtest-full.mjs [--build] [--phase=all|build|fresh|ending|region2] [--expeditions=8]
+//   node scripts/e2e-playtest-full.mjs [--build] [--phase=all|build|fresh|ending|region2|hud] [--expeditions=8]
 //   --build        先跑两步打包(vite build --config vite.config.playtest.ts && node scripts/inline-assets.mjs)
 //   --phase        只跑某一段(默认 all;每段都是全新浏览器配置,互不串档)
 //   --expeditions  fresh 段的远征趟数(默认 8)
@@ -77,6 +77,18 @@ async function openBrowser(tag) {
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
   // 每次导航前注入:截获下载(不落盘)
   await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    // 仅独立测试 profile 加速长程模拟；正常输入/暂停检查不启用。
+    // 正式界面不再保留“跑到结束”调试按钮，仍由真实定时器推进、真实结算。
+    window.__e2eFastClock = false;
+    const interval = window.setInterval.bind(window);
+    window.setInterval = (fn, ms, ...args) => interval(() => {
+      const battle = window.__br?.battle;
+      const count = window.__e2eFastClock && battle?.status === 'running' && typeof fn === 'function' ? 40 : 1;
+      for (let i=0; i<count; i++) {
+        if (typeof fn === 'function') fn(...args);
+        if (battle && battle.status !== 'running') break;
+      }
+    }, ms);
     window.__dl = [];
     const blobs = new Map(); const oc = URL.createObjectURL.bind(URL);
     URL.createObjectURL = (b) => { const u = oc(b); blobs.set(u, b); return u };
@@ -156,8 +168,9 @@ async function desktopBattleChecks(b) {
       const hovered = await b.evalJs(`!!document.querySelector('.game-tooltip')`)
       check('D2-hover','鼠标移入悬停说明后保持可读',!!end&&hovered?'PASS':'FAIL')
       await b.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5})
+      await sleep(200) // 等上一说明的鼠标离开宽限结束；焦点说明按 aria-describedby 精确查找。
       await b.evalJs(`document.querySelector('.sig-btn:disabled')?.parentElement.focus({preventScroll:true})`); await sleep(100)
-      const lockedTip = await b.evalJs(`(()=>{const t=document.querySelector('.game-tooltip');return !!t&&document.activeElement.classList.contains('tooltip-anchor')&&document.activeElement.querySelector('button')?.disabled&&t.textContent.includes('破咒盾击')})()`)
+      const lockedTip = await b.evalJs(`(()=>{const a=document.activeElement,t=document.getElementById(a.getAttribute('aria-describedby'));return !!t&&a.classList.contains('tooltip-anchor')&&a.querySelector('button')?.disabled&&t.textContent.includes('破咒盾击')})()`)
       check('D2-disabled-tip','不可用的招牌技仍可用键盘查看说明',lockedTip?'PASS':'FAIL')
       await pressEscape(b); await b.evalJs(`document.activeElement.blur()`)
     }
@@ -199,11 +212,13 @@ const STEP = (prio) => `(()=>{${BTN_HELPER}
   if(r.ending) return r;
   r.acted = hit((t)=>t==='▶ 继续旅程') || hit((t)=>t==='知道了') || hit((t)=>t==='确认'||t==='确定');
   if(!r.acted){const c=[...document.querySelectorAll('.event-choices button')].find((x)=>!x.disabled);if(c){c.click();r.acted='EVENT:'+c.textContent.trim().slice(0,30)}}
-  if(!r.acted && btns().some((x)=>x.textContent.includes('跑到结束'))){
-    // 每步只点一次；不开挂机连刷，否则自动离开终局会绕过 RETURN 计数。
-    r.acted = find((t)=>t.includes('跑到结束'))
-      ? hit((t)=>t.includes('跑到结束'))
-      : hit((t)=>t.includes('⏸ 暂停')) || 'battle-wait';
+  if(!r.acted && document.querySelector('.battle-dock')){
+    window.__e2eFastClock=true;
+    for(const x of document.querySelectorAll('.auto-pause-menu button[aria-pressed="true"]')) x.click();
+    if(window.__br?.battle) window.__br.battle.commands.autoMode=true;
+    const pause=document.querySelector('.pause-button');
+    if(pause?.textContent.includes('继续')) pause.click();
+    r.acted='battle-wait';
   }
   // U27① R1.1+U29 节点图:点可走的地图节点(不选路不能前进,没有「继续深入」)
   if(!r.acted){const c=[...document.querySelectorAll('.dungeon-graph .dg-node.available')][0];if(c){c.click();r.acted='NODE:'+c.textContent.trim().slice(0,20)}}
@@ -544,25 +559,25 @@ async function phaseEnding() {
       await clickText(b, '黑苔沼泽'); await sleep(300)
       await clickText(b, '出发'); await sleep(700)
       for (let i = 0; i < 8; i++) {
-        const inBattle = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&x.textContent.includes('跑到结束'))`)
+        const inBattle = await b.evalJs(`!!document.querySelector('.battle-dock')`)
         if (inBattle) break
         await b.evalJs(`document.querySelector('.dungeon-graph .dg-node.available')?.click()`); await sleep(700)
       }
       // U42 #9.4:自动暂停(战斗开始)——中央横幅原因可见+计时器停止;空格继续
       await sleep(500)
       const ap1 = await b.evalJs(`document.querySelector('.pause-overlay')?.textContent ?? null`)
-      const t1 = await b.evalJs(`document.querySelector('.tick-info')?.textContent ?? ''`)
+      const t1 = await b.evalJs(`window.__br?.battle?.tick ?? null`)
       await sleep(700)
-      const t2 = await b.evalJs(`document.querySelector('.tick-info')?.textContent ?? ''`)
-      check('AP1', '自动暂停(战斗开始):中央横幅原因可见+计时器停止', ap1 === '已暂停:战斗开始' && t1 === t2 ? 'PASS' : 'FAIL', `overlay=${ap1},tick ${t1}/${t2}`)
+      const t2 = await b.evalJs(`window.__br?.battle?.tick ?? null`)
+      check('AP1', '自动暂停(战斗开始):中央横幅原因可见+计时器停止', ap1 === '已暂停:战斗开始' && Number.isFinite(t1) && t1 === t2 ? 'PASS' : 'FAIL', `overlay=${ap1},tick ${t1}/${t2}`)
       await desktopBattleChecks(b)
       await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 })
       await b.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 })
       await sleep(400)
       const resumed = await b.evalJs(`!document.querySelector('.pause-overlay')`)
       check('AP2', '空格继续(横幅消失)', resumed ? 'PASS' : 'FAIL', `resumed=${resumed}`)
-      await clickText(b, '⏸ 暂停'); await sleep(300)
-      await clickText(b, '🤖 挂机'); await sleep(300) // 开挂机:面板必须仍可点(U42 取消"挂机=禁手")
+      await clickText(b, '暂停'); await sleep(300)
+      await clickText(b, '挂机'); await sleep(300) // 开挂机:面板必须仍可点(U42 取消"挂机=禁手")
       // 暂停后冷却冻结:逐个成员找"非冷却技能"(自动施法在入场 1 秒内可能已把首技能打进冷却)
       const panel = await b.evalJs(`(async()=>{
         const strip=document.querySelector('.squad-strip')
@@ -571,23 +586,25 @@ async function phaseEnding() {
         for (const mb of members) {
           mb.click()
           await new Promise(r=>setTimeout(r,120))
-          const skills=[...document.querySelectorAll('.skill-strip button')].filter(x=>x.textContent.includes('⚡')&&!x.disabled)
+          const skills=[...document.querySelectorAll('.skill-strip button')].filter(x=>x.classList.contains('skill-button')&&!x.disabled)
           if(skills.length===0) continue
           skills[0].click()
           await new Promise(r=>setTimeout(r,80))
           const aimed=skills[0].className.includes('active')
           skills[0].dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))
           await new Promise(r=>setTimeout(r,120))
-          const dimmed=skills[0].style.opacity==='0.45'
+          const dimmed=skills[0].dataset.auto==='false'
           skills[0].dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))
           await new Promise(r=>setTimeout(r,120))
-          const restored=skills[0].style.opacity!=='0.45'
+          const restored=skills[0].dataset.auto==='true'
           return { skills:skills.length, aimed, dimmed, restored }
         }
         return { fail:'all-members-cooling', members:members.length }
       })()`)
       check('AC1', '挂机中技能面板仍可点,右键切换自动施法(开→关→开)', panel && !panel.fail && panel.skills > 0 && panel.aimed && panel.dimmed && panel.restored ? 'PASS' : 'FAIL', JSON.stringify(panel))
       await b.shot('autopanel')
+      // D3 队伍头像现在也能作为治疗目标；先退出上一项的瞄准，才开始选人测试。
+      await pressEscape(b); await sleep(200)
       // U42 #9.3:Ctrl+1 编队 → Esc 清选 → 按 1 选回(RTS 编队键)
       {
         await b.evalJs(`[...document.querySelectorAll('.squad-strip button')][0]?.click()`); await sleep(150)
@@ -610,7 +627,7 @@ async function phaseEnding() {
         await b.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'q', code: 'KeyQ', windowsVirtualKeyCode: 81 })
         await sleep(250)
         const target = await b.evalJs(`(()=>{
-          const label=document.querySelector('.skill-strip .cmd-label button')?.textContent;
+          const label=document.querySelector('.aim-targets button')?.textContent;
           const br=window.__br, u=[...br.units.values()].find(u=>u.combatant.alive&&u.combatant.name===label);
           if(!u)return null;
           const p=u.container.toGlobal({x:0,y:-16*u.bodyScale}),r=br.app.canvas.getBoundingClientRect();
@@ -629,15 +646,15 @@ async function phaseEnding() {
         await b.evalJs(`[...document.querySelectorAll('.squad-strip button')][0]?.click()`); await sleep(150)
         const before = await b.evalJs(`!!document.querySelector('.squad-strip button.active')`)
         const rect = await b.evalJs(`(()=>{const r=document.querySelector('.stage canvas').getBoundingClientRect();return {x:Math.round(r.left),y:Math.round(r.top)}})()`)
-        await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: rect.x + 40, y: rect.y + 40, button: 'left', clickCount: 1 })
-        await b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: rect.x + 40, y: rect.y + 40, button: 'left', clickCount: 1 })
+        await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: rect.x + 400, y: rect.y + 240, button: 'left', clickCount: 1 })
+        await b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: rect.x + 400, y: rect.y + 240, button: 'left', clickCount: 1 })
         await sleep(250)
         const after = await b.evalJs(`!!document.querySelector('.squad-strip button.active')`)
         check('LB1', '左键点地面=清选择', before && !after ? 'PASS' : 'FAIL', `before=${before},after=${after}`)
       }
       // 撤退离场(防胜利抢跑:先下撤退令再恢复实时;轮询归城,rest 相走地图撤退兜底)
-      await clickText(b, '🏳 撤退令')
-      await clickText(b, '⏵ 继续')
+      await clickText(b, '撤退令')
+      await clickText(b, '继续')
       for (let i = 0; i < 40; i++) {
         await sleep(500)
         const st = await b.evalJs(`(()=>{
@@ -693,9 +710,97 @@ async function phaseRegion2() {
   } finally { b.close() }
 }
 
+
+// D3: 五人、读条和高塔用独立档与正常时钟，覆盖新 HUD 的两条真实入口。
+async function phaseHud() {
+  console.log('\n▶ hud:五人队、头像治疗、首领读条与高塔')
+  const save=await devSave(12); save.manual=[...REGION1_BOSSES]; save.day=12
+  // 与 ending 同样给测试队伍本命武器；随机跨族武器本来就可能禁用技能。
+  for(const m of save.members) {
+    const uid='it_'+(++save.itemSeq); save.items[uid]={id:uid,baseId:'wpn-line-'+m.job,rolls:[]};m.equipment.weapon=uid
+  }
+  const b=await openBrowser('hud')
+  const key=async(k,code,vk)=>{await b.send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code,windowsVirtualKeyCode:vk});await b.send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code,windowsVirtualKeyCode:vk});await sleep(120)}
+  const bounds=async(label,expected)=>{
+    await b.evalJs(`document.activeElement?.blur()`);await sleep(220)
+    const fit=await b.evalJs(`(()=>{
+      const stage=document.querySelector('.game-stage').getBoundingClientRect();
+      const buttons=[...document.querySelectorAll('.battle-dock button,.battle-party button,.battle-tempo button')].filter(x=>x.offsetWidth);
+      const bad=buttons.filter(x=>{const r=x.getBoundingClientRect();return r.left<stage.left||r.top<stage.top||r.right>stage.right||r.bottom>stage.bottom}).map(x=>x.textContent);
+      const dock=document.querySelector('.battle-dock'),party=document.querySelector('.battle-party');
+      const br=window.__br,canvas=br.app.canvas.getBoundingClientRect(),hud=[...document.querySelectorAll('.battle-dock,.battle-party,.battle-route,.battle-intel,.battle-journal')].map(x=>x.getBoundingClientRect());
+      const obscured=[...br.units.values()].filter(u=>u.combatant.alive).filter(u=>{
+        const p=u.container.toGlobal({x:0,y:0}),x=canvas.left+p.x,y=canvas.top+p.y,half=16*u.bodyScale;
+        return hud.some(r=>x+half>r.left&&x-half<r.right&&y+8>r.top&&y-2*half<r.bottom);
+      }).map(u=>u.combatant.name);
+      return {party:party.querySelectorAll('.party-frame').length,signatures:document.querySelectorAll('.sig-btn').length,bad,obscured,scroll:dock.scrollWidth>dock.clientWidth+1,debug:/tick|跑到结束/.test(document.querySelector('.battle-panel').innerText)};
+    })()`)
+    check('D3-fit-'+label,'小队与常用指令同屏，角色不被 HUD 遮挡，无底栏溢出',fit.party===expected&&fit.signatures===expected&&!fit.bad.length&&!fit.obscured.length&&!fit.scroll&&!fit.debug?'PASS':'FAIL',JSON.stringify(fit))
+  }
+  try {
+    await b.send('Page.navigate',{url:pathToFileURL(HTML).href});await sleep(2500)
+    await b.evalJs(`localStorage.setItem('gg-autopause',JSON.stringify({bossCast:true,lowHp:false,allyDown:false,battleStart:true}))`)
+    await importSave(b,encode(save))
+    await clickText(b,'荆棘要塞');await sleep(300);await clickText(b,'出发');await sleep(500)
+    await b.evalJs(`document.querySelector('.dg-node.available')?.click()`);await sleep(650)
+    for(const [width,height,dpr] of [[1920,1080,1],[2560,1440,1],[1536,960,1.25]]) {
+      await b.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false});await sleep(350)
+      await bounds('five-'+width,5)
+      if(width!==1536) await b.shot('five-'+width)
+    }
+    // 暂停中圣疗经头像指定目标，推进后消耗冷却；不注入结果或绕过技能判定。
+    await b.evalJs(`document.querySelector('.sig-btn[aria-label*="圣疗"]')?.click()`);await sleep(120)
+    const heal=await b.evalJs(`(()=>{const br=window.__br,b=br.battle,priest=b.combatants.find(c=>c.specId==='priest-holy');const target=b.combatants.find(c=>c.team==='guild'&&c.memberId!==priest?.memberId);const btn=[...document.querySelectorAll('.party-frame')].find(x=>x.getAttribute('aria-label').startsWith(target?.name));btn?.click();return {caster:priest?.memberId,target:target?.memberId}})()`)
+    await sleep(180)
+    const queued=await b.evalJs(`window.__br.battle.commands.signatures?.[${JSON.stringify(heal.caster)}]`)
+    check('D3-heal-target','圣疗点击队友头像后将真实目标加入指令',!!heal.caster&&queued?.targetId===heal.target?'PASS':'FAIL',JSON.stringify({heal,queued}))
+    await key(' ','Space',32);await sleep(220);await key(' ','Space',32)
+    const cool=await b.evalJs(`(window.__br.battle.signatureCd?.[${JSON.stringify(heal.caster)}]??0)>window.__br.battle.tick`)
+    check('D3-heal-cooldown','暂停下达的圣疗推进后进入冷却',cool?'PASS':'FAIL')
+    // G/P 快捷键复用按钮命令；全队药水在无单选时也可使用。
+    const before=await b.evalJs(`({stance:window.__br.battle.commands.stance,protect:window.__br.battle.commands.protectRetreat,fury:window.__br.battle.commands.furyStock})`)
+    await key('g','KeyG',71);await key('p','KeyP',80);await key('x','KeyX',88)
+    const after=await b.evalJs(`({stance:window.__br.battle.commands.stance,protect:window.__br.battle.commands.protectRetreat,fury:window.__br.battle.commands.furyStock})`)
+    check('D3-commands','阵型/保护/无单选药水快捷键作用于真实状态',before.stance!==after.stance&&before.protect!==after.protect&&before.fury-1===after.fury?'PASS':'FAIL',JSON.stringify({before,after}))
+    // 构造只在此一次性浏览器中的机制窗口，用现有敌人模拟结构检查多读条与两种应对，不影响玩家档。
+    await b.evalJs(`(()=>{const b=window.__br.battle,e=b.combatants.find(c=>c.team==='enemy');e.boss=true;e.bossMechanics=[{id:'hud-cast',kind:'cast-buff',name:'战意咏唱',params:{castTicks:50,breakDamage:100}},{id:'hud-aoe',kind:'telegraph-aoe',name:'震地',params:{telegraphTicks:50,radius:75}}];e.mech={'cast-buff':{until:b.tick+30,taken:12},'telegraph-aoe':{until:b.tick+40,slamCenter:{x:320,y:180}}};document.querySelector('.party-frame')?.click()})()`);await sleep(350)
+    await b.send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false});await sleep(250)
+    const cast=await b.evalJs(`(()=>{const a=[...document.querySelectorAll('.mechanic-warning')];return {n:a.length,text:a.map(x=>x.textContent),disabled:document.querySelectorAll('.speed-opt')[2]?.disabled}})()`)
+    check('D3-mechanics','多个机制窗口分别显示打断/应对，首领限制三倍速',cast.n===2&&cast.text.some(x=>x.includes('可打断'))&&cast.text.some(x=>x.includes('准备应对'))&&cast.disabled?'PASS':'FAIL',JSON.stringify(cast))
+    await b.shot('boss-mechanics')
+    // 高塔从公会入口重进，测试与正式远征隔离；不把 5 人夹具的机制状态带入。
+    await b.send('Page.reload'); await sleep(1200)
+    await importSave(b,encode(save))
+    await clickText(b,'进入高塔');await sleep(750)
+    const tower=await b.evalJs(`({title:document.querySelector('.battle-route h2')?.textContent,tick:window.__br?.battle?.tick,paused:!!document.querySelector('.pause-overlay'),party:document.querySelectorAll('.party-frame').length})`)
+    await bounds('tower',3)
+    await key(' ','Space',32);await sleep(230)
+    const resumed=await b.evalJs(`({tick:window.__br?.battle?.tick,paused:!!document.querySelector('.pause-overlay')})`)
+    await key(' ','Space',32);const stopped=await b.evalJs(`window.__br?.battle?.tick`);await sleep(250)
+    const frozen=await b.evalJs(`window.__br?.battle?.tick`)
+    check('D3-tower-pause','高塔空格恢复/暂停真实时钟',tower.title?.includes('黑苔高塔')&&tower.paused&&!resumed.paused&&resumed.tick>tower.tick&&stopped===frozen?'PASS':'FAIL',JSON.stringify({tower,resumed,stopped,frozen}))
+    await b.shot('tower')
+    await b.evalJs(`document.querySelector('.party-frame').click()`);await sleep(120)
+    const towerBefore=await b.evalJs(`({fury:window.__br.battle.commands.furyStock,hold:!!window.__br.battle.combatants.find(c=>c.team==='guild').holdGround})`)
+    await key('h','KeyH',72);await key('x','KeyX',88)
+    const towerAfter=await b.evalJs(`({fury:window.__br.battle.commands.furyStock,hold:!!window.__br.battle.combatants.find(c=>c.team==='guild').holdGround})`)
+    check('D3-tower-keys','高塔坚守与药水快捷键写入当前高塔战斗',towerBefore.hold!==towerAfter.hold&&towerBefore.fury-1===towerAfter.fury?'PASS':'FAIL',JSON.stringify({towerBefore,towerAfter}))
+    const ground=await b.evalJs(`(()=>{const r=window.__br.app.canvas.getBoundingClientRect();return {x:r.left+r.width*.55,y:r.top+r.height*.62}})()`)
+    await b.send('Input.dispatchMouseEvent',{type:'mousePressed',...ground,button:'right',clickCount:1})
+    await b.send('Input.dispatchMouseEvent',{type:'mouseReleased',...ground,button:'right',clickCount:1});await sleep(120)
+    const moving=await b.evalJs(`!!window.__br.battle.combatants.find(c=>c.team==='guild').moveTarget`)
+    await key('s','KeyS',83)
+    const stoppedOrder=await b.evalJs(`!window.__br.battle.combatants.find(c=>c.team==='guild').moveTarget`)
+    check('D3-tower-move','高塔真实右键移动与 S 停止使用同一战斗',moving&&stoppedOrder?'PASS':'FAIL')
+    await key('r','KeyR',82);await sleep(150)
+    const retreat=await b.evalJs(`({until:window.__br.battle.commands.extractingUntil,tick:window.__br.battle.tick,text:document.querySelector('.retreat-button')?.textContent})`)
+    check('D3-tower-retreat','高塔撤退键进入既有撤离倒计时',retreat.until>retreat.tick&&retreat.text?.includes('撤离中')?'PASS':'FAIL',JSON.stringify(retreat))
+  } finally {b.close()}
+}
+
 // ================= 主流程 =================
-const phases = { build: phaseBuild, fresh: phaseFresh, ending: phaseEnding, region2: phaseRegion2 }
-const order = PHASE === 'all' ? ['build', 'fresh', 'ending', 'region2'] : PHASE.split(',')
+const phases = { build: phaseBuild, fresh: phaseFresh, ending: phaseEnding, region2: phaseRegion2, hud: phaseHud }
+const order = PHASE === 'all' ? ['build', 'fresh', 'ending', 'region2', 'hud'] : PHASE.split(',')
 let crashed = null
 try {
   for (const p of order) {

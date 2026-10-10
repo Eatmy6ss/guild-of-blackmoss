@@ -966,19 +966,22 @@ test('first encounter receives guild buffs, rare hunt and automatic commands', (
   assert.equal(boosted.battle!.commands.healStock,2)
 })
 
-test('tower manual stepping updates the authoritative battle, not the UI snapshot', () => {
+test('tower commands update the authoritative battle, not the UI snapshot', () => {
   const t = startTower(squad(),81)
-  const snapshot = {...t.battle!}
-  let synced: unknown, running = true
-  // R5.2c:×10 步进处理器迁 TowerScreens.tsx,自由标识符经 props(锚与作用域随新文本)
-  callback('const current = props.towerRunRef.current?.battle', {
-    props:{ towerRunRef:{current:t}, setTowerRunning:(v:boolean)=>{running=v}, drainAndSync:(b:unknown)=>{synced=b} },
-    stepBattle,
-  })()
-  assert.equal(t.battle!.tick,10)
-  assert.equal(snapshot.tick,0)
+  const snapshot = structuredClone(t.battle!)
+  let synced: unknown
+  // D3 删除正式界面的调试步进；改验共用 HUD 使用的真实高塔命令入口。
+  const command = handler('cmdTower', {
+    towerRunRef:{current:t}, drainAndSync:(b:unknown)=>{synced=b},
+  })
+  command((b: typeof t.battle) => { b!.commands.protectRetreat = !b!.commands.protectRetreat })
+  assert.notEqual(t.battle!.commands.protectRetreat,snapshot.commands.protectRetreat)
+  assert.equal(t.battle!.tick,snapshot.tick, 'issuing a command does not advance paused time')
   assert.equal(synced,t.battle)
-  assert.equal(running,false)
+  t.battle!.status = 'won'
+  let invoked = false
+  command(() => { invoked = true })
+  assert.equal(invoked,false, 'finished battles reject commands')
 })
 
 test('tower-only timer starts, pauses and restarts without an expedition', () => {
@@ -1246,9 +1249,10 @@ test('pre-departure run buffs persist and apply to exactly the next expedition, 
 test('automatic toggle persists beyond the current battle into run and repeat state', () => {
   const b = beginBattle(createRun(squad(),BLACKMOSS,49),49).battle!
   const runRef = {current:{autoMode:false}}, autoLoopRef={current:false}
-  // R5.2c:挂机开关箭头迁 BattleScreen.tsx(autoLoop/run 写入经 props.autoLoopSet/runAutoOff)
-  const toggle = callback('props.autoLoopSet(b.commands.autoMode)',{
-    props:{ autoLoopSet:(v:boolean)=>{autoLoopRef.current=v}, runAutoSet:(v:boolean)=>{ if (runRef.current) runRef.current.autoMode = v } },
+  // D3 共用 HUD 通知 App，调用两层真实回调，覆盖战斗/远征/重复远征状态。
+  const onAutoMode = callback('autoLoopRef.current = v; if (runRef.current)', { autoLoopRef, runRef })
+  const toggle = callback('props.onAutoMode?.(b.commands.autoMode)',{
+    props:{ onAutoMode },
   })
   toggle(b)
   assert.equal(b.commands.autoMode,true); assert.equal(runRef.current.autoMode,true); assert.equal(autoLoopRef.current,true)

@@ -129,11 +129,10 @@ class UnitView {
     this.container.position.set(x, y)
     this.container.scale.set(this.baseScale)
     this.updateHp(1)
-    // 点击集火（D8-9 指挥台）：显式命中区覆盖整个人形，
-    // 不依赖 Graphics 几何（腿间空隙会让原点点击落空）
+    // 点击区域只覆盖人形，名字/血条不抢相邻角色的点击；腿间空隙仍可选中。
     this.container.eventMode = 'static'
     this.container.cursor = combatant.team === 'enemy' ? 'pointer' : 'default'
-    this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), -32 * bodyScale - 26, Math.max(44, 32 * bodyScale), 32 * bodyScale + 34)
+    this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), 6 - 32 * bodyScale, Math.max(44, 32 * bodyScale), 32 * bodyScale)
     this.container.on('pointerdown', (e: { button: number; shiftKey?: boolean; stopPropagation: () => void }) => {
       if (e.button === 0) this.onClick?.(this.combatant, e.shiftKey === true)
       // rightdown 稍后派发攻击指令；不能先冒泡为地面移动。
@@ -162,7 +161,7 @@ class UnitView {
     this.nameText.y = -32 * bodyScale - 18
     this.nameText.text = this.combatant.name.length > labelChars ? this.combatant.name.slice(0, labelChars) + '…' : this.combatant.name
     this.hpTrack.y = -32 * bodyScale - 9
-    this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), -32 * bodyScale - 26, Math.max(44, 32 * bodyScale), 32 * bodyScale + 34)
+    this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), 6 - 32 * bodyScale, Math.max(44, 32 * bodyScale), 32 * bodyScale)
   }
 
   updateAppearance(urls: string[]): void {
@@ -209,6 +208,7 @@ export class BattleRenderer {
   private host: HTMLElement | null = null
   private observer: ResizeObserver | null = null
   private lighting = new WorldLighting()
+  private hudScale = 0
   private uiScale = 1
   private dpr = 1
   private bodyScale = 4
@@ -300,7 +300,7 @@ export class BattleRenderer {
     // U41 操作层:左键拖框(RTS 框选)/右键=指令。坐标统一画布→逻辑 640×360。
     // Pixi 已把 DOM/CSS 坐标换成 renderer 坐标。再除 DOM 宽高会重复缩放。
     const toLogical = (e: { global: { x: number; y: number } }) =>
-      arenaProjection(this.width, this.height, this.bodyScale).toArena(this.root.toLocal(e.global))
+      arenaProjection(this.width, this.height, this.bodyScale, this.hudScale).toArena(this.root.toLocal(e.global))
     let pressedGround = false
     let dragStart: { x: number; y: number } | null = null
     app.stage.on('pointerdown', (e: { button: number; target: unknown; global: { x: number; y: number } }) => {
@@ -325,7 +325,7 @@ export class BattleRenderer {
         // 框选与当前显示的精灵外框相交，不再用随画幅漂移的逻辑常量。
         const x0 = Math.min(start.x, p.x), x1 = Math.max(start.x, p.x)
         const y0 = Math.min(start.y, p.y), y1 = Math.max(start.y, p.y)
-        const projection = arenaProjection(this.width, this.height, this.bodyScale)
+        const projection = arenaProjection(this.width, this.height, this.bodyScale, this.hudScale)
         const lo = projection.toView({ x: x0, y: y0 }), hi = projection.toView({ x: x1, y: y1 })
         // 与可见精灵的矩形相交；名字/血条不扩大框选范围。
         const ids = [...this.units.values()]
@@ -360,6 +360,7 @@ export class BattleRenderer {
     if (!this.host || !this.app) return
     // 管理员测试台不采用正式游戏舞台，保留其按人数排布的容器高度。
     const desktop = !!this.host.closest('.game-viewport')
+    this.hudScale = desktop ? this.host.getBoundingClientRect().width / this.host.clientWidth : 0
     const legacy = desktop ? null : battleLayout(this.host.clientWidth, this.battle?.combatants ?? [])
     if (legacy) this.host.style.height = legacy.height + 'px'
     const rect = this.host.getBoundingClientRect()
@@ -369,7 +370,7 @@ export class BattleRenderer {
     const dpr = window.devicePixelRatio || 1
     const changed = this.width !== width || this.height !== height || this.dpr !== dpr || this.uiScale !== uiScale
     this.width = width; this.height = height; this.uiScale = uiScale; this.dpr = dpr
-    const layout = battleLayout(width, this.battle?.combatants ?? [], { height, uiScale, dpr })
+    const layout = battleLayout(width, this.battle?.combatants ?? [], { height, uiScale, dpr, hud: desktop })
     this.bodyScale = layout.bodyScale
     if (changed) {
       this.app.renderer.resize(width, height, dpr)
@@ -559,7 +560,7 @@ export class BattleRenderer {
   }
 
   private syncUnits(b: BattleState): void {
-    const layout = this.fit() ?? battleLayout(this.width, b.combatants, { height: this.height, uiScale: this.uiScale, dpr: this.dpr })
+    const layout = this.fit() ?? battleLayout(this.width, b.combatants, { height: this.height, uiScale: this.uiScale, dpr: this.dpr, hud: this.hudScale > 0 })
     for (const c of b.combatants) {
       let u = this.units.get(c.id)
       const slot = layout.positions[c.id]
@@ -970,7 +971,7 @@ export class BattleRenderer {
       if (window.dangerCircle) {
         if (!ring || ring.destroyed) { ring = new Graphics(); this.root.addChild(ring); this.warningRings.set(id, ring) }
         // M-b 区域化(U41):有锁定爆心的机制画真实半径预警圈(画布坐标=逻辑×scale);否则脚下椭圆(旧机制兼容)
-        const projection = arenaProjection(this.width, this.height, this.bodyScale)
+        const projection = arenaProjection(this.width, this.height, this.bodyScale, this.hudScale)
         if (window.slamCenter) {
           const center = projection.toView(window.slamCenter)
           const rr = (window.slamRadius ?? 90) * projection.scale
@@ -992,7 +993,7 @@ export class BattleRenderer {
   /** U41 操作层:框选矩形(逻辑坐标→画布) */
   private drawSelectionBox(a: { x: number; y: number }, b: { x: number; y: number }) {
     if (!this.selectionG || this.selectionG.destroyed) { this.selectionG = new Graphics(); this.root.addChild(this.selectionG) }
-    const projection = arenaProjection(this.width, this.height, this.bodyScale)
+    const projection = arenaProjection(this.width, this.height, this.bodyScale, this.hudScale)
     const p = projection.toView(a), q = projection.toView(b)
     this.selectionG.clear()
       .rect(Math.min(p.x, q.x), Math.min(p.y, q.y), Math.abs(q.x - p.x), Math.abs(q.y - p.y))

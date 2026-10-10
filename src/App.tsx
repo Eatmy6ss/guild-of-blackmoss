@@ -1,4 +1,4 @@
-import { SignatureBar } from './ui/battle/SignatureBar'
+import { BattleRoute } from './ui/battle/BattleRoute'
 import { BattleHints } from './ui/battle/BattleHints'
 import { SIGNATURE_SKILLS } from './data/signature'
 import { BattleIntel } from './ui/art/BattleIntel'
@@ -18,7 +18,7 @@ import { applyFeast } from './sim/morale'
 import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import { appendBio } from './sim/bio'
 import { INTEL_TIERS, INTEL_STOCK_CAP, intelDungeonFull, rollIntel, type IntelEntry, type IntelKind } from './sim/intel'
-import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget, setAttackTarget, setAttackMove, stopUnit, setHoldGround, useHealPotion, useFuryPotion } from './sim/combat'
+import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget, setAttackTarget, setAttackMove, stopUnit, setHoldGround, useHealPotion, useFuryPotion, orderRetreat } from './sim/combat'
 import { detectAutoPause, defaultAutoPause, parseAutoPause, saveAutoPause, type AutoPausePrefs } from './ui/battle/autopause'
 import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
@@ -54,7 +54,7 @@ import { WarehouseScreen } from './ui/screens/WarehouseScreen'
 import { HUB_DOCK, backTargetOf, type Screen } from './ui/screens'
 import { EventModal } from './ui/screens/EventModal'
 import { BattleScreen } from './ui/screens/BattleScreen'
-import { TowerBattleScreen, TowerRestScreen, TowerEndedScreen } from './ui/screens/TowerScreens'
+import { TowerRestScreen, TowerEndedScreen } from './ui/screens/TowerScreens'
 import { HallScreen } from './ui/screens/HallScreen'
 import { createAppControllers } from './ui/controllers'
 import { type InvSort } from './ui/inventory-sort'
@@ -422,7 +422,7 @@ export default function App() {
     if (b) b.commands.selectedIds = ids
   }
   const pickSelected = (ids: string[]) => { setSelectedIds(ids); syncSelected(ids) }
-  const manualCmdRef: { current: null | ((fn: (b: import('./sim/types').BattleState) => void) => void) } = { current: null }
+  const manualCmdRef = useRef<null | ((fn: (b: BattleState) => void) => void)>(null)
   // U42 #9.3:RTS 编队(Ctrl+1-5 存,1-5 取,无编队按队伍顺序选人)+攻击移动瞄准态(A 键布防,下次左键点地生效)
   const controlGroupsRef = useRef<Record<number, string[]>>({})
   const attackMoveArmedRef = useRef(false)
@@ -496,7 +496,9 @@ export default function App() {
         }
         if (targeting === (c.team === 'guild' ? 'ally' : 'enemy')) {
           if (aim.kind === 'skill') castSkillManually(b, aim.memberId, aim.skillId, c.id)
-          else useSignature(b, aim.memberId, c.id)
+          else if (useSignature(b, aim.memberId, targeting === 'ally' ? c.memberId : c.id)) {
+            setPlayMeta(m => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))
+          }
         }
         setAimCast(null)
         drainAndSync(b)
@@ -683,10 +685,10 @@ export default function App() {
   })
   const { applyOutcome, applyRetreatDeduction, settleBattleEnd, equip, redeemRelic, retreat, cmd, resolveEvent, dismissEvent, chooseAttrDim,
     startExpedition, chooseNode, backToGuild, restartGuild, dismantleT3, exchangeT3, sellItem,
-    enterTower, cmdTower, towerNextFloor, leaveTower, stepTen, finishBattle, upgradeBuilding, buyPotion, buyRoyalGood, toggleLock, bulkDismantle, upgradeRoll, refineQuality } = ctl
+    enterTower, cmdTower, towerNextFloor, leaveTower, upgradeBuilding, buyPotion, buyRoyalGood, toggleLock, bulkDismantle, upgradeRoll, refineQuality } = ctl
   applyRetreatDeductionRef.current = applyRetreatDeduction
   startExpeditionRef.current = startExpedition
-  manualCmdRef.current = cmd // U41/M-a:renderer 地面点击(挂在 mount effect 作用域)经此间接调 cmd
+  manualCmdRef.current = towerRunRef.current?.phase === 'battle' ? cmdTower : cmd // 鼠标与快捷键跟随当前远征/高塔控制器。
   continueDeepRef.current = chooseNode
   retreatRef.current = retreat
   backToGuildRef.current = backToGuild
@@ -926,7 +928,6 @@ export default function App() {
   const towerUnlocked = manual.includes('talma')
   const inTowerBattle = towerRun?.phase === 'battle' && towerRun.battle != null
   const inBattle = run?.phase === 'battle' && battle != null
-  const battleOver = inBattle && battle!.status !== 'running'
   // 指挥有感:boss 意图实时推导——蓄力中「分散」脉冲,咏唱中亮「打断咏唱」按钮(决策窗口可见)
   const intents = (inBattle || inTowerBattle) && battle!.status === 'running' ? bossIntents(battle!) : null
   // U29 状态机:关闭功能屏=返回上一级(backTargetOf)——功能坞屏回大厅,统计回大事记
@@ -967,6 +968,7 @@ export default function App() {
   }, [screen, battle?.status, hasBoss, inBattle, inTowerBattle, battleMapId, !!towerRun, !!run])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return
       const tag = (e.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
       // R5.2b/U33⑦:Esc 只有一个监听(App 层),按屏特判
@@ -1040,16 +1042,16 @@ export default function App() {
             e.preventDefault()
             return
           }
+          if (!e.ctrlKey && !e.metaKey && !e.altKey && ['z', 'x'].includes(e.key.toLowerCase())) {
+            manualCmdRef.current?.(e.key.toLowerCase() === 'z' ? useHealPotion : useFuryPotion); e.preventDefault(); return
+          }
+          if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'f') {
+            const target = rendererRef.current?.hoverEnemy
+            if (target?.alive) { setFocus(b, target.id); drainAndSync(b); e.preventDefault() }
+            return
+          }
           if (sel.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
             const k2 = e.key.toLowerCase()
-            // F=集火鼠标下的敌人(渲染层悬停追踪)
-            if (k2 === 'f') {
-              const he = rendererRef.current?.hoverEnemy
-              if (he && he.alive) { setFocus(b, he.id); drainAndSync(b); e.preventDefault() }
-              return
-            }
-            if (k2 === 'z') { manualCmdRef.current?.(useHealPotion); e.preventDefault(); return }
-            if (k2 === 'x') { manualCmdRef.current?.(useFuryPotion); e.preventDefault(); return }
             // Q/W/E=所选队员第 1/2/3 个技能(主动技后追加招牌技;需目标进瞄准态,画面上点单位施放)
             if (['q', 'w', 'e'].includes(k2)) {
               const u = b.combatants.find((c) => c.memberId === sel[0] && c.alive && c.team === 'guild')
@@ -1278,7 +1280,7 @@ export default function App() {
         </HallScreen>
 
         <div className={`panel${inBattle || inTowerBattle ? ' battle-panel' : ''}`}>
-          {(inBattle || inTowerBattle) && battle && <BattleIntel battle={battle} members={members} mapId={battleMapId} paused={inTowerBattle ? !towerRunning : !running} />}
+          {(inBattle || inTowerBattle) && battle && <BattleIntel battle={battle} members={members} selectedIds={selectedIds} onUnit={(c, additive) => rendererRef.current?.onUnitClick?.(c, additive)} />}
           {/* 舞台常驻：渲染器挂载一次，非战斗阶段隐藏（避免 ref 为 null 导致挂载失败） */}
           <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }}>
             {/* U42 #9.4:暂停横幅(画面中央)——自动暂停显示原因,空格继续 */}
@@ -1299,30 +1301,20 @@ export default function App() {
             <BattleHints hints={BATTLE_HINTS.filter(h => !hintsSeen.includes(h.id) &&
               (h.applies?.({ hasSignature: battle.combatants.some(c => c.team === 'guild' && c.alive && !!c.specId && !!SIGNATURE_SKILLS[c.specId]) }) ?? true))}
               onDismiss={dismissHint} />
-            <SignatureBar battle={battle} members={members} casterId={intents?.casterId} focusId={battle.commands.focusId}
-              onUse={(memberId, targetId) => {
-                const command = inTowerBattle ? cmdTower : cmd
-                command(b => {
-                  if (useSignature(b, memberId, targetId)) setPlayMeta(m => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))
-                }, true)
-              }} />
           </>}
 
-          {screen === 'battle' && run && inBattle && battle && (
+          {(inBattle || inTowerBattle) && battle && (
             <BattleScreen
-              run={run} battle={battle} inBattle={inBattle} inTowerBattle={inTowerBattle}
-              battleOver={battleOver} running={running} battleSpeed={battleSpeed} intents={intents}
-              hintsSeen={hintsSeen} lastSummary={progress.lastSummary ?? null} encName={encName}
-              cmd={cmd} autoLoopSet={(v) => { autoLoopRef.current = v }} runAutoSet={(v) => { if (runRef.current) runRef.current.autoMode = v }}
-              sfxCmd={sfxCmd} setRunning={setRunning} stepTen={stepTen} finishBattle={finishBattle}
-              setBattleSpeed={setBattleSpeed} dismissHint={dismissHint}
-              onSignatureUse={() => setPlayMeta((m: PlayMeta) => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 }))}
-              useSignatureCmd={(b, mid, tid) => useSignature(b, mid, tid)}
-              members={membersRef.current} onManualCast={(b, mid, sid, tid) => { castSkillManually(b, mid, sid, tid); drainAndSync(b) }}
-              selIds={selectedIds} onSelectAlly={(id) => pickSelected(id ? [id] : [])}
-              aim={aimCast} onAim={setAimCast}
-              autoPausePrefs={autoPausePrefs} onToggleAutoPausePref={toggleAutoPausePref}
-              speedCapped={speedCapped}
+              title={inTowerBattle ? '黑苔高塔 · 第 ' + towerRun!.floor + ' 层' : runDungeon(run!).name + ' · ' + encName(run!, battle.encounterId ?? '')}
+              route={<BattleRoute run={inBattle ? run : null} tower={inTowerBattle ? towerRun : null} />}
+              battle={battle} running={running} battleSpeed={battleSpeed} intents={intents}
+              cmd={inTowerBattle ? cmdTower : cmd}
+              onAutoMode={inTowerBattle ? undefined : (v) => { autoLoopRef.current = v; if (runRef.current) runRef.current.autoMode = v }}
+              sfxCmd={sfxCmd} setRunning={(v) => { setRunning(v); setAutoPauseNote(null) }} setBattleSpeed={setBattleSpeed}
+              onSignature={(mid, tid) => (inTowerBattle ? cmdTower : cmd)(b => { if (useSignature(b, mid, tid)) setPlayMeta(m => ({ ...m, signatureUses: (m.signatureUses ?? 0) + 1 })) }, true)}
+              onAttackMove={() => { attackMoveArmedRef.current = true; rendererRef.current?.setAttackMoveArmed(true) }}
+              members={membersRef.current} selIds={selectedIds} aim={aimCast} onAim={setAimCast}
+              autoPausePrefs={autoPausePrefs} onToggleAutoPausePref={toggleAutoPausePref} speedCapped={speedCapped}
               onToggleAutoCast={(memberId, skillId) => {
                 // U42 #9.2:偏好写成员(存档持久化)+战斗投影当场同步(下个 act 生效)
                 const m = membersRef.current.find((x) => x.id === memberId)
@@ -1336,15 +1328,7 @@ export default function App() {
                 const u = b?.combatants.find((c) => c.memberId === memberId)
                 if (u) u.autoCastOff = [...off]
               }}
-              logBoxRef={logBoxRef} logPinnedRef={logPinnedRef} retreat={retreat}
-            />
-          )}
-
-          {screen === 'tower' && towerRun?.phase === 'battle' && battle && (
-            <TowerBattleScreen
-              towerRun={towerRun} battle={battle} intents={intents} towerRunning={towerRunning}
-              cmdTower={cmdTower} sfxCmd={sfxCmd} towerRunRef={towerRunRef}
-              setTowerRunning={setTowerRunning} drainAndSync={drainAndSync}
+              logBoxRef={logBoxRef} logPinnedRef={logPinnedRef} retreat={inTowerBattle ? () => cmdTower(b => orderRetreat(b)) : retreat}
             />
           )}
 

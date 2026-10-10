@@ -3,6 +3,19 @@ import { fitGameViewport, worldPixelScale } from '../ui/viewport'
 import { arenaProjection, battleLayout } from '../ui/art/battleLayout'
 
 describe('D1 桌面舞台与战场投影', () => {
+  it.each([[1, 1], [4 / 3, 1], [.8, 1.25]])('D3 倍率 %f、DPR %f 下边缘单位避开 HUD，逆变换不改坐标', (uiScale, dpr) => {
+    const body = worldPixelScale(4, uiScale, dpr)
+    const p = arenaProjection(1920 * uiScale, 1080 * uiScale, body, uiScale)
+    for (const pos of [{ x: 0, y: 0 }, { x: 640, y: 360 }, { x: 150, y: 390 }]) {
+      const drawn = p.toView(pos)
+      expect(drawn.x - 16 * body).toBeGreaterThan(348 * uiScale)
+      expect(drawn.x + 16 * body).toBeLessThan(1560 * uiScale)
+      expect(drawn.y - 32 * body - 26 * uiScale).toBeGreaterThan(150 * uiScale)
+      expect(drawn.y + 8 * uiScale).toBeLessThan(856 * uiScale)
+      expect(p.toArena(drawn).x).toBeCloseTo(pos.x)
+      expect(p.toArena(drawn).y).toBeCloseTo(pos.y)
+    }
+  })
   it.each([[1920, 1080], [2560, 1440], [1440, 900], [3440, 1440], [390, 844]])('窗口 %i×%i 完整容纳 16:9 画幅且居中', (width, height) => {
     const fit = fitGameViewport(width, height)
     expect(fit.x).toBeGreaterThanOrEqual(0)
