@@ -1,3 +1,5 @@
+import { Meter } from '../Meter'
+import { Tooltip } from '../Tooltip'
 import { SIGNATURE_SKILLS } from '../../data/signature'
 import type { CSSProperties } from 'react'
 import type { BattleState, Member } from '../../sim/types'
@@ -20,16 +22,16 @@ export function SignatureBar({ battle, members = [], casterId, focusId, onUse }:
       return <article key={c.id} className={`sig-card${view.unavailable ? '' : ' ready'}${view.ownQueued ? ' queued' : ''}`}>
         <div className="sig-owner">{member && <HeroPortrait member={member} size={32} />}<span className="sig-owner-name">{c.name}</span><strong>{view.state}</strong></div>
         {view.skill.targeting === 'ally' ? <h3 className="sig-name">{view.skill.name}</h3> :
-          <button className="sig-btn" disabled={view.unavailable} onClick={() => onUse(c.memberId!, view.target?.id)} title={view.skill.desc}>
+          <Tooltip content={<><strong>{view.skill.name}</strong>{view.skill.desc}<small>{view.state}</small></>}><button className="sig-btn" disabled={view.unavailable} onClick={() => onUse(c.memberId!, view.target?.id)}>
             <span className="sig-name">{view.skill.name}</span><span className="sig-action">{view.ownQueued ? '已下令' : view.unavailable ? '暂不可用' : '施放 →'}</span>
-          </button>}
+          </button></Tooltip>}
         <p className="sig-target">{view.targetText}</p>
         {view.skill.targeting === 'ally' && <div className="sig-allies" aria-label={`${c.name}的圣疗目标`}>
           {allies.map(a => <button key={a.id} className="sig-ally" disabled={view.unavailable} onClick={() => onUse(c.memberId!, a.memberId)}>
             <span>{a.name}</span><small>{a.hp}/{a.maxHp}</small>
           </button>)}
         </div>}
-        <div className="sig-cooldown" aria-hidden="true"><span style={{ width: `${100 - cooldown}%` }} /></div>
+        <Meter className="sig-cooldown" value={100 - cooldown} max={100} aria-label={`${c.name}的${view.skill.name}冷却恢复`} />
       </article>
     })}
     <details className="signature-guide"><summary>查看本队招牌技说明</summary>

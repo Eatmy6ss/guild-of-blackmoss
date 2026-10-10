@@ -135,6 +135,32 @@ async function desktopBattleChecks(b) {
     await sleep(450)
     const frame=await probe(), allies=frame.units.filter(u=>u.team==='guild'), a=allies[0], second=allies[1]
     check('D1-frame-'+tag,'画幅完整/页面无滚动/像素整数倍率/高清画布', frame.fitted&&!frame.overflow&&Number.isInteger(frame.pixels)&&frame.nearest&&frame.resolution===dpr&&frame.paused?'PASS':'FAIL',JSON.stringify({...frame,units:undefined}))
+    // D2: native keyboard focus opens the shared tip without invoking its action.
+    await b.evalJs(`document.querySelector('.speed-pick button:not(:disabled)').focus()`)
+    await sleep(100)
+    const tip = await b.evalJs(`(()=>{const t=document.querySelector('.game-tooltip'),s=document.querySelector('.game-stage').getBoundingClientRect(),r=t?.getBoundingClientRect();return {text:t?.textContent,described:document.activeElement.getAttribute('aria-describedby')===t?.id,inside:!!r&&r.left>=s.left&&r.right<=s.right&&r.top>=s.top&&r.bottom<=s.bottom}})()`)
+    check('D2-tip-'+tag,'键盘可读说明，缩放后悬停框保持在画幅内',tip.text?.includes('实时推进速度')&&tip.described&&tip.inside?'PASS':'FAIL',JSON.stringify(tip))
+    if(width===1920) await b.shot('d2-tooltip')
+    await pressEscape(b)
+    const dismissed = await b.evalJs(`!document.querySelector('.game-tooltip')&&document.activeElement.matches('.speed-pick button')&&!!document.querySelector('.pause-overlay')`)
+    check('D2-dismiss-'+tag,'Esc 只收起说明，保留焦点与战斗暂停',dismissed?'PASS':'FAIL')
+    await b.evalJs(`document.activeElement.blur()`)
+    if (width===1920) {
+      const start = await b.evalJs(`(()=>{const r=document.querySelector('.speed-pick button').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`)
+      await b.send('Input.dispatchMouseEvent',{type:'mouseMoved',...start}); await sleep(100)
+      const end = await b.evalJs(`(()=>{const r=document.querySelector('.game-tooltip')?.getBoundingClientRect();return r?{x:r.left+20,y:r.top+12}:null})()`)
+      if (end) for(let i=1;i<=6;i++) {
+        await b.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:start.x+(end.x-start.x)*i/6,y:start.y+(end.y-start.y)*i/6})
+        await sleep(20)
+      }
+      const hovered = await b.evalJs(`!!document.querySelector('.game-tooltip')`)
+      check('D2-hover','鼠标移入悬停说明后保持可读',!!end&&hovered?'PASS':'FAIL')
+      await b.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5})
+      await b.evalJs(`document.querySelector('.sig-btn:disabled')?.parentElement.focus({preventScroll:true})`); await sleep(100)
+      const lockedTip = await b.evalJs(`(()=>{const t=document.querySelector('.game-tooltip');return !!t&&document.activeElement.classList.contains('tooltip-anchor')&&document.activeElement.querySelector('button')?.disabled&&t.textContent.includes('破咒盾击')})()`)
+      check('D2-disabled-tip','不可用的招牌技仍可用键盘查看说明',lockedTip?'PASS':'FAIL')
+      await pressEscape(b); await b.evalJs(`document.activeElement.blur()`)
+    }
     await mouse(a)
     const one=await selected()
     await mouse(second,'left',8)
@@ -396,7 +422,23 @@ async function phaseEnding() {
     await b.send('Page.navigate', { url: pathToFileURL(HTML).href }); await sleep(2500)
     await importSave(b, encode(save))
     await b.send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false})
-    await sleep(300); await b.shot('desktop-hall')
+    await sleep(300)
+    await b.evalJs(`document.fonts.ready.then(()=>true)`)
+    const design = await b.evalJs(`(()=>{
+      const body=getComputedStyle(document.body),h=getComputedStyle(document.querySelector('.hub-panel h2'));
+      const buttons=[...document.querySelectorAll('button')].filter(e=>e.offsetWidth);
+      const p=buttons.find(e=>e.classList.contains('primary'));
+      return {fonts:[...document.fonts].filter(f=>f.family.includes('Blackmoss')).map(f=>({family:f.family,status:f.status})),body:body.fontFamily,title:h.fontFamily,bodySize:body.fontSize,
+        primary:p&&getComputedStyle(p).backgroundImage,straight:buttons.every(e=>getComputedStyle(e).borderTopLeftRadius==='0px'),border:getComputedStyle(document.querySelector('.hub-panel')).borderTopWidth,
+        overflow:document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth};
+    })()`)
+    check('D2-fonts','离线字体实际加载，宋体标题与黑体正文分工',design.fonts.length===3&&design.fonts.every(f=>f.status==='loaded')&&design.body.includes('Blackmoss Sans')&&design.title.includes('Blackmoss Serif')&&design.bodySize==='15px'?'PASS':'FAIL',JSON.stringify(design))
+    check('D2-controls','直角细边组件、暗红主行动与无页面溢出',design.straight&&design.border==='1px'&&design.primary?.includes('106, 43, 32')&&!design.overflow?'PASS':'FAIL')
+    await b.shot('desktop-hall')
+    await b.evalJs(`document.querySelector('.royal-hub-link').click()`); await sleep(300)
+    const meter = await b.evalJs(`(()=>{const p=document.querySelector('.royal-rank-progress progress');return {label:p?.getAttribute('aria-label'),max:p?.max,value:p?.value,height:p?.getBoundingClientRect().height}})()`)
+    check('D2-meter','王国关系条使用同一组件，保留真实数值与可读标签',meter.label==='王国关系进度'&&meter.max>0&&meter.value>=0&&meter.height===7?'PASS':'FAIL',JSON.stringify(meter))
+    await b.shot('d2-royal'); await pressEscape(b); await sleep(200)
     // R3B/R3C:花名册开档案——本命族成员 ✔ 熟练;长柄成员 ⚠ 非熟练·长柄
     await clickText(b, '花名册'); await sleep(600)
     // R3A(U35):武器专修迁入花名册档案页——切换条旁五族按钮渲染
@@ -421,6 +463,8 @@ async function phaseEnding() {
     const scout = await b.evalJs(scoutProbe)
     check('M3', '情报侦察:零熟练度提前看清部分路线，并保留怪物资料',
       scout.known > 0 && scout.masked > 0 && scout.hint.includes('熟练度 0') && scout.hint.includes('本趟提前揭示一档') && scout.intel.includes('未验证') ? 'PASS' : 'FAIL', JSON.stringify(scout).slice(0, 200))
+    const nodesFit = await b.evalJs(`(()=>{const g=document.querySelector('.dungeon-graph').getBoundingClientRect();const nodes=[...document.querySelectorAll('.dg-node')].map(n=>n.getBoundingClientRect());return {count:nodes.length,inside:nodes.every(r=>r.top>=g.top&&r.bottom<=g.bottom&&r.left>=g.left&&r.right<=g.right),separate:nodes.every((r,i)=>nodes.slice(i+1).every(s=>r.right<=s.left||s.right<=r.left||r.bottom<=s.top||s.bottom<=r.top))}})()`)
+    check('D2-map','节点标题放大后首尾不裁切、相邻层不重叠',nodesFit.count>0&&nodesFit.inside&&nodesFit.separate?'PASS':'FAIL',JSON.stringify(nodesFit))
     await b.shot('scouted-map')
     await b.send('Page.reload'); await sleep(1500)
     await clickText(b, '继续旅程'); await sleep(500)
@@ -445,6 +489,8 @@ async function phaseEnding() {
       check('ART-' + label, '人物档案和装备画布有实际像素', art.count > 1 && art.painted ? 'PASS' : 'FAIL', JSON.stringify(art))
       const gear = await b.evalJs(`Array.from(document.querySelectorAll('.member-panel select.slot-select'),s=>({value:s.value,text:s.selectedOptions[0]?.textContent??''}))`)
       check('GEAR-' + label, '换装下拉正确显示当前穿戴，不误报空槽', gear.length === 3 && gear.every(s=>s.value && !s.text.endsWith('·空')) ? 'PASS' : 'FAIL', JSON.stringify(gear).slice(0, 200))
+      const controlsFit = await b.evalJs(`(()=>{const s=[...document.querySelectorAll('.member-card .slot-select')],icons=[...document.querySelectorAll('.member-card .gear-control>.item-art')];return {metrics:s.map(e=>({space:getComputedStyle(e).whiteSpace,lineHeight:getComputedStyle(e).lineHeight,font:getComputedStyle(e).fontSize,height:e.clientHeight})),singleLine:s.length===3&&s.every(e=>{const c=getComputedStyle(e);return c.whiteSpace==='nowrap'&&e.clientHeight>=parseFloat(c.fontSize)+parseFloat(c.paddingTop)+parseFloat(c.paddingBottom)}),icons:icons.length===3&&icons.every(e=>e.clientWidth<=40)}})()`)
+      check('D2-gear-'+label,'长装备名保持单行、图标框不拉伸',controlsFit.singleLine&&controlsFit.icons?'PASS':'FAIL',JSON.stringify(controlsFit))
       await b.evalJs(`document.querySelector('.roster-v2').parentElement.scrollTop=0`)
       const overlayFrame = await b.evalJs(`(()=>{const r=document.querySelector('.roster-v2').parentElement.getBoundingClientRect(),stage=document.querySelector('.game-stage').getBoundingClientRect();return {width:r.width,height:r.height,stageWidth:stage.width,stageHeight:stage.height,sheetWidth:document.querySelector('.member-sheet').clientWidth}})()`)
       check('D1-profile-'+label,'花名册占满舞台且档案不被大厅侧栏裁剪',Math.abs(overlayFrame.width-overlayFrame.stageWidth)<1&&Math.abs(overlayFrame.height-overlayFrame.stageHeight)<1&&overlayFrame.sheetWidth>=700?'PASS':'FAIL',JSON.stringify(overlayFrame))

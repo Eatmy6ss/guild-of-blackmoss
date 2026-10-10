@@ -1,0 +1,30 @@
+/* U38：界面层唯一色板。场景/人物仍使用各自的 32 色像素调色板。 */
+@font-face { font-family: 'Blackmoss Sans'; src: url('./fonts/sans-regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Blackmoss Sans'; src: url('./fonts/sans-bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Blackmoss Serif'; src: url('./fonts/serif-bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+:root {
+  color-scheme: dark;
+  --font-body: 'Blackmoss Sans', 'Microsoft YaHei', sans-serif;
+  --font-title: 'Blackmoss Serif', 'Songti SC', serif;
+  --text-small: 13px; --text-body: 15px; --text-lead: 17px;
+  --text-heading: 20px; --text-title: 24px; --text-display: 28px;
+  --text-banner: 32px; --text-emblem: 40px; --text-logo: 56px;
+  --bg: #0a0b0d; --panel: #16171b; --panel-hi: #222429; --panel-lo: #0b0c0e;
+  --panel-edge: #070708;
+  --plate: linear-gradient(180deg, rgba(22,23,27,.95), rgba(11,12,14,.95));
+  --edge-gold: rgba(217,185,121,.16); --edge-gold-hi: #9c7b45; --gold-muted: #4e3d22;
+  --ink: #ddd6c4; --ink-dim: #a49c88; --ink-faint: #a49c88;
+  --ink-decoration: #6e6858; /* 样稿第三级只用于装饰，不承载小号正文。 */
+  --gold: #d9b979; --gold-hi: #f6e2c0;
+  --accent: #8fbf5c; --danger: #e08772; --danger-bg: #301a17;
+  --hp: #6f9e3c; --stamina: #4f8db3; --foe: #b9452f; --cast: #d8962f;
+  --quality-green: #6fae4a; --quality-blue: #4f8fd0; --quality-purple: #a374de;
+  --parch: #d8c9a3; --parch-lo: #c4b285; --parch-ink: #3b2a1a;
+  --parch-edge: #8b7149; --parch-dim: #5c472d; --parch-good: #365321;
+  --button: linear-gradient(180deg, #2a2b30, #17181b);
+  --button-primary: linear-gradient(180deg, #6a2b20, #3b150f);
+  --button-primary-hover: linear-gradient(180deg, #7d3426, #461a12);
+  --button-selected: #30291d;
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+}

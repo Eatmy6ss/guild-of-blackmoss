@@ -1,3 +1,4 @@
+import { Meter } from '../Meter'
 import { useEffect, useRef, useState } from 'react'
 import { COMMISSIONS, COMMISSION_LIMIT, KINGDOM_NAME, KINGDOM_RANKS, ROYAL_SHELF, type CommissionDef, type RoyalGood } from '../../data/kingdom'
 import { commissionLock, commissionReward, kingdomRank, kingdomTrust, royalGoodLock, royalPotionCost, COMMISSION_DUE_DAYS, type KingdomContext, type KingdomState, type RoyalRewardChoice } from '../../sim/kingdom'
@@ -49,7 +50,7 @@ export function KingdomPanel({ state, context, notice, onClose, onAccept, onAban
       <p className="royal-issuer">{q.issuer}</p>
       <p className="royal-letter">{q.letter}</p>
       <div className="royal-objective"><b>目标</b><span>{q.objectiveText}</span></div>
-      {progress !== undefined && <div className="royal-progress"><progress aria-label={`${q.title}进度`} value={progress} max={q.objective.target} /><span>{progress} / {q.objective.target}</span></div>}
+      {progress !== undefined && <div className="royal-progress"><Meter aria-label={`${q.title}进度`} value={progress} max={q.objective.target} /><span>{progress} / {q.objective.target}</span></div>}
       <p className="royal-common">结案：王国信任 +{q.trust}{q.item ? ` · 固定装备：${describeItem({ ...q.item, id: 'preview' })}` : ''}</p>
       {ready ? <>
         <p className="hint">选择一份报酬，信任与固定装备两种方案均可获得。</p>
@@ -90,7 +91,7 @@ export function KingdomPanel({ state, context, notice, onClose, onAccept, onAban
         <div className="royal-standing"><strong>{trust}</strong><span>王国信任</span></div>
       </header>
       <div className="royal-rank-progress">
-        <progress aria-label="王国关系进度" value={nextRank ? trust - rank.threshold : 1} max={nextRank ? nextRank.threshold - rank.threshold : 1} />
+        <Meter aria-label="王国关系进度" value={nextRank ? trust - rank.threshold : 1} max={nextRank ? nextRank.threshold - rank.threshold : 1} />
         <span>{nextRank ? `再获 ${nextRank.threshold - trust} 信任 → ${nextRank.name}（补给优惠 ${Math.round(nextRank.discount * 100)}%）` : '已获最高关系称号 · 灰冠誓约者'}</span>
       </div>
       <div className="royal-rules"><span>在办 {state.active.length}/{COMMISSION_LIMIT} · 已结案 {done.size}/{COMMISSIONS.length}</span><span>补给优惠 {Math.round(rank.discount * 100)}% · 治疗药 {royalPotionCost('heal', state)}金 / 爆发药 {royalPotionCost('fury', state)}金</span></div>

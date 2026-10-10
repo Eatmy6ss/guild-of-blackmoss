@@ -1,3 +1,4 @@
+import { Tooltip } from '../Tooltip'
 import { useEffect } from 'react'
 import type { BattleState, Stance, Member } from '../../sim/types'
 import { STANCE_NAME, setStance, setFocus, useHealPotion, useFuryPotion, castSkillManually } from '../../sim/combat'
@@ -207,17 +208,15 @@ export function BattleScreen(props: {
             const autoOn = !selUnit.autoCastOff?.includes(r.def.id)
             const aimed = aim?.kind === 'skill' && aim.skillId === r.def.id
             return (
-              <button
-                key={r.def.id}
+              <Tooltip key={r.def.id} content={<><strong>{r.def.name}</strong>{r.def.effect}<small>自动施法：{autoOn ? '开' : '关'} · 右键切换 · 快捷键 {'QWE'[i] ?? '无'}{r.cooldownLeft > 0 ? ` · 冷却 ${Math.ceil(r.cooldownLeft / 10)} 秒` : ''}</small></>}><button
                 className={aimed ? 'active' : ''}
                 disabled={r.cooldownLeft > 0}
-                title={`${r.def.effect} · 自动施法:${autoOn ? '开' : '关'}(右键切换) · 快捷键 ${'QWE'[i] ?? ''}`}
                 style={autoOn ? { outline: '1px solid var(--edge-gold-hi)' } : { opacity: 0.45 }}
                 onClick={() => onAimToggle({ kind: 'skill', memberId: selUnit.memberId!, skillId: r.def.id })}
                 onContextMenu={(e) => { e.preventDefault(); props.onToggleAutoCast(selUnit.memberId!, r.def.id) }}
               >
                 ⚡ {r.def.name}{'QWE'[i] ?? ''}{r.cooldownLeft > 0 ? `(${Math.ceil(r.cooldownLeft / 10)}s)` : ''}
-              </button>
+              </button></Tooltip>
             )
           })}
           {selUnit.skills.length === 0 && <span className="hint">该角色没有主动技能(普攻型)——招牌技走下方招牌栏</span>}
@@ -253,15 +252,13 @@ export function BattleScreen(props: {
         </button>
         <span className="speed-pick" role="group" aria-label="实时推进速度">
           {([1, 2, 3] as const).map((s, i) => (
-            <button
-              key={s}
+            <Tooltip key={s} content={`实时推进速度 ${s}×${s === 3 && props.speedCapped ? ' · 首领战上限 2×，预警需要反应时间' : ''}${i < 2 ? ` · 快捷键 ${'[]'[i]}` : ''}`}><button
               className={`speed-opt${battleSpeed === s ? ' active' : ''}`}
               disabled={battleOver || (s === 3 && props.speedCapped)}
-              title={`实时推进速度 ${s}×(当前档位${s === 1 ? ',正常速度' : `,战斗加快 ${s} 倍`}) · 快捷键 ${'[]'[i]}${s === 3 && props.speedCapped ? ' · 首领战倍速上限 2×(预警需要反应时间)' : ''}`}
               onClick={() => { props.setBattleSpeed(s); try { localStorage.setItem('gg-speed', String(s)) } catch { /* 会话级回落 */ } }}
             >
               {s}×
-            </button>
+            </button></Tooltip>
           ))}
         </span>
         {battleSpeed !== 1 && <span className="speed-live" role="status">⏩ {battleSpeed}× 加速中</span>}

@@ -1,4 +1,4 @@
-/* D1 只负责画幅与分辨率。字体、底板组件和战斗 HUD 分别在 D2/D3 接续。 */
+/* 仅负责桌面画幅；材质和排版基础在 tokens/primitives。 */
 body.desktop-game { margin: 0; overflow: hidden; background: #050506; }
 .desktop-game #root { margin: 0; padding: 0; max-width: none; }
 .game-viewport { position: fixed; inset: 0; overflow: hidden; background: #050506; }
@@ -24,7 +24,7 @@ body.desktop-game { margin: 0; overflow: hidden; background: #050506; }
 .game-stage .battle-controls {
   grid-column: 2; grid-row: 1 / -1; display: flex; flex-direction: column;
   min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px;
-  background: #16171b; border: 1px solid rgba(217,185,121,.16);
+  background: var(--plate); border: 1px solid var(--edge-gold);
 }
 .game-stage .battle-controls > * { flex-shrink: 0; }
 .game-stage .battle-controls h2 { order: -2; margin-top: 0; }
@@ -40,5 +40,5 @@ body.desktop-game { margin: 0; overflow: hidden; background: #050506; }
 .game-stage .battle-controls .enc-row { order: -1; }
 .game-stage .credits-link { align-self: flex-end; margin-top: 12px; }
 .game-stage ::-webkit-scrollbar { width: 8px; height: 8px; }
-.game-stage ::-webkit-scrollbar-track { background: #0b0c0e; }
-.game-stage ::-webkit-scrollbar-thumb { background: #4e3d22; border: 2px solid #0b0c0e; }
+.game-stage ::-webkit-scrollbar-track { background: var(--panel-lo); }
+.game-stage ::-webkit-scrollbar-thumb { background: var(--gold-muted); border: 2px solid var(--panel-lo); }

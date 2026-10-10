@@ -16,12 +16,12 @@ export interface WarReportData {
 
 const W = 1080
 const H = 1350
-const GOLD = '#c8a04a'
-const GOLD_DIM = '#8a6a2a'
-const INK = '#e8dcc0'
-const INK_DIM = '#a08a5c'
+const GOLD = '#d9b979'
+const GOLD_DIM = '#9c7b45'
+const INK = '#ddd6c4'
+const INK_DIM = '#a49c88'
 const DANGER = '#d86a5a'
-const BG = '#1a1410'
+const BG = '#0a0b0d'
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const lines: string[] = []
@@ -41,7 +41,7 @@ export function renderWarReportCard(data: WarReportData): string {
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')!
-  const font = (size: number, bold = false): string => `${bold ? 'bold ' : ''}${size}px "Fusion Pixel 12px Proportional SC", "PingFang SC", monospace`
+  const font = (size: number, bold = false): string => `${bold ? 'bold ' : ''}${size}px "Blackmoss Sans", "Microsoft YaHei", sans-serif`
 
   // 底色+边框
   ctx.fillStyle = BG

@@ -1,0 +1,32 @@
+[
+  {
+    "family": "Sans",
+    "weight": "Regular",
+    "output": "sans-regular",
+    "sourceFile": "SourceHanSansSC-Regular.otf",
+    "download": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/release/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf",
+    "sourceSha256": "f1d8611151880c6c336aabeac4640ef434fa13cbfbf1ffe82d0a71b2a5637256",
+    "sha256": "173556df7e9913ccdfd09ea9dd343fb9a23e5a8274e297c742e97800e9eadbfa",
+    "bytes": 787136
+  },
+  {
+    "family": "Sans",
+    "weight": "Bold",
+    "output": "sans-bold",
+    "sourceFile": "SourceHanSansSC-Bold.otf",
+    "download": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/release/OTF/SimplifiedChinese/SourceHanSansSC-Bold.otf",
+    "sourceSha256": "df2b90f5bcc6d01dfc964cec5f6d535d6b6aebd26ed7fd79a9c1b3f2112fcb6b",
+    "sha256": "828668b02308231841992a0ae71d4ee13ff7b4793cd2e144b1d26c65cffae490",
+    "bytes": 805880
+  },
+  {
+    "family": "Serif",
+    "weight": "Bold",
+    "output": "serif-bold",
+    "sourceFile": "SourceHanSerifSC-Bold.otf",
+    "download": "https://raw.githubusercontent.com/adobe-fonts/source-han-serif/release/OTF/SimplifiedChinese/SourceHanSerifSC-Bold.otf",
+    "sourceSha256": "706b8c0de2deff6cbc0c87e2cdedfd33a78b7ffd76cebb4549012f197ba611fe",
+    "sha256": "18341286f469c0b7849a9dcc285b550cf42c8aa178ec6e0dfb7a32d34d8c48fd",
+    "bytes": 1111928
+  }
+]

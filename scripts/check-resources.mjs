@@ -32,4 +32,27 @@ function visit(dir) {
 }
 visit(join(base, 'assets'))
 for (const file of ['CC0.txt', 'DCSS-README.txt', 'Kenney-RPG-Audio.txt', 'Fusion-Pixel-OFL.txt']) readFileSync(join(base, 'assets/licenses', file))
+for (const font of manifest.fonts) {
+  if (font.license !== 'OFL-1.1') throw Error(`字体许可未审核：${font.source}`)
+  readFileSync(join(base, font.notice))
+}
+const fontDir = resolve('src/ui/fonts')
+const fonts = JSON.parse(readFileSync(join(fontDir, 'sources.json'), 'utf8'))
+for (const font of fonts) {
+  const data = readFileSync(join(fontDir, font.output + '.woff2'))
+  if (data.subarray(0, 4).toString() !== 'wOF2' || createHash('sha256').update(data).digest('hex') !== font.sha256) throw Error(`字体子集指纹不符：${font.output}`)
+}
+const coverage = new Set(readFileSync(join(fontDir, 'characters.txt'), 'utf8'))
+function checkFontCoverage(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const file = join(dir, entry.name)
+    if (entry.isDirectory() && entry.name !== 'testing') checkFontCoverage(file)
+    else if (entry.isFile() && /\.tsx?$/.test(file) && !file.includes('.test.')) {
+      const missing = [...new Set(readFileSync(file, 'utf8').match(/[\u3400-\u9fff]/gu) ?? [])].filter(c => !coverage.has(c))
+      if (missing.length) throw Error(`界面字体缺字 ${missing.join('')}（${file}）。运行 scripts/subset-ui-fonts.py 更新子集。`)
+    }
+  }
+}
+checkFontCoverage(resolve('src'))
+console.log(`字体验收：${fonts.length} 个 OFL 子集，指纹与项目中文字覆盖通过。`)
 console.log(`资源验收：${paths.size}个文件，逐文件来源/许可/指纹、PNG尺寸和OGG格式通过。`)

@@ -114,7 +114,7 @@ export function HallScreen(props: {
                   {goals.map((g) => {
                     const isCur = g === cur
                     return (
-                      <div key={g.id} className="hint" style={{ paddingLeft: 12, color: g.done ? '#8d9b62' : isCur ? '#dcba87' : '#6b6b6b' }}>
+                      <div key={g.id} className="hint" style={{ paddingLeft: 12, color: g.done ? 'var(--accent)' : isCur ? 'var(--gold)' : 'var(--ink-dim)' }}>
                         {g.done ? '✓' : isCur ? '→' : '🔒'} {g.text}{g.progress ? `(${g.progress})` : ''}
                       </div>
                     )
@@ -132,7 +132,7 @@ export function HallScreen(props: {
             <h2>🗼 黑苔高塔 —— 最高纪录 第 {towerBest} 层</h2>
             <p className="hint">
               逐层深入，敌人逐层变强；每 3 层遭遇守塔 boss。第 5 层起药水减半，
-              <b style={{ color: '#d48f8f' }}>第 9 层起撤退保护失效</b>。奖励逐层立即入账，随时可带着离开。
+              <b style={{ color: 'var(--danger)' }}>第 9 层起撤退保护失效</b>。奖励逐层立即入账，随时可带着离开。
             </p>
             <p className="hint">
               ⚔ 大秘境：守塔 boss 必掉装备，层数越深奖励越厚。纪录只认亲手挑战——挂机者不受青史留名。

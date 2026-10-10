@@ -8,6 +8,20 @@
       "license": "OFL-1.1",
       "source": "https://github.com/TakWolf/fusion-pixel-font",
       "notice": "/assets/licenses/Fusion-Pixel-OFL.txt"
+    },
+    {
+      "author": "Adobe / Source Han Sans contributors",
+      "license": "OFL-1.1",
+      "source": "https://github.com/adobe-fonts/source-han-sans",
+      "notice": "/assets/licenses/Source-Han-Sans-OFL.txt",
+      "modification": "按游戏文本裁剪并重命名为 Blackmoss Sans；字体文件与原包指纹见 src/ui/fonts/sources.json"
+    },
+    {
+      "author": "Adobe / Source Han Serif contributors",
+      "license": "OFL-1.1",
+      "source": "https://github.com/adobe-fonts/source-han-serif",
+      "notice": "/assets/licenses/Source-Han-Serif-OFL.txt",
+      "modification": "按游戏文本裁剪并重命名为 Blackmoss Serif；字体文件与原包指纹见 src/ui/fonts/sources.json"
     }
   ],
   "assets": [

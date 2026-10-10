@@ -117,7 +117,7 @@ class UnitView {
     this.hpFill = new Graphics()
     const nameText = new Text({
       text: combatant.name.length > labelChars ? combatant.name.slice(0, labelChars) + '…' : combatant.name,
-      style: { fontFamily: 'Fusion Pixel 12px Proportional SC', fontSize: 12, fill: 0xf4edcf },
+      style: { fontFamily: ['Blackmoss Serif', 'serif'], fontWeight: 'bold', fontSize: 13, fill: 0xddd6c4 },
     })
     nameText.anchor.set(0.5)
     nameText.position.set(0, -32 * bodyScale - 18)
@@ -260,7 +260,7 @@ export class BattleRenderer {
 
   async mount(container: HTMLElement): Promise<void> {
     const app = new Application()
-    // 按容器宽度重新布阵；人物保留整数像素倍率，名称始终12px。
+    // 按容器宽度重新布阵；人物保留整数像素倍率，文字在高清层绘制。
     await app.init({
       width: this.width,
       height: this.height,
@@ -280,7 +280,11 @@ export class BattleRenderer {
     this.host = container
     container.appendChild(app.canvas)
     container.addEventListener('contextmenu', this.preventMenu)
-    await preloadUrlSprites() // 素材包 PNG 预加载(失败静默降级)
+    await Promise.allSettled([
+      preloadUrlSprites(),
+      document.fonts.load('700 13px "Blackmoss Serif"'),
+      document.fonts.load('700 15px "Blackmoss Sans"'),
+    ]) // 高清文字必须等字体就绪后再测量与绘制。
     if (this.disposed) return
     this.ready = true
     this.observer = new ResizeObserver(this.scheduleFit)
@@ -597,7 +601,7 @@ export class BattleRenderer {
     if (this.focusMarker?.destroyed) this.focusMarker = null
     if (focusUnit) {
       if (!this.focusMarker) {
-        this.focusMarker = new Text({ text: '▼ 集火', style: { fontFamily: 'sans-serif', fontSize: 12, fill: 0xedc47b, fontWeight: 'bold' } })
+        this.focusMarker = new Text({ text: '▼ 集火', style: { fontFamily: ['Blackmoss Sans', 'sans-serif'], fontSize: 12, fill: 0xedc47b, fontWeight: 'bold' } })
         this.focusMarker.anchor.set(.5); this.root.addChild(this.focusMarker)
       }
       this.focusMarker.visible = true
@@ -805,7 +809,7 @@ export class BattleRenderer {
     const y = u.container.y - 40 - Math.random() /* presentation-only */ * 14
     const label = new Text({
       text,
-      style: { fontFamily: 'sans-serif', fontSize: size, fill: color, fontWeight: 'bold' },
+      style: { fontFamily: ['Blackmoss Sans', 'sans-serif'], fontSize: size, fill: color, fontWeight: 'bold' },
     })
     label.anchor.set(0.5)
     label.position.set(x, y)
@@ -836,7 +840,7 @@ export class BattleRenderer {
     const label = new Text({
       text: info.text,
       style: {
-        fontFamily: 'sans-serif',
+        fontFamily: ['Blackmoss Sans', 'sans-serif'],
         fontSize: this.width < 640 ? 12 : 20,
         fill: info.color,
         fontWeight: 'bold',

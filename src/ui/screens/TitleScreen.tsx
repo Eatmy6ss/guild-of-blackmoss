@@ -28,7 +28,7 @@ export function TitleScreen(props: TitleScreenProps) {
       {offlineNote && <div className="title-offline">{offlineNote}</div>}
       {resumeNotice && <p className="title-offline" role="status">{resumeNotice}</p>}
       <div className="title-actions">
-        <button onClick={props.onEnter}>
+        <button className="primary" onClick={props.onEnter}>
           {hasSave ? '▶ 继续旅程' : '▶ 开始新公会'}
         </button>
         {hasSave && (

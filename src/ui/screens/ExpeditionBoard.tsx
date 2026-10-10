@@ -35,9 +35,9 @@ export function ExpeditionBoard(props: ExpeditionBoardProps) {
   return (
     <>
       <h2>⚔ 作战板</h2>
-      <p style={{ color: '#7a8191', marginBottom: 10 }}>
+      <p style={{ color: 'var(--ink-dim)', marginBottom: 10 }}>
         地图每趟随机生成，逐层选路——每一层的模样由你的熟练度决定（首打一片漆黑）。血量全程延续，
-        <b style={{ color: '#d48f8f' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
+        <b style={{ color: 'var(--danger)' }}>战斗死亡即永久牺牲</b>，团灭将失去整支远征队。
       </p>
       <div className="dungeon-picker">
         {REGIONS.filter((rg) => !playtestMode || rg.order === 1).map((rg) => {
@@ -73,7 +73,7 @@ export function ExpeditionBoard(props: ExpeditionBoardProps) {
       <div className="bounty-clauses" role="group" aria-label="悬赏加码条款">
         <p className="hint" style={{ margin: '10px 0 4px' }}>
           📜 悬赏加码(可叠加)——给自己上难度,王国就多付钱:
-          {bountyClauses.length > 0 && <b style={{ color: '#dcba87' }}> 当前奖励 ×{mult.toFixed(2)}</b>}
+          {bountyClauses.length > 0 && <b style={{ color: 'var(--gold)' }}> 当前奖励 ×{mult.toFixed(2)}</b>}
         </p>
         {BOUNTY_CLAUSES.map((c) => {
           const on = bountyClauses.includes(c.id)
@@ -83,7 +83,7 @@ export function ExpeditionBoard(props: ExpeditionBoardProps) {
               className={on ? 'active' : ''}
               disabled={busy}
               title={c.desc}
-              style={on ? { borderColor: '#dcba87' } : undefined}
+              style={on ? { borderColor: 'var(--gold)' } : undefined}
               onClick={() => props.onToggleClause(c.id)}
             >
               {c.icon} {c.name} ×{c.rewardMult}{on ? ' ✓' : ''}
@@ -93,18 +93,18 @@ export function ExpeditionBoard(props: ExpeditionBoardProps) {
       </div>
       {/* #7.2 出征补给预告:扣款前可见;不足时红色预警(出发照常,但会饿肚子) */}
       <p className="hint" style={{ margin: '8px 0 4px' }}>
-        🍞 出征补给:口粮 <b style={{ color: rationShort ? '#d48f8f' : '#dcba87' }}>{ration} 金</b>（{expeditionCount} 人 × {plannedLayers(activeDungeon)} 层）
-        {rationShort && <span style={{ color: '#d48f8f' }}>——金币不足,队伍将饿着肚子出征（全员士气 −8）</span>}
+        🍞 出征补给:口粮 <b style={{ color: rationShort ? 'var(--danger)' : 'var(--gold)' }}>{ration} 金</b>（{expeditionCount} 人 × {plannedLayers(activeDungeon)} 层）
+        {rationShort && <span style={{ color: 'var(--danger)' }}>——金币不足,队伍将饿着肚子出征（全员士气 −8）</span>}
       </p>
       <button
         className="branch-btn primary"
         disabled={!canExpedition}
         onClick={props.onDepart}
       >
-        ⚔ 出发:{activeDungeonName}{bountyClauses.length > 0 ? `(加码 ×${mult.toFixed(2)})` : ''}——每趟地图随机生成(U27①),在地图上逐层选路
+        ⚔ 出发:{activeDungeonName}{bountyClauses.length > 0 ? `(加码 ×${mult.toFixed(2)})` : ''}——每趟地图随机生成，在地图上逐层选路
       </button>
       {!canExpedition && (
-        <p style={{ color: '#d48f8f' }}>
+        <p style={{ color: 'var(--danger)' }}>
           {expeditionCount < activeDungeonSize
             ? `编制不足（${expeditionCount}/${activeDungeonSize}）：去花名册编入队员，或去酒馆招募。`
             : ''}

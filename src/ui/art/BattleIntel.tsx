@@ -1,3 +1,4 @@
+import { Meter } from '../Meter'
 import type { BattleState, Member } from '../../sim/types'
 import type { CSSProperties } from 'react'
 import { sceneArt } from './catalog'
@@ -22,7 +23,7 @@ export function BattleIntel({ battle, members, mapId, paused }: { battle: Battle
       </div>}
       <div className="mechanic-list">{windows.length ? windows.map(window => <div className="mechanic-warning" key={`${window.unit.id}-${window.kind}`} role="status">
         <strong>⚠ {window.unit.name} · {window.name}</strong><span>还剩 {(window.remaining / 10).toFixed(1)}秒 · {window.interruptible ? '可打断' : '准备应对'}</span>
-        <progress value={window.remaining} max={window.total} aria-label={`${window.name}剩余读条`} />
+        <Meter tone="cast" value={window.remaining} max={window.total} aria-label={`${window.name}剩余读条`} />
         <small>{window.counter}{window.interruptible ? ` · 累计伤害 ${Math.floor(window.taken ?? 0)}/${window.breakDamage}` : ''}</small>
       </div>) : <p role="status">{focused ? `正在集火：${focused.name}` : '点击敌人集火 · 留意阵型与队员状态'}</p>}</div>
       </div>
@@ -32,7 +33,7 @@ export function BattleIntel({ battle, members, mapId, paused }: { battle: Battle
         const member = members.find(m => m.id === c.memberId)
         return <div key={c.id} className={c.alive ? '' : 'fallen'}>
           {member && <HeroPortrait member={member} size={32} />}
-          <div><span>{c.name}</span><small>{c.alive ? `${c.hp}/${c.maxHp}` : '已倒下'}</small>
+          <div><span>{c.name}</span><Meter tone="health" value={c.hp} max={c.maxHp} aria-label={`${c.name}生命`} /><small>{c.alive ? `${c.hp}/${c.maxHp}` : '已倒下'}</small>
             <div className="status-badges">{combatantBadges(c, battle.tick).map(badge => <span key={badge}>{badge}</span>)}</div>
           </div>
         </div>

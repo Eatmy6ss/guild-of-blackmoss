@@ -184,7 +184,8 @@ export function MapScreen({ run, mastery, revealBonus = 0, intelEntries = [], dr
           </>
         ) : (
           <>
-            <div className="dungeon-graph">
+            <div className="dungeon-graph" style={{ height: Math.max(420, run.map.layers.length * 64 + 64) }}>
+              <div className="dg-field">
               <svg className="dg-edges" viewBox="0 0 100 100" preserveAspectRatio="none">
                 {publicMapEdges(run.map).map(([a, b]) => {
                   const na = nodeByIdIn(a)
@@ -234,6 +235,7 @@ export function MapScreen({ run, mastery, revealBonus = 0, intelEntries = [], dr
                   </button>
                 )
               })}
+              </div>
               {hovered && (
                 <div className="dg-intel" role="tooltip">
                   <b>{describe(hovered).title}</b>
