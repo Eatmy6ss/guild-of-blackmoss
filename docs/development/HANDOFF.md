@@ -26,6 +26,7 @@
 
 ## ⚡ 实时状态牌
 
+> **🔨 施工中(2026-10-10,zcode):批次 9 战斗 P0 开工(U42,已合入 `claude/combat-p0-2026-10-10` 纯 docs 并推 main=402acbe)**——按 #9.1→#9.7 顺序施工,每单一提交+完整 verify。**涉及文件**:`src/sim/combat.ts`/`src/sim/mechanic-registry.ts`/`src/sim/save.ts`(v32 迁移)/`src/ui/controllers.ts`/`src/App.tsx`/`src/ui/screens/BattleScreen.tsx`/`src/ui/BattleRenderer.ts`/`scripts/smoke.ts` 及对应测试。**下一步将更新**:①#9.1 待命还手(combat.ts 手动分支)→②#9.2 自动施法开关+接管(save.ts MIGRATIONS)→③#9.3 RTS 基础操作→④#9.4 快捷键+暂停+自动暂停→⑤#9.5 预警参数→⑥#9.6 修接缝→⑦#9.7 门禁重标。**撞车提示(shldo)**:本批改动 BattleScreen/BattleRenderer/App 战斗区,D3(战斗 HUD)请等批次 9 全部合入后再开工(重新 fetch main);D1/D2 不受影响可先行。全量测试工单若在此期间领取,verify 会在批次 9 各提交上波动,建议等收尾牌后再领。
 > **📢 工单发布(2026-10-10,制作人拍板 U42)**:**批次 9 战斗 P0「让手动战斗能玩」交 zcode**——全手动改「自动施法+随时接管」、可选暂停+自动暂停、RTS 基础操作与战斗快捷键、预警可躲、修操作层接缝;规格与验收见「活跃工单·批次 9」。涉及 `combat.ts`/`mechanic-registry.ts`/`controllers.ts`/`App.tsx`/`BattleScreen.tsx`/`BattleRenderer.ts`/`smoke.ts`——**shldo 的 UI D3(战斗 HUD)请等批次 9 合入后再开工,D1/D2 不受影响**。
 > **已推送并开 [PR #7](https://github.com/Eatmy6ss/guild-of-blackmoss/pull/7)（2026-10-08，shldo / Codex）**：基于 main `988bda4` 完成系统修复、熟练度迷雾、v31 旧档兼容、情报 D1，以及人物/装备重接。最终完整 verify 退出 0，329 Vitest / 27 项试玩 PASS。规范复核 0 阻断；需求复核 1 项 P2 修复并复核关闭；截图发现的档案遮挡/窄屏和换装空槽误报也已修正。
 > **用户已确认 D1**：经历至少一场战斗后，在通关、失败或撤退时验真；零战斗及中途胜场不验真，高塔不参与。
