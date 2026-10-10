@@ -311,6 +311,8 @@ export interface Combatant {
   autoCastOff?: string[]
   /** U42 #9.2 接管窗口:玩家指令后到该 tick 前,挂机 AI 不改写该单位的移动与攻击目标 */
   takeoverUntilTick?: number
+  /** U42 #9.3 攻击移动(A+点地):朝该点行军,途中射程内遇敌即交战,清完继续走 */
+  attackMove?: { x: number; y: number }
   range: AttackRange
   /** 仅我方有职业角色（敌我判别辅助协同判定） */
   role?: Role

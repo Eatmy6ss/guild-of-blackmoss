@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { BattleState, Stance, Member } from '../../sim/types'
 import { STANCE_NAME, setStance, setFocus, useHealPotion, useFuryPotion, castSkillManually } from '../../sim/combat'
 import type { DungeonRun } from '../../sim/run'
@@ -44,6 +44,15 @@ export function BattleScreen(props: {
   const { selIds, onSelectAlly } = props
   const selId = selIds.length === 1 ? selIds[0]! : null // 技能面板仅单选时显示(RTS 惯例)
   const [aimSkill, setAimSkill] = useState<string | null>(null)
+  // U42 #9.3:Esc 两段式——瞄准态先取消瞄准(捕获层拦截,不再传给 App 的清选择)
+  useEffect(() => {
+    if (!aimSkill) return
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); setAimSkill(null) }
+    }
+    window.addEventListener('keydown', h, true)
+    return () => window.removeEventListener('keydown', h, true)
+  }, [aimSkill])
   const selUnit = battle.combatants.find((c) => c.team === 'guild' && c.memberId === selId && c.alive)
   const nameOf = (id: string) => props.members.find((m) => m.id === id)?.name ?? id
   if (!battle) return null

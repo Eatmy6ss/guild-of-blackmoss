@@ -862,6 +862,15 @@ function skillCooldownTicks(base: number, caster: Combatant): number {
   return Math.round(base / (1 + (caster.cdReduction ?? 0)))
 }
 
+/** U42 #9.3 攻击移动的途中交战判定:只看射程内(不追击不打射程外,清完继续走) */
+function nearestInRangeTarget(c: Combatant, foes: Combatant[]): Combatant | undefined {
+  if (!c.pos) return undefined
+  const range = c.range === 'melee' ? MELEE_RANGE : RANGED_RANGE
+  const pool = allowedPool(c, foes).filter((f) => f.pos && dist(c.pos!, f.pos!) <= range)
+  if (pool.length === 0) return undefined
+  return pool.reduce((a, b) => (dist(c.pos!, a.pos!) <= dist(c.pos!, b.pos!) ? a : b))
+}
+
 /** U42 #9.1 待命索敌:集火 > 最近打自己者(lastAttackerId) > 射程内最近。
  *  坚守(holdGround)只在射程内选目标;普通待命对集火/还手目标可出程追击(玩家明确意图优先)。 */
 function acquireIdleTarget(c: Combatant, state: BattleState, foes: Combatant[]): Combatant | undefined {
@@ -876,10 +885,23 @@ function acquireIdleTarget(c: Combatant, state: BattleState, foes: Combatant[]):
   if (focus && (!c.holdGround || inRange.includes(focus))) return focus
   const attacker = c.lastAttackerId ? pool.find((f) => f.id === c.lastAttackerId) : undefined
   if (attacker && (!c.holdGround || inRange.includes(attacker))) return attacker
-  if (inRange.length > 0 && c.pos) {
-    return inRange.reduce((a, b) => (dist(c.pos!, a.pos!) <= dist(c.pos!, b.pos!) ? a : b))
+  return nearestInRangeTarget(c, foes)
+}
+
+/** U42 #9.2 自动施法:按开关尝试技能——逆序逐个尝试(情境技优先),关单/冷却/族门槛跳过;
+ *  手动点的技能(castSkillManually)走独立通道立即覆盖,与此不冲突。招牌技默认关=从不在此代放。 */
+function tryAutoCast(c: Combatant, state: BattleState, allies: Combatant[], foes: Combatant[]): boolean {
+  const pool = allowedPool(c, foes)
+  for (const ready of [...c.skills].reverse()) {
+    if (ready.cooldownLeft > 0) continue
+    if (c.autoCastOff?.includes(ready.def.id)) continue
+    if (skillFamilyBlocked(c, ready.def.weaponFamily)) continue
+    if (useSkill(c, ready.def, allies, pool, state)) {
+      ready.cooldownLeft = skillCooldownTicks(ready.def.cooldownTicks, c)
+      return true
+    }
   }
-  return undefined
+  return false
 }
 
 function actWith(c: Combatant, state: BattleState): void {
@@ -890,19 +912,23 @@ function actWith(c: Combatant, state: BattleState): void {
   // 玩家对单个单位下令=3 秒接管,AI 不改写它的移动与攻击目标,窗口过后交还 AI)。
   const manual = !state.commands.autoMode || (c.takeoverUntilTick ?? 0) > state.tick
   if (manual && c.team === 'guild') {
-    if (c.moveTarget) return // 正在执行移动指令(玩家指令或追击):本 tick 不出手
-    // U42 #9.2 自动施法(魔兽式):按开关尝试技能——逆序逐个尝试(情境技优先),关单/冷却/族门槛跳过;
-    // 手动点的技能(castSkillManually)走独立通道立即覆盖,与此不冲突。招牌技默认关=从不在此代放。
-    const pool = allowedPool(c, foes)
-    for (const ready of [...c.skills].reverse()) {
-      if (ready.cooldownLeft > 0) continue
-      if (c.autoCastOff?.includes(ready.def.id)) continue
-      if (skillFamilyBlocked(c, ready.def.weaponFamily)) continue
-      if (useSkill(c, ready.def, allies, pool, state)) {
-        ready.cooldownLeft = skillCooldownTicks(ready.def.cooldownTicks, c)
+    // U42 #9.3 攻击移动:朝目标点行军,途中射程内出现敌人即站定交战(打完继续走);到达即清除
+    if (c.attackMove) {
+      const foe = nearestInRangeTarget(c, foes)
+      if (foe) {
+        c.moveTarget = undefined // 站定交战
+        if (tryAutoCast(c, state, allies, foes)) return
+        dealDamage(state, c, foe, 1.0 * (c.weaponDmgMult ?? 1), '攻击')
         return
       }
+      if (!c.moveTarget) {
+        if (!c.pos || dist(c.pos, c.attackMove) <= MOVE_SPEED + 0.5) { c.attackMove = undefined; return }
+        c.moveTarget = { x: c.attackMove.x, y: c.attackMove.y } // 交战结束/被拉开:继续行军
+      }
+      return
     }
+    if (c.moveTarget) return // 正在执行移动指令(玩家指令或追击):本 tick 不出手
+    if (tryAutoCast(c, state, allies, foes)) return
     // U42 #9.1 待命还手:玩家攻击指令(attackTargetId)最高优先;无指令时自动还手:
     // 集火 > 最近打自己者 > 射程内最近。坚守=只打射程内不追击。
     let at = c.attackTargetId ? state.combatants.find((x) => x.id === c.attackTargetId && x.alive) : undefined
@@ -1569,6 +1595,25 @@ export function setAttackTarget(state: BattleState, memberId: string, targetId?:
   const ok = !!targetId && state.combatants.some((x) => x.id === targetId && x.alive && x.team === 'enemy')
   c.attackTargetId = ok ? targetId : undefined
   if (ok) c.takeoverUntilTick = state.tick + TAKEOVER_TICKS
+}
+
+/** U42 #9.3 攻击移动:A+左键点地——行军途中射程内遇敌即站定交战,清完继续走;取代普通移动与攻击指令 */
+export function setAttackMove(state: BattleState, memberId: string, x: number, y: number): void {
+  const c = state.combatants.find((u) => u.team === 'guild' && u.memberId === memberId && u.alive)
+  if (!c || !c.pos) return
+  c.attackTargetId = undefined
+  c.attackMove = { x: Math.max(20, Math.min(ARENA.width - 20, x)), y: Math.max(40, Math.min(ARENA.height - 20, y)) }
+  c.moveTarget = { ...c.attackMove }
+  c.takeoverUntilTick = state.tick + TAKEOVER_TICKS
+}
+
+/** U42 #9.3 停止(S):清移动与攻击目标,回到待命(还手照旧,#9.1;坚守标记不动) */
+export function stopUnit(state: BattleState, memberId: string): void {
+  const c = state.combatants.find((u) => u.team === 'guild' && u.memberId === memberId && u.alive)
+  if (!c) return
+  c.moveTarget = undefined
+  c.attackTargetId = undefined
+  c.attackMove = undefined
 }
 
 /** #7.1(U39)RTS 式点选施法:玩家点选我方角色→选技能→选目标。校验冷却/存活/族门槛;冷却与 AI 同池(玩家放了 AI 不重复放)。 */

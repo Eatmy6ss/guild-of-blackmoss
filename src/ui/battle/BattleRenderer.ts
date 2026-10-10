@@ -67,8 +67,8 @@ class UnitView {
   /** 素材帧待就绪替换:非空且 tryGetTex 命中时,替换占位纹理 */
   texKey: string | null = null
   nameText: Text
-  /** 单位被点击（指挥台：点击敌人 = 集火） */
-  onClick?: (c: Combatant) => void
+  /** 单位被点击（指挥台：点击敌人 = 集火;U42 #9.3:additive=Shift 加选） */
+  onClick?: (c: Combatant, additive?: boolean) => void
   private hpFill: Graphics
   private hpColor: number
 
@@ -130,7 +130,7 @@ class UnitView {
     this.container.eventMode = 'static'
     this.container.cursor = combatant.team === 'enemy' ? 'pointer' : 'default'
     this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), -32 * bodyScale - 26, Math.max(44, 32 * bodyScale), 32 * bodyScale + 34)
-    this.container.on('pointerdown', () => this.onClick?.(this.combatant))
+    this.container.on('pointerdown', (e: { shiftKey?: boolean }) => this.onClick?.(this.combatant, e?.shiftKey === true))
     if (!combatant.alive) {
       this.settleFall()
       this.container.y += 6
@@ -208,14 +208,14 @@ export class BattleRenderer {
   lastTickAt = performance.now()
   /** 效果队列上限：超出即强制结算最旧的（遮挡恢复后的淤积保险） */
   private static MAX_EFFECTS = 150
-  /** 指挥台回调：点击场上单位 */
-  onUnitClick?: (c: Combatant) => void
+  /** 指挥台回调：点击场上单位(U42 #9.3:additive=Shift 加选) */
+  onUnitClick?: (c: Combatant, additive?: boolean) => void
   /** M-a 空间化:点战场空白处=选中角色移动到该点(逻辑 640×360 坐标) */
   onGroundClick?: (x: number, y: number) => void
   /** U41 操作层:选中我方单位集——syncUnits 画选中金圈(可见反馈:点了必须看得见) */
   selectedIdsRef: { current: string[] } = { current: [] }
-  /** U41 操作层修订:左键拖框=框选我方单位(逻辑坐标矩形) */
-  onBoxSelect?: (ids: string[]) => void
+  /** U41 操作层修订:左键拖框=框选我方单位(逻辑坐标矩形);U42 #9.3:additive=Shift 加选 */
+  onBoxSelect?: (ids: string[], additive?: boolean) => void
   /** U41 操作层修订:右键点地面=所选集体移动 / 右键点单位由 onUnitRightClick 分发 */
   onRightClick?: (x: number, y: number) => void
   onUnitRightClick?: (c: Combatant) => void
@@ -286,7 +286,7 @@ export class BattleRenderer {
       const p = toLogical(e)
       this.drawSelectionBox(dragStart, p)
     })
-    app.stage.on('pointerup', (e: { button: number; global: { x: number; y: number } }) => {
+    app.stage.on('pointerup', (e: { button: number; global: { x: number; y: number }; shiftKey?: boolean }) => {
       if (e.button !== 0 || !dragStart) return
       const p = toLogical(e)
       const start = dragStart
@@ -302,7 +302,7 @@ export class BattleRenderer {
           .filter((c) => c.pos!.x >= x0 && c.pos!.x <= x1 && c.pos!.y >= y0 && c.pos!.y <= y1)
           .map((c) => c.memberId!)
           .filter(Boolean)
-        this.onBoxSelect(ids)
+        this.onBoxSelect(ids, e.shiftKey === true)
       } else if (!moved) {
         this.onGroundClick?.(p.x, p.y) // 原地点击(无拖动)=取消选择/留接口
       }
@@ -360,6 +360,11 @@ export class BattleRenderer {
   reset(): void {
     this.battle = null
     this.clearUnits()
+  }
+
+  /** U42 #9.3:攻击移动瞄准态(A 键后)——画布光标切换为十字,再次点击地面即下令 */
+  setAttackMoveArmed(on: boolean): void {
+    if (this.app) this.app.canvas.style.cursor = on ? 'crosshair' : 'default'
   }
 
   destroy(): void {

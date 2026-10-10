@@ -18,7 +18,7 @@ import { applyFeast } from './sim/morale'
 import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import { appendBio } from './sim/bio'
 import { INTEL_TIERS, INTEL_STOCK_CAP, intelDungeonFull, rollIntel, type IntelEntry, type IntelKind } from './sim/intel'
-import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget, setAttackTarget } from './sim/combat'
+import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget, setAttackTarget, setAttackMove, stopUnit, setHoldGround } from './sim/combat'
 import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { WEAPON_FAMILIES } from './data/weapon-families'
@@ -408,6 +408,9 @@ export default function App() {
   }
   const pickSelected = (ids: string[]) => { setSelectedIds(ids); syncSelected(ids) }
   const manualCmdRef: { current: null | ((fn: (b: import('./sim/types').BattleState) => void) => void) } = { current: null }
+  // U42 #9.3:RTS 编队(Ctrl+1-5 存,1-5 取,无编队按队伍顺序选人)+攻击移动瞄准态(A 键布防,下次左键点地生效)
+  const controlGroupsRef = useRef<Record<number, string[]>>({})
+  const attackMoveArmedRef = useRef(false)
   const [day, setDay] = useState(() => saved?.day ?? 1)
   const [towerBest, setTowerBest] = useState(() => saved?.towerBest ?? 0)
   // 药水库存(经济改造):出征携带/战斗消耗/回城退回,仓库补货
@@ -463,22 +466,34 @@ export default function App() {
     rendererRef.current = renderer
     renderer.mount(stageRef.current!).catch(() => {})
     // 指挥台：点击场上敌人 = 集火
-    renderer.onUnitClick = (c) => {
+    renderer.onUnitClick = (c, additive) => {
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
       if (!b || b.status !== 'running') return
-      // U41 操作层:左键点我方=单选;左键点敌方=集火(保留指挥台语义)
-      if (c.team === 'guild' && c.alive && c.memberId) { pickSelected([c.memberId]); return }
+      // U41 操作层:左键点我方=单选(U42 #9.3:Shift=加选);左键点敌方=集火(保留指挥台语义)
+      if (c.team === 'guild' && c.alive && c.memberId) {
+        const mid = c.memberId
+        pickSelected(additive ? [...new Set([...selectedIdsRef.current, mid])] : [mid])
+        return
+      }
       if (c.team !== 'enemy' || !c.alive) return
       setFocus(b, c.id)
       drainAndSync(b)
     }
     renderer.selectedIdsRef = selectedIdsRef
-    renderer.onBoxSelect = (ids) => pickSelected(ids) // 框选(RTS 多选;空框=取消全选)
-    // 左键点空白=取消全选;选中单位时点地面=移动到该点(M-a 语义)
+    renderer.onBoxSelect = (ids, additive) => pickSelected(additive ? [...new Set([...selectedIdsRef.current, ...ids])] : ids) // 框选(RTS 多选;空框=取消全选;Shift=加选)
+    // 左键点空白=取消全选;选中单位时点地面=移动到该点(M-a 语义);A 键瞄准后=攻击移动(#9.3)
     renderer.onGroundClick = (x, y) => {
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
       const ids = selectedIdsRef.current
       if (!b || b.status !== 'running' || !ids.length) return
+      if (attackMoveArmedRef.current) {
+        attackMoveArmedRef.current = false
+        rendererRef.current?.setAttackMoveArmed(false)
+        manualCmdRef.current?.((bb) => {
+          ids.forEach((mid, i) => setAttackMove(bb, mid, x + (i % 3) * 36 - 36, y + Math.floor(i / 3) * 40 - 40))
+        })
+        return
+      }
       manualCmdRef.current?.((bb) => {
         ids.forEach((mid, i) => setMoveTarget(bb, mid, x + (i % 3) * 36 - 36, y + Math.floor(i / 3) * 40 - 40))
       })
@@ -883,9 +898,58 @@ export default function App() {
         }
         if (cur === 'result') { backToGuildRef.current?.(); return } // 结算屏 Esc=返回公会
         if (cur === 'member') setMemberSheetId(null)
-        if (runRef.current || towerRunRef.current) return // 战斗/塔内 Esc 无效(防误触,与旧一致)
+        if (runRef.current || towerRunRef.current) {
+          // U42 #9.3:战斗中 Esc=清选择(取消瞄准由 BattleScreen 捕获层先吃,两段式)
+          if (selectedIdsRef.current.length) pickSelected([])
+          return
+        }
         back()
         return
+      }
+      // U42 #9.3 战斗快捷键(S 停止/H 坚守/A 攻击移动瞄准/Ctrl+1-5 编队/1-5 选编队/Tab 循环选人)——战斗中才生效
+      {
+        const b = towerRunRef.current?.battle ?? runRef.current?.battle
+        if (b && b.status === 'running') {
+          const squadOrder = b.combatants.filter((c) => c.team === 'guild' && c.alive && c.memberId).map((c) => c.memberId!)
+          const sel = selectedIdsRef.current
+          const apply = (fn: (bb: import('./sim/types').BattleState, mid: string) => void) =>
+            manualCmdRef.current?.((bb) => { for (const mid of sel) fn(bb, mid) })
+          if (e.ctrlKey && !e.shiftKey && !e.metaKey && e.key >= '1' && e.key <= '5') {
+            controlGroupsRef.current[Number(e.key)] = [...sel]
+            e.preventDefault()
+            return
+          }
+          if (!e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey && e.key >= '1' && e.key <= '5') {
+            const group = (controlGroupsRef.current[Number(e.key)] ?? []).filter((id) => squadOrder.includes(id))
+            pickSelected(group.length ? group : squadOrder.slice(Number(e.key) - 1, Number(e.key)))
+            e.preventDefault()
+            return
+          }
+          if (sel.length > 0 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            const k = e.key.toLowerCase()
+            if (k === 's') { apply(stopUnit); e.preventDefault(); return }
+            if (k === 'h') {
+              apply((bb, mid) => {
+                const u = bb.combatants.find((x) => x.memberId === mid && x.alive)
+                if (u) setHoldGround(bb, mid, !u.holdGround)
+              })
+              e.preventDefault()
+              return
+            }
+            if (k === 'a') {
+              attackMoveArmedRef.current = true
+              rendererRef.current?.setAttackMoveArmed(true)
+              e.preventDefault()
+              return
+            }
+          }
+          if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey && squadOrder.length > 0) {
+            const cur = sel.length ? squadOrder.indexOf(sel[sel.length - 1]!) : -1
+            pickSelected([squadOrder[(cur + 1) % squadOrder.length]!])
+            e.preventDefault()
+            return
+          }
+        }
       }
       if (runRef.current || towerRunRef.current) return
       const hit = HUB_DOCK.find((it) => it.hotkey.toLowerCase() === e.key.toLowerCase() && dockUnlocked(it.key))
