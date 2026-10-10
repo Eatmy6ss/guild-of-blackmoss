@@ -426,6 +426,60 @@ async function phaseEnding() {
       }
     }
     await pressEscape(b); await sleep(200)
+    // U42 #9.2:挂机中技能面板仍可点+右键切换自动施法(接管语义)——黑苔打一场,暂停后验面板
+    {
+      await clickText(b, '黑苔沼泽'); await sleep(300)
+      await clickText(b, '出发'); await sleep(700)
+      for (let i = 0; i < 8; i++) {
+        const inBattle = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&x.textContent.includes('跑到结束'))`)
+        if (inBattle) break
+        await b.evalJs(`document.querySelector('.dungeon-graph .dg-node.available')?.click()`); await sleep(700)
+      }
+      await clickText(b, '⏸ 暂停'); await sleep(300)
+      await clickText(b, '🤖 挂机'); await sleep(300) // 开挂机:面板必须仍可点(U42 取消"挂机=禁手")
+      // 暂停后冷却冻结:逐个成员找"非冷却技能"(自动施法在入场 1 秒内可能已把首技能打进冷却)
+      const panel = await b.evalJs(`(async()=>{
+        const strip=document.querySelector('.squad-strip')
+        if(!strip) return { fail:'no-squad-strip' }
+        const members=[...strip.querySelectorAll('button')]
+        for (const mb of members) {
+          mb.click()
+          await new Promise(r=>setTimeout(r,120))
+          const skills=[...document.querySelectorAll('.skill-strip button')].filter(x=>x.textContent.includes('⚡')&&!x.disabled)
+          if(skills.length===0) continue
+          skills[0].click()
+          await new Promise(r=>setTimeout(r,80))
+          const aimed=skills[0].className.includes('active')
+          skills[0].dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))
+          await new Promise(r=>setTimeout(r,120))
+          const dimmed=skills[0].style.opacity==='0.45'
+          skills[0].dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true}))
+          await new Promise(r=>setTimeout(r,120))
+          const restored=skills[0].style.opacity!=='0.45'
+          return { skills:skills.length, aimed, dimmed, restored }
+        }
+        return { fail:'all-members-cooling', members:members.length }
+      })()`)
+      check('AC1', '挂机中技能面板仍可点,右键切换自动施法(开→关→开)', panel && !panel.fail && panel.skills > 0 && panel.aimed && panel.dimmed && panel.restored ? 'PASS' : 'FAIL', JSON.stringify(panel))
+      await b.shot('autopanel')
+      // 撤退离场(防胜利抢跑:先下撤退令再恢复实时;轮询归城,rest 相走地图撤退兜底)
+      await clickText(b, '🏳 撤退令')
+      await clickText(b, '⏵ 继续')
+      for (let i = 0; i < 40; i++) {
+        await sleep(500)
+        const st = await b.evalJs(`(()=>{
+          const vis=[...document.querySelectorAll('button')].filter(x=>x.offsetWidth||x.offsetHeight)
+          if(vis.find(x=>!x.disabled&&x.textContent.includes('返回公会'))) return 'back'
+          if(vis.find(x=>!x.disabled&&x.textContent.includes('撤退回城'))) return 'map-retreat'
+          if(vis.find(x=>x.textContent.includes('撤离中'))) return 'extracting'
+          return 'battle'
+        })()`)
+        if (st === 'back') { await clickText(b, '返回公会'); await sleep(500); break }
+        if (st === 'map-retreat') { await clickText(b, '🏳 撤退回城'); await sleep(800); continue }
+      }
+      const atHall = await b.evalJs(`[...document.querySelectorAll('button')].some(x=>x.offsetWidth&&x.textContent.includes('出发'))`)
+      if (!atHall) { await clickText(b, '返回公会'); await sleep(500) }
+    }
     const t0 = Date.now()
     const r = await drive(b, { prio: ['荆棘要塞'], timeoutMs: 240_000 })
     await b.shot('ending')

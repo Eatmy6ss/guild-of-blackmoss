@@ -238,6 +238,8 @@ export interface Member {
   bio?: import('./bio').BioEntry[]
   /** #4.1 精力(0-100):出征场次消耗,天数恢复;可选=老档满精力零迁移 */
   stamina?: number
+  /** U42 #9.2 自动施法关单(技能 id):清单内=不自动施放;可选/缺省=主动技默认自动(招牌技不在其中,默认只手动) */
+  autoCastOff?: string[]
 }
 
 // ===== 战斗实体（战斗内的临时投影，战斗结束即弃）=====
@@ -305,6 +307,10 @@ export interface Combatant {
   lastAttackerId?: string
   /** U42 #9.1 坚守(H 键):只攻击射程内目标,不追击 */
   holdGround?: boolean
+  /** U42 #9.2 自动施法关单(从 Member 投影;清单内技能 AI 不代放) */
+  autoCastOff?: string[]
+  /** U42 #9.2 接管窗口:玩家指令后到该 tick 前,挂机 AI 不改写该单位的移动与攻击目标 */
+  takeoverUntilTick?: number
   range: AttackRange
   /** 仅我方有职业角色（敌我判别辅助协同判定） */
   role?: Role

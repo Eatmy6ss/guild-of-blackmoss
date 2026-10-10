@@ -54,6 +54,8 @@ describe('U42 #9.1 待命还手', () => {
   it('坚守:射程外目标不追击;敌人进射程后照打', () => {
     const members = squad()
     const b = createBattle(members, BLACKMOSS, 'enc-frogs', 1717, 0, 0, false)
+    // 本测试隔离坚守的普攻/移动语义:全队关掉自动施法(技能无射程判定,会远程命中干扰断言)
+    for (const c of b.combatants) if (c.team === 'guild') c.autoCastOff = c.skills.map((s) => s.def.id)
     const u = b.combatants.find((c) => c.team === 'guild' && c.memberId === members[1]!.id)!
     const far = b.combatants.find((c) => c.team === 'enemy' && c.alive)!
     u.pos = { x: 60, y: 60 }

@@ -18,7 +18,7 @@ import { applyFeast } from './sim/morale'
 import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import { appendBio } from './sim/bio'
 import { INTEL_TIERS, INTEL_STOCK_CAP, intelDungeonFull, rollIntel, type IntelEntry, type IntelKind } from './sim/intel'
-import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget } from './sim/combat'
+import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget, setAttackTarget } from './sim/combat'
 import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { WEAPON_FAMILIES } from './data/weapon-families'
@@ -488,9 +488,9 @@ export default function App() {
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
       const ids = selectedIdsRef.current
       if (!b || b.status !== 'running') return
-      // 右键点敌人=**攻击指令**:所选单位追击并攻击该敌(手动模式下这是唯一攻击来源);同时保留集火 UI
+      // 右键点敌人=**攻击指令**:所选单位追击并攻击该敌(开接管窗口,U42 #9.2);同时保留集火 UI
       setFocus(b, c.id)
-      manualCmdRef.current?.((bb) => { for (const mid of ids) { const u = bb.combatants.find((x) => x.memberId === mid && x.alive); if (u) u.attackTargetId = c.id } })
+      manualCmdRef.current?.((bb) => { for (const mid of ids) setAttackTarget(bb, mid, c.id) })
       drainAndSync(b)
     }
     renderer.onRightClick = (x, y) => {
@@ -1173,6 +1173,19 @@ export default function App() {
               useSignatureCmd={(b, mid, tid) => useSignature(b, mid, tid)}
               members={membersRef.current} onManualCast={(b, mid, sid, tid) => { castSkillManually(b, mid, sid, tid); drainAndSync(b) }}
               selIds={selectedIds} onSelectAlly={(id) => setSelectedIds(id ? [id] : [])}
+              onToggleAutoCast={(memberId, skillId) => {
+                // U42 #9.2:偏好写成员(存档持久化)+战斗投影当场同步(下个 act 生效)
+                const m = membersRef.current.find((x) => x.id === memberId)
+                if (!m) return
+                const off = new Set(m.autoCastOff ?? [])
+                if (off.has(skillId)) off.delete(skillId)
+                else off.add(skillId)
+                m.autoCastOff = [...off]
+                setMembers([...membersRef.current])
+                const b = towerRunRef.current?.battle ?? runRef.current?.battle
+                const u = b?.combatants.find((c) => c.memberId === memberId)
+                if (u) u.autoCastOff = [...off]
+              }}
               logBoxRef={logBoxRef} logPinnedRef={logPinnedRef} retreat={retreat}
             />
           )}

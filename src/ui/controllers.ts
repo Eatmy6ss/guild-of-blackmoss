@@ -419,7 +419,9 @@ export function createAppControllers(deps: ControllerDeps) {
     if (!b) return
     // 终局态也同步一次：×10 步进跳过终态后，UI 可能停在过期快照（D13 软锁修复）
     if (b.status === 'running') {
-      if (b.commands.autoMode && !force) return // 挂机中：队长代打
+      // U42 #9.2:挂机不再拦截手动指令(挂机=全部自动+AI 走位;玩家指令经接管窗口生效,
+      // 见 combat.ts setMoveTarget/setAttackTarget/castSkillManually 的 takeoverUntilTick)。force 参数保留兼容旧调用。
+      void force
       fn(b)
     }
     drainAndSync(b)
@@ -857,7 +859,8 @@ export function createAppControllers(deps: ControllerDeps) {
     const b = towerRunRef.current?.battle
     if (!b) return
     if (b.status === 'running') {
-      if (b.commands.autoMode && !force) return
+      // U42 #9.2:与 cmd 同步——挂机不再拦截手动指令(接管窗口语义)
+      void force
       fn(b)
     }
     drainAndSync(b)

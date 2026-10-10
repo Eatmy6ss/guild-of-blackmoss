@@ -24,7 +24,7 @@ import type { Visitor } from '../sim/tavern'
 declare const __PLAYTEST__: boolean
 const KEY = (typeof __PLAYTEST__ !== 'undefined' && __PLAYTEST__) ? 'guild-game-playtest-v1' : 'guild-game-save-v1'
 
-export const SAVE_VERSION = 31
+export const SAVE_VERSION = 32
 
 /** A13:战斗运行中的存档节流窗(原每 tick 写一次 ≈10 次/秒;现断点粒度 5 秒,战斗结束立即写) */
 export const COMBAT_SAVE_INTERVAL_MS = 5000
@@ -116,6 +116,18 @@ export interface GuildSave extends StoredItemFields {
 
 /** 迁移链:每级一个纯函数,旧形态 → 新形态(save-systems 模式 3) */
 const MIGRATIONS: Record<number, (d: Record<string, unknown>) => Record<string, unknown>> = {
+  // U42 #9.2 自动施法偏好:autoCastOff 关单(技能 id 字符串数组),形态非法重置为空(=全开);
+  // 老档缺省=主动技默认自动。占位语义见 26/27 先例(防 while 落默认分支重置资产)。
+  31: (d) => {
+    const members = Array.isArray(d.members) ? d.members : []
+    d.members = members.map((m) => {
+      const off = (m as { autoCastOff?: unknown } | null | undefined)?.autoCastOff
+      if (off === undefined) return m
+      if (Array.isArray(off) && off.every((s) => typeof s === 'string')) return m
+      return { ...(m as Record<string, unknown>), autoCastOff: [] }
+    })
+    return d
+  },
   // 旧人物分支也使用 v23，但仍是 steps 路线；按结构识别，不能只看版本号。
   30: (d) => {
     d = migrateStoryRecovery(d)

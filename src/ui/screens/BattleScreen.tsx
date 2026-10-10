@@ -33,6 +33,8 @@ export function BattleScreen(props: {
   /** U41 操作层:选中我方角色集(框选/单选/小队条共用;RTS 多选) */
   selIds: string[]
   onSelectAlly: (id: string | null) => void
+  /** U42 #9.2 自动施法开关:右键技能图标切换(成员偏好持久化+战斗投影同步) */
+  onToggleAutoCast: (memberId: string, skillId: string) => void
   logBoxRef: React.RefObject<HTMLDivElement>
   logPinnedRef: { current: boolean }
   retreat: () => void
@@ -77,7 +79,6 @@ export function BattleScreen(props: {
                 (battle.commands.stance === s ? 'active' : '') +
                 (intents?.telegraphing && s === 'spread' ? ' urgent' : '')
               }
-              disabled={battle.commands.autoMode}
               onClick={() => {
                 props.sfxCmd()
                 props.cmd((b) => setStance(b, s))
@@ -93,7 +94,6 @@ export function BattleScreen(props: {
               props.cmd(useHealPotion)
             }}
             disabled={
-              battle.commands.autoMode ||
               battle.commands.healStock <= 0 ||
               battle.commands.healCd > 0
             }
@@ -107,7 +107,6 @@ export function BattleScreen(props: {
               props.cmd(useFuryPotion)
             }}
             disabled={
-              battle.commands.autoMode ||
               battle.commands.furyStock <= 0 ||
               battle.commands.furyCd > 0
             }
@@ -118,7 +117,6 @@ export function BattleScreen(props: {
           <span className="cmd-label">│</span>
           <button
             className={battle.commands.protectRetreat ? 'active' : ''}
-            disabled={battle.commands.autoMode}
             onClick={() =>
               props.cmd((b) => {
                 b.commands.protectRetreat = !b.commands.protectRetreat
@@ -127,7 +125,7 @@ export function BattleScreen(props: {
           >
             🛡 保护{battle.commands.protectRetreat ? '开' : '关'}
           </button>
-          {intents?.casting && intents.casterId && !battle.commands.autoMode && (
+          {intents?.casting && intents.casterId && (
             <button
               className="urgent"
               onClick={() => {
@@ -142,7 +140,6 @@ export function BattleScreen(props: {
           {battle.commands.focusId && (
             <button
               className="focus-tag"
-              disabled={battle.commands.autoMode}
               onClick={() => props.cmd((b) => setFocus(b, undefined))}
             >
               ✕ 取消集火
@@ -158,15 +155,14 @@ export function BattleScreen(props: {
                 props.sfxCmd()
                 props.retreat()
               }}
-              disabled={battle.commands.autoMode}
             >
               🏳 撤退令
             </button>
           )}
         </div>
       )}
-      {/* ===== #7.1(U39)RTS 式点选施法:点选我方角色→技能面板→点目标。挂机中禁用(挂机=队长代打) ===== */}
-      {battle.status === 'running' && !battle.commands.autoMode && (
+      {/* ===== U42 #9.2 点选角色/技能面板:挂机中同样可点(指令经接管窗口生效,不再被拦截) ===== */}
+      {battle.status === 'running' && (
         <div className="squad-strip" role="group" aria-label="点选角色">
           {battle.combatants.filter((c) => c.team === 'guild' && c.alive).map((c) => (
             <button
@@ -177,23 +173,28 @@ export function BattleScreen(props: {
               {nameOf(c.memberId ?? '')} {Math.round((c.hp / c.maxHp) * 100)}%
             </button>
           ))}
-          <span className="cmd-label">← 点选角色手动放技能</span>
+          <span className="cmd-label">← 点选角色下指令(挂机中=接管 3 秒)</span>
         </div>
       )}
-      {battle.status === 'running' && selUnit && !battle.commands.autoMode && (
+      {battle.status === 'running' && selUnit && (
         <div className="skill-strip" role="group" aria-label="技能面板">
           <span className="cmd-label">{nameOf(selUnit.memberId ?? '')}的技能:</span>
-          {selUnit.skills.map((r) => (
-            <button
-              key={r.def.id}
-              className={aimSkill === r.def.id ? 'active' : ''}
-              disabled={r.cooldownLeft > 0}
-              title={r.def.effect}
-              onClick={() => setAimSkill(aimSkill === r.def.id ? null : r.def.id)}
-            >
-              ⚡ {r.def.name}{r.cooldownLeft > 0 ? `(${Math.ceil(r.cooldownLeft / 10)}s)` : ''}
-            </button>
-          ))}
+          {selUnit.skills.map((r) => {
+            const autoOn = !selUnit.autoCastOff?.includes(r.def.id)
+            return (
+              <button
+                key={r.def.id}
+                className={aimSkill === r.def.id ? 'active' : ''}
+                disabled={r.cooldownLeft > 0}
+                title={`${r.def.effect} · 自动施法:${autoOn ? '开' : '关'}(右键切换)`}
+                style={autoOn ? { outline: '1px solid var(--edge-gold-hi)' } : { opacity: 0.45 }}
+                onClick={() => setAimSkill(aimSkill === r.def.id ? null : r.def.id)}
+                onContextMenu={(e) => { e.preventDefault(); props.onToggleAutoCast(selUnit.memberId!, r.def.id) }}
+              >
+                ⚡ {r.def.name}{r.cooldownLeft > 0 ? `(${Math.ceil(r.cooldownLeft / 10)}s)` : ''}
+              </button>
+            )
+          })}
           {selUnit.skills.length === 0 && <span className="hint">该角色没有主动技能(普攻型)——招牌技走下方招牌栏</span>}
           {aimSkill && (() => {
             const def = selUnit.skills.find((r) => r.def.id === aimSkill)!.def

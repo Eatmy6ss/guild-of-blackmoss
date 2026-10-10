@@ -518,18 +518,23 @@ const legacyDmg = guildDamageSum(0.06, 0.05)
 console.log(`7b 传承：基础总伤 ${plainDmg} vs 光环+手册 ${legacyDmg}（期望 ~+10%）`)
 if (legacyDmg <= plainDmg * 1.05) guildFailures.push('7b 传承加成未生效或过弱')
 
-// 7c: 撤退保护——濒危自动撤离；关闭后不触发
-{
+  // 7c: 撤退保护——濒危自动撤离；关闭后不触发
+  // U42 #9.1 适配:待命还手后小队会真打,濒危者可能在 tick 11(保护首判)前被 boss 点名打死,
+  // 之后全员反打可在窗口内直接取胜或无人再濒危→保护永不被触发(探针前提失效)。
+  // U42 #9.2 适配:牧师自动施法会在首判前把濒危者奶回 20% 以上(同因失效)。
+  // 本探针只测「濒危→自动撤离」判定本身:boss 攻击归零(普攻仍保底 1 点/次)+小队技能进冷却(自动施法跳过)。
+  {
+  const isolate7c = (b: ReturnType<typeof createBattle>) => {
+    const boss = b.combatants.find((c) => c.team === 'enemy')!
+    boss.attack = 0
+    for (const c of b.combatants) if (c.team === 'guild') for (const s of c.skills) s.cooldownLeft = 9999
+    return b
+  }
   const squadOn = JOBS.map((job, j) => generateMember(job, 5, 960001 + j))
-  const bOn = createBattle(squadOn, BLACKMOSS, 'enc-grush', 31337)
+  const bOn = isolate7c(createBattle(squadOn, BLACKMOSS, 'enc-grush', 31337))
   // 7c 不开 autoMode:挂机下 10% 血队 20 tick 内被围殴全灭→「有活人濒危」消失→保护不触发(实测)。
   // 手动待机=判定窗口稳定;本探针测的是保护判定本身。
   bOn.commands.protectRetreat = true
-  // U42 #9.1 适配:待命还手后小队会真打,濒危者可能在 tick 11(保护首判)前被 boss 点名打死,
-  // 之后全员反打可在窗口内直接取胜或无人再濒危→保护永不被触发(探针前提失效)。
-  // 本探针只测「濒危→自动撤离」判定本身:boss 攻击归零(普攻仍保底 1 点/次,不影响触发窗口)。
-  const grush = bOn.combatants.find((c) => c.team === 'enemy')!
-  grush.attack = 0
   const onDanger = bOn.combatants.find((c) => c.team === 'guild')!
   onDanger.hp = Math.round(onDanger.maxHp * 0.1)
   let ticks = 0
@@ -541,11 +546,9 @@ if (legacyDmg <= plainDmg * 1.05) guildFailures.push('7b 传承加成未生效�
   const onRetreated = bOn.status === 'retreated'
 
   const squadOff = JOBS.map((job, j) => generateMember(job, 5, 970001 + j))
-  const bOff = createBattle(squadOff, BLACKMOSS, 'enc-grush', 31337)
+  const bOff = isolate7c(createBattle(squadOff, BLACKMOSS, 'enc-grush', 31337))
   bOff.commands.autoMode = true // U41 手动模式适配
   bOff.commands.protectRetreat = false
-  const grushOff = bOff.combatants.find((c) => c.team === 'enemy')!
-  grushOff.attack = 0
   const guardOff = bOff.combatants.find((c) => c.team === 'guild')!
   guardOff.hp = Math.round(guardOff.maxHp * 0.1)
   let offTriggered = false
@@ -943,10 +946,11 @@ const towerFailures: string[] = []
   console.log(`⑬ 离线:2h=${two.gold} 金 / 48h 封顶 24h=${capped.gold} 金 / 短时不给 = ${short.gold === 0}`)
 
   // 13b:导出/导入回环——字段完整还原
+  squad[0].autoCastOff = ['heal-lowest'] // U42 #9.2:自动施法关单随档回环
   const saveObj = { version: SAVE_VERSION, rngState: 7777, rareHuntNext: null, statistics: newStatistics(2), trainingReady: false, healingMastery: {}, starMarrow: 0, pendingRelics: [], members: squad, inventory: [], memorial: [], manual: ['grush'], protectOn: true, gold: 123, blessing: 4, recruitCooldown: 1, towerBest: 6, lastSeen: now, chronicle: [{ seq: 1, day: 2, text: '测试条目' }], day: 2, buildings: { training: 1 }, potions: { heal: 2, fury: 1 }, unlockedHybrids: [], dungeonMastery: { blackmoss: 5 } }
   const code = exportSave({ ...saveObj, ...serializeGuildItems(createGuildItems(squad), squad), kingdom: { active: [], completed: [] }, runState: initialRunState(), visitor: null, generationState: memberGenerationState() })
   const back = importSave(code)
-  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids) && back.dungeonMastery.blackmoss === 5
+  const roundOk = back !== null && back.gold === 123 && back.manual[0] === 'grush' && back.members[0].exp === squad[0].exp && back.towerBest === 6 && back.potions.heal === 2 && back.potions.fury === 1 && Array.isArray(back.unlockedHybrids) && back.dungeonMastery.blackmoss === 5 && back.members[0].autoCastOff?.[0] === 'heal-lowest'
   console.log(`⑬ 导出导入:回环 ${roundOk},码长 ${code.length}`)
   if (!roundOk) fail13.push('⑬ 导出导入回环失败')
   if (importSave('垃圾输入!!!') !== null) fail13.push('⑬ 无效码未被拒绝')

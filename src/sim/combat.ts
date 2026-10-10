@@ -270,6 +270,8 @@ export function toCombatant(member: Member): Combatant {
     weaponProficient,
     weaponDmgMult,
     personality: member.personality,
+    // U42 #9.2 自动施法关单(缺省=主动技默认自动;招牌技不在 skills 里,天然只手动)
+    autoCastOff: member.autoCastOff ? [...member.autoCastOff] : undefined,
   }
 }
 
@@ -884,11 +886,25 @@ function actWith(c: Combatant, state: BattleState): void {
   const allies = aliveOf(state, c.team)
   const foes = aliveOf(state, c.team === 'guild' ? 'enemy' : 'guild')
   if (foes.length === 0) return
-  // U42 #9.1 待命还手:手动模式(非挂机)下——玩家攻击指令(attackTargetId)仍最高优先;
-  // 无指令时自动还手(魔兽式「待命」):集火 > 最近打自己者 > 射程内最近。
-  // 移动指令执行期间不索敌不出手(走到后 moveTarget 被移动循环清空,回待命);坚守=只打射程内不追击。
-  if (!state.commands.autoMode && c.team === 'guild') {
+  // U42 #9.2 手动语义判定:非挂机,或该单位在玩家接管窗口内(挂机不再吞掉手动指令——
+  // 玩家对单个单位下令=3 秒接管,AI 不改写它的移动与攻击目标,窗口过后交还 AI)。
+  const manual = !state.commands.autoMode || (c.takeoverUntilTick ?? 0) > state.tick
+  if (manual && c.team === 'guild') {
     if (c.moveTarget) return // 正在执行移动指令(玩家指令或追击):本 tick 不出手
+    // U42 #9.2 自动施法(魔兽式):按开关尝试技能——逆序逐个尝试(情境技优先),关单/冷却/族门槛跳过;
+    // 手动点的技能(castSkillManually)走独立通道立即覆盖,与此不冲突。招牌技默认关=从不在此代放。
+    const pool = allowedPool(c, foes)
+    for (const ready of [...c.skills].reverse()) {
+      if (ready.cooldownLeft > 0) continue
+      if (c.autoCastOff?.includes(ready.def.id)) continue
+      if (skillFamilyBlocked(c, ready.def.weaponFamily)) continue
+      if (useSkill(c, ready.def, allies, pool, state)) {
+        ready.cooldownLeft = skillCooldownTicks(ready.def.cooldownTicks, c)
+        return
+      }
+    }
+    // U42 #9.1 待命还手:玩家攻击指令(attackTargetId)最高优先;无指令时自动还手:
+    // 集火 > 最近打自己者 > 射程内最近。坚守=只打射程内不追击。
     let at = c.attackTargetId ? state.combatants.find((x) => x.id === c.attackTargetId && x.alive) : undefined
     if (!at) {
       c.attackTargetId = undefined
@@ -1534,13 +1550,25 @@ export const ARENA = { width: 640, height: 360 } as const
 export const MELEE_RANGE = 70
 export const RANGED_RANGE = 230
 export const MOVE_SPEED = 2.2 // px/tick
+/** U42 #9.2 接管窗口(3 秒,C4 占位):玩家对单位下令后,挂机 AI 在窗口内不改写它的移动与攻击目标 */
+export const TAKEOVER_TICKS = 30
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y)
 
-/** 玩家点地面:指定我方角色移动(移动优先于普攻;到达后自动恢复攻击) */
+/** 玩家点地面:指定我方角色移动(移动优先于普攻;到达后自动恢复攻击)。开启接管窗口(#9.2)。 */
 export function setMoveTarget(state: BattleState, memberId: string, x: number, y: number): void {
   const c = state.combatants.find((u) => u.team === 'guild' && u.memberId === memberId && u.alive)
   if (!c || !c.pos) return
   c.moveTarget = { x: Math.max(20, Math.min(ARENA.width - 20, x)), y: Math.max(40, Math.min(ARENA.height - 20, y)) }
+  c.takeoverUntilTick = state.tick + TAKEOVER_TICKS
+}
+
+/** U42 #9.2/#9.6 攻击指令:右键点敌人=追击并攻击该目标(单一入口,App 不直写字段);无效目标清空;同时开接管窗口 */
+export function setAttackTarget(state: BattleState, memberId: string, targetId?: string): void {
+  const c = state.combatants.find((u) => u.team === 'guild' && u.memberId === memberId && u.alive)
+  if (!c) return
+  const ok = !!targetId && state.combatants.some((x) => x.id === targetId && x.alive && x.team === 'enemy')
+  c.attackTargetId = ok ? targetId : undefined
+  if (ok) c.takeoverUntilTick = state.tick + TAKEOVER_TICKS
 }
 
 /** #7.1(U39)RTS 式点选施法:玩家点选我方角色→选技能→选目标。校验冷却/存活/族门槛;冷却与 AI 同池(玩家放了 AI 不重复放)。 */
@@ -1562,7 +1590,10 @@ export function castSkillManually(
   const pool = aliveOf(state, 'enemy')
   const forced = targetId ? [...allies, ...pool].find((c) => c.id === targetId && c.alive) : undefined
   const ok = useSkill(caster, ready.def, allies, pool, state, forced)
-  if (ok) ready.cooldownLeft = skillCooldownTicks(ready.def.cooldownTicks, caster)
+  if (ok) {
+    ready.cooldownLeft = skillCooldownTicks(ready.def.cooldownTicks, caster)
+    caster.takeoverUntilTick = state.tick + TAKEOVER_TICKS // U42 #9.2:手动施法=接管窗口
+  }
   return ok ? { ok: true } : { ok: false, reason: '施放条件不满足(如全队血量健康/无有效目标)' }
 }
 
