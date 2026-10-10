@@ -380,6 +380,8 @@ export default function App() {
   const aimCastRef = useRef(aimCast)
   aimCastRef.current = aimCast
   const toggleAutoPausePref = (k: keyof AutoPausePrefs) => setAutoPausePrefs((p) => { const n = { ...p, [k]: !p[k] }; saveAutoPause(n); return n })
+  // U42 #9.5:首领战倍速上限 2×(预警需要反应时间;3 倍按钮置灰,tick 周期同样封顶)
+  const speedCapped = !!battle?.combatants.some((c) => c.boss) || !!towerRun?.battle?.combatants.some((c) => c.boss)
   const [volume, setVolumeState] = useState(getVolume())
   const [muted, setMuted] = useState(isMuted())
   const [showCredits, setShowCredits] = useState(false)
@@ -790,10 +792,10 @@ export default function App() {
       }
       consumeAutoPause(b)
       drainAndSync(b)
-    }, speedIntervalMs(battleSpeed, TICK_MS))
+    }, speedIntervalMs(speedCapped ? (Math.min(battleSpeed, 2) as 1 | 2) : battleSpeed, TICK_MS))
     return () => clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, towerRunning, screen, battleSpeed])
+  }, [running, towerRunning, screen, battleSpeed, speedCapped])
   useEffect(() => {
     const r = runRef.current
     const b = r?.battle
@@ -1359,6 +1361,7 @@ export default function App() {
               selIds={selectedIds} onSelectAlly={(id) => setSelectedIds(id ? [id] : [])}
               aim={aimCast} onAim={setAimCast}
               autoPausePrefs={autoPausePrefs} onToggleAutoPausePref={toggleAutoPausePref}
+              speedCapped={speedCapped}
               onToggleAutoCast={(memberId, skillId) => {
                 // U42 #9.2:偏好写成员(存档持久化)+战斗投影当场同步(下个 act 生效)
                 const m = membersRef.current.find((x) => x.id === memberId)

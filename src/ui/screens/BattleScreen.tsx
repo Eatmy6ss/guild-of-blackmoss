@@ -42,6 +42,8 @@ export function BattleScreen(props: {
   /** U42 #9.4:自动暂停偏好与开关(战斗右上角逐项开关) */
   autoPausePrefs: import('../../ui/battle/autopause').AutoPausePrefs
   onToggleAutoPausePref: (k: keyof import('../../ui/battle/autopause').AutoPausePrefs) => void
+  /** U42 #9.5:首领战倍速上限 2×(3 倍按钮置灰) */
+  speedCapped: boolean
   logBoxRef: React.RefObject<HTMLDivElement>
   logPinnedRef: { current: boolean }
   retreat: () => void
@@ -254,8 +256,8 @@ export function BattleScreen(props: {
             <button
               key={s}
               className={`speed-opt${battleSpeed === s ? ' active' : ''}`}
-              disabled={battleOver}
-              title={`实时推进速度 ${s}×(当前档位${s === 1 ? ',正常速度' : `,战斗加快 ${s} 倍`}) · 快捷键 ${'[]'[i]}`}
+              disabled={battleOver || (s === 3 && props.speedCapped)}
+              title={`实时推进速度 ${s}×(当前档位${s === 1 ? ',正常速度' : `,战斗加快 ${s} 倍`}) · 快捷键 ${'[]'[i]}${s === 3 && props.speedCapped ? ' · 首领战倍速上限 2×(预警需要反应时间)' : ''}`}
               onClick={() => { props.setBattleSpeed(s); try { localStorage.setItem('gg-speed', String(s)) } catch { /* 会话级回落 */ } }}
             >
               {s}×

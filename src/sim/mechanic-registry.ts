@@ -114,7 +114,9 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
     kind: 'telegraph-aoe',
     label: '读条范围技',
     counter: '看到读条切【分散】站位,伤害大幅降低',
-    defaults: { everyTicks: 150, damage: 40, firstTick: 100, telegraphTicks: 30, radius: 90 },
+    // U42 #9.5 预警躲得开:预警 ≥ 半径÷移速×1.3(75÷2.2×1.3≈44.3→50 tick 留余量);
+    // 旧值(30 tick/半径 90)在物理上不可躲(圈心 41 tick 才走出,爆心常是坦克)。
+    defaults: { everyTicks: 150, damage: 40, firstTick: 100, telegraphTicks: 50, radius: 75 },
     describe(m) {
       const dmg = mechanicParam(m, 'damage')
       const tele = mechanicParam(m, 'telegraphTicks')
@@ -452,7 +454,7 @@ export const MECHANIC_REGISTRY: Record<MechanicKind, MechanicSpec> = {
 }
 
 /** 震地猛击结算(M-b 区域化,U41):爆心半径内才挨打——读条期间跑出预警圈=完全免伤;spread 阵型保留为圈内减伤保险 */
-function resolveSlam(state: BattleState, boss: Combatant, damage: number, name: string, fire = false, center?: { x: number; y: number }, radius = 90): void {
+function resolveSlam(state: BattleState, boss: Combatant, damage: number, name: string, fire = false, center?: { x: number; y: number }, radius = 75): void {
   const spread = state.commands.stance === 'spread'
   const members = state.combatants.filter((x) => x.alive && x.team === 'guild')
   if (members.length === 0) return

@@ -69,7 +69,7 @@ export const BLACKMOSS: DungeonDef = {
           kind: 'telegraph-aoe',
           name: '震地猛击',
           // D13:40 伤害/每 9s——硬吃 = 每 9s 全队 120 chip,分散 = 28;不切阵型会掉进保护线
-          params: { telegraphTicks: 30, damage: 30, everyTicks: 100 },
+          params: { telegraphTicks: 45, damage: 30, everyTicks: 100 },
         },
         {
           id: 'grush-call',
@@ -212,7 +212,7 @@ export const RUSTMINE: DungeonDef = {
           id: 'delve-collapse',
           kind: 'telegraph-aoe',
           name: '坑道坍塌',
-          params: { telegraphTicks: 36, damage: 32, everyTicks: 110 },
+          params: { telegraphTicks: 45, damage: 32, everyTicks: 110 },
         },
         {
           id: 'delve-pull',
@@ -315,7 +315,7 @@ export const ASHFIELD: DungeonDef = {
           id: 'mold-sweep',
           kind: 'telegraph-aoe',
           name: '葬仪横扫',
-          params: { telegraphTicks: 36, damage: 30, everyTicks: 105 },
+          params: { telegraphTicks: 45, damage: 30, everyTicks: 105 },
         },
         {
           id: 'mold-horn',
@@ -418,7 +418,7 @@ export const FROSTGRAVE: DungeonDef = {
           id: 'velhola-storm',
           kind: 'telegraph-aoe',
           name: '冰葬风暴',
-          params: { telegraphTicks: 36, damage: 28, everyTicks: 105 },
+          params: { telegraphTicks: 45, damage: 28, everyTicks: 105 },
         },
         {
           id: 'velhola-winter',
@@ -610,7 +610,7 @@ export const THORNHOLD: DungeonDef = {
           id: 'colt-drum',
           kind: 'telegraph-aoe',
           name: '战鼓冲锋',
-          params: { telegraphTicks: 36, damage: 30, everyTicks: 105 },
+          params: { telegraphTicks: 45, damage: 30, everyTicks: 105 },
         },
         {
           id: 'colt-banner',
@@ -653,7 +653,7 @@ export const THORNHOLD: DungeonDef = {
           id: 'victor-lance',
           kind: 'telegraph-aoe',
           name: '长枪风暴',
-          params: { telegraphTicks: 36, damage: 34, everyTicks: 105 },
+          params: { telegraphTicks: 45, damage: 34, everyTicks: 105 },
         },
         {
           id: 'victor-chain',

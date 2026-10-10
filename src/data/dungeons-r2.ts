@@ -36,7 +36,7 @@ export const EMBERPASS: DungeonDef = {
       { id: 'dk-a', traits: ['dragon-scale'], name: '龙裔鳞卫', maxHp: 650, attack: 19, defense: 8, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'dk-b', traits: ['dragon-scale'], name: '龙裔鳞卫', maxHp: 650, attack: 19, defense: 8, speed: 7, position: 'front', range: 'melee', archetype: 'shield' },
       { id: 'dk-c', traits: [], name: '龙裔吐息手', maxHp: 560, attack: 21, defense: 4, speed: 8, position: 'back', range: 'ranged', archetype: 'striker',
-        mechanics: [{ id: 'dk-breath', kind: 'telegraph-aoe', name: '灼风吐息', params: { firstTick: 45, telegraphTicks: 30, damage: 78, damageType: 'fire', everyTicks: 130 } }] },
+        mechanics: [{ id: 'dk-breath', kind: 'telegraph-aoe', name: '灼风吐息', params: { firstTick: 45, telegraphTicks: 45, damage: 78, damageType: 'fire', everyTicks: 130 } }] },
     ],
     pilgrims: [
       EMBER_FANATIC,
@@ -56,7 +56,7 @@ export const EMBERPASS: DungeonDef = {
       position: 'front',
       range: 'melee',
       mechanics: [
-        { id: 'kz-slam', kind: 'telegraph-aoe', name: '熔石崩落', params: { telegraphTicks: 30, damage: 34, everyTicks: 110 } },
+        { id: 'kz-slam', kind: 'telegraph-aoe', name: '熔石崩落', params: { telegraphTicks: 45, damage: 34, everyTicks: 110 } },
         { id: 'kz-call', kind: 'summon', name: '隘口援军', params: { atHpPct: 0.6, count: 2, groupId: 'reinforcements', recoveryTicks: 60 } },
         { id: 'kz-enrage', kind: 'enrage', name: '隘口之怒', params: { atTick: 300, attackMult: 1.7 } },
       ],
@@ -270,7 +270,7 @@ export const FORGEWORKS: DungeonDef = {
       position: 'front',
       range: 'melee',
       mechanics: [
-        { id: 'gr-anvil', kind: 'telegraph-aoe', name: '铁砧镇地', params: { telegraphTicks: 30, damage: 38, everyTicks: 115 } },
+        { id: 'gr-anvil', kind: 'telegraph-aoe', name: '铁砧镇地', params: { telegraphTicks: 45, damage: 38, everyTicks: 115 } },
         { id: 'gr-hook', kind: 'pull', name: '锻钩拽拉', params: { everyTicks: 250, durationTicks: 500 } },
         { id: 'gr-enrage', kind: 'enrage', name: '炉心过载', params: { atTick: 300, attackMult: 1.75 } },
       ],

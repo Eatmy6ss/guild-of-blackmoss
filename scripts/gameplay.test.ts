@@ -90,8 +90,8 @@ test('emberpass wave telegraphs respect spread and fire resistance without boss-
     b.tick = 45
     processBossMechanics(b)
     assert(bossIntents(b).telegraphing)
-    assert.equal(breather.mech!['telegraph-aoe'].until, 75)
-    b.tick = 75
+    assert.equal(breather.mech!['telegraph-aoe'].until, 90)
+    b.tick = 90
     processBossMechanics(b)
     assert(!bossIntents(b).telegraphing)
     assert(guild.every(c => !c.scarMechanicHits))
@@ -150,15 +150,15 @@ test('emberpass boss summons exactly fanatic and chanter once between slam windo
   const boss = b.combatants.find(c => c.boss)!
   boss.hp = boss.maxHp * 0.59
   b.tick = 100; processBossMechanics(b)
-  assert.equal(boss.mech!['telegraph-aoe'].until, 130)
+  assert.equal(boss.mech!['telegraph-aoe'].until, 145)
   assert(!boss.mech!['summon'].fired)
-  b.tick = 130; processBossMechanics(b)
+  b.tick = 145; processBossMechanics(b)
   b.tick = 189; processBossMechanics(b)
   assert(!boss.mech!['summon'].fired)
-  b.tick = 190; processBossMechanics(b)
+  b.tick = 205; processBossMechanics(b)
   const adds = b.combatants.filter(c => c.team === 'enemy' && !c.boss)
   assert.deepEqual(adds.map(c => c.name), ['朝圣狂徒', '唱诗朝圣者'])
-  assert.equal(boss.mech!['telegraph-aoe'].next, 250)
+  assert.equal(boss.mech!['telegraph-aoe'].next, 265)
   assert.equal(adds[1].bossMechanics![0].kind, 'cast-heal')
   b.tick = 249; processBossMechanics(b)
   assert.equal(b.combatants.filter(c => c.team === 'enemy' && !c.boss).length, 2)
@@ -989,6 +989,7 @@ test('tower-only timer starts, pauses and restarts without an expedition', () =>
     rendererRef:{current:{lastTickAt:100}},performance:{now:()=>100},
     stepBattle,drainAndSync:()=>{},setTowerRunning:()=>{},TICK_MS:100,speedIntervalMs:(sp:number,ms:number)=>ms/sp,
     consumeAutoPause:()=>{},autoPauseCursorRef:{current:0},autoPauseStartSeenRef:{current:null},autoPausePrefsRef:{current:{bossCast:false,lowHp:false,allyDown:false,battleStart:false}},detectAutoPause:()=>null, // U42 #9.4 自动暂停(垫片第 16 次扩容;空实现=零影响)
+    speedCapped:false, // U42 #9.5 首领战倍速上限(垫片第 17 次扩容;false=不封顶)
     setInterval:(fn:()=>void)=>{tick=fn;return 1},
     clearInterval:()=>{tick=undefined},
   })()
