@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { BattleState, Stance, Member } from '../../sim/types'
 import { STANCE_NAME, setStance, setFocus, useHealPotion, useFuryPotion, castSkillManually } from '../../sim/combat'
+import { AUTOPAUSE_LABELS } from '../battle/autopause'
 import type { DungeonRun } from '../../sim/run'
 
 // R5.2c(U33⑦):战场区(指挥台/节奏条/招牌技栏/战报/日志)自 App.tsx 迁出——行为零变,处理器留 App。
@@ -35,6 +36,12 @@ export function BattleScreen(props: {
   onSelectAlly: (id: string | null) => void
   /** U42 #9.2 自动施法开关:右键技能图标切换(成员偏好持久化+战斗投影同步) */
   onToggleAutoCast: (memberId: string, skillId: string) => void
+  /** U42 #9.4:画面瞄准施法态(Q/W/E 触发,点画面单位施放)+开关 */
+  aim: { kind: 'skill' | 'sig'; memberId: string; skillId: string } | null
+  onAim: (a: { kind: 'skill' | 'sig'; memberId: string; skillId: string } | null) => void
+  /** U42 #9.4:自动暂停偏好与开关(战斗右上角逐项开关) */
+  autoPausePrefs: import('../../ui/battle/autopause').AutoPausePrefs
+  onToggleAutoPausePref: (k: keyof import('../../ui/battle/autopause').AutoPausePrefs) => void
   logBoxRef: React.RefObject<HTMLDivElement>
   logPinnedRef: { current: boolean }
   retreat: () => void
@@ -43,19 +50,23 @@ export function BattleScreen(props: {
   // #7.1(U39)RTS 式点选施法:点我方角色→技能面板→点目标施放。状态是纯 UI 选择,施放走 cmd(经挂机守卫)。
   const { selIds, onSelectAlly } = props
   const selId = selIds.length === 1 ? selIds[0]! : null // 技能面板仅单选时显示(RTS 惯例)
-  const [aimSkill, setAimSkill] = useState<string | null>(null)
+  const aim = props.aim // U42 #9.4:瞄准态提升到 App(键盘 Q/W/E 与画面点选共用)
+  const selUnit = battle.combatants.find((c) => c.team === 'guild' && c.memberId === selId && c.alive)
+  const nameOf = (id: string) => props.members.find((m) => m.id === id)?.name ?? id
   // U42 #9.3:Esc 两段式——瞄准态先取消瞄准(捕获层拦截,不再传给 App 的清选择)
   useEffect(() => {
-    if (!aimSkill) return
+    if (!aim) return
     const h = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); setAimSkill(null) }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); props.onAim(null) }
     }
     window.addEventListener('keydown', h, true)
     return () => window.removeEventListener('keydown', h, true)
-  }, [aimSkill])
-  const selUnit = battle.combatants.find((c) => c.team === 'guild' && c.memberId === selId && c.alive)
-  const nameOf = (id: string) => props.members.find((m) => m.id === id)?.name ?? id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aim])
   if (!battle) return null
+  const onAimToggle = (a: { kind: 'skill' | 'sig'; memberId: string; skillId: string }) => {
+    props.onAim(aim?.kind === a.kind && aim?.skillId === a.skillId ? null : a)
+  }
   return (
     <>
       <h2>
@@ -108,6 +119,7 @@ export function BattleScreen(props: {
             }
           >
             💊 治疗药×{battle.commands.healStock}
+            <span className="cmd-label">(Z)</span>
             {battle.commands.healCd > 0 ? `（${Math.ceil(battle.commands.healCd / 10)}s）` : ''}
           </button>
           <button
@@ -121,6 +133,7 @@ export function BattleScreen(props: {
             }
           >
             ⚡ 爆发药×{battle.commands.furyStock}
+            <span className="cmd-label">(X)</span>
             {battle.commands.furyCd > 0 ? `（${Math.ceil(battle.commands.furyCd / 10)}s）` : ''}
           </button>
           <span className="cmd-label">│</span>
@@ -177,7 +190,7 @@ export function BattleScreen(props: {
             <button
               key={c.id}
               className={selIds.includes(c.memberId ?? '') ? 'active' : ''}
-              onClick={() => { const mid = c.memberId ?? null; onSelectAlly(selIds.includes(mid ?? "") ? null : mid); setAimSkill(null) }}
+              onClick={() => { const mid = c.memberId ?? null; onSelectAlly(selIds.includes(mid ?? "") ? null : mid); props.onAim(null) }}
             >
               {nameOf(c.memberId ?? '')} {Math.round((c.hp / c.maxHp) * 100)}%
             </button>
@@ -188,34 +201,36 @@ export function BattleScreen(props: {
       {battle.status === 'running' && selUnit && (
         <div className="skill-strip" role="group" aria-label="技能面板">
           <span className="cmd-label">{nameOf(selUnit.memberId ?? '')}的技能:</span>
-          {selUnit.skills.map((r) => {
+          {selUnit.skills.map((r, i) => {
             const autoOn = !selUnit.autoCastOff?.includes(r.def.id)
+            const aimed = aim?.kind === 'skill' && aim.skillId === r.def.id
             return (
               <button
                 key={r.def.id}
-                className={aimSkill === r.def.id ? 'active' : ''}
+                className={aimed ? 'active' : ''}
                 disabled={r.cooldownLeft > 0}
-                title={`${r.def.effect} · 自动施法:${autoOn ? '开' : '关'}(右键切换)`}
+                title={`${r.def.effect} · 自动施法:${autoOn ? '开' : '关'}(右键切换) · 快捷键 ${'QWE'[i] ?? ''}`}
                 style={autoOn ? { outline: '1px solid var(--edge-gold-hi)' } : { opacity: 0.45 }}
-                onClick={() => setAimSkill(aimSkill === r.def.id ? null : r.def.id)}
+                onClick={() => onAimToggle({ kind: 'skill', memberId: selUnit.memberId!, skillId: r.def.id })}
                 onContextMenu={(e) => { e.preventDefault(); props.onToggleAutoCast(selUnit.memberId!, r.def.id) }}
               >
-                ⚡ {r.def.name}{r.cooldownLeft > 0 ? `(${Math.ceil(r.cooldownLeft / 10)}s)` : ''}
+                ⚡ {r.def.name}{'QWE'[i] ?? ''}{r.cooldownLeft > 0 ? `(${Math.ceil(r.cooldownLeft / 10)}s)` : ''}
               </button>
             )
           })}
           {selUnit.skills.length === 0 && <span className="hint">该角色没有主动技能(普攻型)——招牌技走下方招牌栏</span>}
-          {aimSkill && (() => {
-            const def = selUnit.skills.find((r) => r.def.id === aimSkill)!.def
+          {aim && aim.kind === 'sig' && <span className="cmd-label">招牌技瞄准中:点画面上的目标施放,右键/Esc 取消</span>}
+          {aim && aim.kind === 'skill' && (() => {
+            const def = selUnit.skills.find((r) => r.def.id === aim.skillId)!.def
             const allySkill = def.target === 'ally'
             const targets = battle.combatants.filter((c) => c.alive && (allySkill ? c.team === 'guild' : c.team === 'enemy'))
             return (
               <span className="cmd-label">
                 {' '}选目标:
                 {def.target !== 'ally' && def.target !== 'enemy' ? (
-                  <button onClick={() => { props.cmd((b) => { castSkillManually(b, selUnit.memberId!, aimSkill) }); setAimSkill(null); props.sfxCmd() }}>释放(无指定目标)</button>
+                  <button onClick={() => { props.cmd((b) => { castSkillManually(b, selUnit.memberId!, aim.skillId) }); props.onAim(null); props.sfxCmd() }}>释放(无指定目标)</button>
                 ) : targets.map((t) => (
-                  <button key={t.id} onClick={() => { props.cmd((b) => { castSkillManually(b, selUnit.memberId!, aimSkill, t.id) }); setAimSkill(null); props.sfxCmd() }}>
+                  <button key={t.id} onClick={() => { props.cmd((b) => { castSkillManually(b, selUnit.memberId!, aim.skillId, t.id) }); props.onAim(null); props.sfxCmd() }}>
                     {allySkill ? nameOf(t.memberId ?? '') : t.name}
                   </button>
                 ))}
@@ -226,7 +241,7 @@ export function BattleScreen(props: {
       )}
       <div className="enc-row">
         <button onClick={() => props.setRunning((r) => !r)} disabled={battleOver}>
-          {running ? '⏸ 暂停' : '⏵ 继续'}
+          {running ? '⏸ 暂停(空格)' : '⏵ 继续(空格)'}
         </button>
         <button onClick={props.stepTen} disabled={battleOver || running}>
           ⏩ ×10 tick
@@ -235,12 +250,12 @@ export function BattleScreen(props: {
           ⏭ 跑到结束
         </button>
         <span className="speed-pick" role="group" aria-label="实时推进速度">
-          {([1, 2, 3] as const).map((s) => (
+          {([1, 2, 3] as const).map((s, i) => (
             <button
               key={s}
               className={`speed-opt${battleSpeed === s ? ' active' : ''}`}
               disabled={battleOver}
-              title={`实时推进速度 ${s}×(当前档位${s === 1 ? ',正常速度' : `,战斗加快 ${s} 倍`})`}
+              title={`实时推进速度 ${s}×(当前档位${s === 1 ? ',正常速度' : `,战斗加快 ${s} 倍`}) · 快捷键 ${'[]'[i]}`}
               onClick={() => { props.setBattleSpeed(s); try { localStorage.setItem('gg-speed', String(s)) } catch { /* 会话级回落 */ } }}
             >
               {s}×
@@ -249,6 +264,18 @@ export function BattleScreen(props: {
         </span>
         {battleSpeed !== 1 && <span className="speed-live" role="status">⏩ {battleSpeed}× 加速中</span>}
         <span className="tick-info">tick {battle.tick ?? 0}</span>
+        {/* U42 #9.4:自动暂停(博德之门 1/2 式)——战斗右上角逐项开关;偏好存 gg-autopause */}
+        <span className="cmd-label" style={{ marginLeft: 'auto' }}>自动暂停:</span>
+        {(Object.keys(props.autoPausePrefs) as (keyof typeof props.autoPausePrefs)[]).map((k) => (
+          <button
+            key={k}
+            className={props.autoPausePrefs[k] ? 'active' : ''}
+            title="开关该自动暂停触发条件(偏好保存在本机)"
+            onClick={() => props.onToggleAutoPausePref(k)}
+          >
+            {AUTOPAUSE_LABELS[k]}
+          </button>
+        ))}
       </div>
       {battle && !battleOver && (
         <p className="hint">

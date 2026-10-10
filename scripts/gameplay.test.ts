@@ -988,6 +988,7 @@ test('tower-only timer starts, pauses and restarts without an expedition', () =>
     running:false,towerRunning,towerRunRef:{current:t},runRef:{current:null},
     rendererRef:{current:{lastTickAt:100}},performance:{now:()=>100},
     stepBattle,drainAndSync:()=>{},setTowerRunning:()=>{},TICK_MS:100,speedIntervalMs:(sp:number,ms:number)=>ms/sp,
+    consumeAutoPause:()=>{},autoPauseCursorRef:{current:0},autoPauseStartSeenRef:{current:null},autoPausePrefsRef:{current:{bossCast:false,lowHp:false,allyDown:false,battleStart:false}},detectAutoPause:()=>null, // U42 #9.4 自动暂停(垫片第 16 次扩容;空实现=零影响)
     setInterval:(fn:()=>void)=>{tick=fn;return 1},
     clearInterval:()=>{tick=undefined},
   })()

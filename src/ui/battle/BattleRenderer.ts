@@ -69,6 +69,9 @@ class UnitView {
   nameText: Text
   /** 单位被点击（指挥台：点击敌人 = 集火;U42 #9.3:additive=Shift 加选） */
   onClick?: (c: Combatant, additive?: boolean) => void
+  /** U42 #9.4:悬停进出(渲染层聚合 hoverEnemy 供 F 键集火) */
+  onHover?: (c: Combatant) => void
+  onHoverOut?: (c: Combatant) => void
   private hpFill: Graphics
   private hpColor: number
 
@@ -131,6 +134,8 @@ class UnitView {
     this.container.cursor = combatant.team === 'enemy' ? 'pointer' : 'default'
     this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), -32 * bodyScale - 26, Math.max(44, 32 * bodyScale), 32 * bodyScale + 34)
     this.container.on('pointerdown', (e: { shiftKey?: boolean }) => this.onClick?.(this.combatant, e?.shiftKey === true))
+    this.container.on('pointerover', () => this.onHover?.(this.combatant))
+    this.container.on('pointerout', () => this.onHoverOut?.(this.combatant))
     if (!combatant.alive) {
       this.settleFall()
       this.container.y += 6
@@ -367,6 +372,9 @@ export class BattleRenderer {
     if (this.app) this.app.canvas.style.cursor = on ? 'crosshair' : 'default'
   }
 
+  /** U42 #9.4:鼠标悬停的敌方单位(F=集火鼠标下的敌人) */
+  hoverEnemy: Combatant | null = null
+
   destroy(): void {
     this.disposed = true
     this.observer?.disconnect()
@@ -509,6 +517,8 @@ export class BattleRenderer {
         const petSprite = caster ? caster.specId?.includes('warlock') ? '/assets/mon/imp.png' : 'mon-wolf' : undefined
         u = new UnitView(c, slot.x, slot.y, layers, layout.bodyScale, layout.labelChars, petSprite)
         u.onClick = combatant => this.onUnitClick?.(combatant)
+        u.onHover = (combatant) => { if (combatant.team === 'enemy') this.hoverEnemy = combatant }
+        u.onHoverOut = (combatant) => { if (this.hoverEnemy === combatant) this.hoverEnemy = null }
         u.container.on('rightdown', (e: { stopPropagation: () => void }) => { e.stopPropagation(); this.onUnitRightClick?.(c) })
         this.units.set(c.id, u); this.root.addChild(u.container)
       }

@@ -18,7 +18,8 @@ import { applyFeast } from './sim/morale'
 import { chronicleFeast, chronicleRecruit, seedChronicle, type ChronicleEntry } from './sim/chronicle'
 import { appendBio } from './sim/bio'
 import { INTEL_TIERS, INTEL_STOCK_CAP, intelDungeonFull, rollIntel, type IntelEntry, type IntelKind } from './sim/intel'
-import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget, setAttackTarget, setAttackMove, stopUnit, setHoldGround } from './sim/combat'
+import { TICK_MS, stepBattle, setFocus, useSignature, castSkillManually, setMoveTarget, setAttackTarget, setAttackMove, stopUnit, setHoldGround, useHealPotion, useFuryPotion } from './sim/combat'
+import { detectAutoPause, defaultAutoPause, parseAutoPause, saveAutoPause, type AutoPausePrefs } from './ui/battle/autopause'
 import { BATTLE_HINTS, DOCK_UNLOCK_DAY, DOCK_UNLOCK_MILESTONE } from './data/tutorial'
 import { normalizeLedger, type FactLedger } from './sim/fact-ledger'
 import { WEAPON_FAMILIES } from './data/weapon-families'
@@ -367,6 +368,18 @@ export default function App() {
   // F13(2026-09-25):内置确认弹窗——微信等内置浏览器不支持 window.confirm/prompt,破坏性操作改游戏内弹窗
   const [confirmAsk, setConfirmAsk] = useState<{ text: string; okLabel?: string; onOk: () => void } | null>(null)
   const [battleSpeed, setBattleSpeed] = useState<1 | 2 | 3>(() => { try { return parseBattleSpeed(localStorage.getItem('gg-speed')) } catch { return 1 } })
+  // U42 #9.4:自动暂停偏好(localStorage gg-autopause,无存储=按战斗类型默认)+触发原因+画面瞄准施法态(Q/W/E)
+  const [autoPausePrefs, setAutoPausePrefs] = useState<AutoPausePrefs>(() => parseAutoPause(localStorage.getItem('gg-autopause')) ?? defaultAutoPause(false))
+  const autoPausePrefsRef = useRef(autoPausePrefs)
+  autoPausePrefsRef.current = autoPausePrefs
+  const autoPauseCursorRef = useRef(0)
+  const autoPauseLastRef = useRef<Record<string, number>>({})
+  const autoPauseStartSeenRef = useRef<unknown>(null)
+  const [autoPauseNote, setAutoPauseNote] = useState<string | null>(null)
+  const [aimCast, setAimCast] = useState<{ kind: 'skill' | 'sig'; memberId: string; skillId: string } | null>(null)
+  const aimCastRef = useRef(aimCast)
+  aimCastRef.current = aimCast
+  const toggleAutoPausePref = (k: keyof AutoPausePrefs) => setAutoPausePrefs((p) => { const n = { ...p, [k]: !p[k] }; saveAutoPause(n); return n })
   const [volume, setVolumeState] = useState(getVolume())
   const [muted, setMuted] = useState(isMuted())
   const [showCredits, setShowCredits] = useState(false)
@@ -469,6 +482,24 @@ export default function App() {
     renderer.onUnitClick = (c, additive) => {
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
       if (!b || b.status !== 'running') return
+      // U42 #9.4:瞄准施法态(Q/W/E 后)——左键点画面上单位即施放(队友/敌人按技能目标判定)
+      const aim = aimCastRef.current
+      if (aim) {
+        let targeting: string | undefined
+        if (aim.kind === 'skill') {
+          const caster = b.combatants.find((x) => x.memberId === aim.memberId && x.alive)
+          targeting = caster?.skills.find((r) => r.def.id === aim.skillId)?.def.target
+        } else {
+          targeting = Object.values(SIGNATURE_SKILLS).find((s) => s.id === aim.skillId)?.targeting
+        }
+        if (targeting === (c.team === 'guild' ? 'ally' : 'enemy')) {
+          if (aim.kind === 'skill') castSkillManually(b, aim.memberId, aim.skillId, c.id)
+          else useSignature(b, aim.memberId, c.id)
+        }
+        setAimCast(null)
+        drainAndSync(b)
+        return
+      }
       // U41 操作层:左键点我方=单选(U42 #9.3:Shift=加选);左键点敌方=集火(保留指挥台语义)
       if (c.team === 'guild' && c.alive && c.memberId) {
         const mid = c.memberId
@@ -499,6 +530,8 @@ export default function App() {
       })
     }
     renderer.onUnitRightClick = (c) => {
+      // U42 #9.4:瞄准态下右键=取消瞄准(不下攻击令)
+      if (aimCastRef.current) { setAimCast(null); return }
       if (c.team !== 'enemy' || !c.alive) return
       const b = towerRunRef.current?.battle ?? runRef.current?.battle
       const ids = selectedIdsRef.current
@@ -509,6 +542,8 @@ export default function App() {
       drainAndSync(b)
     }
     renderer.onRightClick = (x, y) => {
+      // U42 #9.4:瞄准态下右键=取消瞄准
+      if (aimCastRef.current) { setAimCast(null); return }
       // 右键点地面=所选单位集体移动(围绕点击点网格散开,不叠一点);移动指令清攻击目标(移动优先)
       const ids = selectedIdsRef.current
       if (!ids.length) return
@@ -701,6 +736,27 @@ export default function App() {
     if (!box || !logPinnedRef.current) return
     box.scrollTop = box.scrollHeight
   }, [battle?.log.length])
+  // U42 #9.4:自动暂停消费——本批新事件推导判定(④战斗开始=新战斗第一 tick 一次性),触发即暂停并写明原因
+  const consumeAutoPause = (b: BattleState) => {
+    if (autoPauseStartSeenRef.current !== b) {
+      autoPauseStartSeenRef.current = b
+      if (autoPausePrefsRef.current.battleStart) {
+        setRunning(false)
+        setAutoPauseNote('已暂停:战斗开始')
+        return
+      }
+    }
+    const fresh = b.events.slice(autoPauseCursorRef.current)
+    autoPauseCursorRef.current = b.events.length
+    const hit = detectAutoPause(fresh, b, autoPausePrefsRef.current)
+    if (!hit) return
+    const key = hit.kind + ':' + hit.text
+    const now = Date.now()
+    if (now - (autoPauseLastRef.current[key] ?? 0) < 3000) return // 同一触发 3 秒内不重复
+    autoPauseLastRef.current[key] = now
+    setRunning(false)
+    setAutoPauseNote(hit.text)
+  }
   useEffect(() => {
     if (screen === 'title' || (!running && !towerRunning)) return
     const timer = setInterval(() => {
@@ -710,6 +766,7 @@ export default function App() {
         if (performance.now() - (rendererRef.current?.lastTickAt ?? 0) > 800) return
         stepBattle(t.battle)
         if (t.battle.status !== 'running') setTowerRunning(false)
+        else consumeAutoPause(t.battle)
         drainAndSync(t.battle)
         return
       }
@@ -731,6 +788,7 @@ export default function App() {
         syncAll()
         return
       }
+      consumeAutoPause(b)
       drainAndSync(b)
     }, speedIntervalMs(battleSpeed, TICK_MS))
     return () => clearInterval(timer)
@@ -876,6 +934,19 @@ export default function App() {
   const battleMapId = towerRun ? 'tower' : run ? runDungeon(run).id : activeDungeon.id
   const hasBoss = battle?.combatants.some(c => c.boss && c.alive)
   useEffect(() => { rendererRef.current?.setTheme(battleMapId) }, [battleMapId])
+  // U42 #9.4:新战斗——自动暂停事件游标对齐+按战斗类型给默认偏好(用户有显式存储则读入状态)
+  useEffect(() => {
+    const tb = towerRun?.battle ?? battle
+    if (!tb) return
+    autoPauseCursorRef.current = tb.events.length
+    autoPauseStartSeenRef.current = null
+    autoPauseLastRef.current = {}
+    setAutoPauseNote(null)
+    const stored = parseAutoPause(localStorage.getItem('gg-autopause'))
+    if (stored) { setAutoPausePrefs(stored); return }
+    setAutoPausePrefs(defaultAutoPause(tb.combatants.some((c) => c.team === 'enemy' && c.alive && (c.boss || c.elite))))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [towerRun?.battle, battle])
   useEffect(() => {
     setMusicMood(screen === 'memorial' || battle?.status === 'guild-wipe' ? 'mourning'
       : (inBattle || inTowerBattle) && battle?.status === 'running' ? hasBoss ? 'boss' : 'battle'
@@ -946,6 +1017,50 @@ export default function App() {
           if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey && squadOrder.length > 0) {
             const cur = sel.length ? squadOrder.indexOf(sel[sel.length - 1]!) : -1
             pickSelected([squadOrder[(cur + 1) % squadOrder.length]!])
+            e.preventDefault()
+            return
+          }
+          // U42 #9.4:空格暂停/继续(暂停中指令照常可下;清原因横幅)
+          if (e.key === ' ') {
+            setRunning((r) => !r)
+            setAutoPauseNote(null)
+            e.preventDefault()
+            return
+          }
+          if (sel.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            const k2 = e.key.toLowerCase()
+            // F=集火鼠标下的敌人(渲染层悬停追踪)
+            if (k2 === 'f') {
+              const he = rendererRef.current?.hoverEnemy
+              if (he && he.alive) { setFocus(b, he.id); drainAndSync(b); e.preventDefault() }
+              return
+            }
+            if (k2 === 'z') { manualCmdRef.current?.(useHealPotion); e.preventDefault(); return }
+            if (k2 === 'x') { manualCmdRef.current?.(useFuryPotion); e.preventDefault(); return }
+            // Q/W/E=所选队员第 1/2/3 个技能(主动技后追加招牌技;需目标进瞄准态,画面上点单位施放)
+            if (['q', 'w', 'e'].includes(k2)) {
+              const u = b.combatants.find((c) => c.memberId === sel[0] && c.alive && c.team === 'guild')
+              if (u) {
+                const items: { kind: 'skill' | 'sig'; id: string; target: string }[] = u.skills.map((r) => ({ kind: 'skill', id: r.def.id, target: r.def.target }))
+                const sig = u.specId ? SIGNATURE_SKILLS[u.specId] : undefined
+                if (sig) items.push({ kind: 'sig', id: sig.id, target: sig.targeting })
+                const it = items[['q', 'w', 'e'].indexOf(k2)]
+                if (it) {
+                  if (it.target === 'ally' || it.target === 'enemy') setAimCast({ kind: it.kind, memberId: u.memberId!, skillId: it.id })
+                  else if (it.kind === 'skill') manualCmdRef.current?.((bb) => { castSkillManually(bb, u.memberId!, it.id) })
+                  else manualCmdRef.current?.((bb) => { useSignature(bb, u.memberId!, it.id) })
+                  e.preventDefault()
+                  return
+                }
+              }
+            }
+          }
+          if (e.key === '[' || e.key === ']') {
+            setBattleSpeed((s) => {
+              const n = e.key === '[' ? Math.max(1, s - 1) : Math.min(3, s + 1)
+              try { localStorage.setItem('gg-speed', String(n)) } catch { /* 会话级回落 */ }
+              return n as 1 | 2 | 3
+            })
             e.preventDefault()
             return
           }
@@ -1203,7 +1318,12 @@ export default function App() {
         <div className={`panel${inBattle || inTowerBattle ? ' battle-panel' : ''}`}>
           {(inBattle || inTowerBattle) && battle && <BattleIntel battle={battle} members={members} mapId={battleMapId} paused={inTowerBattle ? !towerRunning : !running} />}
           {/* 舞台常驻：渲染器挂载一次，非战斗阶段隐藏（避免 ref 为 null 导致挂载失败） */}
-          <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }} />
+          <div className="stage" ref={stageRef} style={{ display: inBattle || inTowerBattle ? undefined : 'none' }}>
+            {/* U42 #9.4:暂停横幅(画面中央)——自动暂停显示原因,空格继续 */}
+            {(inBattle || inTowerBattle) && battle && battle.status === 'running' && !(inTowerBattle ? towerRunning : running) && (
+              <div className="pause-overlay" role="status">{autoPauseNote ?? '已暂停 · 空格继续'}</div>
+            )}
+          </div>
           {!run && !towerRun && <ExpeditionBoard dungeonId={dungeonId} manual={manual}
             activeDungeon={activeDungeon} gold={gold}
             expeditionCount={expedition.length} activeDungeonSize={activeDungeon.size} activeDungeonName={activeDungeon.name}
@@ -1237,6 +1357,8 @@ export default function App() {
               useSignatureCmd={(b, mid, tid) => useSignature(b, mid, tid)}
               members={membersRef.current} onManualCast={(b, mid, sid, tid) => { castSkillManually(b, mid, sid, tid); drainAndSync(b) }}
               selIds={selectedIds} onSelectAlly={(id) => setSelectedIds(id ? [id] : [])}
+              aim={aimCast} onAim={setAimCast}
+              autoPausePrefs={autoPausePrefs} onToggleAutoPausePref={toggleAutoPausePref}
               onToggleAutoCast={(memberId, skillId) => {
                 // U42 #9.2:偏好写成员(存档持久化)+战斗投影当场同步(下个 act 生效)
                 const m = membersRef.current.find((x) => x.id === memberId)

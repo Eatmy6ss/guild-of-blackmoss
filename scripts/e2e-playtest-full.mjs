@@ -428,6 +428,7 @@ async function phaseEnding() {
     await pressEscape(b); await sleep(200)
     // U42 #9.2:挂机中技能面板仍可点+右键切换自动施法(接管语义)——黑苔打一场,暂停后验面板
     {
+      await b.evalJs(`localStorage.setItem('gg-autopause', JSON.stringify({bossCast:true,lowHp:true,allyDown:true,battleStart:true}))`)
       await clickText(b, '黑苔沼泽'); await sleep(300)
       await clickText(b, '出发'); await sleep(700)
       for (let i = 0; i < 8; i++) {
@@ -435,6 +436,18 @@ async function phaseEnding() {
         if (inBattle) break
         await b.evalJs(`document.querySelector('.dungeon-graph .dg-node.available')?.click()`); await sleep(700)
       }
+      // U42 #9.4:自动暂停(战斗开始)——中央横幅原因可见+计时器停止;空格继续
+      await sleep(500)
+      const ap1 = await b.evalJs(`document.querySelector('.pause-overlay')?.textContent ?? null`)
+      const t1 = await b.evalJs(`document.querySelector('.tick-info')?.textContent ?? ''`)
+      await sleep(700)
+      const t2 = await b.evalJs(`document.querySelector('.tick-info')?.textContent ?? ''`)
+      check('AP1', '自动暂停(战斗开始):中央横幅原因可见+计时器停止', ap1 === '已暂停:战斗开始' && t1 === t2 ? 'PASS' : 'FAIL', `overlay=${ap1},tick ${t1}/${t2}`)
+      await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 })
+      await b.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 })
+      await sleep(400)
+      const resumed = await b.evalJs(`!document.querySelector('.pause-overlay')`)
+      check('AP2', '空格继续(横幅消失)', resumed ? 'PASS' : 'FAIL', `resumed=${resumed}`)
       await clickText(b, '⏸ 暂停'); await sleep(300)
       await clickText(b, '🤖 挂机'); await sleep(300) // 开挂机:面板必须仍可点(U42 取消"挂机=禁手")
       // 暂停后冷却冻结:逐个成员找"非冷却技能"(自动施法在入场 1 秒内可能已把首技能打进冷却)
@@ -475,6 +488,23 @@ async function phaseEnding() {
         await sleep(150)
         const recalled = await b.evalJs(`!!document.querySelector('.squad-strip button.active')`)
         check('RTS1', 'Ctrl+1 编队→Esc 清选→按 1 选回', cleared && recalled ? 'PASS' : 'FAIL', `cleared=${cleared},recalled=${recalled}`)
+      }
+      // U42 #9.4:Q 进入瞄准→点目标→技能进入冷却(暂停中验证,冷却冻结=判定可靠)
+      {
+        const picked = await b.evalJs(`(async()=>{for(const mb of document.querySelectorAll('.squad-strip button')){mb.click();await new Promise(r=>setTimeout(r,120));const b1=[...document.querySelectorAll('.skill-strip button')].find(x=>x.textContent.includes('Q')&&!x.disabled);if(b1)return true}return false})()`)
+        await sleep(150)
+        await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'q', code: 'KeyQ', windowsVirtualKeyCode: 81 })
+        await b.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'q', code: 'KeyQ', windowsVirtualKeyCode: 81 })
+        await sleep(250)
+        const cast = await b.evalJs(`(async()=>{
+          const row=[...document.querySelectorAll('.skill-strip .cmd-label button')]
+          if(row.length===0) return { fail:'no-target-buttons' }
+          row[0].click()
+          await new Promise(r=>setTimeout(r,200))
+          const btn=[...document.querySelectorAll('.skill-strip button')].find(x=>x.textContent.includes('Q'))
+          return { cooled: !!btn && btn.disabled, text: btn?.textContent ?? null }
+        })()`)
+        check('Q1', 'Q 瞄准→点目标施放→技能进入冷却', picked && cast && !cast.fail && cast.cooled ? 'PASS' : 'FAIL', JSON.stringify({ picked, ...cast }))
       }
       // 撤退离场(防胜利抢跑:先下撤退令再恢复实时;轮询归城,rest 相走地图撤退兜底)
       await clickText(b, '🏳 撤退令')
