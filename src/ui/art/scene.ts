@@ -2,12 +2,12 @@ import { getAssetCanvas } from './assetLoader'
 import { sceneArt } from './catalog'
 
 /** 代码构筑场景，不把整张背景当美术包贴图；战场和资源预览共用。 */
-export function paintScene(ctx: CanvasRenderingContext2D, width: number, height: number, id: string) {
+export function paintScene(ctx: CanvasRenderingContext2D, width: number, height: number, id: string, tileSize?: number) {
   const art = sceneArt(id)
   ctx.imageSmoothingEnabled = false
   ctx.fillStyle = art.sky; ctx.fillRect(0, 0, width, height)
   const floor = getAssetCanvas(art.floor), wall = getAssetCanvas(art.wall)
-  const tile = width < 640 ? 64 : 96
+  const tile = tileSize ?? (width < 640 ? 64 : 96)
   if (floor) for (let y = 52; y < height; y += tile) for (let x = 0; x < width; x += tile) ctx.drawImage(floor, x, y, tile, tile)
   ctx.fillStyle = '#121416'; ctx.globalAlpha = .1; ctx.fillRect(0, 52, width, height - 52); ctx.globalAlpha = 1
   if (art.motif === 'hall' && wall) {
@@ -25,7 +25,7 @@ export function paintScene(ctx: CanvasRenderingContext2D, width: number, height:
   ctx.globalAlpha = .35
   if (path) for (let y = 52; y < height; y += tile) ctx.drawImage(path, Math.floor(width / 2 - tile / 2), y, tile, tile)
   ctx.globalAlpha = 1
-  const propSize = width < 640 ? 64 : 96
+  const propSize = tile
   for (let i = 0; i < 4; i++) {
     const image = getAssetCanvas(art.props[i % art.props.length])
     if (!image) continue

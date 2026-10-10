@@ -106,6 +106,67 @@ const pressEscape = async (b) => {
   await b.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
 }
 
+
+async function desktopBattleChecks(b) {
+  const probe = () => b.evalJs(`(()=>{
+    const br=window.__br, r=br.app.canvas.getBoundingClientRect();
+    const units=[...br.units.values()].filter(u=>u.combatant.alive).map(u=>{
+      const p=u.container.toGlobal({x:0,y:-16*u.bodyScale});
+      return {id:u.combatant.id,memberId:u.combatant.memberId,name:u.combatant.name,team:u.combatant.team,
+        x:r.left+p.x,y:r.top+p.y,footX:r.left+u.container.x,footY:r.top+u.container.y,pos:u.combatant.pos,size:32*u.bodyScale};
+    });
+    const stage=document.querySelector('.game-stage').getBoundingClientRect();
+    return {units,rect:{x:r.left,y:r.top,w:r.width,h:r.height},pixels:br.bodyScale*devicePixelRatio,
+      nearest:[...br.units.values()].every(u=>u.bodySprites.every(s=>s.texture.source.scaleMode==='nearest')),
+      resolution:br.app.renderer.resolution,dpr:devicePixelRatio,
+      overflow:document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth,
+      fitted:stage.left>=-.5&&stage.top>=-.5&&stage.right<=innerWidth+.5&&stage.bottom<=innerHeight+.5,
+      paused:!!document.querySelector('.pause-overlay')};
+  })()`)
+  const mouse = async (p, button='left', modifiers=0) => {
+    await b.send('Input.dispatchMouseEvent',{type:'mousePressed',x:p.x,y:p.y,button,clickCount:1,modifiers})
+    await b.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:p.x,y:p.y,button,clickCount:1,modifiers})
+    await sleep(120)
+  }
+  const selected = () => b.evalJs(`[...document.querySelectorAll('.squad-strip button.active')].map(x=>x.textContent)`)
+  for (const [width,height,dpr] of [[1920,1080,1],[2560,1440,1],[1536,960,1.25]]) {
+    const tag=width+'x'+height
+    await b.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false})
+    await sleep(450)
+    const frame=await probe(), allies=frame.units.filter(u=>u.team==='guild'), a=allies[0], second=allies[1]
+    check('D1-frame-'+tag,'画幅完整/页面无滚动/像素整数倍率/高清画布', frame.fitted&&!frame.overflow&&Number.isInteger(frame.pixels)&&frame.nearest&&frame.resolution===dpr&&frame.paused?'PASS':'FAIL',JSON.stringify({...frame,units:undefined}))
+    await mouse(a)
+    const one=await selected()
+    await mouse(second,'left',8)
+    const two=await selected()
+    check('D1-pick-'+tag,'画面点选保持选择，Shift 加选第二人',one.length===1&&one[0].includes(a.name)&&two.length===2?'PASS':'FAIL',JSON.stringify({one,two}))
+    const lo={x:Math.min(...allies.map(u=>u.footX-u.size/2))-4,y:Math.min(...allies.map(u=>u.footY-u.size))-4}
+    const hi={x:Math.max(...allies.map(u=>u.footX+u.size/2))+4,y:Math.max(...allies.map(u=>u.footY))+10}
+    await b.send('Input.dispatchMouseEvent',{type:'mousePressed',...lo,button:'left',clickCount:1})
+    await b.send('Input.dispatchMouseEvent',{type:'mouseMoved',...hi,button:'left',buttons:1})
+    await b.send('Input.dispatchMouseEvent',{type:'mouseReleased',...hi,button:'left',clickCount:1})
+    await sleep(150)
+    const boxed=await selected()
+    check('D1-box-'+tag,'实际画面拖框选中整支队伍',boxed.length===allies.length?'PASS':'FAIL',JSON.stringify(boxed))
+    await mouse(a)
+    // 从两个已绘制角色的真实位置推导投影，独立于实现中的边距和比例公式。
+    const dx=allies.find(u=>u.pos.x!==a.pos.x), dy=allies.find(u=>u.pos.y!==a.pos.y)
+    const point={x:a.footX+(320-a.pos.x)*(dx.footX-a.footX)/(dx.pos.x-a.pos.x), y:a.footY+(320-a.pos.y)*(dy.footY-a.footY)/(dy.pos.y-a.pos.y)}
+    await mouse(point,'right')
+    const moved=await b.evalJs(`window.__br.battle.combatants.find(c=>c.id===${JSON.stringify(a.id)}).moveTarget`)
+    // 既有小队散开规则为首人 (-36,-40)，此单不改玩法。
+    check('D1-move-'+tag,'右键地面坐标不随界面倍率漂移',moved&&Math.abs(moved.x-284)<1&&Math.abs(moved.y-280)<1?'PASS':'FAIL',JSON.stringify(moved))
+    const enemy=frame.units.find(u=>u.team==='enemy')
+    await mouse(enemy,'right')
+    const attack=await b.evalJs(`window.__br.battle.combatants.find(c=>c.id===${JSON.stringify(a.id)}).attackTargetId`)
+    const after=await selected()
+    check('D1-right-'+tag,'右键敌人下攻击指令且不被地面移动覆盖',attack===enemy.id&&after.length===1&&after[0].includes(a.name)?'PASS':'FAIL',JSON.stringify({attack,after}))
+    if (dpr===1) await b.shot('desktop-battle-'+tag)
+  }
+  await b.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false})
+  await sleep(350)
+}
+
 /** 一步状态机:每次只做一个动作,返回动作名(null=无事可做)。顺序=提示→事件→战斗→战后→回城→大厅。 */
 const STEP = (prio) => `(()=>{${BTN_HELPER}
   const body=document.body.innerText; const r={acted:null,hints:document.querySelectorAll('.battle-hint').length,ending:body.includes('试玩版到此结束')};
@@ -334,6 +395,8 @@ async function phaseEnding() {
   try {
     await b.send('Page.navigate', { url: pathToFileURL(HTML).href }); await sleep(2500)
     await importSave(b, encode(save))
+    await b.send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false})
+    await sleep(300); await b.shot('desktop-hall')
     // R3B/R3C:花名册开档案——本命族成员 ✔ 熟练;长柄成员 ⚠ 非熟练·长柄
     await clickText(b, '花名册'); await sleep(600)
     // R3A(U35):武器专修迁入花名册档案页——切换条旁五族按钮渲染
@@ -383,12 +446,15 @@ async function phaseEnding() {
       const gear = await b.evalJs(`Array.from(document.querySelectorAll('.member-panel select.slot-select'),s=>({value:s.value,text:s.selectedOptions[0]?.textContent??''}))`)
       check('GEAR-' + label, '换装下拉正确显示当前穿戴，不误报空槽', gear.length === 3 && gear.every(s=>s.value && !s.text.endsWith('·空')) ? 'PASS' : 'FAIL', JSON.stringify(gear).slice(0, 200))
       await b.evalJs(`document.querySelector('.roster-v2').parentElement.scrollTop=0`)
+      const overlayFrame = await b.evalJs(`(()=>{const r=document.querySelector('.roster-v2').parentElement.getBoundingClientRect(),stage=document.querySelector('.game-stage').getBoundingClientRect();return {width:r.width,height:r.height,stageWidth:stage.width,stageHeight:stage.height,sheetWidth:document.querySelector('.member-sheet').clientWidth}})()`)
+      check('D1-profile-'+label,'花名册占满舞台且档案不被大厅侧栏裁剪',Math.abs(overlayFrame.width-overlayFrame.stageWidth)<1&&Math.abs(overlayFrame.height-overlayFrame.stageHeight)<1&&overlayFrame.sheetWidth>=700?'PASS':'FAIL',JSON.stringify(overlayFrame))
       await b.shot('profile-' + label)
       if (label === 'home') {
+        const logicalWidth = await b.evalJs(`document.querySelector('.member-sheet').clientWidth`)
         await b.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false })
         await sleep(250)
-        const narrow = await b.evalJs(`(()=>{const sheet=document.querySelector('.member-sheet');const panel=document.querySelector('.member-panel');const tabs=document.querySelector('.roster-tabs');const overlay=document.querySelector('.roster-v2').parentElement;const r=sheet.getBoundingClientRect();return {width:r.width,overflow:Math.max(sheet.scrollWidth-sheet.clientWidth,overlay.scrollWidth-overlay.clientWidth),embedded:!panel.classList.contains('screen-overlay'),belowTabs:r.top>=tabs.getBoundingClientRect().bottom,slots:panel.querySelectorAll('select.slot-select').length}})()`)
-        check('ART-narrow', '窄屏人物档案保持可读宽度，换装与成员切换同页可达', narrow.width >= 280 && narrow.overflow <= 1 && narrow.embedded && narrow.belowTabs && narrow.slots === 3 ? 'PASS' : 'FAIL', JSON.stringify(narrow))
+        const narrow = await b.evalJs(`(()=>{const sheet=document.querySelector('.member-sheet');const panel=document.querySelector('.member-panel');const tabs=document.querySelector('.roster-tabs');const overlay=document.querySelector('.roster-v2').parentElement;const r=sheet.getBoundingClientRect();return {logicalWidth:sheet.clientWidth,stageWidth:document.querySelector('.game-stage').clientWidth,width:r.width,overflow:Math.max(sheet.scrollWidth-sheet.clientWidth,overlay.scrollWidth-overlay.clientWidth),embedded:!panel.classList.contains('screen-overlay'),belowTabs:r.top>=tabs.getBoundingClientRect().bottom,slots:panel.querySelectorAll('select.slot-select').length}})()`)
+        check('ART-narrow', 'U38 桌面画幅在窄窗完整缩放，档案/换装未溢出或遮挡', narrow.logicalWidth === logicalWidth && logicalWidth >= 700 && narrow.stageWidth === 1920 && narrow.overflow <= 1 && narrow.embedded && narrow.belowTabs && narrow.slots === 3 ? 'PASS' : 'FAIL', JSON.stringify(narrow))
         await b.shot('profile-narrow')
         await b.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
       }
@@ -443,6 +509,7 @@ async function phaseEnding() {
       await sleep(700)
       const t2 = await b.evalJs(`document.querySelector('.tick-info')?.textContent ?? ''`)
       check('AP1', '自动暂停(战斗开始):中央横幅原因可见+计时器停止', ap1 === '已暂停:战斗开始' && t1 === t2 ? 'PASS' : 'FAIL', `overlay=${ap1},tick ${t1}/${t2}`)
+      await desktopBattleChecks(b)
       await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 })
       await b.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 })
       await sleep(400)
@@ -496,15 +563,20 @@ async function phaseEnding() {
         await b.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'q', code: 'KeyQ', windowsVirtualKeyCode: 81 })
         await b.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'q', code: 'KeyQ', windowsVirtualKeyCode: 81 })
         await sleep(250)
-        const cast = await b.evalJs(`(async()=>{
-          const row=[...document.querySelectorAll('.skill-strip .cmd-label button')]
-          if(row.length===0) return { fail:'no-target-buttons' }
-          row[0].click()
-          await new Promise(r=>setTimeout(r,200))
-          const btn=[...document.querySelectorAll('.skill-strip button')].find(x=>x.textContent.includes('Q'))
-          return { cooled: !!btn && btn.disabled, text: btn?.textContent ?? null }
+        const target = await b.evalJs(`(()=>{
+          const label=document.querySelector('.skill-strip .cmd-label button')?.textContent;
+          const br=window.__br, u=[...br.units.values()].find(u=>u.combatant.alive&&u.combatant.name===label);
+          if(!u)return null;
+          const p=u.container.toGlobal({x:0,y:-16*u.bodyScale}),r=br.app.canvas.getBoundingClientRect();
+          return {x:r.left+p.x,y:r.top+p.y};
         })()`)
-        check('Q1', 'Q 瞄准→点目标施放→技能进入冷却', picked && cast && !cast.fail && cast.cooled ? 'PASS' : 'FAIL', JSON.stringify({ picked, ...cast }))
+        if(target){
+          await b.send('Input.dispatchMouseEvent',{type:'mousePressed',...target,button:'left',clickCount:1})
+          await b.send('Input.dispatchMouseEvent',{type:'mouseReleased',...target,button:'left',clickCount:1})
+          await sleep(200)
+        }
+        const cast=await b.evalJs(`(()=>{const btn=[...document.querySelectorAll('.skill-strip button')].find(x=>x.textContent.includes('Q'));return {cooled:!!btn&&btn.disabled,text:btn?.textContent??null}})()`)
+        check('Q1', 'Q 瞄准→鼠标点战场目标→技能进入冷却', picked && cast && !cast.fail && cast.cooled ? 'PASS' : 'FAIL', JSON.stringify({ picked, ...cast }))
       }
       // U42 #9.6①:左键点地面=清选择(RTS 语义:左键只选,右键才下令)
       {

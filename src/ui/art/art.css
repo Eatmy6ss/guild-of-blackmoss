@@ -46,7 +46,7 @@ body { background: repeating-linear-gradient(90deg,#121416 0 80px,#171a1c 80px 8
 .game-shell .volume-slider { width: 64px; height: 44px; margin: 0; }
 .game-shell .app-header>.slice-tag { flex: 1 1 100%; }
 .art-credits-overlay { z-index: 130; }
-.art-credits-overlay .screen-panel { width: min(780px,94vw); }
+.art-credits-overlay .screen-panel { width: min(780px,94cqw); }
 .game-shell .title-overlay { padding: 16px; overflow-y: auto; }
 .game-shell .title-sub { letter-spacing: .2em; }
 .game-shell .title-saveops { flex-wrap: wrap; justify-content: center; }
@@ -236,11 +236,11 @@ body { background: repeating-linear-gradient(90deg,#121416 0 80px,#171a1c 80px 8
 .asset-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(100px,1fr)); gap: 8px; margin-top: 20px; }
 .asset-grid>div { text-align: center; background: #241b17; padding: 8px; }
 .asset-grid small { display: block; color: #adb6aa; font-size: 11px; overflow-wrap: anywhere; }
-@media(max-width: 1000px) {
+@container game-ui (max-width: 1000px) {
   .battle-panel .signature-bar { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .identity-gallery { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
-@media(max-width: 640px) {
+@container game-ui (max-width: 640px) {
   .identity-gallery { grid-template-columns: 1fr; }
   .wardrobe-fitting { grid-template-columns: 1fr; gap: 16px; padding: 16px 0; }
   .fitting-slots { grid-template-columns: 1fr; }
@@ -286,4 +286,4 @@ body { background: repeating-linear-gradient(90deg,#121416 0 80px,#171a1c 80px 8
 .ms-eq { display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 4px 8px; align-items: start; }
 .ms-eq > .item-art { grid-row: span 2; }
 .ms-eq-body { min-width: 0; overflow-wrap: anywhere; }
-@media (max-width: 640px) { .ms-head { flex-wrap: wrap; } }
+@container game-ui (max-width: 640px) { .ms-head { flex-wrap: wrap; } }

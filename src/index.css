@@ -161,7 +161,7 @@
 .save-transfer textarea { width: 100%; min-height: 140px; margin: 8px 0 14px; padding: 10px; resize: vertical; background: var(--c-45); border: 1px solid var(--edge-gold); color: var(--ink); font-family: monospace; overflow-wrap: anywhere; }
 .save-preview { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--edge-gold); }
 .save-preview button { margin-top: 12px; white-space: normal; }
-@media (max-width: 640px) {
+@container game-ui (max-width: 640px) {
   .royal-grid { grid-template-columns: 1fr; }
   .royal-header { gap: 10px; }
   .royal-seal { display: none; }
@@ -184,7 +184,7 @@ body {
   font-size: 14px;
 }
 
-#root { padding: 16px; max-width: 1240px; margin: 0 auto; }
+#root { container: game-ui / inline-size; padding: 16px; max-width: 1240px; margin: 0 auto; }
 
 .app-header {
   display: flex;
@@ -207,7 +207,7 @@ body {
   gap: 16px;
   align-items: start;
 }
-@media (max-width: 860px) {
+@container game-ui (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
 }
 
@@ -516,7 +516,7 @@ button.primary:hover:not(:disabled) {
   background: radial-gradient(ellipse 1500px 950px at 50% 24%, #1b150d 0%, #0f0b06 75%);
   padding: 28px 16px 40px;
 }
-.screen-overlay.fullpage .screen-panel { width: min(1080px, 97vw); }
+.screen-overlay.fullpage .screen-panel { width: min(1080px, 97cqw); }
 
 /* 覆盖浮层:暗幕 + 居中面板(游戏式屏幕,非网页区块) */
 .screen-overlay {
@@ -537,7 +537,7 @@ button.primary:hover:not(:disabled) {
 }
 /* 浮层面板 = 石框鎏金(样张 frame) */
 .screen-panel {
-  width: min(860px, 94vw);
+  width: min(860px, 94cqw);
   background:
     radial-gradient(ellipse 700px 300px at 50% 0%, rgba(120, 90, 50, 0.18) 0%, rgba(120, 90, 50, 0) 60%),
     linear-gradient(var(--panel-hi), var(--c-63) 55%, var(--panel-lo));
@@ -582,9 +582,9 @@ button.primary:hover:not(:disabled) {
 .event-overlay { z-index: 95; align-items: center; }
 /* 结算弹层(U33 自测反馈②):石框鎏金 overlay,居中;margin:auto 兼容超高内容滚动 */
 .result-overlay { z-index: 96; }
-.result-overlay .screen-panel { margin: auto; width: min(900px, 96vw); max-height: 92vh; overflow-y: auto; }
+.result-overlay .screen-panel { margin: auto; width: min(900px, 96cqw); max-height: 92cqh; overflow-y: auto; }
 .event-modal {
-  width: min(560px, 92vw);
+  width: min(560px, 92cqw);
   position: relative;
   background:
     radial-gradient(ellipse 400px 220px at 80% 0%, rgba(120, 84, 40, 0.16) 0%, rgba(120, 84, 40, 0) 60%),
@@ -856,7 +856,7 @@ button.primary:hover:not(:disabled) {
 .ms-open { margin-top: 6px; width: 100%; padding: 4px 8px; border: 1px solid var(--edge-gold);
   background: transparent; color: var(--ink-dim); cursor: pointer; font-size: 11px; }
 .ms-open:hover { color: var(--edge-gold-hi); border-color: var(--edge-gold-hi); }
-.member-sheet { width: min(980px, 96vw); max-height: 92vh; overflow: auto; background: #17120e;
+.member-sheet { width: min(980px, 96cqw); max-height: 92cqh; overflow: auto; background: #17120e;
   border: 2px solid var(--edge-gold); padding: 16px 18px; outline: none; }
 .ms-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--edge-gold-dim, #5a4626); padding-bottom: 8px; }
 .ms-head h2 { font-size: 26px; color: var(--edge-gold-hi); }
@@ -876,7 +876,7 @@ button.primary:hover:not(:disabled) {
 .ms-set { color: #a8c48a; }
 .ms-sig { margin-top: 8px; border-left: 3px solid var(--edge-gold); padding-left: 8px; }
 .ms-sig b { color: var(--edge-gold-hi); font-size: 12px; }
-@media (max-width: 900px) { .ms-columns { grid-template-columns: 1fr; } }
+@container game-ui (max-width: 900px) { .ms-columns { grid-template-columns: 1fr; } }
 
 /* ===== T3 训练场转职卡片 ===== */
 .voc-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -1036,7 +1036,7 @@ button.primary:hover:not(:disabled) {
 @keyframes speed-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 
 /* U35 花名册改版:切换条+档案主区+右下略缩图/六维雷达 */
-.roster-v2 { width: min(1280px, 98vw); max-height: 94vh; }
+.roster-v2 { width: min(1280px, 98cqw); max-height: 94cqh; }
 .roster-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
 .roster-tab { padding: 4px 12px; font-size: 13px; }
 .roster-tab.active { border-color: var(--gold, #d8a24a); color: var(--gold, #d8a24a); background: var(--c-26, rgba(216, 162, 74, 0.12)); }
@@ -1050,7 +1050,7 @@ button.primary:hover:not(:disabled) {
 .hexstat-fill { fill: rgba(216, 162, 74, 0.22); stroke: var(--gold, #d8a24a); stroke-width: 1.5; }
 .hexstat-label { fill: var(--ink-dim, #9a8a70); font-size: 11px; }
 .hexstat-num { fill: var(--ink, #e8d5b0); font-weight: bold; }
-@media (max-width: 980px) { .roster-main { grid-template-columns: 1fr; } .roster-side { position: static; } }
+@container game-ui (max-width: 980px) { .roster-main { grid-template-columns: 1fr; } .roster-side { position: static; } }
 
 /* U36 情报 v2:清单/新鲜度标注 */
 .intel-list { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }

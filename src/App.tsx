@@ -1131,7 +1131,7 @@ export default function App() {
       {showCredits && <CreditsDialog onClose={() => setShowCredits(false)} />}
       {confirmAsk && (
         <div className="screen-overlay" style={{ zIndex: 120 }}>
-          <div className="screen-panel" style={{ width: 'min(420px, 90vw)' }}>
+          <div className="screen-panel" style={{ width: 'min(420px, 90cqw)' }}>
             <div className="screen-head"><h2>⚠ 确认操作</h2></div>
             <p className="event-text">{confirmAsk.text}</p>
             <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
@@ -1141,57 +1141,12 @@ export default function App() {
           </div>
         </div>
       )}
-      {screen === 'title' && (
-        <div className="title-overlay">
-          <div className="title-logo">黑苔公会</div>
-          <div className="title-sub">GUILD OF BLACKMOSS</div>
-          <div className="title-tagline">英雄会死，故事不会。</div>
-          <div className="title-version">build {__BUILD_DATE__} · 熟练度/难度以本版为准</div>
-          {offlineNote && <div className="title-offline">{offlineNote}</div>}
-          {resumeNotice && <p className="title-offline" role="status">{resumeNotice}</p>}
-          <div className="title-actions">
-            <button onClick={() => { initAudio(); go(continueScreen()) }}>
-              {saved ? '▶ 继续旅程' : '▶ 开始新公会'}
-            </button>
-            {saved && (
-              <button
-                onClick={() => setConfirmAsk({
-                  text: '重新开始将清空当前进度，确定？',
-                  okLabel: '✦ 清空并重新开始',
-                  onOk: () => {
-                    initAudio()
-                    clearGuildSave()
-                    restartGuild()
-                    go('hall')
-                  },
-                })}
-              >
-                ✦ 开始新公会
-              </button>
-            )}
-          </div>
-          <div className="title-foot">
-            M1 · 内部构建 · 暂定名《黑苔公会》
-            <span className="title-saveops">
-              <button className="mini-btn" onClick={() => { initAudio(); setMuted(toggleMute()) }}>{muted ? '🔇' : '🔊'}</button>
-              <input className="mini-volume" type="range" min={0} max={100} value={Math.round(volume * 100)} aria-label="主音量" title="主音量"
-                onChange={(e) => { initAudio(); const v = Number(e.target.value) / 100; setVolume(v); setVolumeState(v); if (muted) setMuted(toggleMute()) }} />
-              <button className="mini-btn" onClick={() => setShowCredits(true)}>素材致谢</button>
-              <button className="mini-btn" onClick={() => {
-                const current = loadGuildSave()
-                if (current) setSaveTransfer({ mode: 'export', code: exportSave(current) })
-              }}>📤 导出存档</button>
-              <button className="mini-btn" onClick={() => setSaveTransfer({ mode: 'import', code: '' })}>📥 导入存档</button>
-            </span>
-          </div>
-        </div>
-      )}
       {saveTransfer && <SaveTransferPanel mode={saveTransfer.mode} initialCode={saveTransfer.code} onClose={() => setSaveTransfer(null)} />}
       {screen === 'member' && memberSheet && <MemberPanel member={memberSheet} members={members} onClose={() => { setMemberSheetId(null); back() }}
               inventory={inventory} onEquip={(slot, itemId) => equip(memberSheet, slot, itemId)} />}
       {playtestEnding && (
         <div className="screen-overlay" style={{ zIndex: 110 }}>
-          <div className="screen-panel" style={{ width: 'min(460px, 92vw)' }}>
+          <div className="screen-panel" style={{ width: 'min(460px, 92cqw)' }}>
             <div className="screen-head"><h2>🏁 试玩版到此结束</h2></div>
             <p className="event-text">版图一的故事告一段落。感谢试玩——请点击下方按钮导出你的试玩记录,并把它发回给公会。</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', paddingBottom: 12 }}>
@@ -1202,12 +1157,6 @@ export default function App() {
           </div>
         </div>
       )}
-      <div className="app-header">
-        <button className="credits-link" onClick={() => setShowCredits(true)}>素材图鉴 / 致谢</button>
-        <h1>黑 苔 公 会</h1>
-        <span className="slice-tag">佣兵纪元 · 任务板上的公会 —— 爬塔 / 招募 / 成长 / 演出</span>
-        <span className="slice-tag" style={{ opacity: 0.55 }}>build {__BUILD_DATE__}</span>
-      </div>
       {saveFailed && (
         <div className="save-warning" role="alert">⚠ 存档写入失败:{saveFailNotice() || '未知原因'}(游戏仍可继续)</div>
       )}
@@ -1345,6 +1294,7 @@ export default function App() {
             onSelectDungeon={setDungeonId} onDepart={() => startExpeditionRef.current?.()} />}
 
 
+          <div className="battle-controls">
           {(inBattle || inTowerBattle) && battle?.status === 'running' && <>
             <BattleHints hints={BATTLE_HINTS.filter(h => !hintsSeen.includes(h.id) &&
               (h.applies?.({ hasSignature: battle.combatants.some(c => c.team === 'guild' && c.alive && !!c.specId && !!SIGNATURE_SKILLS[c.specId]) }) ?? true))}
@@ -1410,6 +1360,7 @@ export default function App() {
             <TowerEndedScreen towerRun={towerRun} leaveTower={leaveTower} />
           )}
 
+          </div>
           {run && (run.phase === 'rest' || finished) && kingdom.active.length > 0 && <div className="royal-field-status" role="status">
             <b>♜ 王国委托</b>
             {kingdom.active.map((record) => {
@@ -1450,6 +1401,7 @@ export default function App() {
           )}
         </div>
       </div>
+      {screen !== 'title' && !inBattle && !inTowerBattle && <button className="credits-link" onClick={() => setShowCredits(true)}>素材图鉴 / 致谢</button>}
     </div>
   )
 }

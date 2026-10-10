@@ -1,11 +1,12 @@
+import { worldPixelScale } from '../viewport'
+import { WorldLighting } from './WorldLighting'
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import { pixelTexture, spriteKeyFor, tryGetTex, cache_get, preloadUrlSprites } from './pixelSprites'
 import { sfxHit, sfxCrit, sfxDeath, sfxTelegraph, sfxInterrupt, sfxGuard, sfxSlam, sfxEnrage } from '../audio'
 import type { BattleEvent, BattleState, Combatant } from '../../sim/types'
 import { mechanicWindows } from './mechanicPresentation'
 import { heroLayers, sceneArt, type Appearance } from '../art/catalog'
-import { battleLayout } from '../art/battleLayout'
-import { ARENA } from '../../sim/combat'
+import { arenaProjection, battleLayout } from '../art/battleLayout'
 import { paintScene } from '../art/scene'
 
 // 演出层（D5-6）：模拟是唯一事实源，这里只消费 BattleState + BattleEvent 播动画。
@@ -93,14 +94,14 @@ class UnitView {
       for (const url of layers) {
         const s = new Sprite(pixelTexture(url))
         s.anchor.set(0.5, 1)
-        s.scale.set(bodyScale)
+        s.scale.set(bodyScale); s.roundPixels = true
         bodyGroup.addChild(s)
         bodySprites.push(s)
       }
     } else {
       const s = new Sprite(tryGetTex(bodyKey) ?? pixelTexture(combatant.team === 'enemy' ? 'ogre' : 'guard'))
       s.anchor.set(0.5, 1)
-      s.scale.set(bodyScale)
+      s.scale.set(bodyScale); s.roundPixels = true
       bodyGroup.addChild(s)
       bodySprites.push(s)
     }
@@ -133,7 +134,11 @@ class UnitView {
     this.container.eventMode = 'static'
     this.container.cursor = combatant.team === 'enemy' ? 'pointer' : 'default'
     this.container.hitArea = new Rectangle(-Math.max(22, 16 * bodyScale), -32 * bodyScale - 26, Math.max(44, 32 * bodyScale), 32 * bodyScale + 34)
-    this.container.on('pointerdown', (e: { shiftKey?: boolean }) => this.onClick?.(this.combatant, e?.shiftKey === true))
+    this.container.on('pointerdown', (e: { button: number; shiftKey?: boolean; stopPropagation: () => void }) => {
+      if (e.button === 0) this.onClick?.(this.combatant, e.shiftKey === true)
+      // rightdown 稍后派发攻击指令；不能先冒泡为地面移动。
+      else e.stopPropagation()
+    })
     this.container.on('pointerover', () => this.onHover?.(this.combatant))
     this.container.on('pointerout', () => this.onHoverOut?.(this.combatant))
     if (!combatant.alive) {
@@ -169,7 +174,7 @@ class UnitView {
     this.bodyGroup.removeChildren().forEach(child => child.destroy())
     this.bodySprites = available.map(texture => {
       const sprite = new Sprite(texture)
-      sprite.anchor.set(.5, 1); sprite.scale.set(this.bodyScale)
+      sprite.anchor.set(.5, 1); sprite.scale.set(this.bodyScale); sprite.roundPixels = true
       this.bodyGroup.addChild(sprite); return sprite
     })
     this.body = this.bodySprites[0]; this.texKey = null
@@ -203,6 +208,20 @@ export class BattleRenderer {
   private ready = false
   private host: HTMLElement | null = null
   private observer: ResizeObserver | null = null
+  private lighting = new WorldLighting()
+  private uiScale = 1
+  private dpr = 1
+  private bodyScale = 4
+  private resizeFrame = 0
+  private readonly preventMenu = (event: Event) => event.preventDefault()
+  private readonly scheduleFit = () => {
+    cancelAnimationFrame(this.resizeFrame)
+    this.resizeFrame = requestAnimationFrame(() => {
+      if (this.disposed) return
+      this.fit()
+      if (this.battle) { this.syncUnits(this.battle); this.syncMechanicCues(this.battle) }
+    })
+  }
   private width = 760
   private height = 360
   private backdrop: Sprite | null = null
@@ -260,28 +279,28 @@ export class BattleRenderer {
     this.app = app
     this.host = container
     container.appendChild(app.canvas)
-    container.addEventListener('contextmenu', (e) => e.preventDefault()) // RTS 右键指令,禁浏览器菜单
+    container.addEventListener('contextmenu', this.preventMenu)
     await preloadUrlSprites() // 素材包 PNG 预加载(失败静默降级)
     if (this.disposed) return
     this.ready = true
-    this.observer = new ResizeObserver(() => {
-      this.fit()
-      if (this.battle) { this.syncUnits(this.battle); this.syncMechanicCues(this.battle) }
-    })
+    this.observer = new ResizeObserver(this.scheduleFit)
     this.observer.observe(container)
+    const viewport = container.closest('.game-viewport')
+    if (viewport) this.observer.observe(viewport)
+    window.addEventListener('resize', this.scheduleFit)
     this.fit()
-    app.stage.addChild(this.root)
+    app.stage.addChild(this.root, this.lighting)
     // M-a 空间化:地面点击(点空白处=移动指令;坐标换算 画布→逻辑 640×360)
     app.stage.eventMode = 'static'
-    app.stage.hitArea = { contains: () => true } as never
+    app.stage.hitArea = new Rectangle(0, 0, this.width, this.height)
     // U41 操作层:左键拖框(RTS 框选)/右键=指令。坐标统一画布→逻辑 640×360。
-    const toLogical = (e: { global: { x: number; y: number } }) => {
-      const rect = app.canvas.getBoundingClientRect()
-      const w = rect.width || 1, h = rect.height || 1
-      return { x: e.global.x * (ARENA.width / w), y: e.global.y * (ARENA.height / h) }
-    }
+    // Pixi 已把 DOM/CSS 坐标换成 renderer 坐标。再除 DOM 宽高会重复缩放。
+    const toLogical = (e: { global: { x: number; y: number } }) =>
+      arenaProjection(this.width, this.height, this.bodyScale).toArena(this.root.toLocal(e.global))
+    let pressedGround = false
     let dragStart: { x: number; y: number } | null = null
-    app.stage.on('pointerdown', (e: { button: number; global: { x: number; y: number } }) => {
+    app.stage.on('pointerdown', (e: { button: number; target: unknown; global: { x: number; y: number } }) => {
+      pressedGround = e.target === app.stage
       const p = toLogical(e)
       if (e.button === 2) { this.onRightClick?.(p.x, p.y); return }
       if (e.button === 0) dragStart = p
@@ -299,19 +318,25 @@ export class BattleRenderer {
       this.clearSelectionBox()
       const moved = Math.abs(p.x - start.x) > 8 || Math.abs(p.y - start.y) > 8
       if (moved && this.onBoxSelect) {
-        // 框选:矩形与精灵外框相交即命中(U42 #9.6⑤,不再只认中心点);逻辑半宽 14/半高 18(C4)
+        // 框选与当前显示的精灵外框相交，不再用随画幅漂移的逻辑常量。
         const x0 = Math.min(start.x, p.x), x1 = Math.max(start.x, p.x)
         const y0 = Math.min(start.y, p.y), y1 = Math.max(start.y, p.y)
-        const ids = (this.battle?.combatants ?? [])
-          .filter((c) => c.team === 'guild' && c.alive && c.pos)
-          .filter((c) => c.pos!.x + 14 >= x0 && c.pos!.x - 14 <= x1 && c.pos!.y + 18 >= y0 && c.pos!.y - 18 <= y1)
-          .map((c) => c.memberId!)
-          .filter(Boolean)
+        const projection = arenaProjection(this.width, this.height, this.bodyScale)
+        const lo = projection.toView({ x: x0, y: y0 }), hi = projection.toView({ x: x1, y: y1 })
+        // 与可见精灵的矩形相交；名字/血条不扩大框选范围。
+        const ids = [...this.units.values()]
+          .filter(u => u.combatant.team === 'guild' && u.combatant.alive && u.combatant.memberId)
+          .filter(u => u.container.x + 16 * u.bodyScale >= lo.x && u.container.x - 16 * u.bodyScale <= hi.x &&
+            u.container.y + 6 >= lo.y && u.container.y + 6 - 32 * u.bodyScale <= hi.y)
+          .map(u => u.combatant.memberId!)
         this.onBoxSelect(ids, e.shiftKey === true)
-      } else if (!moved) {
+      } else if (!moved && pressedGround) {
         this.onGroundClick?.(p.x, p.y) // 原地点击(无拖动)=取消选择/留接口
       }
     })
+    const cancelDrag = () => { dragStart = null; this.clearSelectionBox() }
+    app.stage.on('pointerupoutside', cancelDrag)
+    app.stage.on('pointercancel', cancelDrag)
     this.drawBackdrop(this.theme)
     app.ticker.add((t) => this.tick(t.deltaMS))
     if (this.battle) {
@@ -328,13 +353,28 @@ export class BattleRenderer {
   }
 
   private fit() {
-    const width = this.host?.clientWidth
-    if (!width || !this.app) return
-    const layout = battleLayout(width, this.battle?.combatants ?? [])
-    if (this.width !== width || this.height !== layout.height) {
-      this.width = width; this.height = layout.height
-      this.host!.style.height = layout.height + 'px'
-      this.app.renderer.resize(width, layout.height)
+    if (!this.host || !this.app) return
+    // 管理员测试台不采用正式游戏舞台，保留其按人数排布的容器高度。
+    const desktop = !!this.host.closest('.game-viewport')
+    const legacy = desktop ? null : battleLayout(this.host.clientWidth, this.battle?.combatants ?? [])
+    if (legacy) this.host.style.height = legacy.height + 'px'
+    const rect = this.host.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const width = rect.width, height = rect.height
+    const uiScale = legacy ? legacy.bodyScale / 4 : rect.width / this.host.clientWidth
+    const dpr = window.devicePixelRatio || 1
+    const changed = this.width !== width || this.height !== height || this.dpr !== dpr || this.uiScale !== uiScale
+    this.width = width; this.height = height; this.uiScale = uiScale; this.dpr = dpr
+    const layout = battleLayout(width, this.battle?.combatants ?? [], { height, uiScale, dpr })
+    this.bodyScale = layout.bodyScale
+    if (changed) {
+      this.app.renderer.resize(width, height, dpr)
+      this.app.stage.hitArea = new Rectangle(0, 0, width, height)
+      // 窗口变大不是单位移动；直接迁到新投影，避免从旧画幅飞入新位置。
+      for (const [id, unit] of this.units) {
+        const point = layout.positions[id]
+        if (point) { unit.slot = point; unit.container.position.set(point.x, point.y + (unit.combatant.alive ? 0 : 6)) }
+      }
       this.drawBackdrop(this.theme)
     }
     return layout
@@ -378,6 +418,11 @@ export class BattleRenderer {
   destroy(): void {
     this.disposed = true
     this.observer?.disconnect()
+    cancelAnimationFrame(this.resizeFrame)
+    window.removeEventListener('resize', this.scheduleFit)
+    this.host?.removeEventListener('contextmenu', this.preventMenu)
+    this.backdrop?.destroy({ texture: true, textureSource: true })
+    this.backdrop = null
     this.observer = null
     // releaseGlobalResources：React 严格模式会 挂载→销毁→再挂载，
     // 不释放全局池会导致重建后闪烁/纹理残留（pixijs-application 技能标注的坑）
@@ -488,17 +533,21 @@ export class BattleRenderer {
     if (!this.app) return
     this.backdrop?.destroy({ texture: true, textureSource: true })
     const canvas = document.createElement('canvas')
-    canvas.width = this.width; canvas.height = this.height
-    paintScene(canvas.getContext('2d')!, this.width, this.height, theme)
+    const pixelScale = worldPixelScale(3, this.uiScale, this.dpr)
+    canvas.width = Math.ceil(this.width / pixelScale); canvas.height = Math.ceil(this.height / pixelScale)
+    paintScene(canvas.getContext('2d')!, canvas.width, canvas.height, theme, 32)
     const texture = Texture.from(canvas)
     texture.source.scaleMode = 'nearest'
     this.backdrop = new Sprite(texture)
+    this.backdrop.scale.set(pixelScale)
+    this.backdrop.roundPixels = true
     this.root.addChildAt(this.backdrop, 0)
+    this.lighting.resize(this.width, this.height, sceneArt(theme).atmosphere === 'snow')
   }
 
   private clearUnits(): void {
     for (const child of [...this.root.children]) if (child !== this.backdrop) { child.removeFromParent(); child.destroy({ children: true }) }
-    this.units.clear(); this.effects = []
+    this.units.clear(); this.effects = []; this.selectionG = null
     this.focusMarker = null; this.castBars.clear(); this.warningRings.clear()
     for (const r of this.selectionRings.values()) r.destroy({ children: true })
     this.selectionRings.clear()
@@ -506,7 +555,7 @@ export class BattleRenderer {
   }
 
   private syncUnits(b: BattleState): void {
-    const layout = this.fit() ?? battleLayout(this.width, b.combatants)
+    const layout = this.fit() ?? battleLayout(this.width, b.combatants, { height: this.height, uiScale: this.uiScale, dpr: this.dpr })
     for (const c of b.combatants) {
       let u = this.units.get(c.id)
       const slot = layout.positions[c.id]
@@ -516,7 +565,7 @@ export class BattleRenderer {
         const caster = c.petOf ? b.combatants.find(parent => parent.id === c.petOf) : undefined
         const petSprite = caster ? caster.specId?.includes('warlock') ? '/assets/mon/imp.png' : 'mon-wolf' : undefined
         u = new UnitView(c, slot.x, slot.y, layers, layout.bodyScale, layout.labelChars, petSprite)
-        u.onClick = combatant => this.onUnitClick?.(combatant)
+        u.onClick = (combatant, additive) => this.onUnitClick?.(combatant, additive)
         u.onHover = (combatant) => { if (combatant.team === 'enemy') this.hoverEnemy = combatant }
         u.onHoverOut = (combatant) => { if (this.hoverEnemy === combatant) this.hoverEnemy = null }
         u.container.on('rightdown', (e: { stopPropagation: () => void }) => { e.stopPropagation(); this.onUnitRightClick?.(c) })
@@ -540,6 +589,8 @@ export class BattleRenderer {
       if (!c.alive && u.lockCount === 0) u.container.position.set(slot.x, slot.y + 6)
       if (layers) u.updateAppearance(layers)
       u.resize(layout.bodyScale, layout.labelChars)
+      u.nameText.style.fontSize = Math.max(10, 14 * this.uiScale)
+      u.nameText.resolution = this.dpr
       u.updateHp(c.hp / c.maxHp)
     }
     const focusUnit = b.commands?.focusId ? this.units.get(b.commands.focusId) : undefined
@@ -915,11 +966,11 @@ export class BattleRenderer {
       if (window.dangerCircle) {
         if (!ring || ring.destroyed) { ring = new Graphics(); this.root.addChild(ring); this.warningRings.set(id, ring) }
         // M-b 区域化(U41):有锁定爆心的机制画真实半径预警圈(画布坐标=逻辑×scale);否则脚下椭圆(旧机制兼容)
-        const scale = this.width / ARENA.width
+        const projection = arenaProjection(this.width, this.height, this.bodyScale)
         if (window.slamCenter) {
-          const cx = window.slamCenter.x * scale, cy = 58 + window.slamCenter.y * (this.height - 72) / ARENA.height
-          const rr = (window.slamRadius ?? 90) * scale
-          ring.clear().circle(cx, cy, rr).fill({ color, alpha: 0.18 }).stroke({ width: 2, color, alpha: 0.75 })
+          const center = projection.toView(window.slamCenter)
+          const rr = (window.slamRadius ?? 90) * projection.scale
+          ring.clear().circle(center.x, center.y, rr).fill({ color, alpha: 0.18 }).stroke({ width: 2, color, alpha: 0.75 })
           ring.position.set(0, 0)
         } else {
           ring.clear().ellipse(0, 8, 40 * u.baseScale, 15 * u.baseScale)
@@ -936,11 +987,11 @@ export class BattleRenderer {
   private selectionG: Graphics | null = null
   /** U41 操作层:框选矩形(逻辑坐标→画布) */
   private drawSelectionBox(a: { x: number; y: number }, b: { x: number; y: number }) {
-    if (!this.selectionG) { this.selectionG = new Graphics(); this.root.addChild(this.selectionG) }
-    const scale = this.width / ARENA.width
-    const yOff = 58, yScale = (this.height - 72) / ARENA.height
+    if (!this.selectionG || this.selectionG.destroyed) { this.selectionG = new Graphics(); this.root.addChild(this.selectionG) }
+    const projection = arenaProjection(this.width, this.height, this.bodyScale)
+    const p = projection.toView(a), q = projection.toView(b)
     this.selectionG.clear()
-      .rect(a.x * scale, yOff + a.y * yScale, (b.x - a.x) * scale, (b.y - a.y) * yScale)
+      .rect(Math.min(p.x, q.x), Math.min(p.y, q.y), Math.abs(q.x - p.x), Math.abs(q.y - p.y))
       .fill({ color: 0xdcba87, alpha: 0.08 }).stroke({ width: 1, color: 0xdcba87, alpha: 0.9 })
   }
   private clearSelectionBox() {
