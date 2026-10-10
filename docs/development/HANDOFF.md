@@ -12,7 +12,7 @@
 - **证据与边界**：本机日志 `%TEMP%/blackmoss-d2-verify-final.log`，独立报告 `%TEMP%/guild-e2e-VGnqDr/report.json`；下列截图已入库。沿用仓库 file:// 独立 profile 试玩流程，不写用户真实存档。实现及自验完成，Claude/zcode 外部截图复审仍待进行；右侧战斗指令堆叠和大厅大面积空白属于尚未施工的 D3/D5 构图，未宣称完整视觉改版完成。未新增 Vitest 用例或另造测试平台。
 - **设计检查**：Impeccable detector 本轮仅运行一次；两条提示中的目标卡侧边色带已移除；既有结算盖章缓动保留，按 U38 在 D4 一起评估。当前仍是 D2 材质/字库交付，未宣称 D3/D5 的最终构图完成。
 - **撞车提示/下一步**：涉及 `main/index.css`、`ui/{tokens,primitives,Meter,Tooltip,fonts,viewport}`、`ui/art/{BattleIntel,Credits,libraryMain}`、`ui/battle/{BattleRenderer,SignatureBar}`、大厅/远征/地图/王国/战斗/标题/纪念页、战报卡、字体许可及资源检查/试玩脚本、桌面规格/截图/HANDOFF。改同区前先比较本分支。下一包按 U42 实做 D3 战斗 HUD：整理边缘信息与动作条，一屏呈现指令；保留既有 RTS 输入、自动施法和暂停语义。之后 D4 结算；D1–D4 齐备后交制作人看。
-- **提交/PR 状态**：本包代码、字体、截图及验收记录待本次提交推送 `origin/codex/ui-desktop-d1`；未创建本轮 PR、未合并 main、未部署。推送成功后补记提交号。
+- **提交/PR 状态**：代码、字体、截图及验收记录提交 `3a7bb9a`（界面：统一黑铁设计系统与思源字体，完善说明和状态条）已推送 `origin/codex/ui-desktop-d1`；本提交号记录随后以纯文档提交同步。未创建本轮 PR、未合并 main、未部署；下一包 D3，外部截图复审待进行。
 
 | U38 最终战斗样稿（D3 构图待落地） | D2 当前实机 · 1920×1080 |
 |---|---|
