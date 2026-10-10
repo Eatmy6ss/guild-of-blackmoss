@@ -12,7 +12,7 @@
 - **最终验证**：完整 `npm run verify` **EXIT=0**；**372 Vitest（新增 3 项投影验收）/47 smoke/82 玩法回归/11 王国回归/管理员类型检查/生产构建** 全通过；233 项资源及字体覆盖/指纹检查通过。完整独立试玩 **76 PASS/0 FAIL/0 SKIP**，新档实际完成 **8 趟**，控制台错误 0。三种尺寸 1920×1080、2560×1440、1536×960@DPR1.25 的点选/Shift/框选/右键与五人 HUD 遮挡检查均通过。日志 `%TEMP%/blackmoss-d3-verify-final.log`，完整报告 `%TEMP%/guild-e2e-kupa3r/report.json`；下方截图来自此前同版针对性复测 `%TEMP%/guild-e2e-LyABFS`。收尾 fetch 确认 main 仍为 `2a4a91e`。
 - **证据边界**：所有试玩沿用仓库 file:// 独立 profile，不写玩家真实存档。长程远征在测试 profile 加速原定时器和自动战斗，仍经真实模拟/结算；正常输入与暂停检查不开加速。首领双窗口为独立夹具，证明展示与限速，不代表该组合的自然遭遇。五人队三种尺寸无 HUD 遮挡；更多单位/召唤物的拥挤与既有出生坐标越界留战斗空间化后续评估，本包未改模拟/数值/奖励/存档。外部 Claude/zcode 截图复审仍待进行。
 - **下一步/撞车提示**：D4 结算构图尚未施工；D1–D4 齐备后交制作人整体评审。涉及 `App/main/index.css`、`ui/{Tooltip,viewport,fonts}`、`art/{BattleIntel,battleLayout}`、`battle/{BattleRenderer,SignatureBar,BattleRoute,hud.css}`、`screens/{BattleScreen,TowerScreens}`、投影/玩法/试玩测试、桌面规格/截图/HANDOFF；协作者修改同区前先比较本分支，不直接移植旧布局。
-- **提交/PR 状态**：开工记录 `a6cb9c2` 已推送；本包代码、截图与验收记录已通过完整验证，随本提交交付 `codex/ui-desktop-d1`，推送后补记提交号。本轮未创建 PR、未合并 main、未部署；下一包 D4。
+- **提交/PR 状态**：代码、字体、截图及验收记录提交 **`e89124a`**（界面：完成作战台战斗布局并统一高塔操作）已推送 `origin/codex/ui-desktop-d1`，本提交号记录随后以纯文档提交同步。工作树收尾无其余改动。本轮未创建 PR、未合并 main、未部署；下一包 D4，外部视觉复审待进行。
 
 | U38 战斗样稿（键位以 U42 为准） | D3 当前实机 · 1920×1080 |
 |---|---|
