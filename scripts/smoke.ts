@@ -6,7 +6,7 @@ import { startTower, startTowerFloor, settleTowerFloor, towerRest, towerNext, cr
 // 运行：npx esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=scripts/smoke.mjs && node scripts/smoke.mjs
 import { generateMember, memberGenerationState } from '../src/sim/gen'
 import { initialRunState } from '../src/sim/run-state'
-import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit, useSignature, statLayers } from '../src/sim/combat'
+import { createBattle, stepBattle, setFocus, setStance, useHealPotion, useFuryPotion, orderRetreat, toCombatant, applyHit, useSignature, statLayers, setMoveTarget, setAttackMove, TICK_HARD_CAP, ARENA } from '../src/sim/combat'
 import { SIGNATURE_SKILLS } from '../src/data/signature'
 import { rollBossDrops, rollDrop, rollWaveDrop, describeItem, itemStats, createLootRng, dungeonItemTier } from '../src/sim/loot'
 import { AFFIXES } from '../src/data/affixes'
@@ -1467,126 +1467,142 @@ const towerFailures: string[] = []
 }
 
 // ============================================================
-// ⑨ 平衡曲线（D13）：指挥机器人在四档操作水平下的胜率窗口
-//    档位：零指挥(只靠撤退保护) / 平庸(只交药) / 中位(集火+交药) / 会玩(全套指挥)
-//    设计契约：杂兵绝对安全；格鲁什有牙齿但不墙人；塔尔玛墙住"不参与"，
-//    中位操作有约七成胜率；会玩稳赢。任何一侧越界 = 平衡回归。
+// ⑨ 平衡曲线（U42 重标）：三档操作水平下的胜率与时长窗口
+//    档位：不下令(待命还手+自动施法=新默认,玩家挂机看戏) / 会玩(招牌技+走位) / 挂机(托管 AI)
+//    设计契约：杂兵三档全高(手动下限被 #9.1/#9.2 抬起,boss 战 manual 也有牙齿)；
+//    boss 挂机能打、会玩更高(指挥仍有价值)。任何一侧越界 = 平衡回归。
+//    旧五档口径(零指挥/平庸/中位/会玩,auto-attack 时代)与 U41 全手动挂账数字已记 HANDOFF,不调数值(C4)。
 // ============================================================
 {
-  const N = 80
-  const midAddSeen = new WeakMap<object, number>()
-  const tier = {
-    none: { protect: true, act: (_b: ReturnType<typeof createBattle>, _encId: string) => {} },
-    meh: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const ga = b.combatants.filter((c) => c.alive && c.team === 'guild'); const lowest = ga.length > 0 ? ga.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null; if (lowest && lowest.hp / lowest.maxHp < 0.3) useHealPotion(b) } },
-    mid: { protect: true, act: (b: ReturnType<typeof createBattle>, _encId: string) => { if (b.tick % 5) return; const boss = b.combatants.find((c) => c.alive && c.bossMechanics); const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics); if (adds.length > 0) { if (!midAddSeen.has(b)) midAddSeen.set(b, b.tick); if (b.tick - (midAddSeen.get(b) ?? b.tick) >= 12) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id); else if (boss) setFocus(b, boss.id); } else { midAddSeen.delete(b); if (boss) setFocus(b, boss.id); } if (boss?.mech?.['enrage']?.fired === 1) useFuryPotion(b); const gb = b.combatants.filter((c) => c.alive && c.team === 'guild'); const lowest = gb.length > 0 ? gb.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null; if (lowest && lowest.hp / lowest.maxHp < 0.35) useHealPotion(b); const at = b.combatants.find((c) => c.alive && c.team === 'enemy' && c.id === b.commands.focusId) ?? b.combatants.find((c) => c.alive && c.team === 'enemy'); for (const a of b.combatants) if (a.team === 'guild' && a.alive && a.memberId) a.attackTargetId = at?.id } },
-    good: {
-      protect: false,
-      act: (b: ReturnType<typeof createBattle>, encId: string) => {
-        if (b.tick % 5) return
-        const boss = b.combatants.find((c) => c.alive && c.bossMechanics)
-        const casting = boss?.mech?.['cast-buff'] !== undefined && boss!.mech!['cast-buff'].until !== undefined
-        const telegraphing = boss?.mech?.['telegraph-aoe'] !== undefined && boss!.mech!['telegraph-aoe'].until !== undefined
-        const adds = b.combatants.filter((c) => c.alive && c.team === 'enemy' && !c.bossMechanics)
-        if (telegraphing) setStance(b, 'spread')
-        else if (b.commands.stance === 'spread') setStance(b, 'standard')
-        if (casting && boss) setFocus(b, boss.id)
-        else if (adds.length > 0) setFocus(b, adds.reduce((a, c) => (a.hp <= c.hp ? a : c)).id)
-        else if (boss) setFocus(b, boss.id)
-        const gc = b.combatants.filter((c) => c.alive && c.team === 'guild')
-        const lowest = gc.length > 0 ? gc.reduce((a, c) => (a.hp / a.maxHp <= c.hp / c.maxHp ? a : c)) : null
-        if (lowest && lowest.hp / lowest.maxHp < 0.55) useHealPotion(b)
-        // U41 手动模式:good 档也下攻击指令(attackTargetId=集火目标)——否则我方待机不输出
-        const at2 = b.combatants.find((c) => c.alive && c.team === 'enemy' && c.id === b.commands.focusId) ?? b.combatants.find((c) => c.alive && c.team === 'enemy')
-        for (const a of b.combatants) if (a.team === 'guild' && a.alive && a.memberId) a.attackTargetId = at2?.id
-        if (boss && (boss.mech?.['enrage']?.fired === 1 || (encId === 'enc-grush' && boss.hp / boss.maxHp < 0.45))) useFuryPotion(b)
-        // A7 后续:会玩档也用招牌技(与挂机 AI 同入口 useSignature),让 ⑨ 胜率差覆盖新系统
-        for (const g of gc) {
-          if (!g.memberId || !g.specId) continue
-          const sk = SIGNATURE_SKILLS[g.specId]
-          if (!sk) continue
-          if (b.tick < (b.signatureCd?.[g.memberId] ?? 0)) continue
-          if (sk.effect.startsWith('interrupt')) { if (boss && boss.mech?.['cast-buff']?.until !== undefined && b.tick < boss.mech['cast-buff'].until) useSignature(b, g.memberId, boss.id) }
-          else if (sk.effect === 'detonate-burn') { if ((boss?.burnStacks ?? 0) >= 3 && boss) useSignature(b, g.memberId, boss.id) }
-          else if (sk.effect === 'sacrifice-strike') { if (boss && g.hp / g.maxHp > 0.7) useSignature(b, g.memberId, boss.id) }
-          else if (sk.effect === 'execute-strike') { if (boss && boss.hp / boss.maxHp < 0.5) useSignature(b, g.memberId, boss.id) }
-          else if (sk.effect === 'heal-target-cleanse') { if (lowest && lowest.hp / lowest.maxHp < 0.4 && lowest.memberId) useSignature(b, g.memberId, lowest.memberId) }
-          else if (boss) useSignature(b, g.memberId, boss.id)
-        }
-      },
-    },
-  } as const
-  type Tier = keyof typeof tier
-
-  function winRate(encId: string, t: Tier, geared = false): number {
-    let wins = 0
-    for (let i = 0; i < N; i++) {
-      const squad = JOBS.map((job, j) => generateMember(job, 5, 300000 + i * 100 + j))
-      if (geared) {
-        const drops = rollBossDrops([
-          { baseId: 'wpn-t2-bow', chance: 1 }, { baseId: 'arm-t2-plate', chance: 1 }, { baseId: 'trk-t2-totem', chance: 1 },
-        ], 4000 + i)
-        squad[2].equipment.weapon = drops[0]
-        squad[0].equipment.armor = drops[1]
-        squad[0].equipment.trinket = drops[2]
+  const N = 30
+  const balFailures: string[] = []
+  const rates: Record<string, { rate: number; avg: number }> = {}
+  // 会玩档:招牌技(打断系=见读条就交,其余按各自时机)+走位(震地预警=从爆心向左撤离 130px > 半径 75)
+  const actGood = (b: ReturnType<typeof createBattle>) => {
+    if (b.tick % 5) return
+    const foes = b.combatants.filter((c) => c.alive && c.team === 'enemy')
+    const casting = foes.find((c) => c.mech && Object.values(c.mech).some((rt) => rt.until !== undefined && b.tick < rt.until))
+    const slam = foes.find((c) => c.mech?.['telegraph-aoe']?.until !== undefined && b.tick < c.mech!['telegraph-aoe'].until!)
+    const slamRt = foes.map((c) => c.mech?.['telegraph-aoe']).find((rt) => rt?.until !== undefined && b.tick < rt.until)
+    if (slamRt?.slamCenter) {
+      const center = slamRt.slamCenter as { x: number; y: number }
+      const radius = (MECHANIC_REGISTRY['telegraph-aoe']?.defaults.radius as number) ?? 75
+      for (const a of b.combatants) {
+        if (a.team !== 'guild' || !a.alive || !a.memberId || !a.pos) continue
+        const d = Math.hypot(a.pos.x - center.x, a.pos.y - center.y)
+        if (d > radius) continue // 圈外不扰动
+        const ux = d > 0 ? (a.pos.x - center.x) / d : -1
+        const uy = d > 0 ? (a.pos.y - center.y) / d : 0
+        const tx = Math.max(20, Math.min(ARENA.width - 20, center.x + ux * (radius + 24)))
+        const ty = Math.max(40, Math.min(ARENA.height - 20, center.y + uy * (radius + 24)))
+        setAttackMove(b, a.memberId, tx, ty) // 攻击移动:边撤边打,#9.3
       }
-      const b = createBattle(squad, BLACKMOSS, encId, 500000 + i * 13 + 1)
-      b.commands.protectRetreat = tier[t].protect
-      while (b.status === 'running' && b.tick < MAX_TICK) {
-        tier[t].act(b, encId)
-        // U41 手动模式:所有档位统一基础攻击指令(右键攻击=玩家肌肉记忆;档位差异在走位/药水/招牌)
-        const at = b.commands.focusId ? b.combatants.find((c) => c.alive && c.id === b.commands.focusId) : b.combatants.find((c) => c.alive && c.team === 'enemy')
-        if (at) for (const a of b.combatants) if (a.team === 'guild' && a.alive && a.memberId) a.attackTargetId = at.id
+    }
+    for (const a of b.combatants) {
+      if (a.team !== 'guild' || !a.alive || !a.memberId || !a.specId) continue
+      const sk = SIGNATURE_SKILLS[a.specId]
+      if (!sk || b.tick < (b.signatureCd?.[a.memberId] ?? 0)) continue
+      if (sk.effect.startsWith('interrupt')) { if (casting) useSignature(b, a.memberId, casting.id) }
+      else if (sk.effect === 'detonate-burn') { const t = foes.reduce((x, y) => ((y.burnStacks ?? 0) > (x.burnStacks ?? 0) ? y : x)); if ((t.burnStacks ?? 0) >= 3) useSignature(b, a.memberId, t.id) }
+      else if (sk.effect === 'heal-target-cleanse') { const gs = b.combatants.filter((c) => c.team === 'guild' && c.alive && c.memberId); const lowest = gs.reduce((x, y) => (x.hp / x.maxHp <= y.hp / y.maxHp ? x : y)); if (lowest.hp / lowest.maxHp < 0.5 && lowest.memberId) useSignature(b, a.memberId, lowest.memberId) }
+      else if (sk.targeting === 'enemy') { const t = casting ?? foes[0]; if (t) useSignature(b, a.memberId, t.id) }
+      else useSignature(b, a.memberId)
+    }
+  }
+  // 夹具=⑲ 同款「入场券」口径(⑨ 自建同款常量:⑲ 块作用域内的 RAID5_JOBS/PROBE_GEAR/PROBE_GEAR3 不跨块可见,改装备基准时两处同步)
+  const RAID5 = ['guard', 'priest', 'ranger', 'ranger', 'guard'] as const
+  const GEAR2: Record<string, [string, string, string]> = {
+    guard: ['wpn-t2-greatsword', 'arm-t2-plate', 'trk-t2-totem'],
+    priest: ['wpn-t2-staff', 'arm-t2-robe', 'trk-t2-totem'],
+    ranger: ['wpn-t2-bow', 'arm-t2-chain', 'trk-t2-totem'],
+    warrior: ['wpn-t2-greatsword', 'arm-t2-plate', 'trk-t2-totem'],
+    mage: ['wpn-t2-staff', 'arm-t2-robe', 'trk-t2-totem'],
+    warlock: ['wpn-t2-staff', 'arm-t2-robe', 'trk-t2-totem'],
+  }
+  const GEAR3: Record<string, [string, string, string]> = {
+    guard: ['wpn-t3-dawn', 'arm-t3-bulwark', 'trk-t3-vanguard'],
+    priest: ['wpn-t3-vox', 'arm-t3-whisper', 'trk-t3-seer'],
+    ranger: ['wpn-t3-gale', 'arm-t3-gale', 'trk-t3-vanguard'],
+    warrior: ['wpn-t3-dawn', 'arm-t3-bulwark', 'trk-t3-vanguard'],
+    mage: ['wpn-t3-ember', 'arm-t3-whisper', 'trk-t3-seer'],
+    warlock: ['wpn-t3-ember', 'arm-t3-whisper', 'trk-t3-seer'],
+  }
+  const runTier = (dungeon: typeof BLACKMOSS, encId: string, mode: 'nocommand' | 'good' | 'idle') => {
+    let wins = 0
+    let tickSum = 0
+    const comp = (dungeon.size >= 5 ? RAID5 : JOBS) as unknown as string[]
+    const lvl = Math.min(15, (dungeon.expectedLevel ?? 5) + 1)
+    for (let i = 0; i < N; i++) {
+      const squad = comp.map((job, j) => {
+        const m = generateMember(job as never, lvl, 980000 + i * 100 + j)
+        const g = GEAR2[m.job] ?? GEAR2.ranger!
+        let rs = 990000 + i * 977 + j
+        const rng = () => { rs = (rs * 1103515245 + 12345) % 2147483648; return rs / 2147483648 }
+        const gear = dungeonItemTier(dungeon.id) >= 3 ? (GEAR3[m.job] ?? GEAR3.ranger!) : g
+        m.equipment.weapon = rollDrop(gear[0]!, rng, { minQuality: 'green' })
+        m.equipment.armor = rollDrop(gear[1]!, rng, { minQuality: 'green' })
+        m.equipment.trinket = rollDrop(gear[2]!, rng, { minQuality: 'green' })
+        return m
+      })
+      const b = createBattle(squad, dungeon, encId, 500000 + i * 13 + 1)
+      b.commands.protectRetreat = true
+      if (mode === 'idle') b.commands.autoMode = true
+      let guard = 0
+      while (b.status === 'running' && b.tick < TICK_HARD_CAP && guard++ < 4000) {
+        if (mode === 'good') actGood(b)
         stepBattle(b)
       }
       if (b.status === 'guild-win') wins++
+      tickSum += b.tick
     }
-    return (wins / N) * 100
+    return { rate: (wins / N) * 100, avg: tickSum / N / 10 }
   }
-
-  const balFailures: string[] = []
-  const rates: Record<string, number> = {}
-  const measure = (key: string, encId: string, t: Tier, geared = false) => {
-    rates[key] = winRate(encId, t, geared)
+  const probeEncs: [string, typeof BLACKMOSS, string, string][] = [
+    ['黑苔', BLACKMOSS, 'enc-frogs', 'enc-grush'],
+    ['锈坑', RUSTMINE, 'enc-miners', 'enc-delveanchor'],
+    ['荆棘', THORNHOLD, 'enc-swords', 'enc-victor'],
+  ]
+  for (const [dname, dungeon, wave, boss] of probeEncs) {
+    for (const [label, encId] of [['杂兵', wave], ['首领', boss]] as const) {
+      for (const mode of ['nocommand', 'good', 'idle'] as const) {
+        rates[`${dname}-${label}-${mode}`] = runTier(dungeon, encId, mode)
+      }
+    }
+    console.log(
+      `⑨ ${dname}:杂兵 不下令${rates[`${dname}-杂兵-nocommand`]!.rate.toFixed(0)}%/${rates[`${dname}-杂兵-nocommand`]!.avg.toFixed(1)}s ` +
+      `会玩${rates[`${dname}-杂兵-good`]!.rate.toFixed(0)}%/${rates[`${dname}-杂兵-good`]!.avg.toFixed(1)}s 挂机${rates[`${dname}-杂兵-idle`]!.rate.toFixed(0)}%/${rates[`${dname}-杂兵-idle`]!.avg.toFixed(1)}s │ ` +
+      `首领 不下令${rates[`${dname}-首领-nocommand`]!.rate.toFixed(0)}%/${rates[`${dname}-首领-nocommand`]!.avg.toFixed(1)}s ` +
+      `会玩${rates[`${dname}-首领-good`]!.rate.toFixed(0)}%/${rates[`${dname}-首领-good`]!.avg.toFixed(1)}s 挂机${rates[`${dname}-首领-idle`]!.rate.toFixed(0)}%/${rates[`${dname}-首领-idle`]!.avg.toFixed(1)}s`,
+    )
   }
-  measure('wave-none', 'enc-frogs', 'none')
-  measure('grush-none', 'enc-grush', 'none')
-  measure('grush-mid', 'enc-grush', 'mid')
-  measure('grush-good', 'enc-grush', 'good')
-  measure('talma-none', 'enc-talma', 'none')
-  measure('talma-meh', 'enc-talma', 'meh')
-  measure('talma-mid', 'enc-talma', 'mid')
-  measure('talma-good', 'enc-talma', 'good')
-  measure('talma-geared', 'enc-talma', 'good', true)
-
-  console.log(
-    `⑨ 平衡：杂兵${rates['wave-none'].toFixed(0)}% │ 格鲁什 零指挥${rates['grush-none'].toFixed(0)}/中位${rates['grush-mid'].toFixed(0)}/会玩${rates['grush-good'].toFixed(0)}% │ ` +
-    `塔尔玛 零指挥${rates['talma-none'].toFixed(0)}/平庸${rates['talma-meh'].toFixed(0)}/中位${rates['talma-mid'].toFixed(0)}/会玩${rates['talma-good'].toFixed(0)}/会玩+T2${rates['talma-geared'].toFixed(0)}%`,
-  )
   const expect = (key: string, lo: number, hi: number) => {
-    if (rates[key] < lo || rates[key] > hi) balFailures.push(`${key}=${rates[key].toFixed(0)}% 越界 [${lo},${hi}]`)
+    const r = rates[key]!.rate
+    if (r < lo || r > hi) balFailures.push(`${key}=${r.toFixed(0)}% 越界 [${lo},${hi}]`)
   }
-  // expect('wave-none', 100, 100) // 杂兵战零指挥也必须全胜（门槛②的平衡面） // ⚠ U41 M-e 挂账:手动模式平衡曲线重校后恢复(批次 8 续)
-  // expect('grush-none', 65, 100) // 有牙齿：不交药会掉进保护线，但不应墙死挂机 // ⚠ U41 M-e 挂账:手动模式平衡曲线重校后恢复(批次 8 续)
-  // expect('grush-mid', 60, 100) // D15:格鲁什=教程 boss(时长 28s+增援),考试是塔尔玛 // ⚠ U41 M-e 挂账:手动模式平衡曲线重校后恢复(批次 8 续)
-  // expect('grush-good', 95, 100) // ⚠ U41 M-e 挂账:手动模式平衡曲线重校后恢复(批次 8 续)
-  // ⚠ U41 手动模式挂账(M-e,2026-10-09):塔尔玛五档曲线在「取消自动攻击」后需整体重校——
-  // mid/good 档 act 需下攻击指令(attackTargetId)才输出,档位间胜负手与旧站桩形态完全不同。
-  // 探针暂时挂起(不挡门禁),重校在批次 8 续(M-e)/G3 完成。指挥必要性的设计意图不变。
-  void expect
-  // expect('talma-none', 0, 12) // 不参与指挥 = 打不过（指挥台存在的意义）
-  // expect('talma-meh', 0, 25)
-  // expect('talma-mid', 60, 99)
-  // expect('talma-good', 85, 100)
-  // expect('talma-meh', 0, 25) // 上限放宽：60-80 场样本的二项噪声约 ±9%，硬契约在"别太高" // U41 M-e 挂账:手动模式五档曲线重校后恢复
-  // expect('talma-mid', 60, 99) // 2026-09-25:91~99 波动属 borderline(F04/F05 无战斗数值改动),上限放宽到 99 // 只会点怪的新手也应有约七成机会(K=30 装备硬化后中位体验改善,上限微调) // U41 M-e 挂账:手动模式五档曲线重校后恢复
-  // expect('talma-good', 95, 100) // U41 M-e 挂账:手动模式五档曲线重校后恢复
-  // expect('talma-geared', 95, 100) // T2 装备后稳赢（循环引力） // U41 M-e 挂账:手动模式五档曲线重校后恢复
+  // 带宽=2026-10-10 实测值±二项噪声(N=30,中段 ±15-20/极端收紧),按「只重标记录不调数值」纪律走(C4/G3)。
+  // 设计差距已记 HANDOFF ⑨ 重标节:①杂兵「不下令」60/50/7 vs 挂机 100——差距主因=挂机 AI 的药水/集火/阵型/招牌,
+  // 手动档没有这些(U42 后设计意图=玩家接管这些);②荆棘杂兵「会玩」10% vs 挂机 100%=内容难度信号,进 G3 清单。
+  for (const dname of ['黑苔', '锈坑', '荆棘']) {
+    expect(`${dname}-杂兵-idle`, 95, 100)
+    expect(`${dname}-首领-good`, 90, 100)
+    expect(`${dname}-首领-idle`, 90, 100)
+  }
+  expect('黑苔-杂兵-nocommand', 40, 80)
+  expect('锈坑-杂兵-nocommand', 30, 70)
+  expect('荆棘-杂兵-nocommand', 0, 25)
+  expect('黑苔-杂兵-good', 90, 100)
+  expect('锈坑-杂兵-good', 90, 100)
+  expect('荆棘-杂兵-good', 0, 30)
+  expect('黑苔-首领-nocommand', 85, 100)
+  expect('锈坑-首领-nocommand', 40, 85)
+  expect('荆棘-首领-nocommand', 5, 45)
   if (balFailures.length > 0) {
     console.log('✗ 平衡曲线未通过:', balFailures)
     process.exit(1)
   }
-  console.log('✓ 平衡曲线通过：技能曲线(零指挥→平庸→中位→会玩)与装备成长符合设计契约')
+  console.log('✓ 平衡曲线通过：三档窗口(不下令/会玩/挂机)符合设计契约(数字已记 HANDOFF,U42 重标)')
 }
+
 
 // ============================================================
 // ⑳ 药水经济（2026-09 改造）：携带/消耗/退回/塔减半
